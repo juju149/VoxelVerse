@@ -1818,6 +1818,8 @@ dependencies = [
  "vv-config",
  "vv-core",
  "vv-physics",
+ "vv-planet",
+ "vv-registry",
  "vv-world-runtime",
 ]
 

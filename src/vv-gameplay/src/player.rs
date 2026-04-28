@@ -1,4 +1,4 @@
-use glam::{Vec3, Quat, Mat4};
+use glam::{Mat4, Quat, Vec3};
 use vv_config::PlayerConfig;
 use vv_physics::Physics;
 use vv_world_runtime::PlanetData;
@@ -9,7 +9,7 @@ pub struct Player {
     pub velocity: Vec3,
     pub rotation: Quat,
     pub cam_pitch: f32,
-    pub grounded:  bool,
+    pub grounded: bool,
     pub debug_mode: bool,
 
     // --- Tunable at runtime (e.g. via the dev console) ---
@@ -21,11 +21,11 @@ pub struct Player {
 impl Player {
     pub fn new(cfg: &PlayerConfig) -> Self {
         Self {
-            position:   Vec3::new(0.0, 200.0, 0.0),
-            velocity:   Vec3::ZERO,
-            rotation:   Quat::IDENTITY,
-            cam_pitch:  0.0,
-            grounded:   false,
+            position: Vec3::new(0.0, 200.0, 0.0),
+            velocity: Vec3::ZERO,
+            rotation: Quat::IDENTITY,
+            cam_pitch: 0.0,
+            grounded: false,
             debug_mode: false,
             move_speed: cfg.move_speed,
             jump_force: cfg.jump_force,
@@ -67,7 +67,11 @@ impl Player {
         }
 
         let speed = if sprint {
-            if flying { self.move_speed * 10.0 } else { self.move_speed * 2.0 }
+            if flying {
+                self.move_speed * 10.0
+            } else {
+                self.move_speed * 2.0
+            }
         } else {
             self.move_speed
         };
@@ -75,14 +79,17 @@ impl Player {
         if flying {
             if input.length() > 0.01 {
                 let pitch_rot = Quat::from_axis_angle(Vec3::X, self.cam_pitch);
-                let dir = self.rotation * pitch_rot * Vec3::new(input.normalize().x, 0.0, input.normalize().z);
+                let dir = self.rotation
+                    * pitch_rot
+                    * Vec3::new(input.normalize().x, 0.0, input.normalize().z);
                 self.velocity = dir * speed;
             } else {
                 self.velocity = Vec3::ZERO;
             }
         } else {
             if input.length() > 0.01 {
-                let move_dir = self.rotation * Vec3::new(input.normalize().x, 0.0, input.normalize().z);
+                let move_dir =
+                    self.rotation * Vec3::new(input.normalize().x, 0.0, input.normalize().z);
                 let curr_horz = self.velocity - up * self.velocity.dot(up);
                 let target = move_dir * speed;
                 let accel = 25.0f32;
@@ -105,9 +112,8 @@ impl Player {
             self.velocity -= up * physics.gravity * dt;
         }
 
-        let (new_pos, new_vel, grounded) = physics.solve_movement(
-            self.position, self.velocity, dt, planet, flying,
-        );
+        let (new_pos, new_vel, grounded) =
+            physics.solve_movement(self.position, self.velocity, dt, planet, flying);
         self.position = new_pos;
         self.velocity = new_vel;
         self.grounded = grounded;

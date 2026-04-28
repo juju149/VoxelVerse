@@ -4,14 +4,14 @@ use diagnostics::SystemDiagnostics;
 use glam::Vec3;
 use std::path::Path;
 use std::time::Instant;
-use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent};
+use winit::event::{DeviceEvent, ElementState, Event, WindowEvent};
 use winit::event_loop::EventLoop;
 use winit::keyboard::{Key, KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, WindowBuilder};
 
 use vv_compiler::compile_assets_root;
 use vv_config::EngineConfig;
-use vv_gameplay::{Console, Player};
+use vv_gameplay::{Console, InteractionTarget, Player, PlayerGameplayState, PlayerIntent};
 use vv_input::Controller;
 use vv_physics::Physics;
 use vv_planet::CoordSystem;
@@ -28,11 +28,6 @@ fn main() {
     let config = EngineConfig::default();
     let compiled_content =
         compile_assets_root(Path::new("assets")).expect("assets packs should compile");
-    let default_build_block = compiled_content
-        .worldgen_content()
-        .biomes()
-        .find_map(|biome| biome.data.surface_layers.first().map(|layer| layer.block))
-        .expect("compiled content should define at least one biome surface block");
     let terrain = PlanetTerrain::generate(
         config.planet_resolution,
         &config.worldgen,
@@ -57,6 +52,7 @@ fn main() {
     let mut renderer = pollster::block_on(Renderer::new(&window, &config, block_content.clone()));
     let mut controller = Controller::new(&config.player);
     let mut player = Player::new(&config.player);
+    let mut gameplay = PlayerGameplayState::new(config.player.reach_distance);
     let mut console = Console::new();
     console.log("Welcome to VoxelVerse.", [0.0, 1.0, 0.0]);
     console.log("Press ` to open the console.", [1.0, 1.0, 1.0]);
@@ -86,8 +82,11 @@ fn main() {
             let dt = (now - last_time).as_secs_f32();
             last_time = now;
 
-            // Cursor locking follows first-person toggle
-            if controller.first_person != current_mode_first_person {
+            // Cursor locking follows first-person toggle and UI modes.
+            if console.is_open || gameplay.inventory_open {
+                let _ = renderer.window.set_cursor_grab(CursorGrabMode::None);
+                renderer.window.set_cursor_visible(true);
+            } else if controller.first_person != current_mode_first_person {
                 current_mode_first_person = controller.first_person;
                 if current_mode_first_person {
                     let _ = renderer.window.set_cursor_grab(CursorGrabMode::Locked);
@@ -99,17 +98,35 @@ fn main() {
             }
 
             // Physics + view update
-            if !console.is_open {
+            if !console.is_open && !gameplay.inventory_open {
                 controller.update_player(&mut player, &planet, &physics, dt);
-            } else {
-                let _ = renderer.window.set_cursor_grab(CursorGrabMode::None);
-                renderer.window.set_cursor_visible(true);
             }
 
             let w = renderer.config.width as f32;
             let h = renderer.config.height as f32;
             let ray = controller.raycast(&player, &planet, &physics, w, h, &config.render, false);
-            controller.cursor_id = ray.map(|(id, _)| id);
+            let interaction_target =
+                ray.map(|(block, distance)| InteractionTarget { block, distance });
+            let placement_target = controller
+                .raycast(&player, &planet, &physics, w, h, &config.render, true)
+                .map(|(id, _)| id);
+            let mut intent = controller.take_gameplay_intent();
+            if console.is_open {
+                intent = PlayerIntent::default();
+            }
+            let gameplay_events = gameplay.update(
+                dt,
+                player.position,
+                interaction_target,
+                placement_target,
+                intent,
+                &mut planet,
+                &compiled_content,
+            );
+            for id in gameplay_events.changed_blocks {
+                renderer.refresh_neighbors(id, &planet);
+            }
+            controller.cursor_id = gameplay.target.map(|target| target.block);
             renderer.update_cursor(&planet, controller.cursor_id);
             renderer.update_view(player.position, &planet);
 
@@ -168,33 +185,11 @@ fn main() {
                         WindowEvent::CloseRequested => target.exit(),
                         WindowEvent::Resized(size) => renderer.resize(size.width, size.height),
 
-                        WindowEvent::MouseInput {
-                            state: ElementState::Pressed,
-                            button,
-                            ..
-                        } => {
-                            if let Some(id) = controller.cursor_id {
-                                let is_right = button == MouseButton::Right;
-                                if is_right {
-                                    let place = controller.raycast(
-                                        &player,
-                                        &planet,
-                                        &physics,
-                                        renderer.config.width as f32,
-                                        renderer.config.height as f32,
-                                        &config.render,
-                                        true,
-                                    );
-                                    if let Some((place_id, _)) = place {
-                                        planet.add_block(place_id, default_build_block);
-                                        renderer.refresh_neighbors(place_id, &planet);
-                                    }
-                                } else {
-                                    planet.remove_block(id);
-                                    renderer.refresh_neighbors(id, &planet);
-                                }
-                                renderer.window.request_redraw();
-                            } else if controller.first_person {
+                        WindowEvent::MouseInput { .. } => {
+                            if controller.first_person
+                                && !console.is_open
+                                && !gameplay.inventory_open
+                            {
                                 let _ = renderer.window.set_cursor_grab(CursorGrabMode::Locked);
                                 renderer.window.set_cursor_visible(false);
                             }
@@ -245,7 +240,15 @@ fn main() {
                         }
 
                         WindowEvent::RedrawRequested => {
-                            renderer.render(&controller, &player, &physics, &planet, &console);
+                            renderer.render(
+                                &controller,
+                                &player,
+                                &physics,
+                                &planet,
+                                &console,
+                                &gameplay,
+                                &compiled_content,
+                            );
                         }
                         _ => {}
                     }

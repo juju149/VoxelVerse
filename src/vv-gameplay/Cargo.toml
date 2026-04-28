@@ -7,5 +7,7 @@ edition = "2021"
 vv-core          = { path = "../vv-core" }
 vv-config        = { path = "../vv-config" }
 vv-physics       = { path = "../vv-physics" }
+vv-planet        = { path = "../vv-planet" }
+vv-registry      = { path = "../vv-registry" }
 vv-world-runtime = { path = "../vv-world-runtime" }
 glam = "0.25"

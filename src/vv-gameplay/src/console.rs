@@ -26,7 +26,9 @@ impl Console {
 
     pub fn toggle(&mut self) {
         self.is_open = !self.is_open;
-        if self.is_open { self.input_buffer.clear(); }
+        if self.is_open {
+            self.input_buffer.clear();
+        }
     }
 
     pub fn log(&mut self, text: &str, color: [f32; 3]) {
@@ -44,11 +46,15 @@ impl Console {
     }
 
     pub fn handle_backspace(&mut self) {
-        if self.is_open { self.input_buffer.pop(); }
+        if self.is_open {
+            self.input_buffer.pop();
+        }
     }
 
     pub fn submit(&mut self, player: &mut Player) {
-        if self.input_buffer.is_empty() { return; }
+        if self.input_buffer.is_empty() {
+            return;
+        }
         let cmd = self.input_buffer.clone();
         self.log(&format!("> {}", cmd), [1.0, 1.0, 1.0]);
         self.process_command(&cmd, player);
@@ -57,26 +63,38 @@ impl Console {
 
     fn process_command(&mut self, cmd_line: &str, player: &mut Player) {
         let parts: Vec<&str> = cmd_line.trim().split_whitespace().collect();
-        if parts.is_empty() { return; }
+        if parts.is_empty() {
+            return;
+        }
         match parts[0] {
-            "/move_speed" => self.handle_property_command(parts, "move_speed", &mut player.move_speed),
-            "/jump_force" => self.handle_property_command(parts, "jump_force", &mut player.jump_force),
+            "/move_speed" => {
+                self.handle_property_command(parts, "move_speed", &mut player.move_speed)
+            }
+            "/jump_force" => {
+                self.handle_property_command(parts, "jump_force", &mut player.jump_force)
+            }
             "/debug_mode" => {
                 if parts.len() < 3 || parts[1] != "set" {
                     self.log("Usage: /debug_mode set [true/false]", [1.0, 0.5, 0.0]);
                     return;
                 }
                 match parts[2] {
-                    "true"  => { player.debug_mode = true;  self.log("Debug mode: ON",  [0.0, 1.0, 0.0]); }
-                    "false" => { player.debug_mode = false; self.log("Debug mode: OFF", [1.0, 0.0, 0.0]); }
+                    "true" => {
+                        player.debug_mode = true;
+                        self.log("Debug mode: ON", [0.0, 1.0, 0.0]);
+                    }
+                    "false" => {
+                        player.debug_mode = false;
+                        self.log("Debug mode: OFF", [1.0, 0.0, 0.0]);
+                    }
                     _ => self.log("Value must be true or false", [1.0, 0.0, 0.0]),
                 }
             }
             "help" => {
                 self.log("Commands:", [0.0, 1.0, 1.0]);
                 self.log("  /debug_mode set true|false", [0.8, 0.8, 0.8]);
-                self.log("  /move_speed set <value>",    [0.8, 0.8, 0.8]);
-                self.log("  /jump_force set <value>",    [0.8, 0.8, 0.8]);
+                self.log("  /move_speed set <value>", [0.8, 0.8, 0.8]);
+                self.log("  /jump_force set <value>", [0.8, 0.8, 0.8]);
             }
             _ => self.log(&format!("Unknown command: {}", parts[0]), [1.0, 0.0, 0.0]),
         }
@@ -95,11 +113,17 @@ impl Console {
                     return;
                 }
                 match parts[2].parse::<f32>() {
-                    Ok(v)  => { *property = v; self.log(&format!("{} = {:.2}", name, v), [0.0, 1.0, 0.0]); }
+                    Ok(v) => {
+                        *property = v;
+                        self.log(&format!("{} = {:.2}", name, v), [0.0, 1.0, 0.0]);
+                    }
                     Err(_) => self.log("Invalid number.", [1.0, 0.0, 0.0]),
                 }
             }
-            _ => self.log(&format!("Unknown operation '{}'. Use set or get.", parts[1]), [1.0, 0.5, 0.0]),
+            _ => self.log(
+                &format!("Unknown operation '{}'. Use set or get.", parts[1]),
+                [1.0, 0.5, 0.0],
+            ),
         }
     }
 
@@ -114,5 +138,7 @@ impl Console {
 }
 
 impl Default for Console {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
