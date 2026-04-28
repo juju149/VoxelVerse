@@ -1,21 +1,23 @@
 mod diagnostics;
 use diagnostics::SystemDiagnostics;
 
+use glam::Vec3;
+use std::path::Path;
+use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent};
 use winit::event_loop::EventLoop;
-use winit::window::{WindowBuilder, CursorGrabMode};
-use winit::keyboard::{Key, PhysicalKey, KeyCode};
-use glam::Vec3;
-use std::time::Instant;
+use winit::keyboard::{Key, KeyCode, PhysicalKey};
+use winit::window::{CursorGrabMode, WindowBuilder};
 
+use vv_compiler::compile_assets_root;
 use vv_config::EngineConfig;
+use vv_gameplay::{Console, Player};
+use vv_input::Controller;
+use vv_physics::Physics;
+use vv_planet::CoordSystem;
+use vv_render::Renderer;
 use vv_world_gen::PlanetTerrain;
 use vv_world_runtime::PlanetData;
-use vv_physics::Physics;
-use vv_gameplay::{Player, Console};
-use vv_input::Controller;
-use vv_render::Renderer;
-use vv_planet::CoordSystem;
 
 fn main() {
     SystemDiagnostics::print_startup_info();
@@ -23,6 +25,14 @@ fn main() {
     // --- Configuration ------------------------------------------------------
     // All engine parameters live here. Change a value; it propagates everywhere.
     let config = EngineConfig::default();
+    let compiled_content =
+        compile_assets_root(Path::new("assets")).expect("assets packs should compile");
+    let terrain_block = compiled_content
+        .worldgen_content()
+        .biomes()
+        .find_map(|biome| biome.data.surface_layers.first().map(|layer| layer.block))
+        .expect("compiled content should define at least one biome surface block");
+    let block_content = compiled_content.into_block_content();
 
     // --- Window & event loop ------------------------------------------------
     let event_loop = EventLoop::new().unwrap();
@@ -32,11 +42,11 @@ fn main() {
         .unwrap();
 
     // --- Core systems -------------------------------------------------------
-    let physics    = Physics::new(config.physics.clone());
-    let mut renderer = pollster::block_on(Renderer::new(&window, &config));
+    let physics = Physics::new(config.physics.clone());
+    let mut renderer = pollster::block_on(Renderer::new(&window, &config, block_content.clone()));
     let mut controller = Controller::new(&config.player);
-    let mut player     = Player::new(&config.player);
-    let mut console    = Console::new();
+    let mut player = Player::new(&config.player);
+    let mut console = Console::new();
     console.log("Welcome to VoxelVerse.", [0.0, 1.0, 0.0]);
     console.log("Press ` to open the console.", [1.0, 1.0, 1.0]);
 
@@ -47,152 +57,185 @@ fn main() {
         config.planet_resolution,
         terrain,
         config.physics.core_protection_layers,
+        terrain_block,
     );
 
     // --- Player spawn -------------------------------------------------------
-    let center  = planet.resolution / 2;
+    let center = planet.resolution / 2;
     let ground_h = planet.terrain.get_height(0, center, center);
-    let spawn_r  = CoordSystem::get_layer_radius(ground_h, planet.resolution)
-                   + config.player.spawn_height_offset;
+    let spawn_r = CoordSystem::get_layer_radius(ground_h, planet.resolution)
+        + config.player.spawn_height_offset;
     player.spawn(Vec3::new(0.0, spawn_r, 0.0));
 
     // --- Main loop ----------------------------------------------------------
     let mut last_time = Instant::now();
     let mut current_mode_first_person = false;
 
-    event_loop.run(move |event, target| {
-        let now = Instant::now();
-        let dt  = (now - last_time).as_secs_f32();
-        last_time = now;
+    event_loop
+        .run(move |event, target| {
+            let now = Instant::now();
+            let dt = (now - last_time).as_secs_f32();
+            last_time = now;
 
-        // Cursor locking follows first-person toggle
-        if controller.first_person != current_mode_first_person {
-            current_mode_first_person = controller.first_person;
-            if current_mode_first_person {
-                let _ = renderer.window.set_cursor_grab(CursorGrabMode::Locked);
-                renderer.window.set_cursor_visible(false);
+            // Cursor locking follows first-person toggle
+            if controller.first_person != current_mode_first_person {
+                current_mode_first_person = controller.first_person;
+                if current_mode_first_person {
+                    let _ = renderer.window.set_cursor_grab(CursorGrabMode::Locked);
+                    renderer.window.set_cursor_visible(false);
+                } else {
+                    let _ = renderer.window.set_cursor_grab(CursorGrabMode::None);
+                    renderer.window.set_cursor_visible(true);
+                }
+            }
+
+            // Physics + view update
+            if !console.is_open {
+                controller.update_player(&mut player, &planet, &physics, dt);
             } else {
                 let _ = renderer.window.set_cursor_grab(CursorGrabMode::None);
                 renderer.window.set_cursor_visible(true);
             }
-        }
 
-        // Physics + view update
-        if !console.is_open {
-            controller.update_player(&mut player, &planet, &physics, dt);
-        } else {
-            let _ = renderer.window.set_cursor_grab(CursorGrabMode::None);
-            renderer.window.set_cursor_visible(true);
-        }
+            let w = renderer.config.width as f32;
+            let h = renderer.config.height as f32;
+            let ray = controller.raycast(&player, &planet, &physics, w, h, &config.render, false);
+            controller.cursor_id = ray.map(|(id, _)| id);
+            renderer.update_cursor(&planet, controller.cursor_id);
+            renderer.update_view(player.position, &planet);
 
-        let w = renderer.config.width  as f32;
-        let h = renderer.config.height as f32;
-        let ray = controller.raycast(&player, &planet, &physics, w, h, &config.render, false);
-        controller.cursor_id = ray.map(|(id, _)| id);
-        renderer.update_cursor(&planet, controller.cursor_id);
-        renderer.update_view(player.position, &planet);
+            console.update_animation(dt);
 
-        console.update_animation(dt);
+            match event {
+                Event::DeviceEvent {
+                    event: DeviceEvent::MouseMotion { delta },
+                    ..
+                } => {
+                    controller.process_mouse_motion(delta);
+                }
 
-        match event {
-            Event::DeviceEvent { event: DeviceEvent::MouseMotion { delta }, .. } => {
-                controller.process_mouse_motion(delta);
-            }
-
-            Event::WindowEvent { event, window_id } if window_id == renderer.window.id() => {
-                // Console intercepts input when open
-                if console.is_open {
-                    match &event {
-                        WindowEvent::KeyboardInput { event: ke, .. } if ke.state == ElementState::Pressed => {
-                            match ke.physical_key {
-                                PhysicalKey::Code(KeyCode::Backquote) => console.toggle(),
-                                PhysicalKey::Code(KeyCode::Enter)     => console.submit(&mut player),
-                                PhysicalKey::Code(KeyCode::Backspace) => console.handle_backspace(),
-                                _ => {
-                                    if let Some(txt) = &ke.text {
-                                        for c in txt.chars() { console.handle_char(c); }
+                Event::WindowEvent { event, window_id } if window_id == renderer.window.id() => {
+                    // Console intercepts input when open
+                    if console.is_open {
+                        match &event {
+                            WindowEvent::KeyboardInput { event: ke, .. }
+                                if ke.state == ElementState::Pressed =>
+                            {
+                                match ke.physical_key {
+                                    PhysicalKey::Code(KeyCode::Backquote) => console.toggle(),
+                                    PhysicalKey::Code(KeyCode::Enter) => {
+                                        console.submit(&mut player)
+                                    }
+                                    PhysicalKey::Code(KeyCode::Backspace) => {
+                                        console.handle_backspace()
+                                    }
+                                    _ => {
+                                        if let Some(txt) = &ke.text {
+                                            for c in txt.chars() {
+                                                console.handle_char(c);
+                                            }
+                                        }
                                     }
                                 }
+                                return;
                             }
-                            return;
+                            _ => {}
+                        }
+                    }
+
+                    // Backtick toggles console regardless of mode
+                    if let WindowEvent::KeyboardInput { event: ke, .. } = &event {
+                        if ke.state == ElementState::Pressed {
+                            if let PhysicalKey::Code(KeyCode::Backquote) = ke.physical_key {
+                                console.toggle();
+                                return;
+                            }
+                        }
+                    }
+
+                    controller.process_events(&event, &mut player);
+
+                    match event {
+                        WindowEvent::CloseRequested => target.exit(),
+                        WindowEvent::Resized(size) => renderer.resize(size.width, size.height),
+
+                        WindowEvent::MouseInput {
+                            state: ElementState::Pressed,
+                            button,
+                            ..
+                        } => {
+                            if let Some(id) = controller.cursor_id {
+                                let is_right = button == MouseButton::Right;
+                                if is_right {
+                                    let place = controller.raycast(
+                                        &player,
+                                        &planet,
+                                        &physics,
+                                        renderer.config.width as f32,
+                                        renderer.config.height as f32,
+                                        &config.render,
+                                        true,
+                                    );
+                                    if let Some((place_id, _)) = place {
+                                        planet.add_block(place_id, terrain_block);
+                                        renderer.refresh_neighbors(place_id, &planet);
+                                    }
+                                } else {
+                                    planet.remove_block(id);
+                                    renderer.refresh_neighbors(id, &planet);
+                                }
+                                renderer.window.request_redraw();
+                            } else if controller.first_person {
+                                let _ = renderer.window.set_cursor_grab(CursorGrabMode::Locked);
+                                renderer.window.set_cursor_visible(false);
+                            }
+                        }
+
+                        WindowEvent::KeyboardInput { event, .. }
+                            if event.state == ElementState::Pressed =>
+                        {
+                            if let Key::Character(ref s) = event.logical_key {
+                                if s == "]" || s == "[" {
+                                    let increase = s == "]";
+                                    let new_res = planet.next_resolution(increase);
+                                    let new_terrain = PlanetTerrain::new(new_res, &config.worldgen);
+                                    planet.apply_resize(new_res, new_terrain);
+
+                                    let dir = if player.position.length() > 0.1 {
+                                        player.position.normalize()
+                                    } else {
+                                        Vec3::Y
+                                    };
+                                    let probe = dir * (new_res as f32 / 2.0);
+                                    let spawn_radius = CoordSystem::pos_to_id(probe, new_res)
+                                        .map(|id| {
+                                            CoordSystem::get_layer_radius(
+                                                planet.terrain.get_height(id.face, id.u, id.v),
+                                                new_res,
+                                            ) + config.player.spawn_height_offset
+                                        })
+                                        .unwrap_or(new_res as f32 / 2.0 + 20.0);
+
+                                    player.position = dir * spawn_radius;
+                                    player.velocity = Vec3::ZERO;
+
+                                    renderer.force_reload_all(&planet, player.position);
+                                    renderer.log_memory(&planet);
+                                    renderer.window.request_redraw();
+                                }
+                            }
+                        }
+
+                        WindowEvent::RedrawRequested => {
+                            renderer.render(&controller, &player, &physics, &planet, &console);
                         }
                         _ => {}
                     }
                 }
 
-                // Backtick toggles console regardless of mode
-                if let WindowEvent::KeyboardInput { event: ke, .. } = &event {
-                    if ke.state == ElementState::Pressed {
-                        if let PhysicalKey::Code(KeyCode::Backquote) = ke.physical_key {
-                            console.toggle();
-                            return;
-                        }
-                    }
-                }
-
-                controller.process_events(&event, &mut player);
-
-                match event {
-                    WindowEvent::CloseRequested => target.exit(),
-                    WindowEvent::Resized(size)  => renderer.resize(size.width, size.height),
-
-                    WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } => {
-                        if let Some(id) = controller.cursor_id {
-                            let is_right = button == MouseButton::Right;
-                            if is_right {
-                                let place = controller.raycast(&player, &planet, &physics, renderer.config.width as f32, renderer.config.height as f32, &config.render, true);
-                                if let Some((place_id, _)) = place {
-                                    planet.add_block(place_id);
-                                    renderer.refresh_neighbors(place_id, &planet);
-                                }
-                            } else {
-                                planet.remove_block(id);
-                                renderer.refresh_neighbors(id, &planet);
-                            }
-                            renderer.window.request_redraw();
-                        } else if controller.first_person {
-                            let _ = renderer.window.set_cursor_grab(CursorGrabMode::Locked);
-                            renderer.window.set_cursor_visible(false);
-                        }
-                    }
-
-                    WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
-                        if let Key::Character(ref s) = event.logical_key {
-                            if s == "]" || s == "[" {
-                                let increase = s == "]";
-                                let new_res  = planet.next_resolution(increase);
-                                let new_terrain = PlanetTerrain::new(new_res, &config.worldgen);
-                                planet.apply_resize(new_res, new_terrain);
-
-                                let dir = if player.position.length() > 0.1 {
-                                    player.position.normalize()
-                                } else {
-                                    Vec3::Y
-                                };
-                                let probe = dir * (new_res as f32 / 2.0);
-                                let spawn_radius = CoordSystem::pos_to_id(probe, new_res)
-                                    .map(|id| CoordSystem::get_layer_radius(planet.terrain.get_height(id.face, id.u, id.v), new_res) + config.player.spawn_height_offset)
-                                    .unwrap_or(new_res as f32 / 2.0 + 20.0);
-
-                                player.position = dir * spawn_radius;
-                                player.velocity = Vec3::ZERO;
-
-                                renderer.force_reload_all(&planet, player.position);
-                                renderer.log_memory(&planet);
-                                renderer.window.request_redraw();
-                            }
-                        }
-                    }
-
-                    WindowEvent::RedrawRequested => {
-                        renderer.render(&controller, &player, &physics, &planet, &console);
-                    }
-                    _ => {}
-                }
+                Event::AboutToWait => renderer.window.request_redraw(),
+                _ => {}
             }
-
-            Event::AboutToWait => renderer.window.request_redraw(),
-            _ => {}
-        }
-    }).unwrap();
+        })
+        .unwrap();
 }

@@ -12,6 +12,7 @@ vv-input         = { path = "../vv-input" }
 vv-gameplay      = { path = "../vv-gameplay" }
 vv-physics       = { path = "../vv-physics" }
 vv-config        = { path = "../vv-config" }
+vv-registry      = { path = "../vv-registry" }
 glam     = "0.25"
 wgpu     = "0.19"
 bytemuck = { version = "1.14", features = ["derive"] }

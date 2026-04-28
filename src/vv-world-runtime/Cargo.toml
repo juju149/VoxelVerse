@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 vv-core      = { path = "../vv-core" }
 vv-world-gen = { path = "../vv-world-gen" }
+vv-registry  = { path = "../vv-registry" }

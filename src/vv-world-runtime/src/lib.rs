@@ -1,22 +1,28 @@
 use std::collections::{HashMap, HashSet};
-use vv_core::{BlockId, ChunkKey, CHUNK_SIZE};
+use vv_core::{BlockId as VoxelId, ChunkKey, CHUNK_SIZE};
+use vv_registry::BlockId as ContentBlockId;
 use vv_world_gen::PlanetTerrain;
 
 /// Tracks player modifications (mined / placed blocks) for a single chunk.
 #[derive(Clone)]
 pub struct ChunkMods {
-    pub mined: HashSet<BlockId>,
-    pub placed: HashSet<BlockId>,
+    pub mined: HashSet<VoxelId>,
+    pub placed: HashMap<VoxelId, ContentBlockId>,
 }
 
 impl ChunkMods {
     pub fn new() -> Self {
-        Self { mined: HashSet::new(), placed: HashSet::new() }
+        Self {
+            mined: HashSet::new(),
+            placed: HashMap::new(),
+        }
     }
 }
 
 impl Default for ChunkMods {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Mutable runtime state of a planet: terrain + player edits.
@@ -35,6 +41,8 @@ pub struct PlanetData {
     pub core_protection_layers: u32,
     /// Pre-computed terrain heightmap.
     pub terrain: PlanetTerrain,
+    /// Runtime content id used for generated terrain voxels.
+    pub terrain_block: ContentBlockId,
 }
 
 impl PlanetData {
@@ -42,6 +50,7 @@ impl PlanetData {
         resolution: u32,
         terrain: PlanetTerrain,
         core_protection_layers: u32,
+        terrain_block: ContentBlockId,
     ) -> Self {
         Self {
             chunks: HashMap::new(),
@@ -49,6 +58,7 @@ impl PlanetData {
             has_core: true,
             core_protection_layers,
             terrain,
+            terrain_block,
         }
     }
 
@@ -73,23 +83,20 @@ impl PlanetData {
 
     // --- Block operations ---------------------------------------------------
 
-    pub fn add_block(&mut self, id: BlockId) {
+    pub fn add_block(&mut self, id: VoxelId, block: ContentBlockId) {
         let key = Self::chunk_key(id);
         let mods = self.chunks.entry(key).or_default();
-        if mods.mined.contains(&id) {
-            mods.mined.remove(&id);
-        } else {
-            mods.placed.insert(id);
-        }
+        mods.mined.remove(&id);
+        mods.placed.insert(id, block);
     }
 
-    pub fn remove_block(&mut self, id: BlockId) {
+    pub fn remove_block(&mut self, id: VoxelId) {
         if self.has_core && id.layer < self.core_protection_layers {
             return;
         }
         let key = Self::chunk_key(id);
         let mods = self.chunks.entry(key).or_default();
-        if mods.placed.contains(&id) {
+        if mods.placed.contains_key(&id) {
             mods.placed.remove(&id);
         } else if id.layer < self.resolution {
             mods.mined.insert(id);
@@ -97,20 +104,28 @@ impl PlanetData {
     }
 
     /// Returns `true` if a voxel exists at `id` (accounting for player edits).
-    pub fn exists(&self, id: BlockId) -> bool {
+    pub fn exists(&self, id: VoxelId) -> bool {
+        self.block_at(id).is_some()
+    }
+
+    pub fn block_at(&self, id: VoxelId) -> Option<ContentBlockId> {
         let key = Self::chunk_key(id);
         if let Some(mods) = self.chunks.get(&key) {
-            if mods.placed.contains(&id) { return true; }
-            if mods.mined.contains(&id)  { return false; }
+            if let Some(block) = mods.placed.get(&id) {
+                return Some(*block);
+            }
+            if mods.mined.contains(&id) {
+                return None;
+            }
         }
         let height = self.terrain.get_height(id.face, id.u, id.v);
-        id.layer <= height
+        (id.layer <= height).then_some(self.terrain_block)
     }
 
     // --- Chunk key ----------------------------------------------------------
 
     #[inline]
-    pub fn chunk_key(id: BlockId) -> ChunkKey {
+    pub fn chunk_key(id: VoxelId) -> ChunkKey {
         ChunkKey {
             face: id.face,
             u_idx: id.u / CHUNK_SIZE,

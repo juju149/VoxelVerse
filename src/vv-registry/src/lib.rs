@@ -29,7 +29,7 @@ pub use placeable::{CompiledPlaceable, PlaceableRegistry};
 pub use recipe::{CompiledIngredient, CompiledRecipe, CompiledRecipePattern, RecipeRegistry};
 pub use registry_table::RegistryTable;
 pub use runtime_api::{
-    BiomeSource, BiomeView, BlockContentView, BlockRenderSource, BlockRuntimeSource,
+    BiomeSource, BiomeView, BlockContent, BlockContentView, BlockRenderSource, BlockRuntimeSource,
     BlockRuntimeView, PlanetTypeSource, PlanetTypeView, WorldContentView, WorldSettingsSource,
     WorldgenContentView, WorldgenSettingsSource,
 };

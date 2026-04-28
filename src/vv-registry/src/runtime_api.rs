@@ -1,9 +1,28 @@
+use std::sync::Arc;
+
 use crate::{
     BiomeId, BiomeRegistry, BlockId, BlockRegistry, CompiledBiome, CompiledBlockMining,
     CompiledBlockPhysics, CompiledBlockRender, CompiledClimateCurves, CompiledClimateTags,
     CompiledContent, CompiledDrops, CompiledPlanetType, CompiledWorldSettings, ContentKey,
     PlanetTypeId, PlanetTypeRegistry, TagId,
 };
+
+#[derive(Debug, Clone)]
+pub struct BlockContent {
+    blocks: Arc<BlockRegistry>,
+}
+
+impl BlockContent {
+    pub fn new(blocks: BlockRegistry) -> Self {
+        Self {
+            blocks: Arc::new(blocks),
+        }
+    }
+
+    pub fn as_view(&self) -> BlockContentView<'_> {
+        BlockContentView::new(&self.blocks)
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct BlockRuntimeView<'a> {
@@ -88,6 +107,31 @@ impl BlockRuntimeSource for BlockContentView<'_> {
 }
 
 impl BlockRenderSource for BlockContentView<'_> {
+    fn block_render(&self, id: BlockId) -> Option<&CompiledBlockRender> {
+        self.blocks.get(id).map(|block| &block.render)
+    }
+}
+
+impl BlockRuntimeSource for BlockContent {
+    fn block_runtime(&self, id: BlockId) -> Option<BlockRuntimeView<'_>> {
+        let block = self.blocks.get(id)?;
+        Some(BlockRuntimeView {
+            id,
+            key: self.blocks.key(id)?,
+            stack_max: block.stack_max,
+            tags: &block.tags,
+            mining: &block.mining,
+            physics: &block.physics,
+            drops: &block.drops,
+        })
+    }
+
+    fn block_key(&self, id: BlockId) -> Option<&ContentKey> {
+        self.blocks.key(id)
+    }
+}
+
+impl BlockRenderSource for BlockContent {
     fn block_render(&self, id: BlockId) -> Option<&CompiledBlockRender> {
         self.blocks.get(id).map(|block| &block.render)
     }
@@ -192,6 +236,10 @@ impl WorldgenSettingsSource for WorldgenContentView<'_> {
 }
 
 impl CompiledContent {
+    pub fn into_block_content(self) -> BlockContent {
+        BlockContent::new(self.blocks)
+    }
+
     pub fn block_content(&self) -> BlockContentView<'_> {
         BlockContentView::new(&self.blocks)
     }

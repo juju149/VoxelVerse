@@ -1,7 +1,7 @@
+use crate::ChunkMesh;
 use std::collections::HashMap;
 use std::time::Instant;
 use vv_core::{ChunkKey, LodKey};
-use crate::ChunkMesh;
 
 /// Discriminated key used by `LodAnimator` to track either a voxel chunk
 /// or an LOD tile.
@@ -13,16 +13,16 @@ pub enum AnyKey {
 
 /// Fade animation state for a retiring mesh.
 pub struct FadeState {
-    pub mesh:        ChunkMesh,
-    pub start_time:  Instant,
+    pub mesh: ChunkMesh,
+    pub start_time: Instant,
     pub start_alpha: f32,
     pub target_alpha: f32,
-    pub duration:    f32,
+    pub duration: f32,
 }
 
 /// Manages cross-fade transitions when LOD or voxel chunks are swapped.
 pub struct LodAnimator {
-    pub dying_chunks:    HashMap<AnyKey, FadeState>,
+    pub dying_chunks: HashMap<AnyKey, FadeState>,
     pub spawning_chunks: HashMap<AnyKey, Instant>,
     fade_duration: f32,
 }
@@ -30,7 +30,7 @@ pub struct LodAnimator {
 impl LodAnimator {
     pub fn new(fade_duration: f32) -> Self {
         Self {
-            dying_chunks:    HashMap::new(),
+            dying_chunks: HashMap::new(),
             spawning_chunks: HashMap::new(),
             fade_duration,
         }
@@ -47,13 +47,16 @@ impl LodAnimator {
     }
 
     pub fn retire(&mut self, key: AnyKey, mesh: ChunkMesh) {
-        self.dying_chunks.insert(key, FadeState {
-            mesh,
-            start_time:   Instant::now(),
-            start_alpha:  1.0,
-            target_alpha: 0.0,
-            duration:     self.fade_duration,
-        });
+        self.dying_chunks.insert(
+            key,
+            FadeState {
+                mesh,
+                start_time: Instant::now(),
+                start_alpha: 1.0,
+                target_alpha: 0.0,
+                duration: self.fade_duration,
+            },
+        );
         self.spawning_chunks.remove(&key);
     }
 
@@ -68,14 +71,19 @@ impl LodAnimator {
     /// Advance dying animations; returns `(key, current_alpha)` for each
     /// still-active dying chunk.
     pub fn update_dying(&mut self, now: Instant) -> Vec<(AnyKey, f32)> {
-        let mut results  = Vec::new();
+        let mut results = Vec::new();
         let mut to_remove = Vec::new();
         for (key, state) in &self.dying_chunks {
             let t = (now - state.start_time).as_secs_f32() / state.duration;
-            if t >= 1.0 { to_remove.push(*key); }
-            else { results.push((*key, 1.0 - Self::smoothstep(t))); }
+            if t >= 1.0 {
+                to_remove.push(*key);
+            } else {
+                results.push((*key, 1.0 - Self::smoothstep(t)));
+            }
         }
-        for k in to_remove { self.dying_chunks.remove(&k); }
+        for k in to_remove {
+            self.dying_chunks.remove(&k);
+        }
         results
     }
 }

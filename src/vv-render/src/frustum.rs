@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4, Mat4};
+use glam::{Mat4, Vec3, Vec4};
 
 /// Six-plane view frustum used for GPU-side visibility culling.
 pub struct Frustum {
@@ -31,7 +31,9 @@ impl Frustum {
     pub fn intersects_sphere(&self, center: Vec3, radius: f32) -> bool {
         for plane in &self.planes {
             let dist = plane.x * center.x + plane.y * center.y + plane.z * center.z + plane.w;
-            if dist < -radius { return false; }
+            if dist < -radius {
+                return false;
+            }
         }
         true
     }

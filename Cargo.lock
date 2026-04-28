@@ -1778,6 +1778,7 @@ dependencies = [
  "glam",
  "pollster",
  "sysinfo",
+ "vv-compiler",
  "vv-config",
  "vv-core",
  "vv-gameplay",
@@ -1839,8 +1840,11 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "glam",
+ "vv-config",
  "vv-core",
  "vv-planet",
+ "vv-registry",
+ "vv-world-gen",
  "vv-world-runtime",
 ]
 
@@ -1890,6 +1894,7 @@ dependencies = [
  "vv-mesh",
  "vv-physics",
  "vv-planet",
+ "vv-registry",
  "vv-world-runtime",
  "wgpu",
  "winit",
@@ -1918,6 +1923,7 @@ name = "vv-world-runtime"
 version = "0.1.0"
 dependencies = [
  "vv-core",
+ "vv-registry",
  "vv-world-gen",
 ]
 
