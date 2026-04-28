@@ -1,6 +1,7 @@
 pub mod content_key;
 pub mod ids;
 pub mod registry_table;
+pub mod runtime_api;
 
 pub mod block;
 pub mod entity;
@@ -8,6 +9,7 @@ pub mod item;
 pub mod loot;
 pub mod placeable;
 pub mod recipe;
+pub mod settings;
 pub mod tag;
 pub mod worldgen;
 
@@ -26,18 +28,25 @@ pub use loot::{CompiledLootEntry, CompiledLootPool, CompiledLootTable, LootTable
 pub use placeable::{CompiledPlaceable, PlaceableRegistry};
 pub use recipe::{CompiledIngredient, CompiledRecipe, CompiledRecipePattern, RecipeRegistry};
 pub use registry_table::RegistryTable;
+pub use runtime_api::{
+    BiomeSource, BiomeView, BlockContentView, BlockRenderSource, BlockRuntimeSource,
+    BlockRuntimeView, PlanetTypeSource, PlanetTypeView, WorldContentView, WorldSettingsSource,
+    WorldgenContentView, WorldgenSettingsSource,
+};
+pub use settings::CompiledWorldSettings;
 pub use tag::{CompiledTag, TagDomain, TagRegistry, TaggedContent};
 pub use worldgen::{
     BiomeRegistry, CompiledBiome, CompiledBiomeRelief, CompiledClimateCurves, CompiledClimateRange,
     CompiledClimateSampleRanges, CompiledClimateTags, CompiledDerivedTagRule, CompiledFauna,
-    CompiledFloatRange, CompiledFlora, CompiledFloraFeature, CompiledFloraPlacement, CompiledIdealRange,
-    CompiledOre, CompiledOreVein, CompiledPlanetType, CompiledStructure, CompiledSurfaceLayer,
-    CompiledWeather, FaunaRegistry, FloraRegistry, OreRegistry, PlanetTypeRegistry,
-    StructureRegistry, WeatherRegistry,
+    CompiledFloatRange, CompiledFlora, CompiledFloraFeature, CompiledFloraPlacement,
+    CompiledIdealRange, CompiledOre, CompiledOreVein, CompiledPlanetType, CompiledStructure,
+    CompiledSurfaceLayer, CompiledWeather, FaunaRegistry, FloraRegistry, OreRegistry,
+    PlanetTypeRegistry, StructureRegistry, WeatherRegistry,
 };
 
 #[derive(Debug, Clone, Default)]
 pub struct CompiledContent {
+    pub world: CompiledWorldSettings,
     pub blocks: BlockRegistry,
     pub items: ItemRegistry,
     pub entities: EntityRegistry,

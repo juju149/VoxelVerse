@@ -10,9 +10,9 @@ use vv_registry::{
     CompiledItem, CompiledItemKind, CompiledLootEntry, CompiledLootPool, CompiledLootTable,
     CompiledMaterialPhase, CompiledOre, CompiledOreVein, CompiledPlaceable, CompiledPlanetType,
     CompiledRecipe, CompiledRecipePattern, CompiledStructure, CompiledSurfaceLayer, CompiledTag,
-    CompiledTextureLayout, CompiledWeather, ContentKey, EntityId, FaunaId, FloraId, ItemId,
-    LootTableId, OreId, PlaceableId, PlanetTypeId, RecipeId, StructureId, TagDomain, TagId,
-    TaggedContent, WeatherId,
+    CompiledTextureLayout, CompiledWeather, CompiledWorldSettings, ContentKey, EntityId, FaunaId,
+    FloraId, ItemId, LootTableId, OreId, PlaceableId, PlanetTypeId, RecipeId, StructureId,
+    TagDomain, TagId, TaggedContent, WeatherId,
 };
 use vv_schema::{
     block::{BlockDef, MaterialPhase, TextureLayout},
@@ -153,6 +153,7 @@ impl ContentCompiler {
         }
 
         let mut content = CompiledContent::default();
+        content.world = self.compile_world_settings(load_order);
         content.default_planet_type = self.default_planet_type(load_order, &index);
         content.climate_tags = self.compile_climate_tags(load_order, &index);
         content.climate_curves = self.compile_climate_curves(load_order);
@@ -530,6 +531,22 @@ impl ContentCompiler {
             .find_map(|doc| {
                 self.resolve_planet_type("universe", doc, &doc.value.default_planet_type, index)
             })
+    }
+
+    fn compile_world_settings(&self, load_order: &PackLoadOrder) -> CompiledWorldSettings {
+        load_order
+            .packs()
+            .iter()
+            .rev()
+            .flat_map(|pack| pack.content.world_settings.iter().rev())
+            .next()
+            .map(|doc| CompiledWorldSettings {
+                chunk_size: doc.value.chunk_size,
+                render_distance_chunks: doc.value.render_distance_chunks,
+                max_planet_radius_km: doc.value.max_planet_radius_km,
+                voxel_size_m: doc.value.voxel_size_m,
+            })
+            .unwrap_or_default()
     }
 
     fn compile_climate_curves(&self, load_order: &PackLoadOrder) -> CompiledClimateCurves {

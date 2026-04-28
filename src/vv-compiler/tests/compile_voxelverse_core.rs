@@ -2,7 +2,10 @@ use std::{path::PathBuf, str::FromStr};
 
 use vv_compiler::{compile_packs, CompileDiagnostic};
 use vv_pack::load_packs_from_assets;
-use vv_registry::{CompiledIngredient, ContentKey, TaggedContent};
+use vv_registry::{
+    BiomeSource, BlockRenderSource, BlockRuntimeSource, CompiledIngredient, ContentKey,
+    PlanetTypeSource, TaggedContent, WorldSettingsSource, WorldgenSettingsSource,
+};
 
 fn load_core() -> vv_pack::PackLoadOrder {
     let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
@@ -60,6 +63,60 @@ fn compiles_voxelverse_core_into_runtime_registries() {
         .get(content.tags.id(&solid_key).expect("solid tag id"))
         .expect("solid tag");
     assert!(solid.values.contains(&TaggedContent::Block(stone_block)));
+}
+
+#[test]
+fn exposes_narrow_runtime_content_views() {
+    let load_order = load_core();
+    let content = compile_packs(&load_order).expect("voxelverse_core should compile");
+
+    let stone_key = ContentKey::from_str("voxelverse:stone").unwrap();
+    let stone_block = content.blocks.id(&stone_key).expect("stone block id");
+
+    let blocks = content.block_content();
+    let stone_runtime = blocks
+        .block_runtime(stone_block)
+        .expect("stone runtime block view");
+    assert_eq!(stone_runtime.key, &stone_key);
+    assert!(stone_runtime.physics.density > 0.0);
+    assert_eq!(
+        blocks
+            .block_render(stone_block)
+            .expect("stone render data")
+            .emits_light,
+        0
+    );
+
+    let world = content.world_content();
+    assert_eq!(world.world_settings().chunk_size, 32);
+    assert_eq!(world.world_settings().voxel_size_m, 0.5);
+
+    let worldgen = content.worldgen_content();
+    let default_planet = worldgen
+        .default_planet_type()
+        .expect("default planet type id");
+    assert_eq!(
+        worldgen
+            .planet_type(default_planet)
+            .expect("default planet type")
+            .key,
+        &ContentKey::from_str("voxelverse:temperate").unwrap()
+    );
+    assert_eq!(worldgen.biomes().count(), 1);
+    let meadow_id = content
+        .biomes
+        .id(&ContentKey::from_str("voxelverse:meadow").unwrap())
+        .expect("meadow biome id");
+    assert_eq!(
+        worldgen
+            .biome(meadow_id)
+            .expect("meadow biome")
+            .data
+            .surface_layers[0]
+            .block,
+        stone_block
+    );
+    assert!(worldgen.climate_curves().temperature_noise_scale > 0.0);
 }
 
 #[test]
