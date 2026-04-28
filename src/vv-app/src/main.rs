@@ -121,10 +121,16 @@ fn main() {
                             }
                         }
                         UiPointerEvent::PrimaryReleased(pos) => {
-                            let slot = renderer.inventory_slot_at(&gameplay, pos);
-                            intent
-                                .inventory_pointers
-                                .push(InventoryPointerIntent::EndDrag(slot));
+                            if let Some(recipe) =
+                                renderer.inventory_recipe_at(&gameplay, &compiled_content, pos)
+                            {
+                                intent.craft_recipe = Some(recipe);
+                            } else {
+                                let slot = renderer.inventory_slot_at(&gameplay, pos);
+                                intent
+                                    .inventory_pointers
+                                    .push(InventoryPointerIntent::EndDrag(slot));
+                            }
                         }
                     }
                 }

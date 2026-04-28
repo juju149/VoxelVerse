@@ -1,0 +1,30 @@
+(
+    display_key: Some("worldgen.voxelverse.forest"),
+    weight: 0.9,
+    required_tags: [],
+    provided_tags: [
+        "voxelverse:forest",
+        "voxelverse:surface_biome",
+        "voxelverse:habitable",
+    ],
+    climate: (
+        temperature: (min: 0.25, ideal_min: 0.42, ideal_max: 0.62, max: 0.82),
+        humidity: (min: 0.45, ideal_min: 0.58, ideal_max: 0.82, max: 1.0),
+        altitude: (min: 0.0, ideal_min: 0.08, ideal_max: 0.4, max: 0.68),
+    ),
+    relief: (
+        base_height_m: 1.5,
+        height_variance_m: 8.0,
+        roughness: 0.24,
+        river_probability: 0.12,
+    ),
+    surface: [
+        (block: "voxelverse:grass", depth_m: Some(0.5)),
+        (block: "voxelverse:dirt", depth_m: Some(2.5)),
+        (block: "voxelverse:stone", depth_m: None),
+    ],
+    lod: (
+        horizon_color: (r: 0.35, g: 0.58, b: 0.34),
+        fog_density: 0.0024,
+    ),
+)

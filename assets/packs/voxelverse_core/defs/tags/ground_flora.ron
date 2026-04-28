@@ -1,5 +1,9 @@
 (
     kind: any,
-    values: [],
+    values: [
+        "voxelverse:tall_grass",
+        "voxelverse:flower_daisy",
+        "voxelverse:flower_blue",
+    ],
     extends: [],
 )

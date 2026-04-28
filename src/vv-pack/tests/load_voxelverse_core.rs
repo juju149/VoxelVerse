@@ -12,11 +12,13 @@ fn loads_voxelverse_core_raw_documents() {
         .find(|pack| pack.content.manifest.namespace == "voxelverse")
         .expect("voxelverse pack should be discovered");
 
-    assert_eq!(pack.content.blocks.len(), 1);
-    assert_eq!(pack.content.items.len(), 2);
-    assert_eq!(pack.content.recipes.len(), 1);
-    assert_eq!(pack.content.loot_tables.len(), 1);
-    assert_eq!(pack.content.biomes.len(), 1);
+    assert_eq!(pack.content.blocks.len(), 16);
+    assert_eq!(pack.content.items.len(), 15);
+    assert_eq!(pack.content.recipes.len(), 8);
+    assert_eq!(pack.content.loot_tables.len(), 0);
+    assert_eq!(pack.content.biomes.len(), 4);
+    assert_eq!(pack.content.flora.len(), 6);
+    assert_eq!(pack.content.ores.len(), 2);
     assert_eq!(pack.content.structures.len(), 1);
     assert_eq!(pack.content.weather.len(), 1);
     assert!(!pack.content.tags.is_empty());

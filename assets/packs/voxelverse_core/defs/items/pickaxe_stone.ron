@@ -1,0 +1,14 @@
+(
+    display_key: Some("item.voxelverse.pickaxe_stone"),
+    stack_max: 1,
+    weight: 0.7,
+    tags: ["voxelverse:tool"],
+    kind: (
+        type: "tool",
+        tool_type: "pickaxe",
+        tool_tier: 2,
+        durability: 120,
+        mining_speed: 3.5,
+        attack_damage: 3.0,
+    ),
+)

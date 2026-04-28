@@ -1,0 +1,11 @@
+(
+    display_key: Some("worldgen.voxelverse.iron_ore"),
+    block: "voxelverse:iron_ore",
+    weight: 0.7,
+    required_tags: ["voxelverse:surface_biome"],
+    vein: (
+        size: (min: 3, max: 8),
+        depth_m: (min: 5.0, max: 28.0),
+        frequency: 0.75,
+    ),
+)

@@ -1,0 +1,14 @@
+(
+    display_key: Some("item.voxelverse.shovel_stone"),
+    stack_max: 1,
+    weight: 0.55,
+    tags: ["voxelverse:tool"],
+    kind: (
+        type: "tool",
+        tool_type: "shovel",
+        tool_tier: 2,
+        durability: 120,
+        mining_speed: 3.6,
+        attack_damage: 2.0,
+    ),
+)

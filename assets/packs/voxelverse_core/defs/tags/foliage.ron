@@ -1,0 +1,7 @@
+(
+    kind: block,
+    values: [
+        "voxelverse:leaves_oak",
+    ],
+    extends: [],
+)

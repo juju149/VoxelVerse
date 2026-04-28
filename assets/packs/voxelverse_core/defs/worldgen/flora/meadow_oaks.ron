@@ -1,0 +1,24 @@
+(
+    display_key: Some("worldgen.voxelverse.meadow_oaks"),
+    weight: 0.35,
+    required_tags: ["voxelverse:meadow"],
+    provided_tags: ["voxelverse:ground_flora"],
+    placement: (
+        density_base: 0.012,
+        altitude_max: Some(80.0),
+        slope_max: 0.35,
+        near_water_bonus: 1.0,
+        cluster_radius: 8.0,
+        cluster_min: 1,
+        cluster_max: 1,
+    ),
+    feature: (
+        kind: "tree",
+        log_block: "voxelverse:wood_log",
+        leaf_block: "voxelverse:leaves_oak",
+        trunk_height_min: 4,
+        trunk_height_max: 5,
+        canopy_radius: 2.0,
+        canopy_height: 1.5,
+    ),
+)

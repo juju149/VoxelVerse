@@ -1,5 +1,19 @@
 (
     kind: block,
-    values: [],
+    values: [
+        "voxelverse:grass",
+        "voxelverse:dirt",
+        "voxelverse:stone",
+        "voxelverse:sand",
+        "voxelverse:gravel",
+        "voxelverse:water",
+        "voxelverse:wood_log",
+        "voxelverse:leaves_oak",
+        "voxelverse:tall_grass",
+        "voxelverse:flower_daisy",
+        "voxelverse:flower_blue",
+        "voxelverse:coal_ore",
+        "voxelverse:iron_ore",
+    ],
     extends: [],
 )

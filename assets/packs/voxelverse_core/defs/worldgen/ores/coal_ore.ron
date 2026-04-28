@@ -1,0 +1,11 @@
+(
+    display_key: Some("worldgen.voxelverse.coal_ore"),
+    block: "voxelverse:coal_ore",
+    weight: 1.0,
+    required_tags: ["voxelverse:surface_biome"],
+    vein: (
+        size: (min: 4, max: 10),
+        depth_m: (min: 1.0, max: 18.0),
+        frequency: 1.6,
+    ),
+)

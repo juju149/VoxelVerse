@@ -1,0 +1,29 @@
+(
+    display_key: Some("block.voxelverse.flower_blue"),
+    tags: [
+        "voxelverse:natural",
+        "voxelverse:ground_flora",
+        "voxelverse:decoration",
+    ],
+    mining: (
+        hardness: 0.05,
+        tool: hand,
+        sound_material: grass,
+    ),
+    render: (
+        color: (r: 0.34, g: 0.48, b: 0.92),
+        translucent: true,
+        texture: single,
+    ),
+    physics: (
+        phase: passable,
+        density: 0.05,
+        collider: none,
+    ),
+    drops: none,
+    placement: Some((
+        allowed_faces: only_floor,
+        replaceable: true,
+        requires_support: solid_floor,
+    )),
+)

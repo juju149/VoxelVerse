@@ -1,10 +1,11 @@
 (
     display_key: Some("worldgen.voxelverse.meadow"),
     weight: 1.0,
-    required_tags: ["voxelverse:meadow_climate"],
+    required_tags: [],
     provided_tags: [
         "voxelverse:meadow",
         "voxelverse:surface_biome",
+        "voxelverse:habitable",
     ],
     climate: (
         temperature: (min: 0.3, ideal_min: 0.45, ideal_max: 0.65, max: 0.8),
@@ -13,11 +14,13 @@
     ),
     relief: (
         base_height_m: 0.0,
-        height_variance_m: 10.0,
+        height_variance_m: 7.0,
         roughness: 0.2,
         river_probability: 0.1,
     ),
     surface: [
+        (block: "voxelverse:grass", depth_m: Some(0.5)),
+        (block: "voxelverse:dirt", depth_m: Some(2.0)),
         (block: "voxelverse:stone", depth_m: None),
     ],
     lod: (

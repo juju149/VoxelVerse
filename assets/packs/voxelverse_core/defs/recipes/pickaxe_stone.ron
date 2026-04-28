@@ -1,0 +1,11 @@
+(
+    pattern: shaped,
+    result: (item: "voxelverse:pickaxe_stone", count: 1),
+    ingredients: [
+        (type: "item", item: "voxelverse:cobblestone", count: 3),
+        (type: "item", item: "voxelverse:stick", count: 2),
+    ],
+    station: None,
+    time_seconds: None,
+    tags: ["voxelverse:hand_craftable"],
+)

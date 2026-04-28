@@ -12,5 +12,5 @@
         slope_max: 0.2,
     ),
     template: Some("voxelverse:waystone_circle"),
-    loot_table: Some("voxelverse:stone"),
+    loot_table: None,
 )

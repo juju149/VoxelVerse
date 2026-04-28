@@ -8,14 +8,35 @@ pub struct CompiledItem {
     pub kind: CompiledItemKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CompiledItemKind {
-    Block { block: BlockId },
+    Block {
+        block: BlockId,
+    },
     Resource,
-    Tool,
+    Tool {
+        tool_type: CompiledToolKind,
+        tool_tier: u8,
+        durability: u32,
+        mining_speed: f32,
+        attack_damage: f32,
+    },
     Armor,
     Food,
-    Placeable { placeable: PlaceableId },
+    Placeable {
+        placeable: PlaceableId,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompiledToolKind {
+    Hand,
+    Pickaxe,
+    Axe,
+    Shovel,
+    Sword,
+    Shears,
+    Hoe,
 }
 
 pub type ItemRegistry = RegistryTable<ItemId, CompiledItem>;

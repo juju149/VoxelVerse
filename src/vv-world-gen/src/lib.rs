@@ -6,8 +6,9 @@ use std::{
 use vv_config::WorldGenConfig;
 use vv_planet::CoordSystem;
 use vv_registry::{
-    BiomeId, BlockId as ContentBlockId, CompiledBiome, CompiledClimateCurves, CompiledIdealRange,
-    CompiledPlanetType, PlanetTypeSource, WorldgenContentView, WorldgenSettingsSource,
+    BiomeId, BlockId as ContentBlockId, CompiledBiome, CompiledClimateCurves, CompiledFlora,
+    CompiledFloraFeature, CompiledIdealRange, CompiledOre, CompiledPlanetType, PlanetTypeSource,
+    TagId, WorldgenContentView, WorldgenSettingsSource,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -20,6 +21,18 @@ pub struct TerrainColumn {
 struct TerrainBiome {
     id: BiomeId,
     data: CompiledBiome,
+}
+
+#[derive(Clone, Debug)]
+struct TerrainFlora {
+    index: u32,
+    data: CompiledFlora,
+}
+
+#[derive(Clone, Debug)]
+struct TerrainOre {
+    index: u32,
+    data: CompiledOre,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -36,6 +49,8 @@ struct TerrainNoiseConfig {
 pub struct PlanetTerrain {
     columns: Arc<Mutex<HashMap<u64, TerrainColumn>>>,
     biomes: Arc<Vec<TerrainBiome>>,
+    flora: Arc<Vec<TerrainFlora>>,
+    ores: Arc<Vec<TerrainOre>>,
     planet: CompiledPlanetType,
     climate_curves: CompiledClimateCurves,
     generator: Arc<NoiseGenerator>,
@@ -79,10 +94,28 @@ impl PlanetTerrain {
                 data: biome.data.clone(),
             })
             .collect();
+        let terrain_flora = content
+            .flora()
+            .enumerate()
+            .map(|(index, flora)| TerrainFlora {
+                index: index as u32,
+                data: flora.data.clone(),
+            })
+            .collect();
+        let terrain_ores = content
+            .ores()
+            .enumerate()
+            .map(|(index, ore)| TerrainOre {
+                index: index as u32,
+                data: ore.data.clone(),
+            })
+            .collect();
         println!("Terrain generation ready; columns will be generated lazily.");
         Ok(Self {
             columns: Arc::new(Mutex::new(HashMap::new())),
             biomes: Arc::new(terrain_biomes),
+            flora: Arc::new(terrain_flora),
+            ores: Arc::new(terrain_ores),
             planet: planet.data.clone(),
             climate_curves: *content.climate_curves(),
             generator: Arc::new(NoiseGenerator::new(cfg.noise_seed)),
@@ -119,6 +152,9 @@ impl PlanetTerrain {
         let column = self.column(face, u, v);
         let biome = &self.biomes[column.biome_index as usize];
         let depth_m = column.height.saturating_sub(layer as u16) as f32 * self.voxel_size_m;
+        if let Some(ore) = self.ore_block(face, u, v, layer, depth_m, biome) {
+            return ore;
+        }
         let mut accumulated_depth = 0.0;
         for surface_layer in &biome.data.surface_layers {
             match surface_layer.depth_m {
@@ -137,6 +173,46 @@ impl PlanetTerrain {
             .last()
             .expect("terrain biome should have surface layers")
             .block
+    }
+
+    pub fn generated_feature_block(
+        &self,
+        face: u8,
+        u: u32,
+        v: u32,
+        layer: u32,
+    ) -> Option<ContentBlockId> {
+        if u >= self.resolution || v >= self.resolution {
+            return None;
+        }
+        let column = self.column(face, u, v);
+        if layer <= column.height as u32 {
+            return None;
+        }
+        let biome = &self.biomes[column.biome_index as usize];
+        for flora in self.flora.iter() {
+            if !tags_match(
+                &flora.data.required_tags,
+                &flora.data.forbidden_tags,
+                &biome.data.provided_tags,
+            ) {
+                continue;
+            }
+            if let Some(block) = self.flora_block(face, u, v, layer, biome, flora) {
+                return Some(block);
+            }
+        }
+        None
+    }
+
+    pub fn feature_candidate_layers(
+        &self,
+        face: u8,
+        u: u32,
+        v: u32,
+    ) -> std::ops::RangeInclusive<u32> {
+        let h = self.get_height(face, u, v);
+        h.saturating_add(1)..=h.saturating_add(8)
     }
 
     fn column(&self, face: u8, u: u32, v: u32) -> TerrainColumn {
@@ -185,6 +261,167 @@ impl PlanetTerrain {
             biome_index: biome_index as u16,
         }
     }
+
+    fn ore_block(
+        &self,
+        face: u8,
+        u: u32,
+        v: u32,
+        layer: u32,
+        depth_m: f32,
+        biome: &TerrainBiome,
+    ) -> Option<ContentBlockId> {
+        if depth_m <= 0.0 {
+            return None;
+        }
+        for ore in self.ores.iter() {
+            let vein = ore.data.vein;
+            if depth_m < vein.depth_min_m || depth_m > vein.depth_max_m {
+                continue;
+            }
+            if !tags_match(
+                &ore.data.required_tags,
+                &ore.data.forbidden_tags,
+                &biome.data.provided_tags,
+            ) {
+                continue;
+            }
+            let chance = (vein.frequency * 0.035).clamp(0.0, 0.35);
+            if hash01(face, u, v, layer, ore.index) < chance {
+                return Some(ore.data.block);
+            }
+        }
+        None
+    }
+
+    fn flora_block(
+        &self,
+        face: u8,
+        u: u32,
+        v: u32,
+        layer: u32,
+        biome: &TerrainBiome,
+        flora: &TerrainFlora,
+    ) -> Option<ContentBlockId> {
+        match flora.data.feature {
+            CompiledFloraFeature::Plant {
+                block,
+                height_min: _,
+                height_max,
+            } => {
+                let surface = self.column(face, u, v).height as u32;
+                if layer <= surface + height_max.max(1)
+                    && layer == surface + 1
+                    && self.flora_origin(face, u, v, biome, flora)
+                {
+                    return Some(block);
+                }
+                None
+            }
+            CompiledFloraFeature::Tree {
+                log_block,
+                leaf_block,
+                trunk_height_min,
+                trunk_height_max,
+                canopy_radius,
+                canopy_height,
+            } => {
+                if self.flora_origin(face, u, v, biome, flora) {
+                    let surface = self.column(face, u, v).height as u32;
+                    let trunk_height =
+                        ranged_u32(face, u, v, flora.index, trunk_height_min, trunk_height_max);
+                    if layer > surface && layer <= surface + trunk_height {
+                        return Some(log_block);
+                    }
+                }
+
+                let radius = canopy_radius.ceil().max(1.0) as i32;
+                for du in -radius..=radius {
+                    for dv in -radius..=radius {
+                        let ou = u as i32 + du;
+                        let ov = v as i32 + dv;
+                        if ou < 0
+                            || ov < 0
+                            || ou >= self.resolution as i32
+                            || ov >= self.resolution as i32
+                        {
+                            continue;
+                        }
+                        let ou = ou as u32;
+                        let ov = ov as u32;
+                        if !self.flora_origin(face, ou, ov, biome, flora) {
+                            continue;
+                        }
+                        let origin_surface = self.column(face, ou, ov).height as u32;
+                        let trunk_height = ranged_u32(
+                            face,
+                            ou,
+                            ov,
+                            flora.index,
+                            trunk_height_min,
+                            trunk_height_max,
+                        );
+                        let canopy_center = origin_surface + trunk_height;
+                        let vertical = layer.abs_diff(canopy_center) as f32;
+                        let horizontal = ((du * du + dv * dv) as f32).sqrt();
+                        if horizontal <= canopy_radius && vertical <= canopy_height.max(1.0) {
+                            return Some(leaf_block);
+                        }
+                    }
+                }
+                None
+            }
+            CompiledFloraFeature::Cluster {
+                block, radius_max, ..
+            } => {
+                let surface = self.column(face, u, v).height as u32;
+                if layer != surface + 1 {
+                    return None;
+                }
+                let radius = radius_max.ceil().max(1.0) as i32;
+                for du in -radius..=radius {
+                    for dv in -radius..=radius {
+                        let ou = u as i32 + du;
+                        let ov = v as i32 + dv;
+                        if ou < 0
+                            || ov < 0
+                            || ou >= self.resolution as i32
+                            || ov >= self.resolution as i32
+                        {
+                            continue;
+                        }
+                        if self.flora_origin(face, ou as u32, ov as u32, biome, flora) {
+                            return Some(block);
+                        }
+                    }
+                }
+                None
+            }
+        }
+    }
+
+    fn flora_origin(
+        &self,
+        face: u8,
+        u: u32,
+        v: u32,
+        biome: &TerrainBiome,
+        flora: &TerrainFlora,
+    ) -> bool {
+        let placement = flora.data.placement;
+        let surface = self.column(face, u, v).height as f32 * self.voxel_size_m;
+        if placement
+            .altitude_max
+            .is_some_and(|altitude_max| surface > altitude_max)
+        {
+            return false;
+        }
+        tags_match(
+            &flora.data.required_tags,
+            &flora.data.forbidden_tags,
+            &biome.data.provided_tags,
+        ) && hash01(face, u, v, 0, flora.index) < placement.density_base.clamp(0.0, 1.0)
+    }
 }
 
 impl Clone for PlanetTerrain {
@@ -192,6 +429,8 @@ impl Clone for PlanetTerrain {
         Self {
             columns: self.columns.clone(),
             biomes: self.biomes.clone(),
+            flora: self.flora.clone(),
+            ores: self.ores.clone(),
             planet: self.planet.clone(),
             climate_curves: self.climate_curves,
             generator: self.generator.clone(),
@@ -303,6 +542,31 @@ fn ideal_score(range: CompiledIdealRange, value: f32) -> f32 {
 
 fn centered(value: f32) -> f32 {
     value * 2.0 - 1.0
+}
+
+fn tags_match(required: &[TagId], forbidden: &[TagId], provided: &[TagId]) -> bool {
+    required.iter().all(|tag| provided.contains(tag))
+        && forbidden.iter().all(|tag| !provided.contains(tag))
+}
+
+fn hash01(face: u8, u: u32, v: u32, layer: u32, salt: u32) -> f32 {
+    let mut x = face as u64;
+    x = x.wrapping_mul(0x9E37_79B1_85EB_CA87) ^ u as u64;
+    x = x.wrapping_mul(0xC2B2_AE3D_27D4_EB4F) ^ v as u64;
+    x = x.wrapping_mul(0x1656_67B1_9E37_79F9) ^ layer as u64;
+    x = x.wrapping_mul(0x85EB_CA77_C2B2_AE63) ^ salt as u64;
+    x ^= x >> 33;
+    x = x.wrapping_mul(0xff51afd7ed558ccd);
+    x ^= x >> 33;
+    ((x & 0xFFFF_FFFF) as f32) / u32::MAX as f32
+}
+
+fn ranged_u32(face: u8, u: u32, v: u32, salt: u32, min: u32, max: u32) -> u32 {
+    if min >= max {
+        return min;
+    }
+    let span = max - min + 1;
+    min + (hash01(face, u, v, 1, salt) * span as f32).floor() as u32 % span
 }
 
 struct NoiseGenerator {
@@ -458,5 +722,77 @@ mod tests {
             .id(&ContentKey::from_str("voxelverse:stone").unwrap())
             .expect("stone block");
         assert_eq!(a.get_surface_block(0, 4, 4), stone);
+    }
+
+    #[test]
+    fn alpha_resources_are_generated_from_content_defs() {
+        let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let content = compile_assets_root(&assets).expect("core content should compile");
+        let worldgen = content.worldgen_content();
+        let resolution = 64;
+        let terrain = PlanetTerrain::generate(
+            resolution,
+            &WorldGenConfig::default(),
+            &worldgen,
+            content.world.voxel_size_m,
+        )
+        .expect("terrain should generate");
+
+        let wood_log = content
+            .blocks
+            .id(&ContentKey::from_str("voxelverse:wood_log").unwrap())
+            .expect("wood_log block");
+        let coal_ore = content
+            .blocks
+            .id(&ContentKey::from_str("voxelverse:coal_ore").unwrap())
+            .expect("coal_ore block");
+        let iron_ore = content
+            .blocks
+            .id(&ContentKey::from_str("voxelverse:iron_ore").unwrap())
+            .expect("iron_ore block");
+        let water = content
+            .blocks
+            .id(&ContentKey::from_str("voxelverse:water").unwrap())
+            .expect("water block");
+
+        let mut found_wood = false;
+        let mut found_coal = false;
+        let mut found_iron = false;
+        let mut found_water = false;
+
+        for face in 0..6 {
+            for u in (0..resolution).step_by(2) {
+                for v in (0..resolution).step_by(2) {
+                    for layer in terrain.feature_candidate_layers(face, u, v) {
+                        if terrain.generated_feature_block(face, u, v, layer) == Some(wood_log) {
+                            found_wood = true;
+                        }
+                    }
+                    if terrain.get_surface_block(face, u, v) == water {
+                        found_water = true;
+                    }
+
+                    let height = terrain.get_height(face, u, v);
+                    for depth in 1..=32 {
+                        let Some(layer) = height.checked_sub(depth) else {
+                            continue;
+                        };
+                        match terrain.get_block(face, u, v, layer) {
+                            block if block == coal_ore => found_coal = true,
+                            block if block == iron_ore => found_iron = true,
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        assert!(found_wood, "wood should be generated by flora defs");
+        assert!(found_coal, "coal should be generated by ore defs");
+        assert!(found_iron, "iron should be generated by ore defs");
+        assert!(
+            found_water,
+            "water should be generated by biome surface defs"
+        );
     }
 }

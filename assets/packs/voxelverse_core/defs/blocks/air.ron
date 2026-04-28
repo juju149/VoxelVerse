@@ -1,0 +1,25 @@
+(
+    display_key: Some("block.voxelverse.air"),
+    tags: [],
+    mining: (
+        hardness: 0.0,
+        tool: hand,
+        sound_material: grass,
+    ),
+    render: (
+        color: (r: 0.0, g: 0.0, b: 0.0),
+        translucent: true,
+        texture: single,
+    ),
+    physics: (
+        phase: passable,
+        density: 0.0,
+        collider: none,
+    ),
+    drops: none,
+    stack_max: 1,
+    placement: Some((
+        allowed_faces: any,
+        replaceable: true,
+    )),
+)

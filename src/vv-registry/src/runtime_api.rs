@@ -3,8 +3,9 @@ use std::sync::Arc;
 use crate::{
     BiomeId, BiomeRegistry, BlockId, BlockRegistry, CompiledBiome, CompiledBlockMining,
     CompiledBlockPhysics, CompiledBlockRender, CompiledClimateCurves, CompiledClimateTags,
-    CompiledContent, CompiledDrops, CompiledPlanetType, CompiledWorldSettings, ContentKey,
-    PlanetTypeId, PlanetTypeRegistry, TagId,
+    CompiledContent, CompiledDrops, CompiledFlora, CompiledOre, CompiledPlanetType,
+    CompiledWorldSettings, ContentKey, FloraId, FloraRegistry, OreId, OreRegistry, PlanetTypeId,
+    PlanetTypeRegistry, TagId,
 };
 
 #[derive(Debug, Clone)]
@@ -49,6 +50,20 @@ pub struct BiomeView<'a> {
     pub data: &'a CompiledBiome,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct FloraView<'a> {
+    pub id: FloraId,
+    pub key: &'a ContentKey,
+    pub data: &'a CompiledFlora,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct OreView<'a> {
+    pub id: OreId,
+    pub key: &'a ContentKey,
+    pub data: &'a CompiledOre,
+}
+
 pub trait BlockRuntimeSource {
     fn block_runtime(&self, id: BlockId) -> Option<BlockRuntimeView<'_>>;
     fn block_key(&self, id: BlockId) -> Option<&ContentKey>;
@@ -69,6 +84,14 @@ pub trait PlanetTypeSource {
 
 pub trait BiomeSource {
     fn biome(&self, id: BiomeId) -> Option<BiomeView<'_>>;
+}
+
+pub trait FloraSource {
+    fn flora(&self, id: FloraId) -> Option<FloraView<'_>>;
+}
+
+pub trait OreSource {
+    fn ore(&self, id: OreId) -> Option<OreView<'_>>;
 }
 
 pub trait WorldgenSettingsSource {
@@ -158,6 +181,8 @@ impl WorldSettingsSource for WorldContentView<'_> {
 pub struct WorldgenContentView<'a> {
     planet_types: &'a PlanetTypeRegistry,
     biomes: &'a BiomeRegistry,
+    flora: &'a FloraRegistry,
+    ores: &'a OreRegistry,
     default_planet_type: Option<PlanetTypeId>,
     climate_tags: &'a CompiledClimateTags,
     climate_curves: &'a CompiledClimateCurves,
@@ -168,6 +193,8 @@ impl<'a> WorldgenContentView<'a> {
         Self {
             planet_types: &content.planet_types,
             biomes: &content.biomes,
+            flora: &content.flora,
+            ores: &content.ores,
             default_planet_type: content.default_planet_type,
             climate_tags: &content.climate_tags,
             climate_curves: &content.climate_curves,
@@ -199,6 +226,32 @@ impl<'a> WorldgenContentView<'a> {
                 data,
             })
     }
+
+    pub fn flora(&self) -> impl Iterator<Item = FloraView<'_>> {
+        self.flora
+            .keys()
+            .iter()
+            .zip(self.flora.entries())
+            .enumerate()
+            .map(|(index, (key, data))| FloraView {
+                id: FloraId::new(index as u32),
+                key,
+                data,
+            })
+    }
+
+    pub fn ores(&self) -> impl Iterator<Item = OreView<'_>> {
+        self.ores
+            .keys()
+            .iter()
+            .zip(self.ores.entries())
+            .enumerate()
+            .map(|(index, (key, data))| OreView {
+                id: OreId::new(index as u32),
+                key,
+                data,
+            })
+    }
 }
 
 impl PlanetTypeSource for WorldgenContentView<'_> {
@@ -221,6 +274,26 @@ impl BiomeSource for WorldgenContentView<'_> {
             id,
             key: self.biomes.key(id)?,
             data: self.biomes.get(id)?,
+        })
+    }
+}
+
+impl FloraSource for WorldgenContentView<'_> {
+    fn flora(&self, id: FloraId) -> Option<FloraView<'_>> {
+        Some(FloraView {
+            id,
+            key: self.flora.key(id)?,
+            data: self.flora.get(id)?,
+        })
+    }
+}
+
+impl OreSource for WorldgenContentView<'_> {
+    fn ore(&self, id: OreId) -> Option<OreView<'_>> {
+        Some(OreView {
+            id,
+            key: self.ores.key(id)?,
+            data: self.ores.get(id)?,
         })
     }
 }

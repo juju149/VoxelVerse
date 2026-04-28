@@ -1,11 +1,15 @@
 use glam::Vec3;
 use vv_core::BlockId as VoxelId;
 use vv_planet::CoordSystem;
-use vv_registry::{CompiledContent, CompiledDrops, CompiledLootPool, ItemId};
+use vv_registry::{
+    CompiledContent, CompiledDrops, CompiledItemKind, CompiledLootPool, CompiledToolKind, ItemId,
+    RecipeId,
+};
 use vv_world_runtime::PlanetData;
 
 use crate::{
-    placement, DroppedItem, InteractionTarget, Inventory, InventoryDrag, ItemStack, MiningState,
+    craft_hand_recipe, placement, DroppedItem, InteractionTarget, Inventory, InventoryDrag,
+    ItemStack, MiningState,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -22,6 +26,7 @@ pub struct PlayerIntent {
     pub hotbar_slot: Option<usize>,
     pub toggle_inventory: bool,
     pub inventory_pointers: Vec<InventoryPointerIntent>,
+    pub craft_recipe: Option<RecipeId>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -90,6 +95,9 @@ impl PlayerGameplayState {
         if self.inventory_open {
             for pointer in intent.inventory_pointers {
                 self.apply_inventory_pointer(pointer, content);
+            }
+            if let Some(recipe) = intent.craft_recipe {
+                let _ = craft_hand_recipe(&mut self.inventory, recipe, content);
             }
         }
 
@@ -174,14 +182,29 @@ impl PlayerGameplayState {
             return;
         };
 
-        if self.mining.advance(
-            target.block,
-            block.mining.hardness,
-            dt,
-            Self::BASE_BREAK_SPEED,
-        ) {
+        let harvests = selected_tool_harvests(
+            self.inventory.selected_stack(self.selected_hotbar_slot),
+            content,
+            block.mining.tool,
+            block.mining.tool_tier_min,
+        );
+        let speed = selected_mining_speed(
+            self.inventory.selected_stack(self.selected_hotbar_slot),
+            content,
+            block.mining.tool,
+            block.mining.tool_tier_min,
+        );
+
+        if self
+            .mining
+            .advance(target.block, block.mining.hardness, dt, speed)
+        {
             let drop_position = block_center(target.block, planet.resolution);
-            let drops = resolve_drops(block.drops.clone(), content);
+            let drops = if harvests {
+                resolve_drops(block.drops.clone(), content)
+            } else {
+                Vec::new()
+            };
             planet.remove_block(target.block);
             for stack in drops {
                 self.dropped_items
@@ -290,6 +313,57 @@ fn resolve_pools(pools: &[CompiledLootPool]) -> Vec<ItemStack> {
         stacks.push(ItemStack::new(entry.item, count * rolls));
     }
     stacks
+}
+
+fn selected_tool_harvests(
+    stack: Option<ItemStack>,
+    content: &CompiledContent,
+    required_tool: CompiledToolKind,
+    required_tier: u8,
+) -> bool {
+    if required_tool == CompiledToolKind::Hand {
+        return true;
+    }
+    let Some(stack) = stack else {
+        return false;
+    };
+    matches!(
+        content.items.get(stack.item).map(|item| item.kind),
+        Some(CompiledItemKind::Tool {
+            tool_type,
+            tool_tier,
+            ..
+        }) if tool_type == required_tool && tool_tier >= required_tier
+    )
+}
+
+fn selected_mining_speed(
+    stack: Option<ItemStack>,
+    content: &CompiledContent,
+    required_tool: CompiledToolKind,
+    required_tier: u8,
+) -> f32 {
+    let Some(stack) = stack else {
+        return if required_tool == CompiledToolKind::Hand {
+            PlayerGameplayState::BASE_BREAK_SPEED
+        } else {
+            PlayerGameplayState::BASE_BREAK_SPEED * 0.25
+        };
+    };
+    match content.items.get(stack.item).map(|item| item.kind) {
+        Some(CompiledItemKind::Tool {
+            tool_type,
+            tool_tier,
+            mining_speed,
+            ..
+        }) if required_tool == CompiledToolKind::Hand
+            || (tool_type == required_tool && tool_tier >= required_tier) =>
+        {
+            mining_speed.max(PlayerGameplayState::BASE_BREAK_SPEED)
+        }
+        _ if required_tool == CompiledToolKind::Hand => PlayerGameplayState::BASE_BREAK_SPEED,
+        _ => PlayerGameplayState::BASE_BREAK_SPEED * 0.25,
+    }
 }
 
 fn block_center(id: VoxelId, resolution: u32) -> Vec3 {

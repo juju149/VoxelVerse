@@ -1,5 +1,6 @@
 use glam::Vec2;
 use vv_gameplay::Inventory;
+use vv_registry::RecipeId;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct RectPx {
@@ -24,6 +25,12 @@ pub(crate) struct SlotRect {
     pub rect: RectPx,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RecipeRect {
+    pub recipe: RecipeId,
+    pub rect: RectPx,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct GameplayUiLayout {
     pub scale: f32,
@@ -31,6 +38,7 @@ pub(crate) struct GameplayUiLayout {
     pub gap: f32,
     pub hotbar_slots: Vec<SlotRect>,
     pub inventory_slots: Vec<SlotRect>,
+    pub recipe_slots: Vec<RecipeRect>,
     pub inventory_panel: Option<RectPx>,
 }
 
@@ -68,6 +76,7 @@ impl GameplayUiLayout {
             gap,
             hotbar_slots,
             inventory_slots: Vec::new(),
+            recipe_slots: Vec::new(),
             inventory_panel: None,
         };
 
@@ -83,6 +92,34 @@ impl GameplayUiLayout {
             .iter()
             .find(|slot| slot.rect.contains(point))
             .map(|slot| slot.index)
+    }
+
+    pub fn recipe_at(&self, point: Vec2) -> Option<RecipeId> {
+        self.recipe_slots
+            .iter()
+            .find(|slot| slot.rect.contains(point))
+            .map(|slot| slot.recipe)
+    }
+
+    pub fn add_hand_recipes(&mut self, recipes: impl Iterator<Item = RecipeId>) {
+        let Some(panel) = self.inventory_panel else {
+            return;
+        };
+        let x = panel.x + panel.w + 12.0 * self.scale;
+        let y = panel.y + 36.0 * self.scale;
+        let w = self.slot * 1.35;
+        let h = self.slot * 0.72;
+        for (index, recipe) in recipes.take(12).enumerate() {
+            self.recipe_slots.push(RecipeRect {
+                recipe,
+                rect: RectPx {
+                    x,
+                    y: y + index as f32 * (h + self.gap),
+                    w,
+                    h,
+                },
+            });
+        }
     }
 
     fn build_inventory_panel(&mut self, screen_w: f32, screen_h: f32, inventory: &Inventory) {

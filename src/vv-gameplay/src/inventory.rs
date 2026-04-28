@@ -89,6 +89,15 @@ impl Inventory {
             .and_then(|slot| slot.stack)
     }
 
+    pub fn item_count(&self, item: ItemId) -> u32 {
+        self.slots
+            .iter()
+            .filter_map(|slot| slot.stack)
+            .filter(|stack| stack.item == item)
+            .map(|stack| stack.count)
+            .sum()
+    }
+
     pub fn insert_stack(
         &mut self,
         stack: ItemStack,
@@ -132,6 +141,27 @@ impl Inventory {
         Some(ItemStack::new(stack.item, remaining))
     }
 
+    pub fn can_insert_stack(&self, stack: ItemStack, content: &CompiledContent) -> bool {
+        if stack.is_empty() {
+            return true;
+        }
+        let max = self.stack_max(stack.item, content) as u32;
+        let mut capacity = 0;
+        for slot in &self.slots {
+            match slot.stack {
+                Some(existing) if existing.item == stack.item && existing.count < max => {
+                    capacity += max - existing.count;
+                }
+                None => capacity += max,
+                _ => {}
+            }
+            if capacity >= stack.count {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn remove_from_slot(&mut self, slot_index: usize, count: u32) -> Option<ItemStack> {
         let slot = self.slots.get_mut(slot_index)?;
         let stack = slot.stack.as_mut()?;
@@ -142,6 +172,29 @@ impl Inventory {
             slot.stack = None;
         }
         Some(ItemStack::new(item, removed))
+    }
+
+    pub fn remove_item(&mut self, item: ItemId, mut count: u32) -> u32 {
+        let mut removed = 0;
+        for slot in &mut self.slots {
+            if count == 0 {
+                break;
+            }
+            let Some(stack) = slot.stack.as_mut() else {
+                continue;
+            };
+            if stack.item != item {
+                continue;
+            }
+            let take = stack.count.min(count);
+            stack.count -= take;
+            count -= take;
+            removed += take;
+            if stack.count == 0 {
+                slot.stack = None;
+            }
+        }
+        removed
     }
 
     pub fn move_or_merge(

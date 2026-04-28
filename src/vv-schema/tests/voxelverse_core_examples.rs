@@ -3,9 +3,7 @@ use vv_schema::{
     entity::EntityDef,
     item::ItemDef,
     lang::LangFileDef,
-    loot::LootTableDef,
     manifest::PackManifest,
-    placeable::PlaceableDef,
     recipe::RecipeDef,
     settings::{balance::BalanceSettings, gameplay::GameplaySettings, world::WorldSettings},
     tag::TagDef,
@@ -42,28 +40,20 @@ fn voxelverse_core_examples_match_schema() {
         include_str!("../../../assets/packs/voxelverse_core/defs/blocks/stone.ron"),
     );
     parse::<ItemDef>(
-        "defs/items/stone.ron",
-        include_str!("../../../assets/packs/voxelverse_core/defs/items/stone.ron"),
+        "defs/items/cobblestone.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/items/cobblestone.ron"),
     );
     parse::<ItemDef>(
-        "defs/items/camp_lantern.ron",
-        include_str!("../../../assets/packs/voxelverse_core/defs/items/camp_lantern.ron"),
+        "defs/items/pickaxe_wood.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/items/pickaxe_wood.ron"),
     );
     parse::<EntityDef>(
         "defs/entities/firefly.ron",
         include_str!("../../../assets/packs/voxelverse_core/defs/entities/firefly.ron"),
     );
-    parse::<PlaceableDef>(
-        "defs/placeables/camp_lantern.ron",
-        include_str!("../../../assets/packs/voxelverse_core/defs/placeables/camp_lantern.ron"),
-    );
     parse::<RecipeDef>(
-        "defs/recipes/camp_lantern.ron",
-        include_str!("../../../assets/packs/voxelverse_core/defs/recipes/camp_lantern.ron"),
-    );
-    parse::<LootTableDef>(
-        "defs/loot_tables/stone.ron",
-        include_str!("../../../assets/packs/voxelverse_core/defs/loot_tables/stone.ron"),
+        "defs/recipes/logs_to_planks.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/recipes/logs_to_planks.ron"),
     );
     parse::<TagDef>(
         "defs/tags/solid.ron",
@@ -124,8 +114,8 @@ fn voxelverse_core_examples_match_schema() {
         include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/flora/meadow_grass.ron"),
     );
     parse::<OreDef>(
-        "defs/worldgen/ores/stone_patches.ron",
-        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/ores/stone_patches.ron"),
+        "defs/worldgen/ores/coal_ore.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/ores/coal_ore.ron"),
     );
     parse::<FaunaDef>(
         "defs/worldgen/fauna/firefly_swarm.ron",

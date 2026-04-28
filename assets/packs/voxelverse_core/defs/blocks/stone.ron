@@ -8,6 +8,7 @@
     mining: (
         hardness: 1.5,
         tool: pickaxe,
+        tool_tier_min: 1,
         sound_material: stone,
     ),
     render: (
@@ -22,7 +23,7 @@
     drops: inline([
         (
             entries: [
-                (item: "voxelverse:stone", count: (min: 1, max: 1)),
+                (item: "voxelverse:cobblestone", count: (min: 1, max: 1)),
             ],
         ),
     ]),

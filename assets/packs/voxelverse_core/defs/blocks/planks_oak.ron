@@ -1,0 +1,29 @@
+(
+    display_key: Some("block.voxelverse.planks_oak"),
+    tags: [
+        "voxelverse:solid",
+        "voxelverse:mineable_axe",
+        "voxelverse:wood_material",
+    ],
+    mining: (
+        hardness: 1.2,
+        tool: axe,
+        sound_material: wood,
+    ),
+    render: (
+        color: (r: 0.62, g: 0.42, b: 0.22),
+        texture: single,
+    ),
+    physics: (
+        phase: solid,
+        density: 0.55,
+        collider: full,
+    ),
+    drops: inline([
+        (
+            entries: [
+                (item: "voxelverse:planks_oak", count: (min: 1, max: 1)),
+            ],
+        ),
+    ]),
+)

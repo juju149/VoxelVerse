@@ -12,12 +12,14 @@ use winit::window::Window;
 
 use vv_config::{EngineConfig, RenderConfig};
 use vv_core::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
-use vv_gameplay::{Console, Player, PlayerGameplayState};
+use vv_gameplay::{can_craft_hand_recipe, Console, Player, PlayerGameplayState};
 use vv_input::Controller;
 use vv_mesh::{MeshGen, Vertex};
 use vv_physics::Physics;
 use vv_planet::CoordSystem;
-use vv_registry::{BlockContent, BlockRenderSource, CompiledContent, CompiledItemKind, ItemId};
+use vv_registry::{
+    BlockContent, BlockRenderSource, CompiledContent, CompiledItemKind, ItemId, RecipeId,
+};
 use vv_world_runtime::PlanetData;
 
 use crate::{
@@ -925,6 +927,22 @@ impl<'a> Renderer<'a> {
         .inventory_slot_at(mouse_pos)
     }
 
+    pub fn inventory_recipe_at(
+        &self,
+        gameplay: &PlayerGameplayState,
+        content: &CompiledContent,
+        mouse_pos: Vec2,
+    ) -> Option<RecipeId> {
+        let mut layout = GameplayUiLayout::new(
+            self.config.width as f32,
+            self.config.height as f32,
+            &gameplay.inventory,
+            gameplay.inventory_open,
+        );
+        layout.add_hand_recipes(content.recipes.recipes_for_station(None));
+        layout.recipe_at(mouse_pos)
+    }
+
     pub fn refresh_neighbors(&mut self, id: BlockId, planet: &PlanetData) {
         let u_c = id.u / CHUNK_SIZE;
         let v_c = id.v / CHUNK_SIZE;
@@ -1430,7 +1448,10 @@ impl<'a> Renderer<'a> {
 
         let w = self.config.width as f32;
         let h = self.config.height as f32;
-        let layout = GameplayUiLayout::new(w, h, &gameplay.inventory, gameplay.inventory_open);
+        let mut layout = GameplayUiLayout::new(w, h, &gameplay.inventory, gameplay.inventory_open);
+        if gameplay.inventory_open {
+            layout.add_hand_recipes(content.recipes.recipes_for_station(None));
+        }
         self.push_crosshair(controller, gameplay, &mut verts, &mut inds, &mut idx);
 
         if !gameplay.inventory_open {
@@ -1470,6 +1491,59 @@ impl<'a> Renderer<'a> {
                             gameplay.inventory_drag.source_slot == Some(slot.index),
                         )
                     }),
+                );
+            }
+
+            for slot in &layout.recipe_slots {
+                let enabled = can_craft_hand_recipe(&gameplay.inventory, slot.recipe, content);
+                let color = content
+                    .recipes
+                    .get(slot.recipe)
+                    .map(|recipe| self.item_color(recipe.result_item, content))
+                    .unwrap_or([0.45, 0.45, 0.45]);
+                Self::push_rect_px(
+                    &mut verts,
+                    &mut inds,
+                    &mut idx,
+                    w,
+                    h,
+                    slot.rect.x - 2.0,
+                    slot.rect.y - 2.0,
+                    slot.rect.w + 4.0,
+                    slot.rect.h + 4.0,
+                    if enabled {
+                        [0.36, 0.48, 0.28]
+                    } else {
+                        [0.16, 0.17, 0.18]
+                    },
+                );
+                Self::push_rect_px(
+                    &mut verts,
+                    &mut inds,
+                    &mut idx,
+                    w,
+                    h,
+                    slot.rect.x,
+                    slot.rect.y,
+                    slot.rect.w,
+                    slot.rect.h,
+                    [0.075, 0.08, 0.085],
+                );
+                Self::push_rect_px(
+                    &mut verts,
+                    &mut inds,
+                    &mut idx,
+                    w,
+                    h,
+                    slot.rect.x + slot.rect.w * 0.28,
+                    slot.rect.y + slot.rect.h * 0.22,
+                    slot.rect.w * 0.44,
+                    slot.rect.h * 0.56,
+                    if enabled {
+                        color
+                    } else {
+                        [color[0] * 0.35, color[1] * 0.35, color[2] * 0.35]
+                    },
                 );
             }
         }
@@ -1952,7 +2026,7 @@ impl<'a> Renderer<'a> {
                 .map(|render| render.color)
                 .unwrap_or([0.75, 0.75, 0.75]),
             CompiledItemKind::Placeable { .. } => [0.95, 0.72, 0.35],
-            CompiledItemKind::Tool => [0.72, 0.78, 0.85],
+            CompiledItemKind::Tool { .. } => [0.72, 0.78, 0.85],
             CompiledItemKind::Armor => [0.62, 0.72, 0.9],
             CompiledItemKind::Food => [0.72, 0.9, 0.48],
             CompiledItemKind::Resource => [0.72, 0.68, 0.58],

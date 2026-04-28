@@ -1,4 +1,4 @@
-use crate::{BlockId, CompiledLootPool, LootTableId, RegistryTable, TagId};
+use crate::{BlockId, CompiledLootPool, CompiledToolKind, LootTableId, RegistryTable, TagId};
 
 #[derive(Debug, Clone)]
 pub struct CompiledBlock {
@@ -16,6 +16,7 @@ pub type BlockRegistry = RegistryTable<BlockId, CompiledBlock>;
 #[derive(Debug, Clone, Copy)]
 pub struct CompiledBlockMining {
     pub hardness: f32,
+    pub tool: CompiledToolKind,
     pub tool_tier_min: u8,
     pub drop_xp: u8,
 }

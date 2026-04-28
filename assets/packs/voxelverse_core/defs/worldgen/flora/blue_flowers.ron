@@ -1,0 +1,21 @@
+(
+    display_key: Some("worldgen.voxelverse.blue_flowers"),
+    weight: 0.25,
+    required_tags: ["voxelverse:forest"],
+    provided_tags: ["voxelverse:ground_flora"],
+    placement: (
+        density_base: 0.025,
+        altitude_max: Some(90.0),
+        slope_max: 0.4,
+        near_water_bonus: 1.0,
+        cluster_radius: 3.0,
+        cluster_min: 1,
+        cluster_max: 2,
+    ),
+    feature: (
+        kind: "plant",
+        block: "voxelverse:flower_blue",
+        height_min: 1,
+        height_max: 1,
+    ),
+)

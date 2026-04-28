@@ -1,0 +1,30 @@
+(
+    display_key: Some("block.voxelverse.wood_log"),
+    tags: [
+        "voxelverse:solid",
+        "voxelverse:natural",
+        "voxelverse:mineable_axe",
+        "voxelverse:wood_material",
+    ],
+    mining: (
+        hardness: 1.0,
+        tool: axe,
+        sound_material: wood,
+    ),
+    render: (
+        color: (r: 0.45, g: 0.27, b: 0.12),
+        texture: sides,
+    ),
+    physics: (
+        phase: solid,
+        density: 0.7,
+        collider: full,
+    ),
+    drops: inline([
+        (
+            entries: [
+                (item: "voxelverse:wood_log", count: (min: 1, max: 1)),
+            ],
+        ),
+    ]),
+)

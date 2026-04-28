@@ -19,40 +19,42 @@ fn compiles_voxelverse_core_into_runtime_registries() {
 
     let stone_key = ContentKey::from_str("voxelverse:stone").unwrap();
     let stone_block = content.blocks.id(&stone_key).expect("stone block id");
-    let stone_item = content.items.id(&stone_key).expect("stone item id");
-    let stone_loot = content
-        .loot_tables
-        .id(&stone_key)
-        .expect("stone loot table id");
+    let cobblestone_key = ContentKey::from_str("voxelverse:cobblestone").unwrap();
+    let cobblestone_item = content
+        .items
+        .id(&cobblestone_key)
+        .expect("cobblestone item id");
 
-    let lantern_key = ContentKey::from_str("voxelverse:camp_lantern").unwrap();
-    let lantern_item = content.items.id(&lantern_key).expect("lantern item id");
+    let pickaxe_key = ContentKey::from_str("voxelverse:pickaxe_stone").unwrap();
+    let pickaxe_item = content.items.id(&pickaxe_key).expect("pickaxe item id");
     let recipe = content
         .recipes
-        .get(content.recipes.id(&lantern_key).expect("lantern recipe id"))
-        .expect("lantern recipe");
-    assert_eq!(recipe.result_item, lantern_item);
+        .get(content.recipes.id(&pickaxe_key).expect("pickaxe recipe id"))
+        .expect("pickaxe recipe");
+    assert_eq!(recipe.result_item, pickaxe_item);
     assert!(matches!(
         recipe.ingredients.as_slice(),
-        [CompiledIngredient::Item { item, count: 2 }] if *item == stone_item
+        [CompiledIngredient::Item { item, count: 3 }, CompiledIngredient::Item { .. }]
+            if *item == cobblestone_item
     ));
-
-    let loot = content.loot_tables.get(stone_loot).expect("stone loot");
-    assert_eq!(loot.pools[0].entries[0].item, stone_item);
 
     let meadow_key = ContentKey::from_str("voxelverse:meadow").unwrap();
     let meadow = content
         .biomes
         .get(content.biomes.id(&meadow_key).expect("meadow biome id"))
         .expect("meadow biome");
-    assert_eq!(meadow.surface_layers[0].block, stone_block);
+    let grass_block = content
+        .blocks
+        .id(&ContentKey::from_str("voxelverse:grass").unwrap())
+        .expect("grass block id");
+    assert_eq!(meadow.surface_layers[0].block, grass_block);
 
     let structure_key = ContentKey::from_str("voxelverse:waystone_circle").unwrap();
     let structure = content
         .structures
         .get(content.structures.id(&structure_key).expect("structure id"))
         .expect("structure");
-    assert_eq!(structure.loot_table, Some(stone_loot));
+    assert_eq!(structure.loot_table, None);
 
     let weather_key = ContentKey::from_str("voxelverse:clear").unwrap();
     assert!(content.weather.id(&weather_key).is_some());
@@ -102,7 +104,7 @@ fn exposes_narrow_runtime_content_views() {
             .key,
         &ContentKey::from_str("voxelverse:temperate").unwrap()
     );
-    assert_eq!(worldgen.biomes().count(), 1);
+    assert_eq!(worldgen.biomes().count(), 4);
     let meadow_id = content
         .biomes
         .id(&ContentKey::from_str("voxelverse:meadow").unwrap())
@@ -114,7 +116,10 @@ fn exposes_narrow_runtime_content_views() {
             .data
             .surface_layers[0]
             .block,
-        stone_block
+        content
+            .blocks
+            .id(&ContentKey::from_str("voxelverse:grass").unwrap())
+            .expect("grass block")
     );
     assert!(worldgen.climate_curves().temperature_noise_scale > 0.0);
 }

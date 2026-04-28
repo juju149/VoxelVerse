@@ -1,0 +1,9 @@
+(
+    display_key: Some("item.voxelverse.coal"),
+    stack_max: 64,
+    weight: 0.08,
+    tags: ["voxelverse:fuel"],
+    kind: (
+        type: "resource",
+    ),
+)

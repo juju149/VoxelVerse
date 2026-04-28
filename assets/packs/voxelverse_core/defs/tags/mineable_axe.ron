@@ -1,0 +1,9 @@
+(
+    kind: block,
+    values: [
+        "voxelverse:wood_log",
+        "voxelverse:leaves_oak",
+        "voxelverse:planks_oak",
+    ],
+    extends: [],
+)

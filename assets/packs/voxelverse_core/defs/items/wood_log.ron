@@ -1,0 +1,13 @@
+(
+    display_key: Some("item.voxelverse.wood_log"),
+    stack_max: 64,
+    weight: 0.45,
+    tags: [
+        "voxelverse:block_item",
+        "voxelverse:wood_material",
+    ],
+    kind: (
+        type: "block",
+        block: "voxelverse:wood_log",
+    ),
+)

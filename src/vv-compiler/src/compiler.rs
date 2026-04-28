@@ -10,12 +10,13 @@ use vv_registry::{
     CompiledItem, CompiledItemKind, CompiledLootEntry, CompiledLootPool, CompiledLootTable,
     CompiledMaterialPhase, CompiledOre, CompiledOreVein, CompiledPlaceable, CompiledPlanetType,
     CompiledRecipe, CompiledRecipePattern, CompiledStructure, CompiledSurfaceLayer, CompiledTag,
-    CompiledTextureLayout, CompiledWeather, CompiledWorldSettings, ContentKey, EntityId, FaunaId,
-    FloraId, ItemId, LootTableId, OreId, PlaceableId, PlanetTypeId, RecipeId, StructureId,
-    TagDomain, TagId, TaggedContent, WeatherId,
+    CompiledTextureLayout, CompiledToolKind, CompiledWeather, CompiledWorldSettings, ContentKey,
+    EntityId, FaunaId, FloraId, ItemId, LootTableId, OreId, PlaceableId, PlanetTypeId, RecipeId,
+    StructureId, TagDomain, TagId, TaggedContent, WeatherId,
 };
 use vv_schema::{
     block::{BlockDef, MaterialPhase, TextureLayout},
+    common::tool::ToolKind,
     common::{BlockRef, EntityRef, ItemRef, LootTableRef, PlaceableRef, TagRef},
     item::ItemKind,
     loot::{DropSpec, LootTableDef},
@@ -272,6 +273,7 @@ impl ContentCompiler {
             tags: self.resolve_tags("block", doc, &doc.value.tags, index),
             mining: CompiledBlockMining {
                 hardness: doc.value.mining.hardness,
+                tool: compiled_tool_kind(doc.value.mining.tool),
                 tool_tier_min: doc.value.mining.tool_tier_min,
                 drop_xp: doc.value.mining.drop_xp,
             },
@@ -317,7 +319,20 @@ impl ContentCompiler {
                     .unwrap_or(BlockId::new(0)),
             },
             ItemKind::Resource => CompiledItemKind::Resource,
-            ItemKind::Tool { .. } => CompiledItemKind::Tool,
+            ItemKind::Tool {
+                tool_type,
+                tool_tier,
+                durability,
+                mining_speed,
+                attack_damage,
+                ..
+            } => CompiledItemKind::Tool {
+                tool_type: compiled_tool_kind(*tool_type),
+                tool_tier: *tool_tier,
+                durability: *durability,
+                mining_speed: *mining_speed,
+                attack_damage: *attack_damage,
+            },
             ItemKind::Armor { .. } => CompiledItemKind::Armor,
             ItemKind::Food { .. } => CompiledItemKind::Food,
             ItemKind::Placeable { placeable } => CompiledItemKind::Placeable {
@@ -1123,5 +1138,17 @@ fn compiled_ideal_range(range: vv_schema::common::IdealRange) -> CompiledIdealRa
         ideal_min: range.ideal_min,
         ideal_max: range.ideal_max,
         max: range.max,
+    }
+}
+
+fn compiled_tool_kind(kind: ToolKind) -> CompiledToolKind {
+    match kind {
+        ToolKind::Hand => CompiledToolKind::Hand,
+        ToolKind::Pickaxe => CompiledToolKind::Pickaxe,
+        ToolKind::Axe => CompiledToolKind::Axe,
+        ToolKind::Shovel => CompiledToolKind::Shovel,
+        ToolKind::Sword => CompiledToolKind::Sword,
+        ToolKind::Shears => CompiledToolKind::Shears,
+        ToolKind::Hoe => CompiledToolKind::Hoe,
     }
 }

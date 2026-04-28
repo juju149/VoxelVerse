@@ -1,0 +1,29 @@
+(
+    display_key: Some("block.voxelverse.gravel"),
+    tags: [
+        "voxelverse:solid",
+        "voxelverse:natural",
+        "voxelverse:mineable_shovel",
+    ],
+    mining: (
+        hardness: 0.65,
+        tool: shovel,
+        sound_material: gravel,
+    ),
+    render: (
+        color: (r: 0.43, g: 0.42, b: 0.39),
+        texture: single,
+    ),
+    physics: (
+        phase: solid,
+        density: 1.8,
+        collider: full,
+    ),
+    drops: inline([
+        (
+            entries: [
+                (item: "voxelverse:gravel", count: (min: 1, max: 1)),
+            ],
+        ),
+    ]),
+)

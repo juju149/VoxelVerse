@@ -1,0 +1,30 @@
+(
+    display_key: Some("block.voxelverse.cobblestone"),
+    tags: [
+        "voxelverse:solid",
+        "voxelverse:mineable_pickaxe",
+        "voxelverse:stone_material",
+    ],
+    mining: (
+        hardness: 1.7,
+        tool: pickaxe,
+        tool_tier_min: 1,
+        sound_material: stone,
+    ),
+    render: (
+        color: (r: 0.36, g: 0.36, b: 0.34),
+        texture: single,
+    ),
+    physics: (
+        phase: solid,
+        density: 2.6,
+        collider: full,
+    ),
+    drops: inline([
+        (
+            entries: [
+                (item: "voxelverse:cobblestone", count: (min: 1, max: 1)),
+            ],
+        ),
+    ]),
+)

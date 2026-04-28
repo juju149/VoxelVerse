@@ -111,7 +111,12 @@ impl PlanetData {
             }
         }
         let height = self.terrain.get_height(id.face, id.u, id.v);
-        (id.layer <= height).then_some(self.terrain.get_block(id.face, id.u, id.v, id.layer))
+        if id.layer <= height {
+            Some(self.terrain.get_block(id.face, id.u, id.v, id.layer))
+        } else {
+            self.terrain
+                .generated_feature_block(id.face, id.u, id.v, id.layer)
+        }
     }
 
     // --- Chunk key ----------------------------------------------------------

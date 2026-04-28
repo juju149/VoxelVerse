@@ -1,0 +1,26 @@
+(
+    display_key: Some("block.voxelverse.water"),
+    tags: [
+        "voxelverse:natural",
+        "voxelverse:water",
+    ],
+    mining: (
+        hardness: 100.0,
+        tool: hand,
+        sound_material: water,
+    ),
+    render: (
+        color: (r: 0.18, g: 0.42, b: 0.72),
+        translucent: true,
+        texture: single,
+        tint: water_color,
+    ),
+    physics: (
+        phase: liquid,
+        density: 1.0,
+        collider: none,
+        drag: 0.65,
+    ),
+    drops: none,
+    stack_max: 1,
+)

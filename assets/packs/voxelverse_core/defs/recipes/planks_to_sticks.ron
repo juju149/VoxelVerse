@@ -1,8 +1,8 @@
 (
     pattern: shapeless,
-    result: (item: "voxelverse:camp_lantern", count: 1),
+    result: (item: "voxelverse:stick", count: 4),
     ingredients: [
-        (type: "item", item: "voxelverse:stone", count: 2),
+        (type: "item", item: "voxelverse:planks_oak", count: 2),
     ],
     station: None,
     time_seconds: None,

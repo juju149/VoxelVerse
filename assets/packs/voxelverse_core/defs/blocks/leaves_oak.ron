@@ -1,0 +1,26 @@
+(
+    display_key: Some("block.voxelverse.leaves_oak"),
+    tags: [
+        "voxelverse:natural",
+        "voxelverse:mineable_axe",
+        "voxelverse:foliage",
+    ],
+    mining: (
+        hardness: 0.25,
+        tool: axe,
+        sound_material: grass,
+    ),
+    render: (
+        color: (r: 0.20, g: 0.48, b: 0.18),
+        roughness: 0.9,
+        translucent: true,
+        texture: single,
+        tint: foliage_color,
+    ),
+    physics: (
+        phase: passable,
+        density: 0.15,
+        collider: none,
+    ),
+    drops: none,
+)

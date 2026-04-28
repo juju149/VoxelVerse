@@ -1,0 +1,10 @@
+(
+    kind: block,
+    values: [
+        "voxelverse:grass",
+        "voxelverse:dirt",
+        "voxelverse:sand",
+        "voxelverse:gravel",
+    ],
+    extends: [],
+)

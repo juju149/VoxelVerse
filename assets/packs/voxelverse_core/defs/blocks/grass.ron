@@ -1,0 +1,30 @@
+(
+    display_key: Some("block.voxelverse.grass"),
+    tags: [
+        "voxelverse:solid",
+        "voxelverse:natural",
+        "voxelverse:mineable_shovel",
+    ],
+    mining: (
+        hardness: 0.6,
+        tool: shovel,
+        sound_material: grass,
+    ),
+    render: (
+        color: (r: 0.28, g: 0.58, b: 0.22),
+        texture: sides,
+        tint: grass_color,
+    ),
+    physics: (
+        phase: solid,
+        density: 1.2,
+        collider: full,
+    ),
+    drops: inline([
+        (
+            entries: [
+                (item: "voxelverse:dirt", count: (min: 1, max: 1)),
+            ],
+        ),
+    ]),
+)

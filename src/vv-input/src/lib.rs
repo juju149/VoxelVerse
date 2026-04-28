@@ -165,6 +165,7 @@ impl Controller {
             hotbar_slot: self.hotbar_slot,
             toggle_inventory: self.toggle_inventory,
             inventory_pointers: Vec::new(),
+            craft_recipe: None,
         };
         self.place_pressed = false;
         self.hotbar_delta = 0;

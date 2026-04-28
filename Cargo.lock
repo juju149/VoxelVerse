@@ -1815,6 +1815,7 @@ name = "vv-gameplay"
 version = "0.1.0"
 dependencies = [
  "glam",
+ "vv-compiler",
  "vv-config",
  "vv-core",
  "vv-physics",

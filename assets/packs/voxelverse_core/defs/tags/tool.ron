@@ -1,0 +1,12 @@
+(
+    kind: item,
+    values: [
+        "voxelverse:pickaxe_wood",
+        "voxelverse:pickaxe_stone",
+        "voxelverse:axe_wood",
+        "voxelverse:axe_stone",
+        "voxelverse:shovel_wood",
+        "voxelverse:shovel_stone",
+    ],
+    extends: [],
+)

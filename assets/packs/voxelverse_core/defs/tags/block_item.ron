@@ -1,5 +1,12 @@
 (
     kind: item,
-    values: [],
+    values: [
+        "voxelverse:dirt",
+        "voxelverse:cobblestone",
+        "voxelverse:sand",
+        "voxelverse:gravel",
+        "voxelverse:wood_log",
+        "voxelverse:planks_oak",
+    ],
     extends: [],
 )

@@ -1,0 +1,31 @@
+(
+    display_key: Some("block.voxelverse.iron_ore"),
+    tags: [
+        "voxelverse:solid",
+        "voxelverse:natural",
+        "voxelverse:mineable_pickaxe",
+        "voxelverse:ore",
+    ],
+    mining: (
+        hardness: 2.4,
+        tool: pickaxe,
+        tool_tier_min: 2,
+        sound_material: stone,
+    ),
+    render: (
+        color: (r: 0.60, g: 0.42, b: 0.30),
+        texture: single,
+    ),
+    physics: (
+        phase: solid,
+        density: 3.0,
+        collider: full,
+    ),
+    drops: inline([
+        (
+            entries: [
+                (item: "voxelverse:iron_ore", count: (min: 1, max: 1)),
+            ],
+        ),
+    ]),
+)

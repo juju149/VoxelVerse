@@ -1,0 +1,13 @@
+(
+    display_key: Some("item.voxelverse.planks_oak"),
+    stack_max: 64,
+    weight: 0.18,
+    tags: [
+        "voxelverse:block_item",
+        "voxelverse:wood_material",
+    ],
+    kind: (
+        type: "block",
+        block: "voxelverse:planks_oak",
+    ),
+)
