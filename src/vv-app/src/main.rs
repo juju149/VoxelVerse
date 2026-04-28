@@ -2,6 +2,7 @@ mod diagnostics;
 use diagnostics::SystemDiagnostics;
 
 use glam::Vec3;
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, WindowEvent};
@@ -17,7 +18,7 @@ use vv_gameplay::{
 use vv_input::{Controller, CursorFocus, UiPointerEvent};
 use vv_physics::Physics;
 use vv_planet::CoordSystem;
-use vv_registry::WorldSettingsSource;
+use vv_registry::{CompiledContent, PlanetTypeSource, WorldSettingsSource};
 use vv_render::Renderer;
 use vv_world_gen::PlanetTerrain;
 use vv_world_runtime::PlanetData;
@@ -67,6 +68,7 @@ fn main() {
         terrain,
         config.physics.core_protection_layers,
     );
+    log_planet_info(&config, &compiled_content, &planet);
 
     // --- Player spawn -------------------------------------------------------
     let center = planet.resolution / 2;
@@ -276,4 +278,65 @@ fn main() {
             }
         })
         .unwrap();
+}
+
+fn log_planet_info(config: &EngineConfig, content: &CompiledContent, planet: &PlanetData) {
+    let world = content.world_content();
+    let worldgen = content.worldgen_content();
+    let planet_type = worldgen
+        .default_planet_type()
+        .and_then(|id| worldgen.planet_type(id));
+    let planet_type_key = planet_type
+        .map(|view| view.key.to_string())
+        .unwrap_or_else(|| "<missing>".to_owned());
+
+    let sample_steps = 24;
+    let mut biome_counts = BTreeMap::<String, u32>::new();
+    let mut min_height = u32::MAX;
+    let mut max_height = 0;
+    let step = (planet.resolution / sample_steps).max(1);
+
+    for face in 0..6 {
+        let mut u = 0;
+        while u < planet.resolution {
+            let mut v = 0;
+            while v < planet.resolution {
+                let height = planet.terrain.get_height(face, u, v);
+                min_height = min_height.min(height);
+                max_height = max_height.max(height);
+                let biome_id = planet.terrain.get_biome(face, u, v);
+                let biome_key = content
+                    .biomes
+                    .key(biome_id)
+                    .map(|key| key.to_string())
+                    .unwrap_or_else(|| format!("<unknown:{biome_id:?}>"));
+                *biome_counts.entry(biome_key).or_default() += 1;
+                v += step;
+            }
+            u += step;
+        }
+    }
+
+    println!("--- Planet Info ---");
+    println!("Type      : {}", planet_type_key);
+    println!("Seed      : {}", config.worldgen.noise_seed);
+    println!("Resolution: {}", planet.resolution);
+    println!("Voxel size: {:.2} m", world.world_settings().voxel_size_m);
+    println!("Core lock : {} layers", planet.core_protection_layers);
+    println!("Height    : {}..{} layers", min_height, max_height);
+    println!(
+        "Content   : {} blocks, {} items, {} recipes, {} biomes, {} flora, {} ores, {} fauna",
+        content.blocks.len(),
+        content.items.len(),
+        content.recipes.len(),
+        content.biomes.len(),
+        content.flora.len(),
+        content.ores.len(),
+        content.fauna.len()
+    );
+    println!("Biomes generated on sampled surface:");
+    for (biome, count) in biome_counts {
+        println!("  - {}: {} samples", biome, count);
+    }
+    println!("-------------------");
 }
