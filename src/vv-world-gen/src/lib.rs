@@ -1,10 +1,13 @@
 use glam::Vec3;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use vv_config::WorldGenConfig;
 use vv_planet::CoordSystem;
 use vv_registry::{
-    BiomeId, BlockId as ContentBlockId, CompiledBiome, CompiledIdealRange, CompiledPlanetType,
-    CompiledSurfaceLayer, PlanetTypeSource, WorldgenContentView, WorldgenSettingsSource,
+    BiomeId, BlockId as ContentBlockId, CompiledBiome, CompiledClimateCurves, CompiledIdealRange,
+    CompiledPlanetType, PlanetTypeSource, WorldgenContentView, WorldgenSettingsSource,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -16,15 +19,27 @@ pub struct TerrainColumn {
 #[derive(Clone, Debug)]
 struct TerrainBiome {
     id: BiomeId,
-    surface_layers: Vec<CompiledSurfaceLayer>,
+    data: CompiledBiome,
 }
 
-/// Pre-computed per-face terrain for a planet.
+#[derive(Clone, Copy, Debug)]
+struct TerrainNoiseConfig {
+    octaves: u32,
+    persistence: f32,
+    lacunarity: f32,
+}
+
+/// Deterministic lazy terrain for a planet.
 ///
-/// Heights and surface block ids are compiled from worldgen registry data.
+/// Content data is captured from runtime registries at construction time, then
+/// columns are computed on demand and cached as chunks or LOD tiles request them.
 pub struct PlanetTerrain {
-    columns: Arc<Vec<TerrainColumn>>,
+    columns: Arc<Mutex<HashMap<u64, TerrainColumn>>>,
     biomes: Arc<Vec<TerrainBiome>>,
+    planet: CompiledPlanetType,
+    climate_curves: CompiledClimateCurves,
+    generator: Arc<NoiseGenerator>,
+    noise: TerrainNoiseConfig,
     resolution: u32,
     voxel_size_m: f32,
 }
@@ -61,62 +76,29 @@ impl PlanetTerrain {
             .iter()
             .map(|biome| TerrainBiome {
                 id: biome.id,
-                surface_layers: biome.data.surface_layers.clone(),
+                data: biome.data.clone(),
             })
             .collect();
-        let generator = NoiseGenerator::new(cfg.noise_seed);
-        let base_radius = resolution as f32 / 2.0;
-        let size = (6 * resolution * resolution) as usize;
-        let mut columns = vec![
-            TerrainColumn {
-                height: 0,
-                biome_index: 0,
-            };
-            size
-        ];
-
-        for face in 0u8..6 {
-            for v in 0..resolution {
-                for u in 0..resolution {
-                    let dir = CoordSystem::get_direction(face, u, v, resolution);
-                    let climate = ClimateSample::sample(dir, &generator, content, planet.data);
-                    let (biome_index, biome) = choose_biome(&biome_views, climate);
-                    let relief_noise = generator.fractal(
-                        dir,
-                        resolution as f32 / content.climate_curves().minimum_biome_transition_m,
-                        cfg.noise_octaves,
-                        cfg.noise_persistence,
-                        cfg.noise_lacunarity,
-                    );
-                    let relief = biome.data.relief;
-                    let height_delta = relief.base_height_m
-                        + centered(relief_noise)
-                            * relief.height_variance_m
-                            * relief.roughness.max(0.0)
-                            * planet.data.altitude_variance_multiplier;
-                    let height = (base_radius + height_delta).max(1.0) as u16;
-                    columns[Self::index(face, u, v, resolution)] = TerrainColumn {
-                        height,
-                        biome_index: biome_index as u16,
-                    };
-                }
-            }
-        }
-
-        println!("Terrain generation complete.");
+        println!("Terrain generation ready; columns will be generated lazily.");
         Ok(Self {
-            columns: Arc::new(columns),
+            columns: Arc::new(Mutex::new(HashMap::new())),
             biomes: Arc::new(terrain_biomes),
+            planet: planet.data.clone(),
+            climate_curves: *content.climate_curves(),
+            generator: Arc::new(NoiseGenerator::new(cfg.noise_seed)),
+            noise: TerrainNoiseConfig {
+                octaves: cfg.noise_octaves,
+                persistence: cfg.noise_persistence,
+                lacunarity: cfg.noise_lacunarity,
+            },
             resolution,
             voxel_size_m,
         })
     }
 
     #[inline(always)]
-    fn index(face: u8, u: u32, v: u32, res: u32) -> usize {
-        (face as usize) * (res as usize) * (res as usize)
-            + (v as usize) * (res as usize)
-            + u as usize
+    fn cache_key(face: u8, u: u32, v: u32) -> u64 {
+        ((face as u64) << 56) | ((u as u64) << 28) | v as u64
     }
 
     pub fn get_height(&self, face: u8, u: u32, v: u32) -> u32 {
@@ -138,7 +120,7 @@ impl PlanetTerrain {
         let biome = &self.biomes[column.biome_index as usize];
         let depth_m = column.height.saturating_sub(layer as u16) as f32 * self.voxel_size_m;
         let mut accumulated_depth = 0.0;
-        for surface_layer in &biome.surface_layers {
+        for surface_layer in &biome.data.surface_layers {
             match surface_layer.depth_m {
                 Some(layer_depth) => {
                     accumulated_depth += layer_depth.max(0.0);
@@ -150,6 +132,7 @@ impl PlanetTerrain {
             }
         }
         biome
+            .data
             .surface_layers
             .last()
             .expect("terrain biome should have surface layers")
@@ -159,7 +142,48 @@ impl PlanetTerrain {
     fn column(&self, face: u8, u: u32, v: u32) -> TerrainColumn {
         let u = u.min(self.resolution - 1);
         let v = v.min(self.resolution - 1);
-        self.columns[Self::index(face, u, v, self.resolution)]
+        let key = Self::cache_key(face, u, v);
+        if let Some(column) = self
+            .columns
+            .lock()
+            .expect("terrain cache should not be poisoned")
+            .get(&key)
+            .copied()
+        {
+            return column;
+        }
+
+        let column = self.compute_column(face, u, v);
+        self.columns
+            .lock()
+            .expect("terrain cache should not be poisoned")
+            .insert(key, column);
+        column
+    }
+
+    fn compute_column(&self, face: u8, u: u32, v: u32) -> TerrainColumn {
+        let dir = CoordSystem::get_direction(face, u, v, self.resolution);
+        let climate =
+            ClimateSample::sample(dir, &self.generator, self.climate_curves, &self.planet);
+        let (biome_index, biome) = choose_biome(&self.biomes, climate);
+        let relief_noise = self.generator.fractal(
+            dir,
+            self.resolution as f32 / self.climate_curves.minimum_biome_transition_m,
+            self.noise.octaves,
+            self.noise.persistence,
+            self.noise.lacunarity,
+        );
+        let relief = biome.data.relief;
+        let base_radius = self.resolution as f32 / 2.0;
+        let height_delta = relief.base_height_m
+            + centered(relief_noise)
+                * relief.height_variance_m
+                * relief.roughness.max(0.0)
+                * self.planet.altitude_variance_multiplier;
+        TerrainColumn {
+            height: (base_radius + height_delta).max(1.0) as u16,
+            biome_index: biome_index as u16,
+        }
     }
 }
 
@@ -168,6 +192,10 @@ impl Clone for PlanetTerrain {
         Self {
             columns: self.columns.clone(),
             biomes: self.biomes.clone(),
+            planet: self.planet.clone(),
+            climate_curves: self.climate_curves,
+            generator: self.generator.clone(),
+            noise: self.noise,
             resolution: self.resolution,
             voxel_size_m: self.voxel_size_m,
         }
@@ -216,10 +244,9 @@ impl ClimateSample {
     fn sample(
         dir: Vec3,
         generator: &NoiseGenerator,
-        content: &WorldgenContentView<'_>,
+        curves: CompiledClimateCurves,
         planet: &CompiledPlanetType,
     ) -> Self {
-        let curves = content.climate_curves();
         let latitude = dir.y.abs();
         let temperature_noise = generator.fractal(dir, curves.temperature_noise_scale, 3, 0.5, 2.0);
         let humidity_noise = generator.fractal(dir, curves.humidity_noise_scale, 3, 0.5, 2.0);
@@ -240,17 +267,13 @@ impl ClimateSample {
     }
 }
 
-fn choose_biome<'a>(
-    biomes: &'a [vv_registry::BiomeView<'a>],
-    climate: ClimateSample,
-) -> (usize, vv_registry::BiomeView<'a>) {
+fn choose_biome(biomes: &[TerrainBiome], climate: ClimateSample) -> (usize, &TerrainBiome) {
     biomes
         .iter()
-        .copied()
         .enumerate()
         .max_by(|(_, a), (_, b)| {
-            score_biome(a.data, climate)
-                .partial_cmp(&score_biome(b.data, climate))
+            score_biome(&a.data, climate)
+                .partial_cmp(&score_biome(&b.data, climate))
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
         .expect("biomes should not be empty")
