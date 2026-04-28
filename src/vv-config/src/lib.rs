@@ -88,7 +88,7 @@ pub struct LodConfig {
 impl Default for EngineConfig {
     fn default() -> Self {
         Self {
-            planet_resolution: 10000,
+            planet_resolution: 1000,
             physics: PhysicsConfig::default(),
             player: PlayerConfig::default(),
             render: RenderConfig::default(),

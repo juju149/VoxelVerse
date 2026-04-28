@@ -2,5 +2,5 @@
     chunk_size: 32,
     render_distance_chunks: 12,
     max_planet_radius_km: 1000.0,
-    voxel_size_m: 0.5,
+    voxel_size_m: 0.05,
 )

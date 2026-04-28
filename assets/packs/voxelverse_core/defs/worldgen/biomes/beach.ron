@@ -1,6 +1,6 @@
 (
     display_key: Some("worldgen.voxelverse.beach"),
-    weight: 0.55,
+    weight: 1.1,
     required_tags: [],
     provided_tags: [
         "voxelverse:beach",
@@ -9,12 +9,12 @@
     climate: (
         temperature: (min: 0.35, ideal_min: 0.52, ideal_max: 0.78, max: 1.0),
         humidity: (min: 0.35, ideal_min: 0.48, ideal_max: 0.78, max: 1.0),
-        altitude: (min: 0.0, ideal_min: 0.0, ideal_max: 0.14, max: 0.32),
+        altitude: (min: 0.0, ideal_min: 0.0, ideal_max: 0.35, max: 0.65),
     ),
     relief: (
-        base_height_m: -2.0,
-        height_variance_m: 4.0,
-        roughness: 0.12,
+        base_height_m: -0.5,
+        height_variance_m: 2.0,
+        roughness: 0.05,
         river_probability: 0.2,
     ),
     surface: [

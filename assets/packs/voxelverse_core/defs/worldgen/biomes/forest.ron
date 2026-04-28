@@ -13,9 +13,9 @@
         altitude: (min: 0.0, ideal_min: 0.08, ideal_max: 0.4, max: 0.68),
     ),
     relief: (
-        base_height_m: 1.5,
-        height_variance_m: 8.0,
-        roughness: 0.24,
+        base_height_m: 0.8,
+        height_variance_m: 6.0,
+        roughness: 0.16,
         river_probability: 0.12,
     ),
     surface: [

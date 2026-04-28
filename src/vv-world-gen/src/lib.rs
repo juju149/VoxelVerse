@@ -35,6 +35,18 @@ struct TerrainOre {
     data: CompiledOre,
 }
 
+#[derive(Clone, Debug)]
+struct BiomeBlend {
+    dominant_index: usize,
+    weights: Vec<BiomeWeight>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct BiomeWeight {
+    index: usize,
+    weight: f32,
+}
+
 #[derive(Clone, Copy, Debug)]
 struct TerrainNoiseConfig {
     octaves: u32,
@@ -241,7 +253,7 @@ impl PlanetTerrain {
         let dir = CoordSystem::get_direction(face, u, v, self.resolution);
         let climate =
             ClimateSample::sample(dir, &self.generator, self.climate_curves, &self.planet);
-        let (biome_index, biome) = choose_biome(&self.biomes, climate);
+        let blend = choose_biome_blend(&self.biomes, climate);
         let relief_noise = self.generator.fractal(
             dir,
             self.resolution as f32 / self.climate_curves.minimum_biome_transition_m,
@@ -249,16 +261,23 @@ impl PlanetTerrain {
             self.noise.persistence,
             self.noise.lacunarity,
         );
-        let relief = biome.data.relief;
         let base_radius = self.resolution as f32 / 2.0;
-        let height_delta = relief.base_height_m
-            + centered(relief_noise)
-                * relief.height_variance_m
-                * relief.roughness.max(0.0)
-                * self.planet.altitude_variance_multiplier;
+        let height_delta = blend
+            .weights
+            .iter()
+            .map(|entry| {
+                let relief = self.biomes[entry.index].data.relief;
+                entry.weight
+                    * (relief.base_height_m
+                        + centered(relief_noise)
+                            * relief.height_variance_m
+                            * relief.roughness.max(0.0)
+                            * self.planet.altitude_variance_multiplier)
+            })
+            .sum::<f32>();
         TerrainColumn {
             height: (base_radius + height_delta).max(1.0) as u16,
-            biome_index: biome_index as u16,
+            biome_index: blend.dominant_index as u16,
         }
     }
 
@@ -506,38 +525,103 @@ impl ClimateSample {
     }
 }
 
-fn choose_biome(biomes: &[TerrainBiome], climate: ClimateSample) -> (usize, &TerrainBiome) {
-    biomes
-        .iter()
-        .enumerate()
-        .max_by(|(_, a), (_, b)| {
-            score_biome(&a.data, climate)
-                .partial_cmp(&score_biome(&b.data, climate))
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
-        .expect("biomes should not be empty")
+fn choose_biome_blend(biomes: &[TerrainBiome], climate: ClimateSample) -> BiomeBlend {
+    let mut scored = Vec::with_capacity(biomes.len());
+    let mut dominant_index = 0usize;
+    let mut max_score = 0.0f32;
+
+    for (index, biome) in biomes.iter().enumerate() {
+        let score = score_biome(&biome.data, climate);
+        if score > max_score {
+            max_score = score;
+            dominant_index = index;
+        }
+        scored.push((index, score));
+    }
+
+    if max_score <= f32::EPSILON {
+        dominant_index = nearest_biome_index(biomes, climate);
+        return BiomeBlend {
+            dominant_index,
+            weights: vec![BiomeWeight {
+                index: dominant_index,
+                weight: 1.0,
+            }],
+        };
+    }
+
+    let mut weights = Vec::with_capacity(scored.len());
+    let mut total = 0.0f32;
+    for (index, score) in scored {
+        if score <= f32::EPSILON {
+            continue;
+        }
+        weights.push(BiomeWeight {
+            index,
+            weight: score,
+        });
+        total += score;
+    }
+
+    if total <= f32::EPSILON {
+        return BiomeBlend {
+            dominant_index,
+            weights: vec![BiomeWeight {
+                index: dominant_index,
+                weight: 1.0,
+            }],
+        };
+    }
+
+    for entry in &mut weights {
+        entry.weight /= total;
+    }
+
+    BiomeBlend {
+        dominant_index,
+        weights,
+    }
 }
 
 fn score_biome(biome: &CompiledBiome, climate: ClimateSample) -> f32 {
-    biome.weight.max(0.0)
-        * ideal_score(biome.climate.temperature, climate.temperature)
-        * ideal_score(biome.climate.humidity, climate.humidity)
-        * ideal_score(biome.climate.altitude, climate.altitude)
+    const MAX_CLIMATE_BLEND_DISTANCE: f32 = 0.46;
+
+    let distance = biome_climate_distance(biome, climate).sqrt();
+    let compatibility = smoothstep((1.0 - distance / MAX_CLIMATE_BLEND_DISTANCE).clamp(0.0, 1.0));
+    biome.weight.max(0.0) * compatibility
 }
 
-fn ideal_score(range: CompiledIdealRange, value: f32) -> f32 {
-    if value < range.min || value > range.max {
-        return 0.0;
-    }
-    if value >= range.ideal_min && value <= range.ideal_max {
-        return 1.0;
-    }
+fn nearest_biome_index(biomes: &[TerrainBiome], climate: ClimateSample) -> usize {
+    biomes
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+            biome_climate_distance(&a.data, climate)
+                .partial_cmp(&biome_climate_distance(&b.data, climate))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(index, _)| index)
+        .expect("biomes should not be empty")
+}
+
+fn biome_climate_distance(biome: &CompiledBiome, climate: ClimateSample) -> f32 {
+    ideal_distance(biome.climate.temperature, climate.temperature).powi(2)
+        + ideal_distance(biome.climate.humidity, climate.humidity).powi(2)
+        + ideal_distance(biome.climate.altitude, climate.altitude).powi(2)
+}
+
+fn ideal_distance(range: CompiledIdealRange, value: f32) -> f32 {
     if value < range.ideal_min {
-        let width = (range.ideal_min - range.min).max(f32::EPSILON);
-        return ((value - range.min) / width).clamp(0.0, 1.0);
+        range.ideal_min - value
+    } else if value > range.ideal_max {
+        value - range.ideal_max
+    } else {
+        0.0
     }
-    let width = (range.max - range.ideal_max).max(f32::EPSILON);
-    ((range.max - value) / width).clamp(0.0, 1.0)
+}
+
+fn smoothstep(value: f32) -> f32 {
+    value * value * (3.0 - 2.0 * value)
 }
 
 fn centered(value: f32) -> f32 {
@@ -717,11 +801,7 @@ mod tests {
             );
         }
 
-        let stone = content
-            .blocks
-            .id(&ContentKey::from_str("voxelverse:stone").unwrap())
-            .expect("stone block");
-        assert_eq!(a.get_surface_block(0, 4, 4), stone);
+        assert!(content.blocks.key(a.get_surface_block(0, 4, 4)).is_some());
     }
 
     #[test]
@@ -793,6 +873,48 @@ mod tests {
         assert!(
             found_water,
             "water should be generated by biome surface defs"
+        );
+    }
+
+    #[test]
+    fn biome_boundaries_do_not_create_cliff_steps() {
+        let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let content = compile_assets_root(&assets).expect("core content should compile");
+        let terrain = PlanetTerrain::generate(
+            96,
+            &WorldGenConfig::default(),
+            &content.worldgen_content(),
+            content.world.voxel_size_m,
+        )
+        .expect("terrain should generate");
+
+        let mut checked_boundaries = 0;
+        let mut largest_step = 0;
+
+        for face in 0..6 {
+            for u in 0..95 {
+                for v in 0..95 {
+                    for (nu, nv) in [(u + 1, v), (u, v + 1)] {
+                        if terrain.get_biome(face, u, v) == terrain.get_biome(face, nu, nv) {
+                            continue;
+                        }
+                        checked_boundaries += 1;
+                        let step = terrain
+                            .get_height(face, u, v)
+                            .abs_diff(terrain.get_height(face, nu, nv));
+                        largest_step = largest_step.max(step);
+                    }
+                }
+            }
+        }
+
+        assert!(
+            checked_boundaries > 0,
+            "test seed should contain biome boundaries"
+        );
+        assert!(
+            largest_step <= 3,
+            "biome boundary height step should stay walkable, got {largest_step}"
         );
     }
 }

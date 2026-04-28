@@ -14,8 +14,8 @@
     ),
     relief: (
         base_height_m: 0.0,
-        height_variance_m: 7.0,
-        roughness: 0.2,
+        height_variance_m: 5.0,
+        roughness: 0.14,
         river_probability: 0.1,
     ),
     surface: [
