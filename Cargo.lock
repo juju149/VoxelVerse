@@ -1785,6 +1785,7 @@ dependencies = [
  "vv-input",
  "vv-physics",
  "vv-planet",
+ "vv-registry",
  "vv-render",
  "vv-world-gen",
  "vv-world-runtime",
@@ -1840,6 +1841,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "glam",
+ "vv-compiler",
  "vv-config",
  "vv-core",
  "vv-planet",
@@ -1913,9 +1915,11 @@ name = "vv-world-gen"
 version = "0.1.0"
 dependencies = [
  "glam",
+ "vv-compiler",
  "vv-config",
  "vv-core",
  "vv-planet",
+ "vv-registry",
 ]
 
 [[package]]

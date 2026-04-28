@@ -7,4 +7,8 @@ edition = "2021"
 vv-core   = { path = "../vv-core" }
 vv-planet = { path = "../vv-planet" }
 vv-config = { path = "../vv-config" }
+vv-registry = { path = "../vv-registry" }
 glam = "0.25"
+
+[dev-dependencies]
+vv-compiler = { path = "../vv-compiler" }

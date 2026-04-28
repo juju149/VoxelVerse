@@ -15,6 +15,7 @@ use vv_gameplay::{Console, Player};
 use vv_input::Controller;
 use vv_physics::Physics;
 use vv_planet::CoordSystem;
+use vv_registry::WorldSettingsSource;
 use vv_render::Renderer;
 use vv_world_gen::PlanetTerrain;
 use vv_world_runtime::PlanetData;
@@ -27,12 +28,22 @@ fn main() {
     let config = EngineConfig::default();
     let compiled_content =
         compile_assets_root(Path::new("assets")).expect("assets packs should compile");
-    let terrain_block = compiled_content
+    let default_build_block = compiled_content
         .worldgen_content()
         .biomes()
         .find_map(|biome| biome.data.surface_layers.first().map(|layer| layer.block))
         .expect("compiled content should define at least one biome surface block");
-    let block_content = compiled_content.into_block_content();
+    let terrain = PlanetTerrain::generate(
+        config.planet_resolution,
+        &config.worldgen,
+        &compiled_content.worldgen_content(),
+        compiled_content
+            .world_content()
+            .world_settings()
+            .voxel_size_m,
+    )
+    .expect("compiled worldgen content should generate terrain");
+    let block_content = compiled_content.to_block_content();
 
     // --- Window & event loop ------------------------------------------------
     let event_loop = EventLoop::new().unwrap();
@@ -52,12 +63,10 @@ fn main() {
 
     // --- Planet -------------------------------------------------------------
     println!("Building planet (resolution {})…", config.planet_resolution);
-    let terrain = PlanetTerrain::new(config.planet_resolution, &config.worldgen);
     let mut planet = PlanetData::new(
         config.planet_resolution,
         terrain,
         config.physics.core_protection_layers,
-        terrain_block,
     );
 
     // --- Player spawn -------------------------------------------------------
@@ -177,7 +186,7 @@ fn main() {
                                         true,
                                     );
                                     if let Some((place_id, _)) = place {
-                                        planet.add_block(place_id, terrain_block);
+                                        planet.add_block(place_id, default_build_block);
                                         renderer.refresh_neighbors(place_id, &planet);
                                     }
                                 } else {
@@ -198,7 +207,16 @@ fn main() {
                                 if s == "]" || s == "[" {
                                     let increase = s == "]";
                                     let new_res = planet.next_resolution(increase);
-                                    let new_terrain = PlanetTerrain::new(new_res, &config.worldgen);
+                                    let new_terrain = PlanetTerrain::generate(
+                                        new_res,
+                                        &config.worldgen,
+                                        &compiled_content.worldgen_content(),
+                                        compiled_content
+                                            .world_content()
+                                            .world_settings()
+                                            .voxel_size_m,
+                                    )
+                                    .expect("compiled worldgen content should regenerate terrain");
                                     planet.apply_resize(new_res, new_terrain);
 
                                     let dir = if player.position.length() > 0.1 {

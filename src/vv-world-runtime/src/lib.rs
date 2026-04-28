@@ -41,24 +41,16 @@ pub struct PlanetData {
     pub core_protection_layers: u32,
     /// Pre-computed terrain heightmap.
     pub terrain: PlanetTerrain,
-    /// Runtime content id used for generated terrain voxels.
-    pub terrain_block: ContentBlockId,
 }
 
 impl PlanetData {
-    pub fn new(
-        resolution: u32,
-        terrain: PlanetTerrain,
-        core_protection_layers: u32,
-        terrain_block: ContentBlockId,
-    ) -> Self {
+    pub fn new(resolution: u32, terrain: PlanetTerrain, core_protection_layers: u32) -> Self {
         Self {
             chunks: HashMap::new(),
             resolution,
             has_core: true,
             core_protection_layers,
             terrain,
-            terrain_block,
         }
     }
 
@@ -119,7 +111,7 @@ impl PlanetData {
             }
         }
         let height = self.terrain.get_height(id.face, id.u, id.v);
-        (id.layer <= height).then_some(self.terrain_block)
+        (id.layer <= height).then_some(self.terrain.get_block(id.face, id.u, id.v, id.layer))
     }
 
     // --- Chunk key ----------------------------------------------------------

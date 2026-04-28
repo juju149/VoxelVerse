@@ -236,6 +236,10 @@ impl WorldgenSettingsSource for WorldgenContentView<'_> {
 }
 
 impl CompiledContent {
+    pub fn to_block_content(&self) -> BlockContent {
+        BlockContent::new(self.blocks.clone())
+    }
+
     pub fn into_block_content(self) -> BlockContent {
         BlockContent::new(self.blocks)
     }

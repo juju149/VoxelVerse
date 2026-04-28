@@ -68,8 +68,6 @@ pub struct RenderConfig {
 pub struct WorldGenConfig {
     /// Deterministic noise seed.
     pub noise_seed: u32,
-    /// Peak terrain height variation in voxel layers.
-    pub terrain_amplitude: f32,
     /// Number of fractal noise octaves.
     pub noise_octaves: u32,
     /// Amplitude multiplier per octave (persistence).
@@ -90,7 +88,7 @@ pub struct LodConfig {
 impl Default for EngineConfig {
     fn default() -> Self {
         Self {
-            planet_resolution: 1000,
+            planet_resolution: 10000,
             physics: PhysicsConfig::default(),
             player: PlayerConfig::default(),
             render: RenderConfig::default(),
@@ -142,7 +140,6 @@ impl Default for WorldGenConfig {
     fn default() -> Self {
         Self {
             noise_seed: 42,
-            terrain_amplitude: 24.0,
             noise_octaves: 4,
             noise_persistence: 0.5,
             noise_lacunarity: 2.0,
@@ -152,8 +149,6 @@ impl Default for WorldGenConfig {
 
 impl Default for LodConfig {
     fn default() -> Self {
-        Self {
-            tile_grid_res: 64,
-        }
+        Self { tile_grid_res: 64 }
     }
 }

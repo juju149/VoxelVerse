@@ -14,3 +14,4 @@ bytemuck = { version = "1.14", features = ["derive"] }
 [dev-dependencies]
 vv-config = { path = "../vv-config" }
 vv-world-gen = { path = "../vv-world-gen" }
+vv-compiler = { path = "../vv-compiler" }

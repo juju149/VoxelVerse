@@ -336,7 +336,8 @@ impl MeshGen {
         grid_res: u32,
         blocks: &impl BlockRenderSource,
     ) -> (Vec<Vertex>, Vec<u32>) {
-        let Some(terrain_render) = blocks.block_render(data.terrain_block) else {
+        let terrain_block = data.terrain.get_surface_block(key.face, key.x, key.y);
+        let Some(terrain_render) = blocks.block_render(terrain_block) else {
             return (Vec::new(), Vec::new());
         };
         let terrain_color = terrain_render.color;
@@ -668,6 +669,7 @@ impl MeshGen {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vv_compiler::compile_assets_root;
     use vv_config::WorldGenConfig;
     use vv_registry::{
         BlockContent, CompiledBlock, CompiledBlockMining, CompiledBlockPhysics,
@@ -679,7 +681,7 @@ mod tests {
     #[test]
     fn chunk_mesh_uses_registry_block_render_color() {
         let mut blocks = RegistryTable::default();
-        let block = blocks.push(
+        let _block = blocks.push(
             ContentKey::new("test", "surface").unwrap(),
             CompiledBlock {
                 display_key: None,
@@ -709,8 +711,16 @@ mod tests {
         );
         let block_content = BlockContent::new(blocks);
         let resolution = 8;
-        let terrain = PlanetTerrain::new(resolution, &WorldGenConfig::default());
-        let planet = PlanetData::new(resolution, terrain, 0, block);
+        let assets = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let content = compile_assets_root(&assets).expect("core content should compile");
+        let terrain = PlanetTerrain::generate(
+            resolution,
+            &WorldGenConfig::default(),
+            &content.worldgen_content(),
+            content.world.voxel_size_m,
+        )
+        .expect("terrain should generate");
+        let planet = PlanetData::new(resolution, terrain, 0);
 
         let (verts, _) = MeshGen::build_chunk(
             ChunkKey {
