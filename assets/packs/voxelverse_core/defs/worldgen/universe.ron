@@ -1,0 +1,5 @@
+(
+    default_planet_type: "voxelverse:temperate",
+    default_seed: Some(1337),
+    starting_planet_count: 1,
+)

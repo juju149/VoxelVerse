@@ -1,0 +1,7 @@
+(
+    reach_m: 4.5,
+    gravity_m_s2: 9.81,
+    day_length_seconds: 1200,
+    fall_damage_threshold_m: 3.0,
+    hunger_depletion_rate: 0.8,
+)

@@ -1,0 +1,10 @@
+(
+    namespace: "voxelverse",
+    name: "VoxelVerse Core",
+    version: "0.1.0",
+    description: Some("Official base content pack for VoxelVerse."),
+    authors: ["VoxelVerse Team"],
+    dependencies: [],
+    override_policy: explicit,
+    compat_targets: [],
+)

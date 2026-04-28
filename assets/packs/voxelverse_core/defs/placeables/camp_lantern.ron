@@ -1,0 +1,18 @@
+(
+    display_key: Some("placeable.voxelverse.camp_lantern"),
+    model: Some("voxelverse:camp_lantern"),
+    grid_size: (1, 1, 1),
+    tags: [
+        "voxelverse:decoration",
+        "voxelverse:light_source",
+    ],
+    drops: inline([
+        (
+            entries: [
+                (item: "voxelverse:camp_lantern", count: (min: 1, max: 1)),
+            ],
+        ),
+    ]),
+    light_level: 12,
+    on_use: None,
+)

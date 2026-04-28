@@ -1,0 +1,27 @@
+(
+    display_key: Some("entity.voxelverse.firefly"),
+    model: Some("voxelverse:firefly"),
+    health: 2.0,
+    tags: [
+        "voxelverse:fauna",
+        "voxelverse:ambient",
+    ],
+    drops: none,
+    light_level: 4,
+    ai: Some((
+        behavior: passive,
+        sight_range: 6.0,
+        wander_radius: 8.0,
+    )),
+    movement: (
+        walk_speed: 0.0,
+        swim_speed: 0.0,
+        fly_speed: Some(1.2),
+    ),
+    body: (
+        radius_m: 0.12,
+        height_m: 0.12,
+        eye_height_m: 0.06,
+    ),
+    interactions: [],
+)

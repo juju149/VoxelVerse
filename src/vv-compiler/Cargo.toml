@@ -1,0 +1,13 @@
+[package]
+name = "vv-compiler"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+vv-pack = { path = "../vv-pack" }
+vv-registry = { path = "../vv-registry" }
+vv-schema = { path = "../vv-schema" }
+
+[dev-dependencies]
+ron = { workspace = true }

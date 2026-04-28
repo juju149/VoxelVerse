@@ -1,0 +1,5 @@
+(
+    temperature_noise_scale: 7.7,
+    humidity_noise_scale: 3.1,
+    minimum_biome_transition_m: 20.0,
+)

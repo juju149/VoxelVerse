@@ -1,0 +1,23 @@
+use std::path::PathBuf;
+
+use vv_pack::load_packs_from_assets;
+
+#[test]
+fn loads_voxelverse_core_raw_documents() {
+    let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+    let load_order = load_packs_from_assets(&assets).expect("voxelverse_core should load");
+    let pack = load_order
+        .packs()
+        .iter()
+        .find(|pack| pack.content.manifest.namespace == "voxelverse")
+        .expect("voxelverse pack should be discovered");
+
+    assert_eq!(pack.content.blocks.len(), 1);
+    assert_eq!(pack.content.items.len(), 2);
+    assert_eq!(pack.content.recipes.len(), 1);
+    assert_eq!(pack.content.loot_tables.len(), 1);
+    assert_eq!(pack.content.biomes.len(), 1);
+    assert_eq!(pack.content.structures.len(), 1);
+    assert_eq!(pack.content.weather.len(), 1);
+    assert!(!pack.content.tags.is_empty());
+}

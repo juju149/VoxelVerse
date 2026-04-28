@@ -1,0 +1,21 @@
+(
+    display_key: Some("worldgen.voxelverse.meadow_grass"),
+    weight: 1.0,
+    required_tags: ["voxelverse:meadow"],
+    provided_tags: ["voxelverse:ground_flora"],
+    placement: (
+        density_base: 0.05,
+        altitude_max: Some(80.0),
+        slope_max: 0.35,
+        near_water_bonus: 1.2,
+        cluster_radius: 2.0,
+        cluster_min: 1,
+        cluster_max: 3,
+    ),
+    feature: (
+        kind: "cluster",
+        block: "voxelverse:stone",
+        radius_min: 0.5,
+        radius_max: 1.5,
+    ),
+)

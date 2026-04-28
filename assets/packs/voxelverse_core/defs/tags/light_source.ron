@@ -1,0 +1,7 @@
+(
+    kind: any,
+    values: [
+        "voxelverse:camp_lantern",
+    ],
+    extends: [],
+)

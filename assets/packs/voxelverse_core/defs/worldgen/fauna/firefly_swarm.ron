@@ -1,0 +1,14 @@
+(
+    display_key: Some("worldgen.voxelverse.firefly_swarm"),
+    entity: "voxelverse:firefly",
+    weight: 1.0,
+    required_tags: ["voxelverse:meadow"],
+    provided_tags: ["voxelverse:ambient_fauna"],
+    spawn: (
+        group_min: 3,
+        group_max: 8,
+        density: 0.08,
+        altitude_range: (min: 0.0, max: 80.0),
+        time_of_day: Some((min: 0.65, max: 0.95)),
+    ),
+)

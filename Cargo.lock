@@ -113,6 +113,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "base64"
+version = "0.21.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -138,6 +144,9 @@ name = "bitflags"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
+dependencies = [
+ "serde_core",
+]
 
 [[package]]
 name = "block"
@@ -1282,6 +1291,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
+name = "ron"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b91f7eff05f748767f183df4320a63d6936e9c6107d97c9e6bdd9784f4289c94"
+dependencies = [
+ "base64",
+ "bitflags 2.10.0",
+ "serde",
+ "serde_derive",
+]
+
+[[package]]
 name = "roxmltree"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1389,6 +1410,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
+ "serde_derive",
 ]
 
 [[package]]
@@ -1769,6 +1791,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vv-compiler"
+version = "0.1.0"
+dependencies = [
+ "ron",
+ "vv-pack",
+ "vv-registry",
+ "vv-schema",
+]
+
+[[package]]
 name = "vv-config"
 version = "0.1.0"
 
@@ -1813,6 +1845,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vv-pack"
+version = "0.1.0"
+dependencies = [
+ "ron",
+ "serde",
+ "vv-schema",
+]
+
+[[package]]
 name = "vv-physics"
 version = "0.1.0"
 dependencies = [
@@ -1832,6 +1873,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "vv-registry"
+version = "0.1.0"
+
+[[package]]
 name = "vv-render"
 version = "0.1.0"
 dependencies = [
@@ -1848,6 +1893,14 @@ dependencies = [
  "vv-world-runtime",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "vv-schema"
+version = "0.1.0"
+dependencies = [
+ "ron",
+ "serde",
 ]
 
 [[package]]

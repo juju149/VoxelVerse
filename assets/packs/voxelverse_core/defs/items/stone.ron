@@ -1,0 +1,13 @@
+(
+    display_key: Some("item.voxelverse.stone"),
+    stack_max: 64,
+    weight: 0.6,
+    tags: [
+        "voxelverse:block_item",
+        "voxelverse:stone_material",
+    ],
+    kind: (
+        type: "block",
+        block: "voxelverse:stone",
+    ),
+)

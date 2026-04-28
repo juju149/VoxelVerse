@@ -1,0 +1,16 @@
+(
+    display_key: Some("worldgen.voxelverse.waystone_circle"),
+    weight: 1.0,
+    required_tags: ["voxelverse:meadow"],
+    provided_tags: [
+        "voxelverse:landmark",
+        "voxelverse:exploration_hook",
+    ],
+    placement: (
+        frequency: 0.02,
+        altitude_range: Some((min: 0.0, max: 120.0)),
+        slope_max: 0.2,
+    ),
+    template: Some("voxelverse:waystone_circle"),
+    loot_table: Some("voxelverse:stone"),
+)

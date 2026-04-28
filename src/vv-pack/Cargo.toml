@@ -1,0 +1,10 @@
+[package]
+name = "vv-pack"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+ron = { workspace = true }
+serde = { workspace = true }
+vv-schema = { path = "../vv-schema" }

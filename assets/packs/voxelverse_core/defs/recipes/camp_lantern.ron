@@ -1,0 +1,10 @@
+(
+    pattern: shapeless,
+    result: (item: "voxelverse:camp_lantern", count: 1),
+    ingredients: [
+        (type: "item", item: "voxelverse:stone", count: 2),
+    ],
+    station: None,
+    time_seconds: None,
+    tags: ["voxelverse:hand_craftable"],
+)

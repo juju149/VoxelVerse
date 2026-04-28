@@ -1,0 +1,148 @@
+use vv_schema::{
+    block::BlockDef,
+    entity::EntityDef,
+    item::ItemDef,
+    lang::LangFileDef,
+    loot::LootTableDef,
+    manifest::PackManifest,
+    placeable::PlaceableDef,
+    recipe::RecipeDef,
+    settings::{balance::BalanceSettings, gameplay::GameplaySettings, world::WorldSettings},
+    tag::TagDef,
+    ui::UiThemeDef,
+    worldgen::{
+        biome::BiomeDef,
+        climate::{ClimateTagsDef, ClimateTransitionsDef, GlobalClimateCurvesDef},
+        fauna::FaunaDef,
+        flora::FloraDef,
+        noise::NoiseGraph,
+        ore::OreDef,
+        planet::PlanetTypeDef,
+        structure::StructureDef,
+        universe::UniverseDef,
+        weather::WeatherDef,
+    },
+};
+
+fn parse<T>(path: &str, source: &str)
+where
+    T: serde::de::DeserializeOwned,
+{
+    ron::from_str::<T>(source).unwrap_or_else(|err| panic!("{path}: {err}"));
+}
+
+#[test]
+fn voxelverse_core_examples_match_schema() {
+    parse::<PackManifest>(
+        "pack.ron",
+        include_str!("../../../assets/packs/voxelverse_core/pack.ron"),
+    );
+    parse::<BlockDef>(
+        "defs/blocks/stone.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/blocks/stone.ron"),
+    );
+    parse::<ItemDef>(
+        "defs/items/stone.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/items/stone.ron"),
+    );
+    parse::<ItemDef>(
+        "defs/items/camp_lantern.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/items/camp_lantern.ron"),
+    );
+    parse::<EntityDef>(
+        "defs/entities/firefly.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/entities/firefly.ron"),
+    );
+    parse::<PlaceableDef>(
+        "defs/placeables/camp_lantern.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/placeables/camp_lantern.ron"),
+    );
+    parse::<RecipeDef>(
+        "defs/recipes/camp_lantern.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/recipes/camp_lantern.ron"),
+    );
+    parse::<LootTableDef>(
+        "defs/loot_tables/stone.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/loot_tables/stone.ron"),
+    );
+    parse::<TagDef>(
+        "defs/tags/solid.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/tags/solid.ron"),
+    );
+    parse::<TagDef>(
+        "defs/tags/light_source.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/tags/light_source.ron"),
+    );
+    parse::<LangFileDef>(
+        "lang/en_us.ron",
+        include_str!("../../../assets/packs/voxelverse_core/lang/en_us.ron"),
+    );
+    parse::<GameplaySettings>(
+        "defs/settings/gameplay.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/settings/gameplay.ron"),
+    );
+    parse::<BalanceSettings>(
+        "defs/settings/balance.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/settings/balance.ron"),
+    );
+    parse::<WorldSettings>(
+        "defs/settings/world.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/settings/world.ron"),
+    );
+    parse::<UiThemeDef>(
+        "defs/ui/default.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/ui/default.ron"),
+    );
+    parse::<UniverseDef>(
+        "defs/worldgen/universe.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/universe.ron"),
+    );
+    parse::<ClimateTagsDef>(
+        "defs/worldgen/climate/tags.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/climate/tags.ron"),
+    );
+    parse::<GlobalClimateCurvesDef>(
+        "defs/worldgen/climate/curves.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/climate/curves.ron"),
+    );
+    parse::<ClimateTransitionsDef>(
+        "defs/worldgen/climate/transitions.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/climate/transitions.ron"),
+    );
+    parse::<PlanetTypeDef>(
+        "defs/worldgen/planet_types/temperate.ron",
+        include_str!(
+            "../../../assets/packs/voxelverse_core/defs/worldgen/planet_types/temperate.ron"
+        ),
+    );
+    parse::<BiomeDef>(
+        "defs/worldgen/biomes/meadow.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/biomes/meadow.ron"),
+    );
+    parse::<FloraDef>(
+        "defs/worldgen/flora/meadow_grass.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/flora/meadow_grass.ron"),
+    );
+    parse::<OreDef>(
+        "defs/worldgen/ores/stone_patches.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/ores/stone_patches.ron"),
+    );
+    parse::<FaunaDef>(
+        "defs/worldgen/fauna/firefly_swarm.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/fauna/firefly_swarm.ron"),
+    );
+    parse::<StructureDef>(
+        "defs/worldgen/structures/waystone_circle.ron",
+        include_str!(
+            "../../../assets/packs/voxelverse_core/defs/worldgen/structures/waystone_circle.ron"
+        ),
+    );
+    parse::<WeatherDef>(
+        "defs/worldgen/weather/clear.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/weather/clear.ron"),
+    );
+    parse::<NoiseGraph>(
+        "defs/worldgen/noise/terrain_base.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/noise/terrain_base.ron"),
+    );
+}

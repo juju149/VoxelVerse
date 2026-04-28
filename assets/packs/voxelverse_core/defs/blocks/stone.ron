@@ -1,0 +1,29 @@
+(
+    display_key: Some("block.voxelverse.stone"),
+    tags: [
+        "voxelverse:solid",
+        "voxelverse:natural",
+        "voxelverse:mineable_pickaxe",
+    ],
+    mining: (
+        hardness: 1.5,
+        tool: pickaxe,
+        sound_material: stone,
+    ),
+    render: (
+        color: (r: 0.48, g: 0.48, b: 0.46),
+        texture: single,
+    ),
+    physics: (
+        phase: solid,
+        density: 2.75,
+        collider: full,
+    ),
+    drops: inline([
+        (
+            entries: [
+                (item: "voxelverse:stone", count: (min: 1, max: 1)),
+            ],
+        ),
+    ]),
+)

@@ -1,0 +1,6 @@
+(
+    base_mining_speed: 1.0,
+    inventory_weight_speed_penalty: 0.0,
+    tool_damage_multiplier: 1.0,
+    xp_multiplier: 1.0,
+)

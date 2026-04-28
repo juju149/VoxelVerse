@@ -1,0 +1,27 @@
+(
+    display_key: Some("worldgen.voxelverse.meadow"),
+    weight: 1.0,
+    required_tags: ["voxelverse:meadow_climate"],
+    provided_tags: [
+        "voxelverse:meadow",
+        "voxelverse:surface_biome",
+    ],
+    climate: (
+        temperature: (min: 0.3, ideal_min: 0.45, ideal_max: 0.65, max: 0.8),
+        humidity: (min: 0.25, ideal_min: 0.4, ideal_max: 0.65, max: 0.85),
+        altitude: (min: 0.0, ideal_min: 0.1, ideal_max: 0.35, max: 0.55),
+    ),
+    relief: (
+        base_height_m: 0.0,
+        height_variance_m: 10.0,
+        roughness: 0.2,
+        river_probability: 0.1,
+    ),
+    surface: [
+        (block: "voxelverse:stone", depth_m: None),
+    ],
+    lod: (
+        horizon_color: (r: 0.54, g: 0.72, b: 0.55),
+        fog_density: 0.002,
+    ),
+)

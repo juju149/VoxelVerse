@@ -1,0 +1,18 @@
+(
+    display_key: Some("worldgen.voxelverse.temperate"),
+    global_tags: [
+        "voxelverse:temperate",
+        "voxelverse:habitable",
+    ],
+    climate_bias: (
+        temperature: 0.0,
+        humidity: 0.05,
+    ),
+    altitude_variance_multiplier: 1.0,
+    ocean_coverage: 0.35,
+    climate_transition_speed: 0.5,
+    size: (
+        min_km: 4.0,
+        max_km: 18.0,
+    ),
+)

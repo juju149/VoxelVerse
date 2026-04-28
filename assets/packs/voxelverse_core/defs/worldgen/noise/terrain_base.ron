@@ -1,0 +1,7 @@
+(
+    output: "height",
+    nodes: {
+        "base": (type: "perlin", scale: 96.0, octaves: 4, persistence: 0.5, lacunarity: 2.0),
+        "height": (type: "clamp", input: "base", min: -1.0, max: 1.0),
+    },
+)

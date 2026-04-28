@@ -1,0 +1,9 @@
+(
+    transitions: [
+        (
+            from: "voxelverse:meadow_climate",
+            to: "voxelverse:lowland",
+            blend_distance_m: 24.0,
+        ),
+    ],
+)
