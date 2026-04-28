@@ -1,0 +1,11 @@
+[package]
+name = "vv-physics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vv-core          = { path = "../vv-core" }
+vv-planet        = { path = "../vv-planet" }
+vv-world-runtime = { path = "../vv-world-runtime" }
+vv-config        = { path = "../vv-config" }
+glam = "0.25"

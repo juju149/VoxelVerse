@@ -1,0 +1,11 @@
+[package]
+name = "vv-mesh"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vv-core          = { path = "../vv-core" }
+vv-planet        = { path = "../vv-planet" }
+vv-world-runtime = { path = "../vv-world-runtime" }
+glam    = "0.25"
+bytemuck = { version = "1.14", features = ["derive"] }

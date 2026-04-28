@@ -1,0 +1,23 @@
+[package]
+name = "vv-app"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "voxelverse"
+path = "src/main.rs"
+
+[dependencies]
+vv-core          = { path = "../vv-core" }
+vv-config        = { path = "../vv-config" }
+vv-planet        = { path = "../vv-planet" }
+vv-world-gen     = { path = "../vv-world-gen" }
+vv-world-runtime = { path = "../vv-world-runtime" }
+vv-physics       = { path = "../vv-physics" }
+vv-gameplay      = { path = "../vv-gameplay" }
+vv-input         = { path = "../vv-input" }
+vv-render        = { path = "../vv-render" }
+glam    = "0.25"
+winit   = "0.29"
+pollster = "0.3"
+sysinfo  = "0.30"

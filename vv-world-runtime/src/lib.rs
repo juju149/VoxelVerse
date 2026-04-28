@@ -1,0 +1,120 @@
+use std::collections::{HashMap, HashSet};
+use vv_core::{BlockId, ChunkKey, CHUNK_SIZE};
+use vv_world_gen::PlanetTerrain;
+
+/// Tracks player modifications (mined / placed blocks) for a single chunk.
+#[derive(Clone)]
+pub struct ChunkMods {
+    pub mined: HashSet<BlockId>,
+    pub placed: HashSet<BlockId>,
+}
+
+impl ChunkMods {
+    pub fn new() -> Self {
+        Self { mined: HashSet::new(), placed: HashSet::new() }
+    }
+}
+
+impl Default for ChunkMods {
+    fn default() -> Self { Self::new() }
+}
+
+/// Mutable runtime state of a planet: terrain + player edits.
+///
+/// The planet owns a pre-computed `PlanetTerrain` for fast height queries and
+/// a sparse map of player-driven block additions / removals.
+#[derive(Clone)]
+pub struct PlanetData {
+    /// Sparse per-chunk edit sets.
+    pub chunks: HashMap<ChunkKey, ChunkMods>,
+    /// Face grid resolution (equals radial layer count).
+    pub resolution: u32,
+    /// Whether the planet has an indestructible solid core.
+    pub has_core: bool,
+    /// Number of radial layers from the centre that cannot be mined.
+    pub core_protection_layers: u32,
+    /// Pre-computed terrain heightmap.
+    pub terrain: PlanetTerrain,
+}
+
+impl PlanetData {
+    pub fn new(
+        resolution: u32,
+        terrain: PlanetTerrain,
+        core_protection_layers: u32,
+    ) -> Self {
+        Self {
+            chunks: HashMap::new(),
+            resolution,
+            has_core: true,
+            core_protection_layers,
+            terrain,
+        }
+    }
+
+    // --- Resize helpers -----------------------------------------------------
+
+    /// Compute the next resolution when resizing (does not apply the change).
+    pub fn next_resolution(&self, increase: bool) -> u32 {
+        if increase {
+            let r = (self.resolution as f32 * 1.2) as u32;
+            r.max(self.resolution + 1).min(16_384)
+        } else {
+            ((self.resolution as f32 / 1.2) as u32).max(8)
+        }
+    }
+
+    /// Apply a resize: swap in a freshly-generated terrain and clear all edits.
+    pub fn apply_resize(&mut self, new_resolution: u32, new_terrain: PlanetTerrain) {
+        self.resolution = new_resolution;
+        self.chunks.clear();
+        self.terrain = new_terrain;
+    }
+
+    // --- Block operations ---------------------------------------------------
+
+    pub fn add_block(&mut self, id: BlockId) {
+        let key = Self::chunk_key(id);
+        let mods = self.chunks.entry(key).or_default();
+        if mods.mined.contains(&id) {
+            mods.mined.remove(&id);
+        } else {
+            mods.placed.insert(id);
+        }
+    }
+
+    pub fn remove_block(&mut self, id: BlockId) {
+        if self.has_core && id.layer < self.core_protection_layers {
+            return;
+        }
+        let key = Self::chunk_key(id);
+        let mods = self.chunks.entry(key).or_default();
+        if mods.placed.contains(&id) {
+            mods.placed.remove(&id);
+        } else if id.layer < self.resolution {
+            mods.mined.insert(id);
+        }
+    }
+
+    /// Returns `true` if a voxel exists at `id` (accounting for player edits).
+    pub fn exists(&self, id: BlockId) -> bool {
+        let key = Self::chunk_key(id);
+        if let Some(mods) = self.chunks.get(&key) {
+            if mods.placed.contains(&id) { return true; }
+            if mods.mined.contains(&id)  { return false; }
+        }
+        let height = self.terrain.get_height(id.face, id.u, id.v);
+        id.layer <= height
+    }
+
+    // --- Chunk key ----------------------------------------------------------
+
+    #[inline]
+    pub fn chunk_key(id: BlockId) -> ChunkKey {
+        ChunkKey {
+            face: id.face,
+            u_idx: id.u / CHUNK_SIZE,
+            v_idx: id.v / CHUNK_SIZE,
+        }
+    }
+}

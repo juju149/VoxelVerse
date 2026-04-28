@@ -1,0 +1,8 @@
+[package]
+name = "vv-planet"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vv-core = { path = "../vv-core" }
+glam = "0.25"
