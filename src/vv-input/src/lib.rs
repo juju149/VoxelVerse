@@ -7,6 +7,54 @@ use vv_planet::CoordSystem;
 use vv_world_runtime::PlanetData;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::window::{CursorGrabMode, Window};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum UiPointerEvent {
+    PrimaryPressed(Vec2),
+    PrimaryReleased(Vec2),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CursorFocusMode {
+    GameplayLocked,
+    GameplayFree,
+    Ui,
+}
+
+#[derive(Debug, Default)]
+pub struct CursorFocus {
+    mode: Option<CursorFocusMode>,
+}
+
+impl CursorFocus {
+    pub fn apply(&mut self, window: &Window, first_person: bool, ui_open: bool) {
+        let desired = if ui_open {
+            CursorFocusMode::Ui
+        } else if first_person {
+            CursorFocusMode::GameplayLocked
+        } else {
+            CursorFocusMode::GameplayFree
+        };
+        if self.mode == Some(desired) {
+            return;
+        }
+
+        match desired {
+            CursorFocusMode::GameplayLocked => {
+                if window.set_cursor_grab(CursorGrabMode::Locked).is_err() {
+                    let _ = window.set_cursor_grab(CursorGrabMode::Confined);
+                }
+                window.set_cursor_visible(false);
+            }
+            CursorFocusMode::GameplayFree | CursorFocusMode::Ui => {
+                let _ = window.set_cursor_grab(CursorGrabMode::None);
+                window.set_cursor_visible(true);
+            }
+        }
+        self.mode = Some(desired);
+    }
+}
 
 /// Input state, camera control, and player action relay.
 ///
@@ -34,6 +82,7 @@ pub struct Controller {
     hotbar_delta: i32,
     hotbar_slot: Option<usize>,
     toggle_inventory: bool,
+    ui_pointer_events: Vec<UiPointerEvent>,
 
     reach_distance: f32,
     keys: [bool; 5], // W A S D Space
@@ -60,6 +109,7 @@ impl Controller {
             hotbar_delta: 0,
             hotbar_slot: None,
             toggle_inventory: false,
+            ui_pointer_events: Vec::new(),
             reach_distance: cfg.reach_distance,
             keys: [false; 5],
         }
@@ -114,12 +164,17 @@ impl Controller {
             hotbar_delta: self.hotbar_delta,
             hotbar_slot: self.hotbar_slot,
             toggle_inventory: self.toggle_inventory,
+            inventory_pointers: Vec::new(),
         };
         self.place_pressed = false;
         self.hotbar_delta = 0;
         self.hotbar_slot = None;
         self.toggle_inventory = false;
         intent
+    }
+
+    pub fn take_ui_pointer_events(&mut self) -> Vec<UiPointerEvent> {
+        std::mem::take(&mut self.ui_pointer_events)
     }
 
     // --- Camera -------------------------------------------------------------
@@ -247,6 +302,14 @@ impl Controller {
                 }
                 if *button == MouseButton::Left {
                     self.mine_held = *state == ElementState::Pressed;
+                    match state {
+                        ElementState::Pressed => self
+                            .ui_pointer_events
+                            .push(UiPointerEvent::PrimaryPressed(self.mouse_pos)),
+                        ElementState::Released => self
+                            .ui_pointer_events
+                            .push(UiPointerEvent::PrimaryReleased(self.mouse_pos)),
+                    }
                     return true;
                 }
                 if *button == MouseButton::Right && *state == ElementState::Pressed {

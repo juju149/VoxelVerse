@@ -4,15 +4,24 @@ use vv_planet::CoordSystem;
 use vv_registry::{CompiledContent, CompiledDrops, CompiledLootPool, ItemId};
 use vv_world_runtime::PlanetData;
 
-use crate::{placement, DroppedItem, InteractionTarget, Inventory, ItemStack, MiningState};
+use crate::{
+    placement, DroppedItem, InteractionTarget, Inventory, InventoryDrag, ItemStack, MiningState,
+};
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
+pub enum InventoryPointerIntent {
+    BeginDrag(usize),
+    EndDrag(Option<usize>),
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct PlayerIntent {
     pub mine_held: bool,
     pub place_pressed: bool,
     pub hotbar_delta: i32,
     pub hotbar_slot: Option<usize>,
     pub toggle_inventory: bool,
+    pub inventory_pointers: Vec<InventoryPointerIntent>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -25,6 +34,7 @@ pub struct GameFrameEvents {
 #[derive(Debug, Clone)]
 pub struct PlayerGameplayState {
     pub inventory: Inventory,
+    pub inventory_drag: InventoryDrag,
     pub selected_hotbar_slot: usize,
     pub mining: MiningState,
     pub target: Option<InteractionTarget>,
@@ -43,6 +53,7 @@ impl PlayerGameplayState {
     pub fn new(interaction_reach: f32) -> Self {
         Self {
             inventory: Inventory::player_default(),
+            inventory_drag: InventoryDrag::default(),
             selected_hotbar_slot: 0,
             mining: MiningState::idle(),
             target: None,
@@ -71,6 +82,15 @@ impl PlayerGameplayState {
         if intent.toggle_inventory {
             self.inventory_open = !self.inventory_open;
             self.mining.reset();
+            if !self.inventory_open {
+                self.inventory.cancel_drag(&mut self.inventory_drag);
+            }
+        }
+
+        if self.inventory_open {
+            for pointer in intent.inventory_pointers {
+                self.apply_inventory_pointer(pointer, content);
+            }
         }
 
         if let Some(slot) = intent.hotbar_slot {
@@ -112,6 +132,22 @@ impl PlayerGameplayState {
         }
         let current = self.selected_hotbar_slot as i32;
         self.selected_hotbar_slot = (current + delta).rem_euclid(len) as usize;
+    }
+
+    fn apply_inventory_pointer(
+        &mut self,
+        pointer: InventoryPointerIntent,
+        content: &CompiledContent,
+    ) {
+        match pointer {
+            InventoryPointerIntent::BeginDrag(slot) => {
+                self.inventory.begin_drag(slot, &mut self.inventory_drag);
+            }
+            InventoryPointerIntent::EndDrag(slot) => {
+                self.inventory
+                    .finish_drag(slot, &mut self.inventory_drag, content);
+            }
+        }
     }
 
     fn update_mining(

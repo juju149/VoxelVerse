@@ -1,5 +1,5 @@
 use bytemuck::{Pod, Zeroable};
-use glam::Vec3;
+use glam::{Vec2, Vec3};
 use glyphon::{
     Attrs, Buffer, Family, FontSystem, Metrics, Resolution, Shaping, SwashCache, TextArea,
     TextAtlas, TextBounds, TextRenderer as GlyphRenderer,
@@ -20,7 +20,10 @@ use vv_planet::CoordSystem;
 use vv_registry::{BlockContent, BlockRenderSource, CompiledContent, CompiledItemKind, ItemId};
 use vv_world_runtime::PlanetData;
 
-use crate::{AnyKey, ChunkMesh, Frustum, LodAnimator};
+use crate::{
+    gameplay_ui::{GameplayUiLayout, RectPx},
+    AnyKey, ChunkMesh, Frustum, LodAnimator,
+};
 
 // --- Uniform structs --------------------------------------------------------
 
@@ -107,12 +110,12 @@ pub struct Renderer<'a> {
     guide_v_buf: wgpu::Buffer,
     guide_i_buf: wgpu::Buffer,
     guide_inds: u32,
-    cross_v_buf: wgpu::Buffer,
-    cross_i_buf: wgpu::Buffer,
-    cross_inds: u32,
     cursor_v_buf: wgpu::Buffer,
     cursor_i_buf: wgpu::Buffer,
     cursor_inds: u32,
+    break_v_buf: wgpu::Buffer,
+    break_i_buf: wgpu::Buffer,
+    break_inds: u32,
     drop_v_buf: wgpu::Buffer,
     drop_i_buf: wgpu::Buffer,
     drop_inds: u32,
@@ -461,8 +464,6 @@ impl<'a> Renderer<'a> {
 
         let (pv, pi) = MeshGen::generate_cylinder(0.4, 1.8, 16);
         let (gv, gi) = MeshGen::generate_sphere_guide(1.0, 64);
-        let (cv, ci) = MeshGen::generate_crosshair();
-
         let mk_vbuf = |v: &[Vertex]| {
             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
@@ -482,9 +483,6 @@ impl<'a> Renderer<'a> {
         let player_i_buf = mk_ibuf(&pi);
         let guide_v_buf = mk_vbuf(&gv);
         let guide_i_buf = mk_ibuf(&gi);
-        let cross_v_buf = mk_vbuf(&cv);
-        let cross_i_buf = mk_ibuf(&ci);
-
         let mk_dyn_vbuf = |label, size| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
@@ -504,6 +502,8 @@ impl<'a> Renderer<'a> {
 
         let cursor_v_buf = mk_dyn_vbuf("Cursor V", 4096);
         let cursor_i_buf = mk_dyn_ibuf("Cursor I", 4096);
+        let break_v_buf = mk_dyn_vbuf("Block Break V", 65536);
+        let break_i_buf = mk_dyn_ibuf("Block Break I", 65536);
         let collision_v_buf = mk_dyn_vbuf("Collision V", 65536);
         let collision_i_buf = mk_dyn_ibuf("Collision I", 65536);
         let console_v_buf = mk_dyn_vbuf("Console V", 1024);
@@ -595,12 +595,12 @@ impl<'a> Renderer<'a> {
             guide_v_buf,
             guide_i_buf,
             guide_inds: gi.len() as u32,
-            cross_v_buf,
-            cross_i_buf,
-            cross_inds: ci.len() as u32,
             cursor_v_buf,
             cursor_i_buf,
             cursor_inds: 0,
+            break_v_buf,
+            break_i_buf,
+            break_inds: 0,
             drop_v_buf,
             drop_i_buf,
             drop_inds: 0,
@@ -911,6 +911,20 @@ impl<'a> Renderer<'a> {
         }
     }
 
+    pub fn inventory_slot_at(
+        &self,
+        gameplay: &PlayerGameplayState,
+        mouse_pos: Vec2,
+    ) -> Option<usize> {
+        GameplayUiLayout::new(
+            self.config.width as f32,
+            self.config.height as f32,
+            &gameplay.inventory,
+            gameplay.inventory_open,
+        )
+        .inventory_slot_at(mouse_pos)
+    }
+
     pub fn refresh_neighbors(&mut self, id: BlockId, planet: &PlanetData) {
         let u_c = id.u / CHUNK_SIZE;
         let v_c = id.v / CHUNK_SIZE;
@@ -988,7 +1002,8 @@ impl<'a> Renderer<'a> {
         content: &CompiledContent,
     ) {
         self.update_console_mesh(console.height_fraction);
-        self.update_gameplay_ui_mesh(gameplay, content);
+        self.update_gameplay_ui_mesh(controller, gameplay, content);
+        self.update_block_break_feedback(planet, gameplay);
         self.update_dropped_item_mesh(gameplay, content);
 
         if controller.show_collisions {
@@ -1244,6 +1259,14 @@ impl<'a> Renderer<'a> {
                 pass.set_index_buffer(self.cursor_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.cursor_inds, 0, 0..1);
             }
+            if self.break_inds > 0 {
+                pass.set_pipeline(&self.pipeline_fill);
+                pass.set_bind_group(0, &self.global_bind, &[]);
+                pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_vertex_buffer(0, self.break_v_buf.slice(..));
+                pass.set_index_buffer(self.break_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.break_inds, 0, 0..1);
+            }
             if self.drop_inds > 0 {
                 pass.set_pipeline(&self.pipeline_fill);
                 pass.set_bind_group(0, &self.global_bind, &[]);
@@ -1251,14 +1274,6 @@ impl<'a> Renderer<'a> {
                 pass.set_vertex_buffer(0, self.drop_v_buf.slice(..));
                 pass.set_index_buffer(self.drop_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.drop_inds, 0, 0..1);
-            }
-            if controller.first_person {
-                pass.set_pipeline(&self.pipeline_line);
-                pass.set_bind_group(0, &self.global_bind_identity, &[]);
-                pass.set_bind_group(1, &self.local_bind_identity, &[]);
-                pass.set_vertex_buffer(0, self.cross_v_buf.slice(..));
-                pass.set_index_buffer(self.cross_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..self.cross_inds, 0, 0..1);
             }
             if self.console_inds > 0 {
                 pass.set_pipeline(&self.pipeline_ui);
@@ -1347,7 +1362,7 @@ impl<'a> Renderer<'a> {
             );
             text_buffers.push((fps_buf, 10.0, 5.0));
 
-            self.push_gameplay_text(gameplay, &mut text_buffers);
+            self.push_gameplay_text(controller, gameplay, &mut text_buffers);
 
             for (buf, x, y) in &text_buffers {
                 text_areas.push(TextArea {
@@ -1405,6 +1420,7 @@ impl<'a> Renderer<'a> {
 
     fn update_gameplay_ui_mesh(
         &mut self,
+        controller: &Controller,
         gameplay: &PlayerGameplayState,
         content: &CompiledContent,
     ) {
@@ -1414,20 +1430,58 @@ impl<'a> Renderer<'a> {
 
         let w = self.config.width as f32;
         let h = self.config.height as f32;
-        let slot = 42.0;
-        let gap = 4.0;
-        let hotbar_len = gameplay.inventory.hotbar_len();
-        let total_w = hotbar_len as f32 * slot + (hotbar_len.saturating_sub(1)) as f32 * gap;
-        let hotbar_x = (w - total_w) * 0.5;
-        let hotbar_y = h - slot - 18.0;
+        let layout = GameplayUiLayout::new(w, h, &gameplay.inventory, gameplay.inventory_open);
+        self.push_crosshair(controller, gameplay, &mut verts, &mut inds, &mut idx);
 
-        for (i, slot_data) in gameplay.inventory.hotbar_slots().iter().enumerate() {
-            let x = hotbar_x + i as f32 * (slot + gap);
-            let selected = i == gameplay.selected_hotbar_slot;
-            let border = if selected {
-                [0.95, 0.9, 0.55]
-            } else {
-                [0.22, 0.23, 0.24]
+        if !gameplay.inventory_open {
+            for slot in &layout.hotbar_slots {
+                let selected = slot.index == gameplay.selected_hotbar_slot;
+                self.push_slot(
+                    &mut verts,
+                    &mut inds,
+                    &mut idx,
+                    slot.rect,
+                    selected,
+                    gameplay.inventory.slots()[slot.index].stack.map(|stack| {
+                        (
+                            self.item_color(stack.item, content),
+                            gameplay.inventory_drag.source_slot == Some(slot.index),
+                        )
+                    }),
+                );
+            }
+        }
+
+        if gameplay.inventory_open {
+            if let Some(panel) = layout.inventory_panel {
+                self.push_panel(&mut verts, &mut inds, &mut idx, panel);
+            }
+
+            for slot in &layout.inventory_slots {
+                self.push_slot(
+                    &mut verts,
+                    &mut inds,
+                    &mut idx,
+                    slot.rect,
+                    slot.index == gameplay.selected_hotbar_slot,
+                    gameplay.inventory.slots()[slot.index].stack.map(|stack| {
+                        (
+                            self.item_color(stack.item, content),
+                            gameplay.inventory_drag.source_slot == Some(slot.index),
+                        )
+                    }),
+                );
+            }
+        }
+
+        if let Some(stack) = gameplay.inventory_drag.stack {
+            let color = self.item_color(stack.item, content);
+            let size = layout.slot * 0.78;
+            let rect = RectPx {
+                x: controller.mouse_pos.x - size * 0.5,
+                y: controller.mouse_pos.y - size * 0.5,
+                w: size,
+                h: size,
             };
             Self::push_rect_px(
                 &mut verts,
@@ -1435,164 +1489,15 @@ impl<'a> Renderer<'a> {
                 &mut idx,
                 w,
                 h,
-                x - 2.0,
-                hotbar_y - 2.0,
-                slot + 4.0,
-                slot + 4.0,
-                border,
+                rect.x - 3.0 * layout.scale,
+                rect.y - 3.0 * layout.scale,
+                rect.w + 6.0 * layout.scale,
+                rect.h + 6.0 * layout.scale,
+                [0.02, 0.02, 0.02],
             );
             Self::push_rect_px(
-                &mut verts,
-                &mut inds,
-                &mut idx,
-                w,
-                h,
-                x,
-                hotbar_y,
-                slot,
-                slot,
-                [0.07, 0.08, 0.09],
+                &mut verts, &mut inds, &mut idx, w, h, rect.x, rect.y, rect.w, rect.h, color,
             );
-            Self::push_rect_px(
-                &mut verts,
-                &mut inds,
-                &mut idx,
-                w,
-                h,
-                x + 4.0,
-                hotbar_y + 4.0,
-                slot - 8.0,
-                slot - 8.0,
-                [0.13, 0.14, 0.15],
-            );
-            if let Some(stack) = slot_data.stack {
-                let color = self.item_color(stack.item, content);
-                Self::push_rect_px(
-                    &mut verts,
-                    &mut inds,
-                    &mut idx,
-                    w,
-                    h,
-                    x + 10.0,
-                    hotbar_y + 9.0,
-                    slot - 20.0,
-                    slot - 18.0,
-                    color,
-                );
-            }
-        }
-
-        if gameplay.mining.progress > 0.0 {
-            let bar_w = 128.0;
-            let bar_h = 9.0;
-            let x = (w - bar_w) * 0.5;
-            let y = h * 0.55;
-            Self::push_rect_px(
-                &mut verts,
-                &mut inds,
-                &mut idx,
-                w,
-                h,
-                x,
-                y,
-                bar_w,
-                bar_h,
-                [0.04, 0.04, 0.04],
-            );
-            Self::push_rect_px(
-                &mut verts,
-                &mut inds,
-                &mut idx,
-                w,
-                h,
-                x + 2.0,
-                y + 2.0,
-                (bar_w - 4.0) * gameplay.mining.progress,
-                bar_h - 4.0,
-                [0.95, 0.82, 0.35],
-            );
-        }
-
-        if gameplay.inventory_open {
-            let panel_w = 9.0 * slot + 8.0 * gap + 34.0;
-            let panel_h = 4.0 * slot + 3.0 * gap + 58.0;
-            let panel_x = (w - panel_w) * 0.5;
-            let panel_y = (h - panel_h) * 0.5;
-            Self::push_rect_px(
-                &mut verts,
-                &mut inds,
-                &mut idx,
-                w,
-                h,
-                panel_x,
-                panel_y,
-                panel_w,
-                panel_h,
-                [0.06, 0.065, 0.07],
-            );
-            Self::push_rect_px(
-                &mut verts,
-                &mut inds,
-                &mut idx,
-                w,
-                h,
-                panel_x + 4.0,
-                panel_y + 4.0,
-                panel_w - 8.0,
-                panel_h - 8.0,
-                [0.11, 0.115, 0.12],
-            );
-
-            for visual_slot in 0..36 {
-                let inventory_index = if visual_slot < 27 {
-                    visual_slot + 9
-                } else {
-                    visual_slot - 27
-                };
-                let col = visual_slot % 9;
-                let row = visual_slot / 9;
-                let x = panel_x + 17.0 + col as f32 * (slot + gap);
-                let y = panel_y + 36.0 + row as f32 * (slot + gap);
-                Self::push_rect_px(
-                    &mut verts,
-                    &mut inds,
-                    &mut idx,
-                    w,
-                    h,
-                    x - 1.0,
-                    y - 1.0,
-                    slot + 2.0,
-                    slot + 2.0,
-                    [0.035, 0.04, 0.045],
-                );
-                Self::push_rect_px(
-                    &mut verts,
-                    &mut inds,
-                    &mut idx,
-                    w,
-                    h,
-                    x,
-                    y,
-                    slot,
-                    slot,
-                    [0.15, 0.155, 0.16],
-                );
-                if let Some(stack) = gameplay.inventory.slots()[inventory_index].stack {
-                    let color = self.item_color(stack.item, content);
-                    Self::push_rect_px(
-                        &mut verts,
-                        &mut inds,
-                        &mut idx,
-                        w,
-                        h,
-                        x + 10.0,
-                        y + 9.0,
-                        slot - 20.0,
-                        slot - 18.0,
-                        color,
-                    );
-                }
-            }
         }
 
         if !verts.is_empty() {
@@ -1602,6 +1507,302 @@ impl<'a> Renderer<'a> {
                 .write_buffer(&self.ui_i_buf, 0, bytemuck::cast_slice(&inds));
         }
         self.ui_inds = inds.len() as u32;
+    }
+
+    fn push_crosshair(
+        &self,
+        controller: &Controller,
+        gameplay: &PlayerGameplayState,
+        verts: &mut Vec<Vertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+    ) {
+        if !controller.first_person || gameplay.inventory_open {
+            return;
+        }
+        let w = self.config.width as f32;
+        let h = self.config.height as f32;
+        let scale = (w.min(h) / 720.0).clamp(0.75, 1.35);
+        let cx = w * 0.5;
+        let cy = h * 0.5;
+        let thickness = (2.0 * scale).max(1.5);
+        let gap = 6.0 * scale;
+        let arm = 10.0 * scale;
+        let active = gameplay.target.is_some();
+        let mining = gameplay.mining.progress > 0.0;
+        let color = if mining {
+            [0.95, 0.78, 0.35]
+        } else if active {
+            [0.92, 0.9, 0.78]
+        } else {
+            [0.82, 0.86, 0.88]
+        };
+        let shadow = [0.015, 0.018, 0.02];
+        for (dx, dy, ww, hh) in [
+            (-gap - arm, -thickness * 0.5, arm, thickness),
+            (gap, -thickness * 0.5, arm, thickness),
+            (-thickness * 0.5, -gap - arm, thickness, arm),
+            (-thickness * 0.5, gap, thickness, arm),
+        ] {
+            Self::push_rect_px(
+                verts,
+                inds,
+                idx,
+                w,
+                h,
+                cx + dx + scale,
+                cy + dy + scale,
+                ww,
+                hh,
+                shadow,
+            );
+            Self::push_rect_px(verts, inds, idx, w, h, cx + dx, cy + dy, ww, hh, color);
+        }
+    }
+
+    fn push_panel(
+        &self,
+        verts: &mut Vec<Vertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        rect: RectPx,
+    ) {
+        let w = self.config.width as f32;
+        let h = self.config.height as f32;
+        Self::push_rect_px(
+            verts,
+            inds,
+            idx,
+            w,
+            h,
+            rect.x,
+            rect.y,
+            rect.w,
+            rect.h,
+            [0.055, 0.06, 0.065],
+        );
+        Self::push_rect_px(
+            verts,
+            inds,
+            idx,
+            w,
+            h,
+            rect.x + 4.0,
+            rect.y + 4.0,
+            rect.w - 8.0,
+            rect.h - 8.0,
+            [0.115, 0.12, 0.125],
+        );
+    }
+
+    fn push_slot(
+        &self,
+        verts: &mut Vec<Vertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        rect: RectPx,
+        selected: bool,
+        item: Option<([f32; 3], bool)>,
+    ) {
+        let w = self.config.width as f32;
+        let h = self.config.height as f32;
+        let border = if selected {
+            [0.95, 0.88, 0.52]
+        } else {
+            [0.19, 0.2, 0.21]
+        };
+        let inset = (rect.w * 0.1).max(3.0);
+        Self::push_rect_px(
+            verts,
+            inds,
+            idx,
+            w,
+            h,
+            rect.x - 2.0,
+            rect.y - 2.0,
+            rect.w + 4.0,
+            rect.h + 4.0,
+            border,
+        );
+        Self::push_rect_px(
+            verts,
+            inds,
+            idx,
+            w,
+            h,
+            rect.x,
+            rect.y,
+            rect.w,
+            rect.h,
+            [0.07, 0.075, 0.08],
+        );
+        Self::push_rect_px(
+            verts,
+            inds,
+            idx,
+            w,
+            h,
+            rect.x + inset,
+            rect.y + inset,
+            rect.w - inset * 2.0,
+            rect.h - inset * 2.0,
+            [0.135, 0.14, 0.145],
+        );
+        if let Some((color, hidden_by_drag)) = item {
+            if hidden_by_drag {
+                return;
+            }
+            let item_inset = rect.w * 0.26;
+            Self::push_rect_px(
+                verts,
+                inds,
+                idx,
+                w,
+                h,
+                rect.x + item_inset,
+                rect.y + item_inset * 0.85,
+                rect.w - item_inset * 2.0,
+                rect.h - item_inset * 1.75,
+                color,
+            );
+        }
+    }
+
+    fn update_block_break_feedback(&mut self, planet: &PlanetData, gameplay: &PlayerGameplayState) {
+        let progress = gameplay.mining.progress;
+        let Some(id) = gameplay.mining.target else {
+            self.break_inds = 0;
+            return;
+        };
+        if progress <= 0.01 || !planet.exists(id) {
+            self.break_inds = 0;
+            return;
+        }
+
+        let res = planet.resolution;
+        let p =
+            |u, v, l| CoordSystem::get_vertex_pos(id.face, id.u + u, id.v + v, id.layer + l, res);
+        let corners = [
+            p(0, 0, 0),
+            p(1, 0, 0),
+            p(1, 1, 0),
+            p(0, 1, 0),
+            p(0, 0, 1),
+            p(1, 0, 1),
+            p(1, 1, 1),
+            p(0, 1, 1),
+        ];
+        let faces = [
+            [4, 5, 6, 7],
+            [0, 1, 2, 3],
+            [0, 4, 7, 3],
+            [1, 5, 6, 2],
+            [3, 2, 6, 7],
+            [0, 1, 5, 4],
+        ];
+        let cracks: [((f32, f32), (f32, f32)); 8] = [
+            ((0.50, 0.50), (0.24, 0.28)),
+            ((0.50, 0.50), (0.76, 0.34)),
+            ((0.50, 0.50), (0.42, 0.78)),
+            ((0.42, 0.78), (0.25, 0.88)),
+            ((0.76, 0.34), (0.90, 0.22)),
+            ((0.24, 0.28), (0.14, 0.48)),
+            ((0.50, 0.50), (0.68, 0.74)),
+            ((0.68, 0.74), (0.83, 0.84)),
+        ];
+        let visible = ((progress * cracks.len() as f32).ceil() as usize).clamp(1, cracks.len());
+        let mut verts = Vec::new();
+        let mut inds = Vec::new();
+        let mut idx = 0u32;
+        let color = [0.045, 0.035, 0.025];
+        let width = 0.018 + progress * 0.018;
+
+        for face in faces {
+            let face_corners = [
+                corners[face[0]],
+                corners[face[1]],
+                corners[face[2]],
+                corners[face[3]],
+            ];
+            let normal = (face_corners[1] - face_corners[0])
+                .cross(face_corners[2] - face_corners[0])
+                .normalize_or_zero();
+            for ((sx, sy), (ex, ey)) in cracks.iter().take(visible) {
+                let start = Self::face_point(face_corners, *sx, *sy);
+                let raw_end = Self::face_point(face_corners, *ex, *ey);
+                let end = start + (raw_end - start) * progress.clamp(0.2, 1.0);
+                let lift = normal * 0.025;
+                Self::push_world_segment(
+                    &mut verts,
+                    &mut inds,
+                    &mut idx,
+                    start + lift,
+                    end + lift,
+                    width,
+                    color,
+                );
+            }
+        }
+
+        if !verts.is_empty() {
+            self.queue
+                .write_buffer(&self.break_v_buf, 0, bytemuck::cast_slice(&verts));
+            self.queue
+                .write_buffer(&self.break_i_buf, 0, bytemuck::cast_slice(&inds));
+        }
+        self.break_inds = inds.len() as u32;
+    }
+
+    fn face_point(corners: [Vec3; 4], u: f32, v: f32) -> Vec3 {
+        let bottom = corners[0].lerp(corners[1], u);
+        let top = corners[3].lerp(corners[2], u);
+        bottom.lerp(top, v)
+    }
+
+    fn push_world_segment(
+        verts: &mut Vec<Vertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        a: Vec3,
+        b: Vec3,
+        thickness: f32,
+        color: [f32; 3],
+    ) {
+        let dir = b - a;
+        if dir.length_squared() <= f32::EPSILON {
+            return;
+        }
+        let dir = dir.normalize();
+        let ref_up = if dir.dot(Vec3::Y).abs() > 0.9 {
+            Vec3::X
+        } else {
+            Vec3::Y
+        };
+        let right = dir.cross(ref_up).normalize_or_zero() * thickness;
+        let up = dir.cross(right).normalize_or_zero() * thickness;
+        let normal = [0.0, 0.0, 1.0];
+        let base = *idx;
+        for off in [-right - up, right - up, right + up, -right + up] {
+            verts.push(Vertex {
+                pos: (a + off).to_array(),
+                color,
+                normal,
+            });
+            verts.push(Vertex {
+                pos: (b + off).to_array(),
+                color,
+                normal,
+            });
+        }
+        for (i0, i1, i2, i3) in [(0u32, 1, 3, 2), (2, 3, 5, 4), (4, 5, 7, 6), (6, 7, 1, 0)] {
+            inds.push(base + i0);
+            inds.push(base + i1);
+            inds.push(base + i2);
+            inds.push(base + i2);
+            inds.push(base + i3);
+            inds.push(base + i0);
+        }
+        *idx += 8;
     }
 
     fn update_dropped_item_mesh(
@@ -1627,57 +1828,83 @@ impl<'a> Renderer<'a> {
 
     fn push_gameplay_text(
         &mut self,
+        controller: &Controller,
         gameplay: &PlayerGameplayState,
         text_buffers: &mut Vec<(Buffer, f32, f32)>,
     ) {
         let w = self.config.width as f32;
         let h = self.config.height as f32;
-        let slot = 42.0;
-        let gap = 4.0;
-        let hotbar_len = gameplay.inventory.hotbar_len();
-        let total_w = hotbar_len as f32 * slot + (hotbar_len.saturating_sub(1)) as f32 * gap;
-        let hotbar_x = (w - total_w) * 0.5;
-        let hotbar_y = h - slot - 18.0;
+        let layout = GameplayUiLayout::new(w, h, &gameplay.inventory, gameplay.inventory_open);
 
-        for (i, slot_data) in gameplay.inventory.hotbar_slots().iter().enumerate() {
-            if let Some(stack) = slot_data.stack {
-                if stack.count > 1 {
-                    let x = hotbar_x + i as f32 * (slot + gap) + slot - 18.0;
-                    let y = hotbar_y + slot - 20.0;
-                    self.push_text(text_buffers, &stack.count.to_string(), x, y, 15.0);
+        if !gameplay.inventory_open {
+            for slot in &layout.hotbar_slots {
+                if gameplay.inventory_drag.source_slot == Some(slot.index) {
+                    continue;
+                }
+                if let Some(stack) = gameplay.inventory.slots()[slot.index].stack {
+                    if stack.count > 1 {
+                        let x = slot.rect.x + slot.rect.w - 18.0 * layout.scale;
+                        let y = slot.rect.y + slot.rect.h - 20.0 * layout.scale;
+                        self.push_text(
+                            text_buffers,
+                            &stack.count.to_string(),
+                            x,
+                            y,
+                            15.0 * layout.scale,
+                        );
+                    }
                 }
             }
         }
 
         if gameplay.inventory_open {
-            let panel_w = 9.0 * slot + 8.0 * gap + 34.0;
-            let panel_h = 4.0 * slot + 3.0 * gap + 58.0;
-            let panel_x = (w - panel_w) * 0.5;
-            let panel_y = (h - panel_h) * 0.5;
-            self.push_text(
-                text_buffers,
-                "Inventory",
-                panel_x + 17.0,
-                panel_y + 12.0,
-                16.0,
-            );
-            for visual_slot in 0..36 {
-                let inventory_index = if visual_slot < 27 {
-                    visual_slot + 9
-                } else {
-                    visual_slot - 27
-                };
-                let Some(stack) = gameplay.inventory.slots()[inventory_index].stack else {
+            if let Some(panel) = layout.inventory_panel {
+                self.push_text(
+                    text_buffers,
+                    "Backpack",
+                    panel.x + 16.0 * layout.scale,
+                    panel.y + 9.0 * layout.scale,
+                    16.0 * layout.scale,
+                );
+                self.push_text(
+                    text_buffers,
+                    "Hotbar",
+                    panel.x + 16.0 * layout.scale,
+                    panel.y + panel.h - layout.slot - 18.0 * layout.scale,
+                    13.0 * layout.scale,
+                );
+            }
+            for slot in &layout.inventory_slots {
+                if gameplay.inventory_drag.source_slot == Some(slot.index) {
+                    continue;
+                }
+                let Some(stack) = gameplay.inventory.slots()[slot.index].stack else {
                     continue;
                 };
                 if stack.count <= 1 {
                     continue;
                 }
-                let col = visual_slot % 9;
-                let row = visual_slot / 9;
-                let x = panel_x + 17.0 + col as f32 * (slot + gap) + slot - 18.0;
-                let y = panel_y + 36.0 + row as f32 * (slot + gap) + slot - 20.0;
-                self.push_text(text_buffers, &stack.count.to_string(), x, y, 15.0);
+                let x = slot.rect.x + slot.rect.w - 18.0 * layout.scale;
+                let y = slot.rect.y + slot.rect.h - 20.0 * layout.scale;
+                self.push_text(
+                    text_buffers,
+                    &stack.count.to_string(),
+                    x,
+                    y,
+                    15.0 * layout.scale,
+                );
+            }
+        }
+
+        if let Some(stack) = gameplay.inventory_drag.stack {
+            if stack.count > 1 {
+                self.push_text(
+                    text_buffers,
+                    &stack.count.to_string(),
+                    controller.mouse_pos.x + 8.0 * layout.scale,
+                    controller.mouse_pos.y + 8.0 * layout.scale,
+                    15.0 * layout.scale,
+                );
             }
         }
 

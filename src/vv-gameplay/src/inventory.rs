@@ -27,6 +27,12 @@ pub struct Inventory {
     hotbar_len: usize,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct InventoryDrag {
+    pub source_slot: Option<usize>,
+    pub stack: Option<ItemStack>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InventoryMoveError {
     SourceEmpty,
@@ -57,8 +63,20 @@ impl Inventory {
         &self.slots
     }
 
+    pub fn slot_count(&self) -> usize {
+        self.slots.len()
+    }
+
     pub fn hotbar_slots(&self) -> &[Slot] {
         &self.slots[..self.hotbar_len]
+    }
+
+    pub fn main_slots(&self) -> &[Slot] {
+        &self.slots[self.hotbar_len..]
+    }
+
+    pub fn main_start(&self) -> usize {
+        self.hotbar_len
     }
 
     pub fn hotbar_len(&self) -> usize {
@@ -170,6 +188,90 @@ impl Inventory {
         Some(ItemStack::new(stack.item, removed))
     }
 
+    pub fn begin_drag(&mut self, slot_index: usize, drag: &mut InventoryDrag) {
+        if drag.stack.is_some() {
+            self.cancel_drag(drag);
+        }
+        let Some(slot) = self.slots.get_mut(slot_index) else {
+            return;
+        };
+        let Some(stack) = slot.stack.take() else {
+            return;
+        };
+        drag.source_slot = Some(slot_index);
+        drag.stack = Some(stack);
+    }
+
+    pub fn finish_drag(
+        &mut self,
+        target_slot: Option<usize>,
+        drag: &mut InventoryDrag,
+        content: &CompiledContent,
+    ) {
+        let Some(carried) = drag.stack.take() else {
+            drag.source_slot = None;
+            return;
+        };
+        let Some(target_slot) = target_slot.filter(|slot| *slot < self.slots.len()) else {
+            drag.stack = Some(carried);
+            self.cancel_drag(drag);
+            return;
+        };
+
+        match self.slots[target_slot].stack {
+            None => {
+                self.slots[target_slot].stack = Some(carried);
+                drag.source_slot = None;
+            }
+            Some(target) if target.item == carried.item => {
+                let max = self.stack_max(carried.item, content) as u32;
+                let room = max.saturating_sub(target.count);
+                let moved = carried.count.min(room);
+                if moved > 0 {
+                    self.slots[target_slot]
+                        .stack
+                        .as_mut()
+                        .expect("target stack")
+                        .count += moved;
+                }
+                let remaining = carried.count.saturating_sub(moved);
+                if remaining > 0 {
+                    drag.stack = Some(ItemStack::new(carried.item, remaining));
+                    self.cancel_drag(drag);
+                } else {
+                    drag.source_slot = None;
+                }
+            }
+            Some(target) => {
+                self.slots[target_slot].stack = Some(carried);
+                if let Some(source_slot) = drag.source_slot.filter(|slot| *slot < self.slots.len())
+                {
+                    self.slots[source_slot].stack = Some(target);
+                } else {
+                    drag.stack = Some(target);
+                    self.cancel_drag(drag);
+                }
+                drag.source_slot = None;
+            }
+        }
+    }
+
+    pub fn cancel_drag(&mut self, drag: &mut InventoryDrag) {
+        let Some(stack) = drag.stack.take() else {
+            drag.source_slot = None;
+            return;
+        };
+        if let Some(source_slot) = drag.source_slot.filter(|slot| *slot < self.slots.len()) {
+            if self.slots[source_slot].stack.is_none() {
+                self.slots[source_slot].stack = Some(stack);
+                drag.source_slot = None;
+                return;
+            }
+        }
+        drag.stack = Some(stack);
+        drag.source_slot = None;
+    }
+
     fn stack_max(&self, item: ItemId, content: &CompiledContent) -> u8 {
         content
             .items
@@ -225,5 +327,46 @@ mod tests {
             .expect("remaining");
 
         assert_eq!(remaining.count, 3);
+    }
+
+    #[test]
+    fn drag_swaps_different_items() {
+        let (mut content, first) = content_with_item(64);
+        let second = content.items.push(
+            ContentKey::new("test", "wood").unwrap(),
+            CompiledItem {
+                display_key: None,
+                stack_max: 64,
+                tags: Vec::new(),
+                kind: CompiledItemKind::Resource,
+            },
+        );
+        let mut inventory = Inventory::new(2, 1);
+        inventory.insert_stack(ItemStack::new(first, 1), &content);
+        inventory.insert_stack(ItemStack::new(second, 2), &content);
+        let mut drag = InventoryDrag::default();
+
+        inventory.begin_drag(0, &mut drag);
+        inventory.finish_drag(Some(1), &mut drag, &content);
+
+        assert_eq!(inventory.slots()[0].stack.unwrap().item, second);
+        assert_eq!(inventory.slots()[1].stack.unwrap().item, first);
+        assert!(drag.stack.is_none());
+    }
+
+    #[test]
+    fn drag_merges_matching_items() {
+        let (content, item) = content_with_item(64);
+        let mut inventory = Inventory::new(2, 1);
+        inventory.slots[0].stack = Some(ItemStack::new(item, 32));
+        inventory.slots[1].stack = Some(ItemStack::new(item, 8));
+        let mut drag = InventoryDrag::default();
+
+        inventory.begin_drag(1, &mut drag);
+        inventory.finish_drag(Some(0), &mut drag, &content);
+
+        assert_eq!(inventory.slots()[0].stack.unwrap().count, 40);
+        assert!(inventory.slots()[1].stack.is_none());
+        assert!(drag.stack.is_none());
     }
 }

@@ -7,8 +7,10 @@ pub mod player;
 pub mod player_state;
 
 pub use console::Console;
-pub use inventory::{Inventory, InventoryMoveError, ItemStack, Slot};
+pub use inventory::{Inventory, InventoryDrag, InventoryMoveError, ItemStack, Slot};
 pub use mining::{InteractionTarget, MiningState};
 pub use pickup::DroppedItem;
 pub use player::Player;
-pub use player_state::{GameFrameEvents, PlayerGameplayState, PlayerIntent};
+pub use player_state::{
+    GameFrameEvents, InventoryPointerIntent, PlayerGameplayState, PlayerIntent,
+};

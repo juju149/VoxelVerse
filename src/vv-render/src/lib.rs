@@ -1,5 +1,6 @@
 pub mod chunk_mesh;
 pub mod frustum;
+mod gameplay_ui;
 pub mod lod_animator;
 pub mod renderer;
 
