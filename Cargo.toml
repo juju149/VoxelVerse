@@ -1,17 +1,5 @@
 [workspace]
 members = [
-    "vv-core",
-    "vv-config",
-    "vv-planet",
-    "vv-world-gen",
-    "vv-world-runtime",
-    "vv-mesh",
-    "vv-physics",
-    "vv-gameplay",
-    "vv-input",
-    "vv-render",
-    "vv-app",
+    "src/vv-*",
 ]
 resolver = "2"
-
-
