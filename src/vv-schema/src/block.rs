@@ -111,6 +111,12 @@ pub struct BlockRenderDef {
     pub emits_light: u8,
     pub emission: Emission,
     pub texture: TextureLayout,
+    /// Logical texture resources used by `texture`.
+    ///
+    /// Empty means the renderer should keep using the fallback color.
+    /// References are logical `namespace:name` resources, not filesystem paths.
+    #[serde(default)]
+    pub textures: BlockTextureRefs,
     /// Dynamic tint (grass, leaves, water based on biome).
     pub tint: TintMode,
     /// Custom model override. Absent = standard cube.
@@ -127,6 +133,7 @@ impl Default for BlockRenderDef {
             emits_light: 0,
             emission: Emission::default(),
             texture: TextureLayout::Single,
+            textures: BlockTextureRefs::default(),
             tint: TintMode::None,
             model: None,
         }
@@ -148,6 +155,21 @@ impl Default for TextureLayout {
     fn default() -> Self {
         TextureLayout::Single
     }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct BlockTextureRefs {
+    /// Texture used by `single`, and fallback for unspecified faces.
+    pub single: Option<ResourceRef>,
+    /// Shared side texture used by `sides`.
+    pub side: Option<ResourceRef>,
+    pub top: Option<ResourceRef>,
+    pub bottom: Option<ResourceRef>,
+    pub north: Option<ResourceRef>,
+    pub south: Option<ResourceRef>,
+    pub east: Option<ResourceRef>,
+    pub west: Option<ResourceRef>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

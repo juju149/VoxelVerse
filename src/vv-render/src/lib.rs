@@ -1,4 +1,5 @@
 mod atmosphere;
+mod block_atlas;
 mod block_feedback;
 pub mod chunk_mesh;
 pub mod frustum;

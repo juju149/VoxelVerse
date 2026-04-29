@@ -3,18 +3,33 @@ use glam::Vec3;
 use std::collections::{HashMap, HashSet};
 use vv_core::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
 use vv_planet::CoordSystem;
-use vv_registry::{BlockId as ContentBlockId, BlockRenderSource};
+use vv_registry::{BlockId as ContentBlockId, BlockRenderSource, CompiledBlockFace, TextureId};
 use vv_world_runtime::{ChunkMods, PlanetData};
 
 // --- Vertex format ----------------------------------------------------------
 
-/// GPU-ready vertex: position, per-vertex colour, surface normal.
+/// GPU-ready vertex: position, per-vertex colour, surface normal, atlas UV and texture id.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct Vertex {
     pub pos: [f32; 3],
     pub color: [f32; 3],
     pub normal: [f32; 3],
+    pub uv: [f32; 2],
+    /// -1 means no block texture; shader uses the fallback color directly.
+    pub texture_id: i32,
+}
+
+impl Vertex {
+    pub fn untextured(pos: [f32; 3], color: [f32; 3], normal: [f32; 3]) -> Self {
+        Self {
+            pos,
+            color,
+            normal,
+            uv: [0.0, 0.0],
+            texture_id: -1,
+        }
+    }
 }
 
 // --- CPU mesh builder -------------------------------------------------------
@@ -255,10 +270,17 @@ impl MeshGen {
         let o_tl = p(0, 1, 1);
         let o_tr = p(1, 1, 1);
 
-        let apply =
-            |ao: f32| -> [f32; 3] { [base_color[0] * ao, base_color[1] * ao, base_color[2] * ao] };
+        let apply = |ao: f32, texture_id: i32| -> [f32; 3] {
+            if texture_id >= 0 {
+                let light = light_val * ao;
+                [light, light, light]
+            } else {
+                [base_color[0] * ao, base_color[1] * ao, base_color[2] * ao]
+            }
+        };
 
         if !has_top {
+            let texture_id = Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Top));
             let n = |u, v| check(id.face, 1, u, v);
             let ao_bl = Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1));
             let ao_br = Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1));
@@ -269,34 +291,89 @@ impl MeshGen {
                 inds,
                 idx,
                 [o_bl, o_br, o_tr, o_tl],
-                [apply(ao_bl), apply(ao_br), apply(ao_tr), apply(ao_tl)],
+                [
+                    apply(ao_bl, texture_id),
+                    apply(ao_br, texture_id),
+                    apply(ao_tr, texture_id),
+                    apply(ao_tl, texture_id),
+                ],
+                texture_id,
                 true,
             );
         }
         if !has_btm {
-            let c = apply(0.4);
+            let texture_id =
+                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Bottom));
+            let c = apply(0.4, texture_id);
             Self::quad(
                 verts,
                 inds,
                 idx,
                 [i_tl, i_tr, i_br, i_bl],
                 [c, c, c, c],
+                texture_id,
                 true,
             );
         }
-        let side_c = apply(0.8);
-        let sc = [side_c, side_c, side_c, side_c];
         if !has_front {
-            Self::quad(verts, inds, idx, [i_bl, i_br, o_br, o_bl], sc, false);
+            let texture_id =
+                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::North));
+            let side_c = apply(0.8, texture_id);
+            let sc = [side_c, side_c, side_c, side_c];
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_bl, i_br, o_br, o_bl],
+                sc,
+                texture_id,
+                false,
+            );
         }
         if !has_back {
-            Self::quad(verts, inds, idx, [o_tl, o_tr, i_tr, i_tl], sc, false);
+            let texture_id =
+                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::South));
+            let side_c = apply(0.8, texture_id);
+            let sc = [side_c, side_c, side_c, side_c];
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [o_tl, o_tr, i_tr, i_tl],
+                sc,
+                texture_id,
+                false,
+            );
         }
         if !has_left {
-            Self::quad(verts, inds, idx, [i_tl, i_bl, o_bl, o_tl], sc, false);
+            let texture_id =
+                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::West));
+            let side_c = apply(0.8, texture_id);
+            let sc = [side_c, side_c, side_c, side_c];
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_tl, i_bl, o_bl, o_tl],
+                sc,
+                texture_id,
+                false,
+            );
         }
         if !has_right {
-            Self::quad(verts, inds, idx, [i_br, i_tr, o_tr, o_br], sc, false);
+            let texture_id =
+                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::East));
+            let side_c = apply(0.8, texture_id);
+            let sc = [side_c, side_c, side_c, side_c];
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_br, i_tr, o_tr, o_br],
+                sc,
+                texture_id,
+                false,
+            );
         }
     }
 
@@ -359,6 +436,7 @@ impl MeshGen {
         idx: &mut u32,
         pos: [Vec3; 4],
         colors: [[f32; 3]; 4],
+        texture_id: i32,
         force_radial: bool,
     ) {
         let normal = if force_radial {
@@ -372,15 +450,22 @@ impl MeshGen {
                 .to_array()
         };
         let base = *idx;
-        for (p, c) in pos.iter().zip(colors.iter()) {
+        let uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+        for ((p, c), uv) in pos.iter().zip(colors.iter()).zip(uvs) {
             verts.push(Vertex {
                 pos: p.to_array(),
                 color: *c,
                 normal,
+                uv,
+                texture_id,
             });
         }
         inds.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
         *idx += 4;
+    }
+
+    fn face_texture_id(texture: Option<TextureId>) -> i32 {
+        texture.map(|id| id.raw() as i32).unwrap_or(-1)
     }
 
     // --- LOD heightmap tile -------------------------------------------------
@@ -397,14 +482,19 @@ impl MeshGen {
         let mut inds = Vec::new();
         let row_len = grid_res + 1;
 
-        let sample = |gx: i32, gy: i32| -> (Vec3, [f32; 3]) {
+        let sample = |gx: i32, gy: i32| -> (Vec3, [f32; 3], [f32; 2], i32) {
             let step_u = (gx as i64 * key.size as i64) / grid_res as i64;
             let step_v = (gy as i64 * key.size as i64) / grid_res as i64;
             let abs_u = (key.x as i64 + step_u).clamp(0, data.resolution as i64) as u32;
             let abs_v = (key.y as i64 + step_v).clamp(0, data.resolution as i64) as u32;
-            let (layer, color) = Self::lod_visual_surface(key.face, abs_u, abs_v, data, blocks);
+            let (layer, color, texture_id) =
+                Self::lod_visual_surface(key.face, abs_u, abs_v, data, blocks);
             let pos = CoordSystem::get_vertex_pos(key.face, abs_u, abs_v, layer, data.geometry);
-            (pos, color)
+            let uv = [
+                (abs_u as f32 / data.resolution.max(1) as f32).fract(),
+                (abs_v as f32 / data.resolution.max(1) as f32).fract(),
+            ];
+            (pos, color, uv, texture_id)
         };
         let padded_len = grid_res as usize + 3;
         let mut samples = Vec::with_capacity(padded_len * padded_len);
@@ -413,7 +503,10 @@ impl MeshGen {
                 samples.push(sample(ux, vy));
             }
         }
-        let sample_at = |ux: i32, vy: i32, samples: &[(Vec3, [f32; 3])]| -> (Vec3, [f32; 3]) {
+        let sample_at = |ux: i32,
+                         vy: i32,
+                         samples: &[(Vec3, [f32; 3], [f32; 2], i32)]|
+         -> (Vec3, [f32; 3], [f32; 2], i32) {
             let x = (ux + 1) as usize;
             let y = (vy + 1) as usize;
             samples[y * padded_len + x]
@@ -423,11 +516,11 @@ impl MeshGen {
             for ux in 0..=grid_res {
                 let ux = ux as i32;
                 let vy = vy as i32;
-                let (pos, mut color) = sample_at(ux, vy, &samples);
-                let (p_right, _) = sample_at(ux + 1, vy, &samples);
-                let (p_left, _) = sample_at(ux - 1, vy, &samples);
-                let (p_down, _) = sample_at(ux, vy + 1, &samples);
-                let (p_up, _) = sample_at(ux, vy - 1, &samples);
+                let (pos, mut color, uv, texture_id) = sample_at(ux, vy, &samples);
+                let (p_right, _, _, _) = sample_at(ux + 1, vy, &samples);
+                let (p_left, _, _, _) = sample_at(ux - 1, vy, &samples);
+                let (p_down, _, _, _) = sample_at(ux, vy + 1, &samples);
+                let (p_up, _, _, _) = sample_at(ux, vy - 1, &samples);
                 let tangent_u = p_right - p_left;
                 let tangent_v = p_down - p_up;
                 let mut normal = tangent_u.cross(tangent_v).normalize();
@@ -444,6 +537,8 @@ impl MeshGen {
                     pos: pos.to_array(),
                     color,
                     normal: normal.to_array(),
+                    uv,
+                    texture_id,
                 });
             }
         }
@@ -479,6 +574,8 @@ impl MeshGen {
                     pos: (p + down).to_array(),
                     color: src_v.color,
                     normal: src_v.normal,
+                    uv: src_v.uv,
+                    texture_id: src_v.texture_id,
                 });
             }
             let len = coord_pairs.len() as u32;
@@ -524,14 +621,21 @@ impl MeshGen {
         v: u32,
         data: &PlanetData,
         blocks: &impl BlockRenderSource,
-    ) -> (u32, [f32; 3]) {
+    ) -> (u32, [f32; 3], i32) {
         let surface = data.terrain.get_height(face, u, v);
         for offset in 0..=8 {
             let layer = surface.saturating_sub(offset);
             let block = data.terrain.get_block(face, u, v, layer);
             if let Some(render) = blocks.block_render(block) {
                 if !render.translucent {
-                    return (layer, render.color);
+                    let texture_id =
+                        Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Top));
+                    let color = if texture_id >= 0 {
+                        [1.0, 1.0, 1.0]
+                    } else {
+                        render.color
+                    };
+                    return (layer, color, texture_id);
                 }
             }
         }
@@ -541,7 +645,17 @@ impl MeshGen {
             .block_render(block)
             .map(|render| render.color)
             .unwrap_or([0.45, 0.70, 0.45]);
-        (surface, color)
+        let texture_id = blocks
+            .block_render(block)
+            .and_then(|render| render.texture_for_face(CompiledBlockFace::Top))
+            .map(|id| id.raw() as i32)
+            .unwrap_or(-1);
+        let color = if texture_id >= 0 {
+            [1.0, 1.0, 1.0]
+        } else {
+            color
+        };
+        (surface, color, texture_id)
     }
 
     // --- Collision debug mesh -----------------------------------------------
@@ -598,10 +712,12 @@ impl MeshGen {
                         let center =
                             (c000 + c100 + c010 + c110 + c001 + c101 + c011 + c111) * 0.125;
                         let sh = 0.90f32;
-                        let vi = |p: Vec3| Vertex {
-                            pos: (center + (p - center) * sh).to_array(),
-                            color,
-                            normal,
+                        let vi = |p: Vec3| {
+                            Vertex::untextured(
+                                (center + (p - center) * sh).to_array(),
+                                color,
+                                normal,
+                            )
                         };
                         let corners = [
                             vi(c000),
@@ -654,16 +770,8 @@ impl MeshGen {
             let x = theta.cos() * radius;
             let z = theta.sin() * radius;
             let n = Vec3::new(x, 0.0, z).normalize().to_array();
-            verts.push(Vertex {
-                pos: [x, 0.0, z],
-                color,
-                normal: n,
-            });
-            verts.push(Vertex {
-                pos: [x, height, z],
-                color,
-                normal: n,
-            });
+            verts.push(Vertex::untextured([x, 0.0, z], color, n));
+            verts.push(Vertex::untextured([x, height, z], color, n));
         }
         for i in 0..segments {
             let b1 = i * 2;
@@ -673,18 +781,18 @@ impl MeshGen {
             inds.extend_from_slice(&[b1, t1, b2, b2, t1, t2]);
         }
         let ci = verts.len() as u32;
-        verts.push(Vertex {
-            pos: [0.0, height, 0.0],
+        verts.push(Vertex::untextured(
+            [0.0, height, 0.0],
             color,
-            normal: [0.0, 1.0, 0.0],
-        });
+            [0.0, 1.0, 0.0],
+        ));
         for i in 0..=segments {
             let theta = (i as f32 / segments as f32) * std::f32::consts::TAU;
-            verts.push(Vertex {
-                pos: [theta.cos() * radius, height, theta.sin() * radius],
+            verts.push(Vertex::untextured(
+                [theta.cos() * radius, height, theta.sin() * radius],
                 color,
-                normal: [0.0, 1.0, 0.0],
-            });
+                [0.0, 1.0, 0.0],
+            ));
         }
         for i in 0..segments {
             inds.push(ci);
@@ -705,11 +813,11 @@ impl MeshGen {
                 let xp = (xs * std::f32::consts::TAU).cos() * (ys * std::f32::consts::PI).sin();
                 let yp = (ys * std::f32::consts::PI).cos();
                 let zp = (xs * std::f32::consts::TAU).sin() * (ys * std::f32::consts::PI).sin();
-                verts.push(Vertex {
-                    pos: [xp * radius, yp * radius, zp * radius],
+                verts.push(Vertex::untextured(
+                    [xp * radius, yp * radius, zp * radius],
                     color,
-                    normal: [xp, yp, zp],
-                });
+                    [xp, yp, zp],
+                ));
             }
         }
         for y in 0..segments {
@@ -733,26 +841,10 @@ impl MeshGen {
         let color = [1.0, 1.0, 1.0];
         let normal = [0.0, 0.0, 1.0];
         let verts = vec![
-            Vertex {
-                pos: [-s, 0.0, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [s, 0.0, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [0.0, -s, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [0.0, s, 0.0],
-                color,
-                normal,
-            },
+            Vertex::untextured([-s, 0.0, 0.0], color, normal),
+            Vertex::untextured([s, 0.0, 0.0], color, normal),
+            Vertex::untextured([0.0, -s, 0.0], color, normal),
+            Vertex::untextured([0.0, s, 0.0], color, normal),
         ];
         (verts, vec![0, 1, 2, 3])
     }
@@ -794,5 +886,9 @@ mod tests {
             .find(|vertex| vertex.color[0] > 0.0)
             .expect("generated chunk should contain colored vertices");
         assert!(vertex.color[1] >= vertex.color[0]);
+        assert!(
+            verts.iter().any(|vertex| vertex.texture_id >= 0),
+            "generated chunk should contain textured block vertices"
+        );
     }
 }

@@ -15,6 +15,7 @@
     render: (
         color: (r: 0.60, g: 0.42, b: 0.30),
         texture: single,
+        textures: (single: Some("voxelverse:iron_ore")),
     ),
     physics: (
         phase: solid,

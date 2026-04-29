@@ -1,4 +1,6 @@
 use glam::Vec3;
+mod tree;
+
 use std::{
     collections::HashMap,
     sync::{
@@ -7,6 +9,7 @@ use std::{
     },
     time::Instant,
 };
+use tree::{TreeShape, TreeShapeConfig};
 use vv_config::WorldGenConfig;
 use vv_core::BlockId;
 use vv_planet::{CoordSystem, PlanetGeometry};
@@ -76,6 +79,7 @@ pub struct PlanetTerrain {
     generator: Arc<NoiseGenerator>,
     noise: TerrainNoiseConfig,
     geometry: PlanetGeometry,
+    world_seed: u32,
     max_feature_height_m: f32,
     max_feature_radius_m: f32,
 }
@@ -161,6 +165,7 @@ impl PlanetTerrain {
                 lacunarity: cfg.noise_lacunarity,
             },
             geometry,
+            world_seed: cfg.noise_seed,
             max_feature_height_m,
             max_feature_radius_m,
         })
@@ -462,23 +467,11 @@ impl PlanetTerrain {
                 canopy_radius_m,
                 canopy_height_m,
             } => {
-                if self.flora_origin(face, u, v, biome, flora) {
-                    let surface = self.column(face, u, v).height as u32;
-                    let trunk_height_m = ranged_f32(
-                        face,
-                        u,
-                        v,
-                        flora.index,
-                        trunk_height_min_m,
-                        trunk_height_max_m,
-                    );
-                    let trunk_height = self.geometry.meters_to_voxels_ceil(trunk_height_m);
-                    if layer > surface && layer <= surface + trunk_height {
-                        return Some(log_block);
-                    }
-                }
-
-                let radius = self.geometry.meters_to_voxels_ceil(canopy_radius_m) as i32;
+                let radius = TreeShape::expanded_scan_radius_layers(
+                    self.geometry.voxel_size_m,
+                    canopy_radius_m,
+                    trunk_height_max_m,
+                );
                 for du in -radius..=radius {
                     for dv in -radius..=radius {
                         let ou = u as i32 + du;
@@ -496,23 +489,26 @@ impl PlanetTerrain {
                             continue;
                         }
                         let origin_surface = self.column(face, ou, ov).height as u32;
-                        let trunk_height_m = ranged_f32(
+                        if layer <= origin_surface {
+                            continue;
+                        }
+                        let shape = TreeShape::new(TreeShapeConfig {
                             face,
-                            ou,
-                            ov,
-                            flora.index,
+                            u: ou,
+                            v: ov,
+                            flora_index: flora.index,
+                            world_seed: self.world_seed,
+                            voxel_size_m: self.geometry.voxel_size_m,
                             trunk_height_min_m,
                             trunk_height_max_m,
-                        );
-                        let trunk_height = self.geometry.meters_to_voxels_ceil(trunk_height_m);
-                        let canopy_center = origin_surface + trunk_height;
-                        let vertical_m =
-                            layer.abs_diff(canopy_center) as f32 * self.geometry.voxel_size_m;
-                        let horizontal_m =
-                            ((du * du + dv * dv) as f32).sqrt() * self.geometry.voxel_size_m;
-                        if horizontal_m <= canopy_radius_m
-                            && vertical_m <= canopy_height_m.max(self.geometry.voxel_size_m)
-                        {
+                            canopy_radius_m,
+                            canopy_height_m,
+                        });
+                        let rel_layer = layer - origin_surface;
+                        if shape.has_log_at(-du, -dv, rel_layer) {
+                            return Some(log_block);
+                        }
+                        if shape.has_leaf_at(-du, -dv, rel_layer) {
                             return Some(leaf_block);
                         }
                     }
@@ -586,24 +582,20 @@ impl PlanetTerrain {
                 canopy_radius_m,
                 canopy_height_m,
             } => {
-                let trunk_height_m = ranged_f32(
+                let shape = TreeShape::new(TreeShapeConfig {
                     face,
                     u,
                     v,
-                    flora.index,
+                    flora_index: flora.index,
+                    world_seed: self.world_seed,
+                    voxel_size_m: self.geometry.voxel_size_m,
                     trunk_height_min_m,
                     trunk_height_max_m,
-                );
-                let trunk_height = self.geometry.meters_to_voxels_ceil(trunk_height_m);
-                for layer in surface.saturating_add(1)..=surface.saturating_add(trunk_height) {
-                    add_block(u, v, layer, log_block);
-                }
+                    canopy_radius_m,
+                    canopy_height_m,
+                });
 
-                let radius = self.geometry.meters_to_voxels_ceil(canopy_radius_m) as i32;
-                let canopy_center = surface.saturating_add(trunk_height);
-                let vertical_layers = self
-                    .geometry
-                    .meters_to_voxels_ceil(canopy_height_m.max(self.geometry.voxel_size_m));
+                let radius = shape.scan_radius_layers();
                 for du in -radius..=radius {
                     for dv in -radius..=radius {
                         let ou = u as i32 + du;
@@ -615,17 +607,29 @@ impl PlanetTerrain {
                         {
                             continue;
                         }
-                        let horizontal_m =
-                            ((du * du + dv * dv) as f32).sqrt() * self.geometry.voxel_size_m;
-                        if horizontal_m > canopy_radius_m {
+                        for rel_layer in 1..=shape.max_relative_layer() {
+                            let layer = surface.saturating_add(rel_layer);
+                            if shape.has_log_at(du, dv, rel_layer) {
+                                add_block(ou as u32, ov as u32, layer, log_block);
+                            }
+                        }
+                    }
+                }
+
+                for du in -radius..=radius {
+                    for dv in -radius..=radius {
+                        let ou = u as i32 + du;
+                        let ov = v as i32 + dv;
+                        if ou < 0
+                            || ov < 0
+                            || ou >= self.geometry.resolution as i32
+                            || ov >= self.geometry.resolution as i32
+                        {
                             continue;
                         }
-                        for layer in canopy_center.saturating_sub(vertical_layers)
-                            ..=canopy_center.saturating_add(vertical_layers)
-                        {
-                            let vertical_m =
-                                layer.abs_diff(canopy_center) as f32 * self.geometry.voxel_size_m;
-                            if vertical_m <= canopy_height_m.max(self.geometry.voxel_size_m) {
+                        for rel_layer in 1..=shape.max_relative_layer() {
+                            let layer = surface.saturating_add(rel_layer);
+                            if shape.has_leaf_at(du, dv, rel_layer) {
                                 add_block(ou as u32, ov as u32, layer, leaf_block);
                             }
                         }
@@ -716,6 +720,7 @@ impl Clone for PlanetTerrain {
             generator: self.generator.clone(),
             noise: self.noise,
             geometry: self.geometry,
+            world_seed: self.world_seed,
             max_feature_height_m: self.max_feature_height_m,
             max_feature_radius_m: self.max_feature_radius_m,
         }
@@ -915,13 +920,6 @@ fn hash01(face: u8, u: u32, v: u32, layer: u32, salt: u32) -> f32 {
     ((x & 0xFFFF_FFFF) as f32) / u32::MAX as f32
 }
 
-fn ranged_f32(face: u8, u: u32, v: u32, salt: u32, min: f32, max: f32) -> f32 {
-    if min >= max {
-        return min;
-    }
-    min + hash01(face, u, v, 1, salt) * (max - min)
-}
-
 fn deterministic_planet_radius_m(
     planet: &CompiledPlanetType,
     seed: u32,
@@ -949,7 +947,7 @@ fn max_feature_height_m(flora: &[TerrainFlora]) -> f32 {
                 trunk_height_max_m,
                 canopy_height_m,
                 ..
-            } => trunk_height_max_m + canopy_height_m,
+            } => trunk_height_max_m + canopy_height_m * 2.0 + 1.0,
             CompiledFloraFeature::Cluster { radius_max_m, .. } => radius_max_m,
         })
         .fold(1.0, f32::max)
@@ -962,7 +960,7 @@ fn max_feature_radius_m(flora: &[TerrainFlora]) -> f32 {
             CompiledFloraFeature::Plant { .. } => 0.0,
             CompiledFloraFeature::Tree {
                 canopy_radius_m, ..
-            } => canopy_radius_m,
+            } => canopy_radius_m * 1.6 + 1.0,
             CompiledFloraFeature::Cluster { radius_max_m, .. } => radius_max_m,
         })
         .fold(0.0, f32::max)

@@ -13,6 +13,7 @@
     render: (
         color: (r: 0.72, g: 0.66, b: 0.42),
         texture: single,
+        textures: (single: Some("voxelverse:sand")),
     ),
     physics: (
         phase: solid,

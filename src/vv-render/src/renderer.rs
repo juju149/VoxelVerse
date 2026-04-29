@@ -5,6 +5,7 @@ use glyphon::{
     TextAtlas, TextBounds, TextRenderer as GlyphRenderer,
 };
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::{Duration, Instant};
 use wgpu::util::DeviceExt;
@@ -29,6 +30,7 @@ use vv_world_runtime::PlanetData;
 
 use crate::{
     atmosphere::AtmosphereUniform,
+    block_atlas::BlockTextureAtlas,
     block_feedback::{
         block_break_mesh, selection_outline_mesh, BlockBreakStyle, SelectionOutlineStyle,
     },
@@ -93,6 +95,7 @@ pub struct Renderer<'a> {
     render_cfg: RenderConfig,
     lod_cfg: LodConfig,
     block_content: BlockContent,
+    _block_atlas: BlockTextureAtlas,
     diagnostic_config: DiagnosticConfig,
 
     // Text engine
@@ -185,7 +188,8 @@ impl<'a> Renderer<'a> {
     pub async fn new(
         window: &'a Window,
         cfg: &EngineConfig,
-        block_content: BlockContent,
+        content: &CompiledContent,
+        assets_root: &Path,
         diagnostic_config: DiagnosticConfig,
     ) -> Self {
         let instance = wgpu::Instance::default();
@@ -228,6 +232,8 @@ impl<'a> Renderer<'a> {
             )
             .await
             .unwrap();
+        let block_content = content.to_block_content();
+        let block_atlas = BlockTextureAtlas::build(&device, &queue, assets_root, &content.textures);
 
         let size = window.inner_size();
         let mut surf_cfg = surface
@@ -298,6 +304,32 @@ impl<'a> Renderer<'a> {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let local_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -334,6 +366,18 @@ impl<'a> Renderer<'a> {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::Sampler(&shadow_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&block_atlas.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&block_atlas.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: block_atlas.rect_buffer.as_entire_binding(),
                 },
             ],
             label: None,
@@ -375,6 +419,18 @@ impl<'a> Renderer<'a> {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::Sampler(&shadow_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&block_atlas.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&block_atlas.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: block_atlas.rect_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -548,7 +604,7 @@ impl<'a> Renderer<'a> {
             })
         };
 
-        let cursor_v_buf = mk_dyn_vbuf("Cursor V", 4096);
+        let cursor_v_buf = mk_dyn_vbuf("Cursor V", 8192);
         let cursor_i_buf = mk_dyn_ibuf("Cursor I", 4096);
         let break_v_buf = mk_dyn_vbuf("Block Break V", 65536);
         let break_i_buf = mk_dyn_ibuf("Block Break I", 65536);
@@ -588,6 +644,18 @@ impl<'a> Renderer<'a> {
                     binding: 2,
                     resource: wgpu::BindingResource::Sampler(&shadow_sampler),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&block_atlas.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&block_atlas.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: block_atlas.rect_buffer.as_entire_binding(),
+                },
             ],
         });
 
@@ -603,6 +671,7 @@ impl<'a> Renderer<'a> {
             render_cfg: cfg.render.clone(),
             lod_cfg: cfg.lod.clone(),
             block_content,
+            _block_atlas: block_atlas,
             diagnostic_config,
             font_system,
             swash_cache,
@@ -697,6 +766,16 @@ impl<'a> Renderer<'a> {
                         format: wgpu::VertexFormat::Float32x3,
                         offset: 24,
                         shader_location: 2,
+                    },
+                    wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Float32x2,
+                        offset: 36,
+                        shader_location: 3,
+                    },
+                    wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Sint32,
+                        offset: 44,
+                        shader_location: 4,
                     },
                 ],
             }],
@@ -1103,7 +1182,7 @@ impl<'a> Renderer<'a> {
         let (tv, ti) = self.chunks.values().fold((0usize, 0usize), |(v, i), c| {
             (v + c.num_verts, i + c.num_inds as usize)
         });
-        let mb = ((tv * 36) + (ti * 4)) as f32 / (1024.0 * 1024.0);
+        let mb = ((tv * std::mem::size_of::<Vertex>()) + (ti * 4)) as f32 / (1024.0 * 1024.0);
         emit(
             self.diagnostic_config,
             LogLevel::Info,
@@ -2160,26 +2239,10 @@ impl<'a> Renderer<'a> {
         let normal = [0.0, 0.0, 1.0];
         let base = *idx;
         verts.extend_from_slice(&[
-            Vertex {
-                pos: [x0, y0, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [x1, y0, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [x1, y1, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [x0, y1, 0.0],
-                color,
-                normal,
-            },
+            Vertex::untextured([x0, y0, 0.0], color, normal),
+            Vertex::untextured([x1, y0, 0.0], color, normal),
+            Vertex::untextured([x1, y1, 0.0], color, normal),
+            Vertex::untextured([x0, y1, 0.0], color, normal),
         ]);
         inds.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
         *idx += 4;
@@ -2215,11 +2278,7 @@ impl<'a> Renderer<'a> {
         for (face, normal) in faces {
             let base = *idx;
             for i in face {
-                verts.push(Vertex {
-                    pos: p[i].to_array(),
-                    color,
-                    normal,
-                });
+                verts.push(Vertex::untextured(p[i].to_array(), color, normal));
             }
             inds.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
             *idx += 4;
@@ -2235,26 +2294,10 @@ impl<'a> Renderer<'a> {
         let color = [0.1, 0.1, 0.15];
         let normal = [0.0, 0.0, 1.0];
         let verts = vec![
-            Vertex {
-                pos: [-1.0, 1.0, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [1.0, 1.0, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [-1.0, bottom_y, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [1.0, bottom_y, 0.0],
-                color,
-                normal,
-            },
+            Vertex::untextured([-1.0, 1.0, 0.0], color, normal),
+            Vertex::untextured([1.0, 1.0, 0.0], color, normal),
+            Vertex::untextured([-1.0, bottom_y, 0.0], color, normal),
+            Vertex::untextured([1.0, bottom_y, 0.0], color, normal),
         ];
         let inds = vec![0u32, 2, 1, 1, 2, 3];
         self.queue

@@ -19,6 +19,9 @@ struct Global {
 @group(0) @binding(0) var<uniform> global: Global;
 @group(0) @binding(1) var t_shadow: texture_depth_2d;
 @group(0) @binding(2) var s_shadow: sampler_comparison;
+@group(0) @binding(3) var t_block_atlas: texture_2d<f32>;
+@group(0) @binding(4) var s_block_atlas: sampler;
+@group(0) @binding(5) var<storage, read> block_atlas_rects: array<vec4<f32>>;
 
 struct Local {
     model: mat4x4<f32>,
@@ -35,6 +38,8 @@ struct VertexIn {
     @location(0) pos: vec3<f32>,
     @location(1) color: vec3<f32>,
     @location(2) normal: vec3<f32>,
+    @location(3) uv: vec2<f32>,
+    @location(4) texture_id: i32,
 };
 
 struct VertexOut {
@@ -44,6 +49,8 @@ struct VertexOut {
     @location(2) world_pos: vec3<f32>,
     @location(3) view_pos: vec3<f32>,
     @location(4) shadow_pos: vec3<f32>,
+    @location(5) uv: vec2<f32>,
+    @location(6) @interpolate(flat) texture_id: i32,
 };
 
 @vertex
@@ -67,6 +74,8 @@ fn vs_main(in: VertexIn) -> VertexOut {
     
     // Color (Vertex Color + Baked AO)
     out.color = in.color;
+    out.uv = in.uv;
+    out.texture_id = in.texture_id;
     out.view_pos = global.camera_pos.xyz;
 
     // Shadow Calculation Space
@@ -175,6 +184,18 @@ fn fs_feedback(in: VertexOut) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color, local.params.x * 0.82);
 }
 
+fn block_albedo(in: VertexOut) -> vec3<f32> {
+    let vert_color_linear = pow(in.color, vec3<f32>(2.2));
+    if (in.texture_id < 0) {
+        return vert_color_linear;
+    }
+
+    let rect = block_atlas_rects[u32(in.texture_id)];
+    let atlas_uv = mix(rect.xy, rect.zw, fract(in.uv));
+    let tex_color = textureSample(t_block_atlas, s_block_atlas, atlas_uv).rgb;
+    return tex_color * vert_color_linear;
+}
+
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     // 1. Transparency Dithering
@@ -187,12 +208,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let V = normalize(global.camera_pos.xyz - in.world_pos);
 
     // 2. Material Setup
-    // De-Gamma the vertex color to Linear Space for math
-    let vert_color_linear = pow(in.color, vec3<f32>(2.2));
-    
     // Apply Detail Noise (Grain)
     let noise = triplanar_detail(in.world_pos, N);
-    let albedo = vert_color_linear * (1.0 + 0.03 * noise);
+    let albedo = block_albedo(in) * (1.0 + 0.03 * noise);
 
     // 3. Lighting Math
     let NdotL = max(dot(N, L), 0.0);

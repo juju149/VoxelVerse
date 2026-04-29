@@ -13,6 +13,11 @@
     render: (
         color: (r: 0.28, g: 0.58, b: 0.22),
         texture: sides,
+        textures: (
+            top: Some("voxelverse:grass_top"),
+            side: Some("voxelverse:grass_side"),
+            bottom: Some("voxelverse:dirt"),
+        ),
         tint: grass_color,
     ),
     physics: (

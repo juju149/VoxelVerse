@@ -209,16 +209,8 @@ fn push_segment(
     let base = *idx;
     for off in [-right - up, right - up, right + up, -right + up] {
         let normal = off.normalize_or_zero().to_array();
-        verts.push(Vertex {
-            pos: (a + off).to_array(),
-            color,
-            normal,
-        });
-        verts.push(Vertex {
-            pos: (b + off).to_array(),
-            color,
-            normal,
-        });
+        verts.push(Vertex::untextured((a + off).to_array(), color, normal));
+        verts.push(Vertex::untextured((b + off).to_array(), color, normal));
     }
     for (i0, i1, i2, i3) in [(0u32, 1, 3, 2), (2, 3, 5, 4), (4, 5, 7, 6), (6, 7, 1, 0)] {
         inds.push(base + i0);

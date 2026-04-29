@@ -82,7 +82,6 @@ fn main() {
     .expect("compiled worldgen content should generate terrain");
     diagnostics.record_startup_phase(PerfPhase::Worldgen, terrain_timer.finish().duration);
     let planet_geometry = terrain.geometry();
-    let block_content = compiled_content.to_block_content();
 
     // --- Window & event loop ------------------------------------------------
     let event_loop = EventLoop::new().unwrap();
@@ -96,7 +95,8 @@ fn main() {
     let mut renderer = pollster::block_on(Renderer::new(
         &window,
         &config,
-        block_content.clone(),
+        &compiled_content,
+        Path::new("assets"),
         diagnostics.config(),
     ));
     let mut controller = Controller::new(&config.player);

@@ -32,6 +32,7 @@ macro_rules! compact_id {
 }
 
 compact_id!(BlockId);
+compact_id!(TextureId);
 compact_id!(ItemId);
 compact_id!(EntityId);
 compact_id!(PlaceableId);

@@ -14,14 +14,15 @@ pub mod tag;
 pub mod worldgen;
 
 pub use block::{
-    BlockRegistry, CompiledBlock, CompiledBlockMining, CompiledBlockPhysics, CompiledBlockRender,
-    CompiledDrops, CompiledMaterialPhase, CompiledTextureLayout,
+    BlockRegistry, CompiledBlock, CompiledBlockFace, CompiledBlockMining, CompiledBlockPhysics,
+    CompiledBlockRender, CompiledBlockTextures, CompiledDrops, CompiledMaterialPhase,
+    CompiledTextureLayout, CompiledTextureResource, TextureRegistry,
 };
 pub use content_key::{ContentKey, ContentKeyParseError};
 pub use entity::{CompiledEntity, EntityRegistry};
 pub use ids::{
     BiomeId, BlockId, EntityId, FaunaId, FloraId, ItemId, LootTableId, OreId, PlaceableId,
-    PlanetTypeId, RecipeId, StructureId, TagId, WeatherId,
+    PlanetTypeId, RecipeId, StructureId, TagId, TextureId, WeatherId,
 };
 pub use item::{CompiledItem, CompiledItemKind, CompiledToolKind, ItemRegistry};
 pub use loot::{CompiledLootEntry, CompiledLootPool, CompiledLootTable, LootTableRegistry};
@@ -47,6 +48,7 @@ pub use worldgen::{
 #[derive(Debug, Clone, Default)]
 pub struct CompiledContent {
     pub world: CompiledWorldSettings,
+    pub textures: TextureRegistry,
     pub blocks: BlockRegistry,
     pub items: ItemRegistry,
     pub entities: EntityRegistry,

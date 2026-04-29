@@ -1,4 +1,6 @@
-use crate::{BlockId, CompiledLootPool, CompiledToolKind, LootTableId, RegistryTable, TagId};
+use crate::{
+    BlockId, CompiledLootPool, CompiledToolKind, LootTableId, RegistryTable, TagId, TextureId,
+};
 
 #[derive(Debug, Clone)]
 pub struct CompiledBlock {
@@ -43,6 +45,7 @@ pub struct CompiledBlockRender {
     pub translucent: bool,
     pub emits_light: u8,
     pub texture_layout: CompiledTextureLayout,
+    pub textures: CompiledBlockTextures,
     pub model: Option<String>,
 }
 
@@ -52,6 +55,59 @@ pub enum CompiledTextureLayout {
     Sides,
     Custom,
 }
+
+#[derive(Debug, Clone, Default)]
+pub struct CompiledBlockTextures {
+    pub single: Option<TextureId>,
+    pub side: Option<TextureId>,
+    pub top: Option<TextureId>,
+    pub bottom: Option<TextureId>,
+    pub north: Option<TextureId>,
+    pub south: Option<TextureId>,
+    pub east: Option<TextureId>,
+    pub west: Option<TextureId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompiledBlockFace {
+    Top,
+    Bottom,
+    North,
+    South,
+    East,
+    West,
+}
+
+impl CompiledBlockRender {
+    pub fn texture_for_face(&self, face: CompiledBlockFace) -> Option<TextureId> {
+        let textures = &self.textures;
+        match self.texture_layout {
+            CompiledTextureLayout::Single => textures.single,
+            CompiledTextureLayout::Sides => match face {
+                CompiledBlockFace::Top => textures.top.or(textures.single),
+                CompiledBlockFace::Bottom => textures.bottom.or(textures.single),
+                CompiledBlockFace::North
+                | CompiledBlockFace::South
+                | CompiledBlockFace::East
+                | CompiledBlockFace::West => textures.side.or(textures.single),
+            },
+            CompiledTextureLayout::Custom => match face {
+                CompiledBlockFace::Top => textures.top,
+                CompiledBlockFace::Bottom => textures.bottom,
+                CompiledBlockFace::North => textures.north.or(textures.side),
+                CompiledBlockFace::South => textures.south.or(textures.side),
+                CompiledBlockFace::East => textures.east.or(textures.side),
+                CompiledBlockFace::West => textures.west.or(textures.side),
+            }
+            .or(textures.single),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledTextureResource;
+
+pub type TextureRegistry = RegistryTable<TextureId, CompiledTextureResource>;
 
 #[derive(Debug, Clone)]
 pub enum CompiledDrops {

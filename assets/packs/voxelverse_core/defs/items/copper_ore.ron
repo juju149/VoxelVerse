@@ -1,0 +1,9 @@
+(
+    display_key: Some("item.voxelverse.copper_ore"),
+    stack_max: 64,
+    weight: 0.72,
+    tags: ["voxelverse:ore"],
+    kind: (
+        type: "resource",
+    ),
+)

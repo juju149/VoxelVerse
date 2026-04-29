@@ -88,10 +88,20 @@ fn exposes_narrow_runtime_content_views() {
             .emits_light,
         0
     );
+    assert!(blocks
+        .block_render(stone_block)
+        .expect("stone render data")
+        .textures
+        .single
+        .is_some());
+    assert!(content
+        .textures
+        .id(&ContentKey::from_str("voxelverse:stone").unwrap())
+        .is_some());
 
     let world = content.world_content();
     assert_eq!(world.world_settings().chunk_size, 32);
-    assert_eq!(world.world_settings().voxel_size_m, 0.05);
+    assert_eq!(world.world_settings().voxel_size_m, 0.5);
 
     let worldgen = content.worldgen_content();
     let default_planet = worldgen

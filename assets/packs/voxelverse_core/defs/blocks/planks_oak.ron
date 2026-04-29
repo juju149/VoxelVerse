@@ -13,6 +13,7 @@
     render: (
         color: (r: 0.62, g: 0.42, b: 0.22),
         texture: single,
+        textures: (single: Some("voxelverse:oak_planks")),
     ),
     physics: (
         phase: solid,

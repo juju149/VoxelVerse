@@ -10,14 +10,15 @@ use vv_registry::{
     CompiledItem, CompiledItemKind, CompiledLootEntry, CompiledLootPool, CompiledLootTable,
     CompiledMaterialPhase, CompiledOre, CompiledOreVein, CompiledPlaceable, CompiledPlanetType,
     CompiledRecipe, CompiledRecipePattern, CompiledStructure, CompiledSurfaceLayer, CompiledTag,
-    CompiledTextureLayout, CompiledToolKind, CompiledWeather, CompiledWorldSettings, ContentKey,
-    EntityId, FaunaId, FloraId, ItemId, LootTableId, OreId, PlaceableId, PlanetTypeId, RecipeId,
-    StructureId, TagDomain, TagId, TaggedContent, WeatherId,
+    CompiledTextureLayout, CompiledTextureResource, CompiledToolKind, CompiledWeather,
+    CompiledWorldSettings, ContentKey, EntityId, FaunaId, FloraId, ItemId, LootTableId, OreId,
+    PlaceableId, PlanetTypeId, RecipeId, StructureId, TagDomain, TagId, TaggedContent, TextureId,
+    WeatherId,
 };
 use vv_schema::{
-    block::{BlockDef, MaterialPhase, TextureLayout},
+    block::{BlockDef, BlockTextureRefs, MaterialPhase, TextureLayout},
     common::tool::ToolKind,
-    common::{BlockRef, EntityRef, ItemRef, LootTableRef, PlaceableRef, TagRef},
+    common::{BlockRef, EntityRef, ItemRef, LootTableRef, PlaceableRef, ResourceRef, TagRef},
     item::ItemKind,
     loot::{DropSpec, LootTableDef},
     recipe::{RecipeDef, RecipeIngredient, RecipePattern},
@@ -158,13 +159,14 @@ impl ContentCompiler {
         content.default_planet_type = self.default_planet_type(load_order, &index);
         content.climate_tags = self.compile_climate_tags(load_order, &index);
         content.climate_curves = self.compile_climate_curves(load_order);
+        let texture_ids = self.compile_texture_registry(&block_docs, &mut content);
 
         for (key, doc) in &tag_docs {
             let tag = self.compile_tag(doc, &index);
             content.tags.push(key.clone(), tag);
         }
         for (key, doc) in &block_docs {
-            let block = self.compile_block(doc, &index);
+            let block = self.compile_block(doc, &index, &texture_ids);
             content.blocks.push(key.clone(), block);
         }
         for (key, doc) in &placeable_docs {
@@ -265,6 +267,7 @@ impl ContentCompiler {
         &mut self,
         doc: &RawDocument<BlockDef>,
         index: &ReferenceIndex,
+        texture_ids: &HashMap<ContentKey, TextureId>,
     ) -> CompiledBlock {
         self.validate_drop_spec("block", doc, &doc.value.drops, index);
         CompiledBlock {
@@ -301,9 +304,46 @@ impl ContentCompiler {
                     TextureLayout::Sides => CompiledTextureLayout::Sides,
                     TextureLayout::Custom => CompiledTextureLayout::Custom,
                 },
+                textures: self.compile_block_textures(doc, texture_ids),
                 model: doc.value.render.model.as_ref().map(|model| model.0.clone()),
             },
             drops: self.compile_drop_spec("block", doc, &doc.value.drops, index),
+        }
+    }
+
+    fn compile_texture_registry(
+        &mut self,
+        block_docs: &[(ContentKey, &RawDocument<BlockDef>)],
+        content: &mut CompiledContent,
+    ) -> HashMap<ContentKey, TextureId> {
+        let mut ids = HashMap::new();
+        for (_, doc) in block_docs {
+            for resource in block_texture_refs(&doc.value.render.textures) {
+                let Some(key) = self.parse_texture_ref("block", doc, resource) else {
+                    continue;
+                };
+                ids.entry(key.clone())
+                    .or_insert_with(|| content.textures.push(key, CompiledTextureResource));
+            }
+        }
+        ids
+    }
+
+    fn compile_block_textures(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        texture_ids: &HashMap<ContentKey, TextureId>,
+    ) -> vv_registry::CompiledBlockTextures {
+        let refs = &doc.value.render.textures;
+        vv_registry::CompiledBlockTextures {
+            single: self.resolve_texture_ref(doc, refs.single.as_ref(), texture_ids),
+            side: self.resolve_texture_ref(doc, refs.side.as_ref(), texture_ids),
+            top: self.resolve_texture_ref(doc, refs.top.as_ref(), texture_ids),
+            bottom: self.resolve_texture_ref(doc, refs.bottom.as_ref(), texture_ids),
+            north: self.resolve_texture_ref(doc, refs.north.as_ref(), texture_ids),
+            south: self.resolve_texture_ref(doc, refs.south.as_ref(), texture_ids),
+            east: self.resolve_texture_ref(doc, refs.east.as_ref(), texture_ids),
+            west: self.resolve_texture_ref(doc, refs.west.as_ref(), texture_ids),
         }
     }
 
@@ -1011,6 +1051,46 @@ impl ContentCompiler {
         )
     }
 
+    fn resolve_texture_ref<T>(
+        &mut self,
+        doc: &RawDocument<T>,
+        reference: Option<&ResourceRef>,
+        texture_ids: &HashMap<ContentKey, TextureId>,
+    ) -> Option<TextureId> {
+        let reference = reference?;
+        let key = self.parse_texture_ref("block", doc, reference)?;
+        texture_ids.get(&key).copied().or_else(|| {
+            self.diagnostics.push(CompileDiagnostic::MissingReference {
+                owner: "block".to_owned(),
+                path: doc.source_path.clone(),
+                reference: reference.0.clone(),
+                expected: ReferenceKind::Texture,
+            });
+            None
+        })
+    }
+
+    fn parse_texture_ref<T>(
+        &mut self,
+        owner: &str,
+        doc: &RawDocument<T>,
+        reference: &ResourceRef,
+    ) -> Option<ContentKey> {
+        match ContentKey::from_str(&reference.0) {
+            Ok(key) => Some(key),
+            Err(err) => {
+                self.diagnostics.push(CompileDiagnostic::InvalidReference {
+                    owner: owner.to_owned(),
+                    path: doc.source_path.clone(),
+                    reference: reference.0.clone(),
+                    expected: ReferenceKind::Texture,
+                    reason: err.to_string(),
+                });
+                None
+            }
+        }
+    }
+
     fn resolve_key<I>(
         &mut self,
         owner: &str,
@@ -1151,4 +1231,19 @@ fn compiled_tool_kind(kind: ToolKind) -> CompiledToolKind {
         ToolKind::Shears => CompiledToolKind::Shears,
         ToolKind::Hoe => CompiledToolKind::Hoe,
     }
+}
+
+fn block_texture_refs(textures: &BlockTextureRefs) -> impl Iterator<Item = &ResourceRef> {
+    [
+        textures.single.as_ref(),
+        textures.side.as_ref(),
+        textures.top.as_ref(),
+        textures.bottom.as_ref(),
+        textures.north.as_ref(),
+        textures.south.as_ref(),
+        textures.east.as_ref(),
+        textures.west.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
 }

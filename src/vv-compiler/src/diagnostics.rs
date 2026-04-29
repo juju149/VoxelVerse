@@ -8,6 +8,7 @@ pub enum ReferenceKind {
     Placeable,
     LootTable,
     Tag,
+    Texture,
     PlanetType,
     Pack,
 }
@@ -21,6 +22,7 @@ impl fmt::Display for ReferenceKind {
             ReferenceKind::Placeable => "placeable",
             ReferenceKind::LootTable => "loot_table",
             ReferenceKind::Tag => "tag",
+            ReferenceKind::Texture => "texture",
             ReferenceKind::PlanetType => "planet_type",
             ReferenceKind::Pack => "pack",
         };

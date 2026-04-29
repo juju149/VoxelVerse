@@ -13,6 +13,7 @@
         color: (r: 0.18, g: 0.42, b: 0.72),
         translucent: true,
         texture: single,
+        textures: (single: Some("voxelverse:water")),
         tint: water_color,
     ),
     physics: (
