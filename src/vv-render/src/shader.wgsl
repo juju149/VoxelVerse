@@ -165,6 +165,13 @@ fn aces_approx(v: vec3<f32>) -> vec3<f32> {
 // --- FRAGMENT SHADER ---
 
 @fragment
+fn fs_feedback(in: VertexOut) -> @location(0) vec4<f32> {
+    // Gameplay feedback is authored as screen-readable overlay geometry.
+    // It should not inherit terrain lighting or shadow grain.
+    return vec4<f32>(in.color, local.params.x * 0.82);
+}
+
+@fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     // 1. Transparency Dithering
     if (local.params.x < 1.0 && dither_opacity(in.clip_pos, local.params.x)) {

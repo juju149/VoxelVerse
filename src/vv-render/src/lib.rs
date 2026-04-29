@@ -1,3 +1,4 @@
+mod block_feedback;
 pub mod chunk_mesh;
 pub mod frustum;
 mod gameplay_ui;

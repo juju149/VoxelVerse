@@ -28,6 +28,9 @@ use vv_registry::{
 use vv_world_runtime::PlanetData;
 
 use crate::{
+    block_feedback::{
+        block_break_mesh, selection_outline_mesh, BlockBreakStyle, SelectionOutlineStyle,
+    },
     gameplay_ui::{GameplayUiLayout, RectPx},
     AnyKey, ChunkMesh, Frustum, LodAnimator,
 };
@@ -121,6 +124,7 @@ pub struct Renderer<'a> {
     pipeline_fill: wgpu::RenderPipeline,
     pipeline_wire: wgpu::RenderPipeline,
     pipeline_line: wgpu::RenderPipeline,
+    pipeline_feedback: wgpu::RenderPipeline,
 
     chunks: HashMap<ChunkKey, ChunkMesh>,
     lod_chunks: HashMap<LodKey, ChunkMesh>,
@@ -463,6 +467,8 @@ impl<'a> Renderer<'a> {
             wgpu::PrimitiveTopology::LineList,
             false,
         );
+        let pipeline_feedback =
+            Self::create_feedback_pipeline(&device, &surf_cfg, &layout, &shader);
         let depth = Self::mk_depth(&device, &surf_cfg);
 
         let pipeline_ui = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -619,6 +625,7 @@ impl<'a> Renderer<'a> {
             pipeline_fill,
             pipeline_wire,
             pipeline_line,
+            pipeline_feedback,
             chunks: HashMap::new(),
             lod_chunks: HashMap::new(),
             global_buf,
@@ -726,6 +733,42 @@ impl<'a> Renderer<'a> {
                 format: wgpu::TextureFormat::Depth32Float,
                 depth_write_enabled: true,
                 depth_compare: wgpu::CompareFunction::Less,
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+            multisample: Default::default(),
+            multiview: None,
+        })
+    }
+
+    fn create_feedback_pipeline(
+        device: &wgpu::Device,
+        cfg: &wgpu::SurfaceConfiguration,
+        layout: &wgpu::PipelineLayout,
+        shader: &wgpu::ShaderModule,
+    ) -> wgpu::RenderPipeline {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Block Feedback Pipeline"),
+            layout: Some(layout),
+            vertex: Self::vertex_state(shader),
+            fragment: Some(wgpu::FragmentState {
+                module: shader,
+                entry_point: "fs_feedback",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: cfg.format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                cull_mode: None,
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: false,
+                depth_compare: wgpu::CompareFunction::LessEqual,
                 stencil: Default::default(),
                 bias: Default::default(),
             }),
@@ -959,83 +1002,12 @@ impl<'a> Renderer<'a> {
 
     pub fn update_cursor(&mut self, planet: &PlanetData, id: Option<BlockId>) {
         if let Some(id) = id {
-            let p = |u, v, l| {
-                CoordSystem::get_vertex_pos(
-                    id.face,
-                    id.u + u,
-                    id.v + v,
-                    id.layer + l,
-                    planet.geometry,
-                )
-            };
-            let corners = [
-                p(0, 0, 0),
-                p(1, 0, 0),
-                p(0, 1, 0),
-                p(1, 1, 0),
-                p(0, 0, 1),
-                p(1, 0, 1),
-                p(0, 1, 1),
-                p(1, 1, 1),
-            ];
-            let edges = [
-                (0, 1),
-                (1, 3),
-                (3, 2),
-                (2, 0),
-                (4, 5),
-                (5, 7),
-                (7, 6),
-                (6, 4),
-                (0, 4),
-                (1, 5),
-                (2, 6),
-                (3, 7),
-            ];
-            let mut verts = Vec::new();
-            let mut inds = Vec::new();
-            let thickness = 0.025;
-            let color = [1.0, 1.0, 0.0];
-            let mut idx_base = 0u32;
-            for (start, end) in edges {
-                let a = corners[start];
-                let b = corners[end];
-                let dir = (b - a).normalize();
-                let ref_up = if dir.dot(Vec3::Y).abs() > 0.9 {
-                    Vec3::X
-                } else {
-                    Vec3::Y
-                };
-                let right = dir.cross(ref_up).normalize() * thickness;
-                let up = dir.cross(right).normalize() * thickness;
-                for off in [(-right - up), (right - up), (right + up), (-right + up)] {
-                    verts.push(Vertex {
-                        pos: (a + off).to_array(),
-                        color,
-                        normal: [0.0; 3],
-                    });
-                    verts.push(Vertex {
-                        pos: (b + off).to_array(),
-                        color,
-                        normal: [0.0; 3],
-                    });
-                }
-                for (i0, i1, i2, i3) in [(0u32, 1, 3, 2), (2, 3, 5, 4), (4, 5, 7, 6), (6, 7, 1, 0)]
-                {
-                    inds.push(idx_base + i0);
-                    inds.push(idx_base + i1);
-                    inds.push(idx_base + i2);
-                    inds.push(idx_base + i2);
-                    inds.push(idx_base + i3);
-                    inds.push(idx_base + i0);
-                }
-                idx_base += 8;
-            }
+            let mesh = selection_outline_mesh(planet, id, SelectionOutlineStyle::default());
             self.queue
-                .write_buffer(&self.cursor_v_buf, 0, bytemuck::cast_slice(&verts));
+                .write_buffer(&self.cursor_v_buf, 0, bytemuck::cast_slice(&mesh.vertices));
             self.queue
-                .write_buffer(&self.cursor_i_buf, 0, bytemuck::cast_slice(&inds));
-            self.cursor_inds = inds.len() as u32;
+                .write_buffer(&self.cursor_i_buf, 0, bytemuck::cast_slice(&mesh.indices));
+            self.cursor_inds = mesh.indices.len() as u32;
         } else {
             self.cursor_inds = 0;
         }
@@ -1509,7 +1481,7 @@ impl<'a> Renderer<'a> {
                 pass.draw_indexed(0..self.collision_inds, 0, 0..1);
             }
             if self.cursor_inds > 0 {
-                pass.set_pipeline(&self.pipeline_fill);
+                pass.set_pipeline(&self.pipeline_feedback);
                 pass.set_bind_group(0, &self.global_bind, &[]);
                 pass.set_bind_group(1, &self.local_bind_identity, &[]);
                 pass.set_vertex_buffer(0, self.cursor_v_buf.slice(..));
@@ -1517,7 +1489,7 @@ impl<'a> Renderer<'a> {
                 pass.draw_indexed(0..self.cursor_inds, 0, 0..1);
             }
             if self.break_inds > 0 {
-                pass.set_pipeline(&self.pipeline_fill);
+                pass.set_pipeline(&self.pipeline_feedback);
                 pass.set_bind_group(0, &self.global_bind, &[]);
                 pass.set_bind_group(1, &self.local_bind_identity, &[]);
                 pass.set_vertex_buffer(0, self.break_v_buf.slice(..));
@@ -2004,135 +1976,18 @@ impl<'a> Renderer<'a> {
             self.break_inds = 0;
             return;
         };
-        if progress <= 0.01 || !planet.exists(id) {
+
+        let mesh = block_break_mesh(planet, id, progress, BlockBreakStyle::default());
+        if mesh.indices.is_empty() {
             self.break_inds = 0;
             return;
         }
 
-        let p = |u, v, l| {
-            CoordSystem::get_vertex_pos(id.face, id.u + u, id.v + v, id.layer + l, planet.geometry)
-        };
-        let corners = [
-            p(0, 0, 0),
-            p(1, 0, 0),
-            p(1, 1, 0),
-            p(0, 1, 0),
-            p(0, 0, 1),
-            p(1, 0, 1),
-            p(1, 1, 1),
-            p(0, 1, 1),
-        ];
-        let faces = [
-            [4, 5, 6, 7],
-            [0, 1, 2, 3],
-            [0, 4, 7, 3],
-            [1, 5, 6, 2],
-            [3, 2, 6, 7],
-            [0, 1, 5, 4],
-        ];
-        let cracks: [((f32, f32), (f32, f32)); 8] = [
-            ((0.50, 0.50), (0.24, 0.28)),
-            ((0.50, 0.50), (0.76, 0.34)),
-            ((0.50, 0.50), (0.42, 0.78)),
-            ((0.42, 0.78), (0.25, 0.88)),
-            ((0.76, 0.34), (0.90, 0.22)),
-            ((0.24, 0.28), (0.14, 0.48)),
-            ((0.50, 0.50), (0.68, 0.74)),
-            ((0.68, 0.74), (0.83, 0.84)),
-        ];
-        let visible = ((progress * cracks.len() as f32).ceil() as usize).clamp(1, cracks.len());
-        let mut verts = Vec::new();
-        let mut inds = Vec::new();
-        let mut idx = 0u32;
-        let color = [0.045, 0.035, 0.025];
-        let width = 0.018 + progress * 0.018;
-
-        for face in faces {
-            let face_corners = [
-                corners[face[0]],
-                corners[face[1]],
-                corners[face[2]],
-                corners[face[3]],
-            ];
-            let normal = (face_corners[1] - face_corners[0])
-                .cross(face_corners[2] - face_corners[0])
-                .normalize_or_zero();
-            for ((sx, sy), (ex, ey)) in cracks.iter().take(visible) {
-                let start = Self::face_point(face_corners, *sx, *sy);
-                let raw_end = Self::face_point(face_corners, *ex, *ey);
-                let end = start + (raw_end - start) * progress.clamp(0.2, 1.0);
-                let lift = normal * 0.025;
-                Self::push_world_segment(
-                    &mut verts,
-                    &mut inds,
-                    &mut idx,
-                    start + lift,
-                    end + lift,
-                    width,
-                    color,
-                );
-            }
-        }
-
-        if !verts.is_empty() {
-            self.queue
-                .write_buffer(&self.break_v_buf, 0, bytemuck::cast_slice(&verts));
-            self.queue
-                .write_buffer(&self.break_i_buf, 0, bytemuck::cast_slice(&inds));
-        }
-        self.break_inds = inds.len() as u32;
-    }
-
-    fn face_point(corners: [Vec3; 4], u: f32, v: f32) -> Vec3 {
-        let bottom = corners[0].lerp(corners[1], u);
-        let top = corners[3].lerp(corners[2], u);
-        bottom.lerp(top, v)
-    }
-
-    fn push_world_segment(
-        verts: &mut Vec<Vertex>,
-        inds: &mut Vec<u32>,
-        idx: &mut u32,
-        a: Vec3,
-        b: Vec3,
-        thickness: f32,
-        color: [f32; 3],
-    ) {
-        let dir = b - a;
-        if dir.length_squared() <= f32::EPSILON {
-            return;
-        }
-        let dir = dir.normalize();
-        let ref_up = if dir.dot(Vec3::Y).abs() > 0.9 {
-            Vec3::X
-        } else {
-            Vec3::Y
-        };
-        let right = dir.cross(ref_up).normalize_or_zero() * thickness;
-        let up = dir.cross(right).normalize_or_zero() * thickness;
-        let normal = [0.0, 0.0, 1.0];
-        let base = *idx;
-        for off in [-right - up, right - up, right + up, -right + up] {
-            verts.push(Vertex {
-                pos: (a + off).to_array(),
-                color,
-                normal,
-            });
-            verts.push(Vertex {
-                pos: (b + off).to_array(),
-                color,
-                normal,
-            });
-        }
-        for (i0, i1, i2, i3) in [(0u32, 1, 3, 2), (2, 3, 5, 4), (4, 5, 7, 6), (6, 7, 1, 0)] {
-            inds.push(base + i0);
-            inds.push(base + i1);
-            inds.push(base + i2);
-            inds.push(base + i2);
-            inds.push(base + i3);
-            inds.push(base + i0);
-        }
-        *idx += 8;
+        self.queue
+            .write_buffer(&self.break_v_buf, 0, bytemuck::cast_slice(&mesh.vertices));
+        self.queue
+            .write_buffer(&self.break_i_buf, 0, bytemuck::cast_slice(&mesh.indices));
+        self.break_inds = mesh.indices.len() as u32;
     }
 
     fn update_dropped_item_mesh(
