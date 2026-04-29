@@ -1,11 +1,19 @@
 
 
-// basic shading (IMPROVE THIS LATER)
+struct Atmosphere {
+    sun_direction: vec4<f32>,
+    sun_color: vec4<f32>,
+    sky_color: vec4<f32>,
+    ground_ambient_color: vec4<f32>,
+    fog_color_density: vec4<f32>,
+    clear_color: vec4<f32>,
+}
+
 struct Global {
     view_proj: mat4x4<f32>,
     light_view_proj: mat4x4<f32>,
     camera_pos: vec4<f32>,
-    sun_dir: vec4<f32>,
+    atmosphere: Atmosphere,
 }
 
 @group(0) @binding(0) var<uniform> global: Global;
@@ -19,11 +27,7 @@ struct Local {
 @group(1) @binding(0) var<uniform> local: Local;
 
 // --- CONSTANTS ---
-// Natural, physical light values
-const SUN_COLOR       = vec3<f32>(1.6, 1.5, 1.3);    // High intensity warm sun
-const SKY_COLOR       = vec3<f32>(0.15, 0.3, 0.6);   // Deep blue ambient sky
-const GROUND_COLOR    = vec3<f32>(0.05, 0.04, 0.03); // Dark earth ambient bounce
-const SHADOW_OPACITY  = 0.85;                        // Shadows are not pitch black
+const SHADOW_OPACITY  = 0.85; // Shadows are not pitch black
 
 // --- VERTEX SHADER ---
 
@@ -179,7 +183,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     }
 
     let N = normalize(in.world_normal);
-    let L = normalize(global.sun_dir.xyz);
+    let L = normalize(global.atmosphere.sun_direction.xyz);
     let V = normalize(global.camera_pos.xyz - in.world_pos);
 
     // 2. Material Setup
@@ -199,18 +203,22 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let shadow = mix(1.0 - SHADOW_OPACITY, 1.0, shadow_raw);
 
     // A. Direct Sun Light
-    let direct_light = SUN_COLOR * NdotL * shadow;
+    let direct_light = global.atmosphere.sun_color.xyz * NdotL * shadow;
 
     // B. Hemispheric Ambient
     // Top of objects gets Sky Color, Bottom gets Ground Bounce
     let up_dot = dot(N, normalize(in.world_pos)); // Relative Up for sphere
     let hemi_factor = up_dot * 0.5 + 0.5;
-    let ambient_light = mix(GROUND_COLOR, SKY_COLOR, hemi_factor);
+    let ambient_light = mix(
+        global.atmosphere.ground_ambient_color.xyz,
+        global.atmosphere.sky_color.xyz,
+        hemi_factor
+    );
 
     // C. Fresnel Rim
     // Adds a subtle glow at grazing angles (atmosphere dust effect)
     let fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-    let rim_light = SKY_COLOR * fresnel * 0.2 * shadow;
+    let rim_light = global.atmosphere.sky_color.xyz * fresnel * 0.2 * shadow;
 
     // Combine
     // Note: Ambient is multiplied by albedo (diffuse reflection)
@@ -218,13 +226,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 
     // 4. Fog (Atmospheric Scattering)
     let dist = distance(global.camera_pos.xyz, in.world_pos);
-    // Fog density tuned for the scale defined in gen.rs
-    let fog_density = 0.0015; 
+    let fog_density = global.atmosphere.fog_color_density.w;
     let fog_factor = 1.0 - exp(-(dist * fog_density) * (dist * fog_density * 0.5)); // Exp2 fog
-    
-    // Horizon Fog Color blends into Sky
-    let fog_col = mix(SKY_COLOR * 0.8, vec3<f32>(0.7, 0.8, 0.9), 0.2); 
-    final_color = mix(final_color, fog_col, clamp(fog_factor, 0.0, 1.0));
+    final_color = mix(final_color, global.atmosphere.fog_color_density.xyz, clamp(fog_factor, 0.0, 1.0));
 
     // 5. Post Processing
     // Tone Mapping (HDR -> LDR)

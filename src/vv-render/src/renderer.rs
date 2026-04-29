@@ -28,6 +28,7 @@ use vv_registry::{
 use vv_world_runtime::PlanetData;
 
 use crate::{
+    atmosphere::AtmosphereUniform,
     block_feedback::{
         block_break_mesh, selection_outline_mesh, BlockBreakStyle, SelectionOutlineStyle,
     },
@@ -39,18 +40,18 @@ use crate::{
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
-pub struct GlobalUniform {
-    pub view_proj: [f32; 16],
-    pub light_view_proj: [f32; 16],
-    pub cam_pos: [f32; 4],
-    pub sun_dir: [f32; 4],
+struct GlobalUniform {
+    view_proj: [f32; 16],
+    light_view_proj: [f32; 16],
+    cam_pos: [f32; 4],
+    atmosphere: AtmosphereUniform,
 }
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
-pub struct LocalUniform {
-    pub model: [f32; 16],
-    pub params: [f32; 4], // x = opacity
+struct LocalUniform {
+    model: [f32; 16],
+    params: [f32; 4], // x = opacity
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -315,7 +316,7 @@ impl<'a> Renderer<'a> {
 
         let global_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Global Uniform"),
-            size: 160,
+            size: std::mem::size_of::<GlobalUniform>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -340,7 +341,7 @@ impl<'a> Renderer<'a> {
 
         let shadow_global_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Shadow Global"),
-            size: 160,
+            size: std::mem::size_of::<GlobalUniform>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -564,7 +565,7 @@ impl<'a> Renderer<'a> {
             view_proj: identity_mat.to_cols_array(),
             light_view_proj: identity_mat.to_cols_array(),
             cam_pos: [0.0; 4],
-            sun_dir: [0.0, 1.0, 0.0, 0.0],
+            atmosphere: AtmosphereUniform::from_config(&cfg.render.atmosphere),
         };
         let global_buf_id = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Global Identity"),
@@ -1230,7 +1231,8 @@ impl<'a> Renderer<'a> {
         let h = self.config.height as f32;
         let mvp = controller.get_matrix(player, physics, w, h, &self.render_cfg);
 
-        let sun_dir = Vec3::new(0.5, 0.8, 0.4).normalize();
+        let atmosphere = AtmosphereUniform::from_config(&self.render_cfg.atmosphere);
+        let sun_dir = atmosphere.sun_direction_vec3();
         let shadow_dist = 200.0f32;
         let proj_size = 60.0f32;
         let center = player.position;
@@ -1267,7 +1269,7 @@ impl<'a> Renderer<'a> {
             view_proj: mvp.to_cols_array(),
             light_view_proj: light_vp.to_cols_array(),
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
-            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, 0.0],
+            atmosphere,
         };
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
@@ -1411,12 +1413,7 @@ impl<'a> Renderer<'a> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.02,
-                            g: 0.03,
-                            b: 0.05,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(atmosphere.clear_color()),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
