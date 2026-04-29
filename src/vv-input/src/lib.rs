@@ -255,14 +255,14 @@ impl Controller {
 
         let mut dist = 0.0f32;
         let mut last_empty = None;
-        let step = 0.25f32;
+        let step = (planet.geometry.voxel_size_m * 0.5).clamp(0.02, 0.25);
 
         while dist < reach {
             let p = start + dir * dist;
             if p.length() < 0.5 {
                 break;
             }
-            if let Some(id) = CoordSystem::pos_to_id(p, planet.resolution) {
+            if let Some(id) = CoordSystem::pos_to_id(p, planet.geometry) {
                 let exists = planet.exists(id);
                 if place_mode {
                     if exists {

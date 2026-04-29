@@ -32,15 +32,12 @@ fn main() {
     let compiled_content =
         compile_assets_root(Path::new("assets")).expect("assets packs should compile");
     let terrain = PlanetTerrain::generate(
-        config.planet_resolution,
         &config.worldgen,
         &compiled_content.worldgen_content(),
-        compiled_content
-            .world_content()
-            .world_settings()
-            .voxel_size_m,
+        compiled_content.world_content().world_settings(),
     )
     .expect("compiled worldgen content should generate terrain");
+    let planet_geometry = terrain.geometry();
     let block_content = compiled_content.to_block_content();
 
     // --- Window & event loop ------------------------------------------------
@@ -62,9 +59,12 @@ fn main() {
     console.log("Press ` to open the console.", [1.0, 1.0, 1.0]);
 
     // --- Planet -------------------------------------------------------------
-    println!("Building planet (resolution {})…", config.planet_resolution);
+    println!(
+        "Building planet (radius {:.1} m, voxel {:.3} m, resolution {})…",
+        planet_geometry.radius_m, planet_geometry.voxel_size_m, planet_geometry.resolution
+    );
     let mut planet = PlanetData::new(
-        config.planet_resolution,
+        planet_geometry,
         terrain,
         config.physics.core_protection_layers,
     );
@@ -73,7 +73,7 @@ fn main() {
     // --- Player spawn -------------------------------------------------------
     let center = planet.resolution / 2;
     let ground_h = planet.terrain.get_height(0, center, center);
-    let spawn_r = CoordSystem::get_layer_radius(ground_h, planet.resolution)
+    let spawn_r = CoordSystem::get_layer_radius(ground_h, planet.geometry)
         + config.player.spawn_height_offset;
     player.spawn(Vec3::new(0.0, spawn_r, 0.0));
 
@@ -220,33 +220,30 @@ fn main() {
                             if let Key::Character(ref s) = event.logical_key {
                                 if s == "]" || s == "[" {
                                     let increase = s == "]";
-                                    let new_res = planet.next_resolution(increase);
-                                    let new_terrain = PlanetTerrain::generate(
-                                        new_res,
+                                    let new_geometry = planet.next_geometry(increase);
+                                    let new_terrain = PlanetTerrain::generate_for_geometry(
+                                        new_geometry,
                                         &config.worldgen,
                                         &compiled_content.worldgen_content(),
-                                        compiled_content
-                                            .world_content()
-                                            .world_settings()
-                                            .voxel_size_m,
                                     )
                                     .expect("compiled worldgen content should regenerate terrain");
-                                    planet.apply_resize(new_res, new_terrain);
+                                    planet.apply_resize(new_geometry, new_terrain);
 
                                     let dir = if player.position.length() > 0.1 {
                                         player.position.normalize()
                                     } else {
                                         Vec3::Y
                                     };
-                                    let probe = dir * (new_res as f32 / 2.0);
-                                    let spawn_radius = CoordSystem::pos_to_id(probe, new_res)
-                                        .map(|id| {
-                                            CoordSystem::get_layer_radius(
-                                                planet.terrain.get_height(id.face, id.u, id.v),
-                                                new_res,
-                                            ) + config.player.spawn_height_offset
-                                        })
-                                        .unwrap_or(new_res as f32 / 2.0 + 20.0);
+                                    let probe = dir * planet.geometry.radius_m;
+                                    let spawn_radius =
+                                        CoordSystem::pos_to_id(probe, planet.geometry)
+                                            .map(|id| {
+                                                CoordSystem::get_layer_radius(
+                                                    planet.terrain.get_height(id.face, id.u, id.v),
+                                                    planet.geometry,
+                                                ) + config.player.spawn_height_offset
+                                            })
+                                            .unwrap_or(planet.geometry.radius_m + 20.0);
 
                                     player.position = dir * spawn_radius;
                                     player.velocity = Vec3::ZERO;
@@ -321,7 +318,8 @@ fn log_planet_info(config: &EngineConfig, content: &CompiledContent, planet: &Pl
     println!("Type      : {}", planet_type_key);
     println!("Seed      : {}", config.worldgen.noise_seed);
     println!("Resolution: {}", planet.resolution);
-    println!("Voxel size: {:.2} m", world.world_settings().voxel_size_m);
+    println!("Radius    : {:.1} m", planet.geometry.radius_m);
+    println!("Voxel size: {:.3} m", world.world_settings().voxel_size_m);
     println!("Core lock : {} layers", planet.core_protection_layers);
     println!("Height    : {}..{} layers", min_height, max_height);
     println!(

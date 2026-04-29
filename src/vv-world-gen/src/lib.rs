@@ -4,11 +4,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 use vv_config::WorldGenConfig;
-use vv_planet::CoordSystem;
+use vv_planet::{CoordSystem, PlanetGeometry};
 use vv_registry::{
     BiomeId, BlockId as ContentBlockId, CompiledBiome, CompiledClimateCurves, CompiledFlora,
-    CompiledFloraFeature, CompiledIdealRange, CompiledOre, CompiledPlanetType, PlanetTypeSource,
-    TagId, WorldgenContentView, WorldgenSettingsSource,
+    CompiledFloraFeature, CompiledIdealRange, CompiledOre, CompiledPlanetType,
+    CompiledWorldSettings, PlanetTypeSource, TagId, WorldgenContentView, WorldgenSettingsSource,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -67,20 +67,35 @@ pub struct PlanetTerrain {
     climate_curves: CompiledClimateCurves,
     generator: Arc<NoiseGenerator>,
     noise: TerrainNoiseConfig,
-    resolution: u32,
-    voxel_size_m: f32,
+    geometry: PlanetGeometry,
+    max_feature_height_m: f32,
 }
 
 impl PlanetTerrain {
     pub fn generate(
-        resolution: u32,
         cfg: &WorldGenConfig,
         content: &WorldgenContentView<'_>,
-        voxel_size_m: f32,
+        settings: &CompiledWorldSettings,
+    ) -> Result<Self, TerrainGenerationError> {
+        let default_planet = content
+            .default_planet_type()
+            .ok_or(TerrainGenerationError::MissingDefaultPlanetType)?;
+        let planet = content
+            .planet_type(default_planet)
+            .ok_or(TerrainGenerationError::MissingPlanetType(default_planet))?;
+        let radius_m = deterministic_planet_radius_m(&planet.data, cfg.noise_seed, settings);
+        let geometry = PlanetGeometry::new(radius_m, settings.voxel_size_m);
+        Self::generate_for_geometry(geometry, cfg, content)
+    }
+
+    pub fn generate_for_geometry(
+        geometry: PlanetGeometry,
+        cfg: &WorldGenConfig,
+        content: &WorldgenContentView<'_>,
     ) -> Result<Self, TerrainGenerationError> {
         println!(
-            "Generating registry-driven terrain map (res {})...",
-            resolution
+            "Generating registry-driven terrain map (radius {:.1} m, voxel {:.3} m, res {})...",
+            geometry.radius_m, geometry.voxel_size_m, geometry.resolution
         );
         let default_planet = content
             .default_planet_type()
@@ -106,7 +121,7 @@ impl PlanetTerrain {
                 data: biome.data.clone(),
             })
             .collect();
-        let terrain_flora = content
+        let terrain_flora: Vec<_> = content
             .flora()
             .enumerate()
             .map(|(index, flora)| TerrainFlora {
@@ -122,6 +137,7 @@ impl PlanetTerrain {
                 data: ore.data.clone(),
             })
             .collect();
+        let max_feature_height_m = max_feature_height_m(&terrain_flora);
         println!("Terrain generation ready; columns will be generated lazily.");
         Ok(Self {
             columns: Arc::new(Mutex::new(HashMap::new())),
@@ -136,9 +152,17 @@ impl PlanetTerrain {
                 persistence: cfg.noise_persistence,
                 lacunarity: cfg.noise_lacunarity,
             },
-            resolution,
-            voxel_size_m,
+            geometry,
+            max_feature_height_m,
         })
+    }
+
+    pub fn geometry(&self) -> PlanetGeometry {
+        self.geometry
+    }
+
+    pub fn resolution(&self) -> u32 {
+        self.geometry.resolution
     }
 
     #[inline(always)]
@@ -163,7 +187,8 @@ impl PlanetTerrain {
     pub fn get_block(&self, face: u8, u: u32, v: u32, layer: u32) -> ContentBlockId {
         let column = self.column(face, u, v);
         let biome = &self.biomes[column.biome_index as usize];
-        let depth_m = column.height.saturating_sub(layer as u16) as f32 * self.voxel_size_m;
+        let depth_m =
+            column.height.saturating_sub(layer as u16) as f32 * self.geometry.voxel_size_m;
         if let Some(ore) = self.ore_block(face, u, v, layer, depth_m, biome) {
             return ore;
         }
@@ -194,7 +219,7 @@ impl PlanetTerrain {
         v: u32,
         layer: u32,
     ) -> Option<ContentBlockId> {
-        if u >= self.resolution || v >= self.resolution {
+        if u >= self.geometry.resolution || v >= self.geometry.resolution {
             return None;
         }
         let column = self.column(face, u, v);
@@ -224,12 +249,15 @@ impl PlanetTerrain {
         v: u32,
     ) -> std::ops::RangeInclusive<u32> {
         let h = self.get_height(face, u, v);
-        h.saturating_add(1)..=h.saturating_add(8)
+        let max_layers = self
+            .geometry
+            .meters_to_voxels_ceil(self.max_feature_height_m.max(self.geometry.voxel_size_m));
+        h.saturating_add(1)..=h.saturating_add(max_layers)
     }
 
     fn column(&self, face: u8, u: u32, v: u32) -> TerrainColumn {
-        let u = u.min(self.resolution - 1);
-        let v = v.min(self.resolution - 1);
+        let u = u.min(self.geometry.resolution - 1);
+        let v = v.min(self.geometry.resolution - 1);
         let key = Self::cache_key(face, u, v);
         if let Some(column) = self
             .columns
@@ -250,18 +278,21 @@ impl PlanetTerrain {
     }
 
     fn compute_column(&self, face: u8, u: u32, v: u32) -> TerrainColumn {
-        let dir = CoordSystem::get_direction(face, u, v, self.resolution);
+        let dir = CoordSystem::get_direction(face, u, v, self.geometry.resolution);
         let climate =
             ClimateSample::sample(dir, &self.generator, self.climate_curves, &self.planet);
         let blend = choose_biome_blend(&self.biomes, climate);
         let relief_noise = self.generator.fractal(
-            dir,
-            self.resolution as f32 / self.climate_curves.minimum_biome_transition_m,
+            dir * self.geometry.radius_m,
+            1.0 / self
+                .climate_curves
+                .minimum_biome_transition_m
+                .max(self.geometry.voxel_size_m),
             self.noise.octaves,
             self.noise.persistence,
             self.noise.lacunarity,
         );
-        let base_radius = self.resolution as f32 / 2.0;
+        let surface_layer = self.geometry.surface_layer() as f32;
         let height_delta = blend
             .weights
             .iter()
@@ -275,8 +306,9 @@ impl PlanetTerrain {
                             * self.planet.altitude_variance_multiplier)
             })
             .sum::<f32>();
+        let height_delta_layers = height_delta / self.geometry.voxel_size_m;
         TerrainColumn {
-            height: (base_radius + height_delta).max(1.0) as u16,
+            height: (surface_layer + height_delta_layers).max(1.0) as u16,
             biome_index: blend.dominant_index as u16,
         }
     }
@@ -305,7 +337,8 @@ impl PlanetTerrain {
             ) {
                 continue;
             }
-            let chance = (vein.frequency * 0.035).clamp(0.0, 0.35);
+            let voxel_volume_m3 = self.geometry.voxel_size_m.powi(3);
+            let chance = (vein.frequency * 0.035 * voxel_volume_m3).clamp(0.0, 0.35);
             if hash01(face, u, v, layer, ore.index) < chance {
                 return Some(ore.data.block);
             }
@@ -325,12 +358,13 @@ impl PlanetTerrain {
         match flora.data.feature {
             CompiledFloraFeature::Plant {
                 block,
-                height_min: _,
-                height_max,
+                height_min_m: _,
+                height_max_m,
             } => {
                 let surface = self.column(face, u, v).height as u32;
-                if layer <= surface + height_max.max(1)
-                    && layer == surface + 1
+                let height_layers = self.geometry.meters_to_voxels_ceil(height_max_m);
+                if layer > surface
+                    && layer <= surface + height_layers
                     && self.flora_origin(face, u, v, biome, flora)
                 {
                     return Some(block);
@@ -340,29 +374,36 @@ impl PlanetTerrain {
             CompiledFloraFeature::Tree {
                 log_block,
                 leaf_block,
-                trunk_height_min,
-                trunk_height_max,
-                canopy_radius,
-                canopy_height,
+                trunk_height_min_m,
+                trunk_height_max_m,
+                canopy_radius_m,
+                canopy_height_m,
             } => {
                 if self.flora_origin(face, u, v, biome, flora) {
                     let surface = self.column(face, u, v).height as u32;
-                    let trunk_height =
-                        ranged_u32(face, u, v, flora.index, trunk_height_min, trunk_height_max);
+                    let trunk_height_m = ranged_f32(
+                        face,
+                        u,
+                        v,
+                        flora.index,
+                        trunk_height_min_m,
+                        trunk_height_max_m,
+                    );
+                    let trunk_height = self.geometry.meters_to_voxels_ceil(trunk_height_m);
                     if layer > surface && layer <= surface + trunk_height {
                         return Some(log_block);
                     }
                 }
 
-                let radius = canopy_radius.ceil().max(1.0) as i32;
+                let radius = self.geometry.meters_to_voxels_ceil(canopy_radius_m) as i32;
                 for du in -radius..=radius {
                     for dv in -radius..=radius {
                         let ou = u as i32 + du;
                         let ov = v as i32 + dv;
                         if ou < 0
                             || ov < 0
-                            || ou >= self.resolution as i32
-                            || ov >= self.resolution as i32
+                            || ou >= self.geometry.resolution as i32
+                            || ov >= self.geometry.resolution as i32
                         {
                             continue;
                         }
@@ -372,18 +413,23 @@ impl PlanetTerrain {
                             continue;
                         }
                         let origin_surface = self.column(face, ou, ov).height as u32;
-                        let trunk_height = ranged_u32(
+                        let trunk_height_m = ranged_f32(
                             face,
                             ou,
                             ov,
                             flora.index,
-                            trunk_height_min,
-                            trunk_height_max,
+                            trunk_height_min_m,
+                            trunk_height_max_m,
                         );
+                        let trunk_height = self.geometry.meters_to_voxels_ceil(trunk_height_m);
                         let canopy_center = origin_surface + trunk_height;
-                        let vertical = layer.abs_diff(canopy_center) as f32;
-                        let horizontal = ((du * du + dv * dv) as f32).sqrt();
-                        if horizontal <= canopy_radius && vertical <= canopy_height.max(1.0) {
+                        let vertical_m =
+                            layer.abs_diff(canopy_center) as f32 * self.geometry.voxel_size_m;
+                        let horizontal_m =
+                            ((du * du + dv * dv) as f32).sqrt() * self.geometry.voxel_size_m;
+                        if horizontal_m <= canopy_radius_m
+                            && vertical_m <= canopy_height_m.max(self.geometry.voxel_size_m)
+                        {
                             return Some(leaf_block);
                         }
                     }
@@ -391,21 +437,23 @@ impl PlanetTerrain {
                 None
             }
             CompiledFloraFeature::Cluster {
-                block, radius_max, ..
+                block,
+                radius_max_m,
+                ..
             } => {
                 let surface = self.column(face, u, v).height as u32;
                 if layer != surface + 1 {
                     return None;
                 }
-                let radius = radius_max.ceil().max(1.0) as i32;
+                let radius = self.geometry.meters_to_voxels_ceil(radius_max_m) as i32;
                 for du in -radius..=radius {
                     for dv in -radius..=radius {
                         let ou = u as i32 + du;
                         let ov = v as i32 + dv;
                         if ou < 0
                             || ov < 0
-                            || ou >= self.resolution as i32
-                            || ov >= self.resolution as i32
+                            || ou >= self.geometry.resolution as i32
+                            || ov >= self.geometry.resolution as i32
                         {
                             continue;
                         }
@@ -428,18 +476,23 @@ impl PlanetTerrain {
         flora: &TerrainFlora,
     ) -> bool {
         let placement = flora.data.placement;
-        let surface = self.column(face, u, v).height as f32 * self.voxel_size_m;
+        let surface = self
+            .geometry
+            .layer_radius_m(self.column(face, u, v).height as u32)
+            - self.geometry.radius_m;
         if placement
-            .altitude_max
+            .altitude_max_m
             .is_some_and(|altitude_max| surface > altitude_max)
         {
             return false;
         }
+        let cell_area_m2 = self.geometry.voxel_size_m * self.geometry.voxel_size_m;
+        let origin_chance = (placement.density_base * cell_area_m2).clamp(0.0, 1.0);
         tags_match(
             &flora.data.required_tags,
             &flora.data.forbidden_tags,
             &biome.data.provided_tags,
-        ) && hash01(face, u, v, 0, flora.index) < placement.density_base.clamp(0.0, 1.0)
+        ) && hash01(face, u, v, 0, flora.index) < origin_chance
     }
 }
 
@@ -454,8 +507,8 @@ impl Clone for PlanetTerrain {
             climate_curves: self.climate_curves,
             generator: self.generator.clone(),
             noise: self.noise,
-            resolution: self.resolution,
-            voxel_size_m: self.voxel_size_m,
+            geometry: self.geometry,
+            max_feature_height_m: self.max_feature_height_m,
         }
     }
 }
@@ -645,12 +698,44 @@ fn hash01(face: u8, u: u32, v: u32, layer: u32, salt: u32) -> f32 {
     ((x & 0xFFFF_FFFF) as f32) / u32::MAX as f32
 }
 
-fn ranged_u32(face: u8, u: u32, v: u32, salt: u32, min: u32, max: u32) -> u32 {
+fn ranged_f32(face: u8, u: u32, v: u32, salt: u32, min: f32, max: f32) -> f32 {
     if min >= max {
         return min;
     }
-    let span = max - min + 1;
-    min + (hash01(face, u, v, 1, salt) * span as f32).floor() as u32 % span
+    min + hash01(face, u, v, 1, salt) * (max - min)
+}
+
+fn deterministic_planet_radius_m(
+    planet: &CompiledPlanetType,
+    seed: u32,
+    settings: &CompiledWorldSettings,
+) -> f32 {
+    let min_m = planet.min_radius_km.max(0.001) * 1_000.0;
+    let max_m = planet.max_radius_km.max(planet.min_radius_km).max(0.001) * 1_000.0;
+    let t = hash01(
+        (seed & 0xFF) as u8,
+        seed.rotate_left(7),
+        seed.rotate_right(9),
+        0,
+        0,
+    );
+    let radius = min_m + (max_m - min_m) * t;
+    radius.min(settings.max_planet_radius_km.max(0.001) * 1_000.0)
+}
+
+fn max_feature_height_m(flora: &[TerrainFlora]) -> f32 {
+    flora
+        .iter()
+        .map(|flora| match flora.data.feature {
+            CompiledFloraFeature::Plant { height_max_m, .. } => height_max_m,
+            CompiledFloraFeature::Tree {
+                trunk_height_max_m,
+                canopy_height_m,
+                ..
+            } => trunk_height_max_m + canopy_height_m,
+            CompiledFloraFeature::Cluster { radius_max_m, .. } => radius_max_m,
+        })
+        .fold(1.0, f32::max)
 }
 
 struct NoiseGenerator {
@@ -785,12 +870,10 @@ mod tests {
         let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let content = compile_assets_root(&assets).expect("core content should compile");
         let worldgen = content.worldgen_content();
-        let resolution = 16;
+        let geometry = PlanetGeometry::with_resolution(32.0, 0.5, 16);
         let cfg = WorldGenConfig::default();
-        let a = PlanetTerrain::generate(resolution, &cfg, &worldgen, content.world.voxel_size_m)
-            .expect("terrain a");
-        let b = PlanetTerrain::generate(resolution, &cfg, &worldgen, content.world.voxel_size_m)
-            .expect("terrain b");
+        let a = PlanetTerrain::generate_for_geometry(geometry, &cfg, &worldgen).expect("terrain a");
+        let b = PlanetTerrain::generate_for_geometry(geometry, &cfg, &worldgen).expect("terrain b");
 
         for (face, u, v) in [(0, 4, 4), (1, 7, 3), (5, 9, 12)] {
             assert_eq!(a.get_height(face, u, v), b.get_height(face, u, v));
@@ -809,14 +892,11 @@ mod tests {
         let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let content = compile_assets_root(&assets).expect("core content should compile");
         let worldgen = content.worldgen_content();
-        let resolution = 64;
-        let terrain = PlanetTerrain::generate(
-            resolution,
-            &WorldGenConfig::default(),
-            &worldgen,
-            content.world.voxel_size_m,
-        )
-        .expect("terrain should generate");
+        let geometry = PlanetGeometry::with_resolution(64.0, 0.5, 64);
+        let resolution = geometry.resolution;
+        let terrain =
+            PlanetTerrain::generate_for_geometry(geometry, &WorldGenConfig::default(), &worldgen)
+                .expect("terrain should generate");
 
         let wood_log = content
             .blocks
@@ -880,16 +960,16 @@ mod tests {
     fn biome_boundaries_do_not_create_cliff_steps() {
         let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let content = compile_assets_root(&assets).expect("core content should compile");
-        let terrain = PlanetTerrain::generate(
-            96,
+        let geometry = PlanetGeometry::with_resolution(96.0, 0.5, 96);
+        let terrain = PlanetTerrain::generate_for_geometry(
+            geometry,
             &WorldGenConfig::default(),
             &content.worldgen_content(),
-            content.world.voxel_size_m,
         )
         .expect("terrain should generate");
 
         let mut checked_boundaries = 0;
-        let mut largest_step = 0;
+        let mut largest_step_m = 0.0f32;
 
         for face in 0..6 {
             for u in 0..95 {
@@ -899,10 +979,10 @@ mod tests {
                             continue;
                         }
                         checked_boundaries += 1;
-                        let step = terrain
+                        let step_layers = terrain
                             .get_height(face, u, v)
                             .abs_diff(terrain.get_height(face, nu, nv));
-                        largest_step = largest_step.max(step);
+                        largest_step_m = largest_step_m.max(geometry.voxel_extent_m(step_layers));
                     }
                 }
             }
@@ -913,8 +993,87 @@ mod tests {
             "test seed should contain biome boundaries"
         );
         assert!(
-            largest_step <= 3,
-            "biome boundary height step should stay walkable, got {largest_step}"
+            largest_step_m <= 3.0,
+            "biome boundary height step should stay walkable, got {largest_step_m} m"
         );
+    }
+
+    #[test]
+    fn same_seed_with_different_voxel_size_keeps_planet_radius_m() {
+        let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let content = compile_assets_root(&assets).expect("core content should compile");
+        let mut coarse_settings = content.world;
+        coarse_settings.voxel_size_m = 0.5;
+        let mut fine_settings = content.world;
+        fine_settings.voxel_size_m = 0.05;
+
+        let cfg = WorldGenConfig::default();
+        let coarse = PlanetTerrain::generate(&cfg, &content.worldgen_content(), &coarse_settings)
+            .expect("coarse terrain");
+        let fine = PlanetTerrain::generate(&cfg, &content.worldgen_content(), &fine_settings)
+            .expect("fine terrain");
+
+        assert_eq!(coarse.geometry().radius_m, fine.geometry().radius_m);
+        assert!(fine.geometry().resolution > coarse.geometry().resolution);
+    }
+
+    #[test]
+    fn same_world_params_keep_global_terrain_shape_in_meters() {
+        let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let content = compile_assets_root(&assets).expect("core content should compile");
+        let worldgen = content.worldgen_content();
+        let cfg = WorldGenConfig::default();
+        let coarse_geometry = PlanetGeometry::new(128.0, 0.5);
+        let fine_geometry = PlanetGeometry::new(128.0, 0.25);
+        let coarse = PlanetTerrain::generate_for_geometry(coarse_geometry, &cfg, &worldgen)
+            .expect("coarse terrain");
+        let fine = PlanetTerrain::generate_for_geometry(fine_geometry, &cfg, &worldgen)
+            .expect("fine terrain");
+
+        for (face, u_frac, v_frac) in [(0, 0.25, 0.25), (2, 0.5, 0.75), (5, 0.8, 0.4)] {
+            let coarse_u = (coarse_geometry.resolution as f32 * u_frac) as u32;
+            let coarse_v = (coarse_geometry.resolution as f32 * v_frac) as u32;
+            let fine_u = (fine_geometry.resolution as f32 * u_frac) as u32;
+            let fine_v = (fine_geometry.resolution as f32 * v_frac) as u32;
+            let coarse_height_m = coarse_geometry
+                .layer_radius_m(coarse.get_height(face, coarse_u, coarse_v))
+                - coarse_geometry.radius_m;
+            let fine_height_m = fine_geometry.layer_radius_m(fine.get_height(face, fine_u, fine_v))
+                - fine_geometry.radius_m;
+
+            assert!(
+                (coarse_height_m - fine_height_m).abs() <= coarse_geometry.voxel_size_m * 2.0,
+                "terrain height drifted: coarse {coarse_height_m}, fine {fine_height_m}"
+            );
+        }
+    }
+
+    #[test]
+    fn authored_tree_height_is_physical_and_voxelized_by_density() {
+        let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
+        let content = compile_assets_root(&assets).expect("core content should compile");
+        let oak = content
+            .flora
+            .id(&ContentKey::from_str("voxelverse:oak_trees").unwrap())
+            .and_then(|id| content.flora.get(id))
+            .expect("oak flora");
+
+        let CompiledFloraFeature::Tree {
+            trunk_height_max_m, ..
+        } = oak.feature
+        else {
+            panic!("oak_trees should be a tree feature");
+        };
+
+        let coarse = PlanetGeometry::new(128.0, 0.5);
+        let fine = PlanetGeometry::new(128.0, 0.05);
+        let coarse_layers = coarse.meters_to_voxels_ceil(trunk_height_max_m);
+        let fine_layers = fine.meters_to_voxels_ceil(trunk_height_max_m);
+
+        assert_eq!(trunk_height_max_m, 6.0);
+        assert_eq!(coarse_layers, 12);
+        assert_eq!(fine_layers, 120);
+        assert!((coarse.voxel_extent_m(coarse_layers) - 6.0).abs() <= coarse.voxel_size_m);
+        assert!((fine.voxel_extent_m(fine_layers) - 6.0).abs() <= fine.voxel_size_m);
     }
 }

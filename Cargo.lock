@@ -1930,6 +1930,7 @@ name = "vv-world-runtime"
 version = "0.1.0"
 dependencies = [
  "vv-core",
+ "vv-planet",
  "vv-registry",
  "vv-world-gen",
 ]

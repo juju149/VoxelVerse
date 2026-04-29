@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use vv_core::{BlockId as VoxelId, ChunkKey, CHUNK_SIZE};
+use vv_planet::PlanetGeometry;
 use vv_registry::BlockId as ContentBlockId;
 use vv_world_gen::PlanetTerrain;
 
@@ -35,6 +36,8 @@ pub struct PlanetData {
     pub chunks: HashMap<ChunkKey, ChunkMods>,
     /// Face grid resolution (equals radial layer count).
     pub resolution: u32,
+    /// Physical planet geometry and meter/voxel conversion rules.
+    pub geometry: PlanetGeometry,
     /// Whether the planet has an indestructible solid core.
     pub has_core: bool,
     /// Number of radial layers from the centre that cannot be mined.
@@ -44,10 +47,15 @@ pub struct PlanetData {
 }
 
 impl PlanetData {
-    pub fn new(resolution: u32, terrain: PlanetTerrain, core_protection_layers: u32) -> Self {
+    pub fn new(
+        geometry: PlanetGeometry,
+        terrain: PlanetTerrain,
+        core_protection_layers: u32,
+    ) -> Self {
         Self {
             chunks: HashMap::new(),
-            resolution,
+            resolution: geometry.resolution,
+            geometry,
             has_core: true,
             core_protection_layers,
             terrain,
@@ -57,6 +65,12 @@ impl PlanetData {
     // --- Resize helpers -----------------------------------------------------
 
     /// Compute the next resolution when resizing (does not apply the change).
+    pub fn next_geometry(&self, increase: bool) -> PlanetGeometry {
+        let factor = if increase { 1.2 } else { 1.0 / 1.2 };
+        let voxel_size_m = (self.geometry.voxel_size_m / factor).clamp(0.01, 10.0);
+        PlanetGeometry::new(self.geometry.radius_m, voxel_size_m)
+    }
+
     pub fn next_resolution(&self, increase: bool) -> u32 {
         if increase {
             let r = (self.resolution as f32 * 1.2) as u32;
@@ -67,8 +81,9 @@ impl PlanetData {
     }
 
     /// Apply a resize: swap in a freshly-generated terrain and clear all edits.
-    pub fn apply_resize(&mut self, new_resolution: u32, new_terrain: PlanetTerrain) {
-        self.resolution = new_resolution;
+    pub fn apply_resize(&mut self, new_geometry: PlanetGeometry, new_terrain: PlanetTerrain) {
+        self.resolution = new_geometry.resolution;
+        self.geometry = new_geometry;
         self.chunks.clear();
         self.terrain = new_terrain;
     }

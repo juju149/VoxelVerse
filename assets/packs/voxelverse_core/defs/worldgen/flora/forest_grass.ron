@@ -5,17 +5,17 @@
     provided_tags: ["voxelverse:ground_flora"],
     placement: (
         density_base: 0.10,
-        altitude_max: Some(90.0),
+        altitude_max_m: Some(90.0),
         slope_max: 0.4,
         near_water_bonus: 1.0,
-        cluster_radius: 2.0,
+        cluster_radius_m: 2.0,
         cluster_min: 1,
         cluster_max: 2,
     ),
     feature: (
         kind: "plant",
         block: "voxelverse:tall_grass",
-        height_min: 1,
-        height_max: 1,
+        height_min_m: 0.8,
+        height_max_m: 0.8,
     ),
 )

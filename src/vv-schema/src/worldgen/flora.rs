@@ -28,11 +28,14 @@ fn one() -> f32 {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct FloraPlacement {
+    /// Spawn density per square meter of surface.
     pub density_base: f32,
-    pub altitude_max: Option<f32>,
+    /// Maximum altitude above the authored planet radius, in meters.
+    pub altitude_max_m: Option<f32>,
     pub slope_max: f32,
     pub near_water_bonus: f32,
-    pub cluster_radius: f32,
+    /// Cluster radius in meters; voxel coverage is derived at generation time.
+    pub cluster_radius_m: f32,
     pub cluster_min: u32,
     pub cluster_max: u32,
 }
@@ -41,10 +44,10 @@ impl Default for FloraPlacement {
     fn default() -> Self {
         FloraPlacement {
             density_base: 0.05,
-            altitude_max: None,
+            altitude_max_m: None,
             slope_max: 0.5,
             near_water_bonus: 1.0,
-            cluster_radius: 3.0,
+            cluster_radius_m: 3.0,
             cluster_min: 1,
             cluster_max: 1,
         }
@@ -56,20 +59,24 @@ impl Default for FloraPlacement {
 pub enum FloraFeature {
     Plant {
         block: BlockRef,
-        height_min: u32,
-        height_max: u32,
+        /// Physical plant height range in meters.
+        height_min_m: f32,
+        height_max_m: f32,
     },
     Tree {
         log_block: BlockRef,
         leaf_block: BlockRef,
-        trunk_height_min: u32,
-        trunk_height_max: u32,
-        canopy_radius: f32,
-        canopy_height: f32,
+        /// Physical trunk height range in meters.
+        trunk_height_min_m: f32,
+        trunk_height_max_m: f32,
+        /// Physical canopy dimensions in meters.
+        canopy_radius_m: f32,
+        canopy_height_m: f32,
     },
     Cluster {
         block: BlockRef,
-        radius_min: f32,
-        radius_max: f32,
+        /// Physical cluster radius range in meters.
+        radius_min_m: f32,
+        radius_max_m: f32,
     },
 }

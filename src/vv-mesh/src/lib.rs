@@ -236,7 +236,13 @@ impl MeshGen {
         base_color[2] *= light_val;
 
         let p = |u_off: u32, v_off: u32, l_off: u32| {
-            CoordSystem::get_vertex_pos(id.face, id.u + u_off, id.v + v_off, id.layer + l_off, res)
+            CoordSystem::get_vertex_pos(
+                id.face,
+                id.u + u_off,
+                id.v + v_off,
+                id.layer + l_off,
+                data.geometry,
+            )
         };
         let i_bl = p(0, 0, 0);
         let i_br = p(1, 0, 0);
@@ -366,7 +372,7 @@ impl MeshGen {
             let abs_u = (key.x as i64 + step_u).clamp(0, data.resolution as i64) as u32;
             let abs_v = (key.y as i64 + step_v).clamp(0, data.resolution as i64) as u32;
             let h = data.terrain.get_height(key.face, abs_u, abs_v);
-            CoordSystem::get_vertex_pos(key.face, abs_u, abs_v, h, data.resolution)
+            CoordSystem::get_vertex_pos(key.face, abs_u, abs_v, h, data.geometry)
         };
 
         for vy in 0..=grid_res {
@@ -413,7 +419,7 @@ impl MeshGen {
         }
 
         // Skirts to hide seams between LOD levels
-        let radius = CoordSystem::get_layer_radius(data.resolution / 2, data.resolution);
+        let radius = CoordSystem::get_layer_radius(data.geometry.surface_layer(), data.geometry);
         let chunk_phys_size = (key.size as f32 / data.resolution as f32) * radius;
         let skirt_depth = (chunk_phys_size * 0.15).clamp(4.0, 500.0);
 
@@ -481,7 +487,7 @@ impl MeshGen {
         let range: i32 = 2;
         let mut idx: u32 = 0;
 
-        if let Some((center_id, _)) = CoordSystem::get_local_coords(player_pos, res) {
+        if let Some((center_id, _)) = CoordSystem::get_local_coords(player_pos, planet.geometry) {
             let su = (center_id.u as i32 - range).max(0);
             let eu = (center_id.u as i32 + range).min(res as i32 - 1);
             let sv = (center_id.v as i32 - range).max(0);
@@ -507,7 +513,7 @@ impl MeshGen {
                                 id.u + uu,
                                 id.v + vv,
                                 id.layer + ll,
-                                res,
+                                planet.geometry,
                             )
                         };
                         let c000 = gp(0, 0, 0);
@@ -690,18 +696,17 @@ mod tests {
 
     #[test]
     fn chunk_mesh_uses_registry_block_render_color() {
-        let resolution = 8;
+        let geometry = vv_planet::PlanetGeometry::with_resolution(8.0, 0.5, 8);
         let assets = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
         let content = compile_assets_root(&assets).expect("core content should compile");
         let block_content = content.to_block_content();
-        let terrain = PlanetTerrain::generate(
-            resolution,
+        let terrain = PlanetTerrain::generate_for_geometry(
+            geometry,
             &WorldGenConfig::default(),
             &content.worldgen_content(),
-            content.world.voxel_size_m,
         )
         .expect("terrain should generate");
-        let planet = PlanetData::new(resolution, terrain, 0);
+        let planet = PlanetData::new(geometry, terrain, 0);
 
         let (verts, _) = MeshGen::build_chunk(
             ChunkKey {

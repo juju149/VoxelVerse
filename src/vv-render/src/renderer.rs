@@ -722,7 +722,7 @@ impl<'a> Renderer<'a> {
 
     pub fn update_view(&mut self, player_pos: Vec3, planet: &PlanetData) {
         let res = planet.resolution;
-        let player_id = CoordSystem::pos_to_id(player_pos, res);
+        let player_id = CoordSystem::pos_to_id(player_pos, planet.geometry);
 
         let mut upload_count = 0;
         while let Ok((key, v, i)) = self.lod_rx.try_recv() {
@@ -823,8 +823,8 @@ impl<'a> Renderer<'a> {
                     k.face,
                     k.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2,
                     k.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2,
-                    planet.resolution / 2,
-                    planet.resolution,
+                    planet.geometry.surface_layer(),
+                    planet.geometry,
                 )
             };
             let da = center(a).distance_squared(player_pos);
@@ -836,9 +836,14 @@ impl<'a> Renderer<'a> {
 
     pub fn update_cursor(&mut self, planet: &PlanetData, id: Option<BlockId>) {
         if let Some(id) = id {
-            let res = planet.resolution;
             let p = |u, v, l| {
-                CoordSystem::get_vertex_pos(id.face, id.u + u, id.v + v, id.layer + l, res)
+                CoordSystem::get_vertex_pos(
+                    id.face,
+                    id.u + u,
+                    id.v + v,
+                    id.layer + l,
+                    planet.geometry,
+                )
             };
             let corners = [
                 p(0, 0, 0),
@@ -1753,9 +1758,9 @@ impl<'a> Renderer<'a> {
             return;
         }
 
-        let res = planet.resolution;
-        let p =
-            |u, v, l| CoordSystem::get_vertex_pos(id.face, id.u + u, id.v + v, id.layer + l, res);
+        let p = |u, v, l| {
+            CoordSystem::get_vertex_pos(id.face, id.u + u, id.v + v, id.layer + l, planet.geometry)
+        };
         let corners = [
             p(0, 0, 0),
             p(1, 0, 0),
@@ -2173,8 +2178,8 @@ impl<'a> Renderer<'a> {
         }
         let cu = (x + size / 2).min(planet.resolution - 1);
         let cv = (y + size / 2).min(planet.resolution - 1);
-        let h = planet.resolution / 2;
-        let world_pos = CoordSystem::get_vertex_pos(face, cu, cv, h, planet.resolution);
+        let h = planet.geometry.surface_layer();
+        let world_pos = CoordSystem::get_vertex_pos(face, cu, cv, h, planet.geometry);
 
         let mut dist = world_pos.distance(cam_pos);
         if let Some(pid) = player_id {
@@ -2184,7 +2189,7 @@ impl<'a> Renderer<'a> {
             }
         }
 
-        let node_r = (size as f32 * CoordSystem::get_layer_radius(h, planet.resolution))
+        let node_r = (size as f32 * CoordSystem::get_layer_radius(h, planet.geometry))
             / planet.resolution as f32;
         let lod_factor = if size <= CHUNK_SIZE {
             18.0

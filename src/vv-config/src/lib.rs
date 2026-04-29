@@ -4,9 +4,9 @@
 /// to every system that uses it. No magic numbers scattered across files.
 #[derive(Clone, Debug)]
 pub struct EngineConfig {
-    /// Face grid resolution of the planet (also the radial layer count).
-    /// Increase for a larger, more detailed planet; decrease for faster gen.
-    pub planet_resolution: u32,
+    /// Optional development cap for generated planet resolution.
+    /// Physical planet size comes from content; voxel size controls density.
+    pub max_debug_resolution: Option<u32>,
     pub physics: PhysicsConfig,
     pub player: PlayerConfig,
     pub render: RenderConfig,
@@ -88,7 +88,7 @@ pub struct LodConfig {
 impl Default for EngineConfig {
     fn default() -> Self {
         Self {
-            planet_resolution: 1000,
+            max_debug_resolution: None,
             physics: PhysicsConfig::default(),
             player: PlayerConfig::default(),
             render: RenderConfig::default(),

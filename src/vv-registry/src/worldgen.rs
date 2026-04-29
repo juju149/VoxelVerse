@@ -111,9 +111,9 @@ pub type BiomeRegistry = RegistryTable<BiomeId, CompiledBiome>;
 #[derive(Debug, Clone, Copy)]
 pub struct CompiledFloraPlacement {
     pub density_base: f32,
-    pub altitude_max: Option<f32>,
+    pub altitude_max_m: Option<f32>,
     pub slope_max: f32,
-    pub cluster_radius: f32,
+    pub cluster_radius_m: f32,
     pub cluster_min: u32,
     pub cluster_max: u32,
 }
@@ -122,21 +122,21 @@ pub struct CompiledFloraPlacement {
 pub enum CompiledFloraFeature {
     Plant {
         block: BlockId,
-        height_min: u32,
-        height_max: u32,
+        height_min_m: f32,
+        height_max_m: f32,
     },
     Tree {
         log_block: BlockId,
         leaf_block: BlockId,
-        trunk_height_min: u32,
-        trunk_height_max: u32,
-        canopy_radius: f32,
-        canopy_height: f32,
+        trunk_height_min_m: f32,
+        trunk_height_max_m: f32,
+        canopy_radius_m: f32,
+        canopy_height_m: f32,
     },
     Cluster {
         block: BlockId,
-        radius_min: f32,
-        radius_max: f32,
+        radius_min_m: f32,
+        radius_max_m: f32,
     },
 }
 

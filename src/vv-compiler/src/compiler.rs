@@ -642,25 +642,25 @@ impl ContentCompiler {
         let feature = match &doc.value.feature {
             FloraFeature::Plant {
                 block,
-                height_min,
-                height_max,
+                height_min_m,
+                height_max_m,
             } => {
                 let block_id = self
                     .resolve_block("flora", doc, block, index)
                     .unwrap_or(BlockId::new(0));
                 CompiledFloraFeature::Plant {
                     block: block_id,
-                    height_min: *height_min,
-                    height_max: *height_max,
+                    height_min_m: *height_min_m,
+                    height_max_m: *height_max_m,
                 }
             }
             FloraFeature::Tree {
                 log_block,
                 leaf_block,
-                trunk_height_min,
-                trunk_height_max,
-                canopy_radius,
-                canopy_height,
+                trunk_height_min_m,
+                trunk_height_max_m,
+                canopy_radius_m,
+                canopy_height_m,
             } => {
                 let log = self
                     .resolve_block("flora", doc, log_block, index)
@@ -671,24 +671,24 @@ impl ContentCompiler {
                 CompiledFloraFeature::Tree {
                     log_block: log,
                     leaf_block: leaf,
-                    trunk_height_min: *trunk_height_min,
-                    trunk_height_max: *trunk_height_max,
-                    canopy_radius: *canopy_radius,
-                    canopy_height: *canopy_height,
+                    trunk_height_min_m: *trunk_height_min_m,
+                    trunk_height_max_m: *trunk_height_max_m,
+                    canopy_radius_m: *canopy_radius_m,
+                    canopy_height_m: *canopy_height_m,
                 }
             }
             FloraFeature::Cluster {
                 block,
-                radius_min,
-                radius_max,
+                radius_min_m,
+                radius_max_m,
             } => {
                 let block_id = self
                     .resolve_block("flora", doc, block, index)
                     .unwrap_or(BlockId::new(0));
                 CompiledFloraFeature::Cluster {
                     block: block_id,
-                    radius_min: *radius_min,
-                    radius_max: *radius_max,
+                    radius_min_m: *radius_min_m,
+                    radius_max_m: *radius_max_m,
                 }
             }
         };
@@ -701,9 +701,9 @@ impl ContentCompiler {
             provided_tags: self.resolve_tags("flora", doc, &doc.value.provided_tags, index),
             placement: CompiledFloraPlacement {
                 density_base: doc.value.placement.density_base,
-                altitude_max: doc.value.placement.altitude_max,
+                altitude_max_m: doc.value.placement.altitude_max_m,
                 slope_max: doc.value.placement.slope_max,
-                cluster_radius: doc.value.placement.cluster_radius,
+                cluster_radius_m: doc.value.placement.cluster_radius_m,
                 cluster_min: doc.value.placement.cluster_min,
                 cluster_max: doc.value.placement.cluster_max,
             },

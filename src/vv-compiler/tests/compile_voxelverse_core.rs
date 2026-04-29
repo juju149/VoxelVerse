@@ -91,7 +91,7 @@ fn exposes_narrow_runtime_content_views() {
 
     let world = content.world_content();
     assert_eq!(world.world_settings().chunk_size, 32);
-    assert_eq!(world.world_settings().voxel_size_m, 0.5);
+    assert_eq!(world.world_settings().voxel_size_m, 0.05);
 
     let worldgen = content.worldgen_content();
     let default_planet = worldgen

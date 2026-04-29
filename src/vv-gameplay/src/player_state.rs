@@ -199,7 +199,7 @@ impl PlayerGameplayState {
             .mining
             .advance(target.block, block.mining.hardness, dt, speed)
         {
-            let drop_position = block_center(target.block, planet.resolution);
+            let drop_position = block_center(target.block, planet.geometry);
             let drops = if harvests {
                 resolve_drops(block.drops.clone(), content)
             } else {
@@ -366,7 +366,7 @@ fn selected_mining_speed(
     }
 }
 
-fn block_center(id: VoxelId, resolution: u32) -> Vec3 {
+fn block_center(id: VoxelId, geometry: vv_planet::PlanetGeometry) -> Vec3 {
     let mut center = Vec3::ZERO;
     for u in [0, 1] {
         for v in [0, 1] {
@@ -376,7 +376,7 @@ fn block_center(id: VoxelId, resolution: u32) -> Vec3 {
                     id.u + u,
                     id.v + v,
                     id.layer + l,
-                    resolution,
+                    geometry,
                 );
             }
         }
