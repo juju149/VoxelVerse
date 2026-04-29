@@ -1,29 +1,28 @@
 (
     display_key: Some("worldgen.voxelverse.rocky_hills"),
-    weight: 0.75,
-    required_tags: [],
+    weight: 0.8,
+    required_tags: ["voxelverse:mid_latitude"],
     provided_tags: [
         "voxelverse:rocky_hills",
         "voxelverse:surface_biome",
     ],
     climate: (
-        temperature: (min: 0.2, ideal_min: 0.35, ideal_max: 0.72, max: 0.9),
-        humidity: (min: 0.05, ideal_min: 0.18, ideal_max: 0.45, max: 0.68),
-        altitude: (min: 0.28, ideal_min: 0.42, ideal_max: 0.82, max: 1.0),
+        temperature: (min: 0.2, ideal_min: 0.35, ideal_max: 0.6, max: 0.8),
+        humidity: (min: 0.1, ideal_min: 0.15, ideal_max: 0.4, max: 0.6),
+        altitude: (min: 0.0, ideal_min: 0.2, ideal_max: 0.6, max: 1.0),
     ),
     relief: (
-        base_height_m: 2.5,
-        height_variance_m: 8.0,
-        roughness: 0.2,
-        river_probability: 0.04,
+        base_height_m: 20.0,
+        height_variance_m: 40.0,
+        roughness: 0.6,
+        river_probability: 0.05,
     ),
     surface: [
-        (block: "voxelverse:stone", depth_m: Some(1.5)),
-        (block: "voxelverse:dirt", depth_m: Some(0.5)),
-        (block: "voxelverse:stone", depth_m: None),
+        (block: "voxelverse:marble", depth_m: None),
+        (block: "voxelverse:cobblestone", depth_m: None),
     ],
     lod: (
-        horizon_color: (r: 0.48, g: 0.50, b: 0.46),
-        fog_density: 0.002,
+        horizon_color: (r: 0.50, g: 0.48, b: 0.44),
+        fog_density: 0.003,
     ),
 )
