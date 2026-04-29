@@ -19,6 +19,7 @@ vv-input         = { path = "../vv-input" }
 vv-render        = { path = "../vv-render" }
 vv-compiler      = { path = "../vv-compiler" }
 vv-registry      = { path = "../vv-registry" }
+vv-diagnostics   = { path = "../vv-diagnostics" }
 glam    = "0.25"
 winit   = "0.29"
 pollster = "0.3"

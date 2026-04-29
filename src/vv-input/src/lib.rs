@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec2, Vec3};
 use vv_config::PlayerConfig;
 use vv_core::BlockId;
+use vv_diagnostics::{emit_from_env, LogDomain, LogLevel};
 use vv_gameplay::{Player, PlayerIntent};
 use vv_physics::Physics;
 use vv_planet::CoordSystem;
@@ -364,7 +365,11 @@ impl Controller {
                     PhysicalKey::Code(KeyCode::KeyO) if pressed => {
                         if player.debug_mode {
                             self.show_collisions = !self.show_collisions;
-                            println!("Show collisions: {}", self.show_collisions);
+                            emit_from_env(
+                                LogLevel::Info,
+                                LogDomain::Input,
+                                format!("show_collisions enabled={}", self.show_collisions),
+                            );
                         }
                         return true;
                     }
@@ -382,7 +387,11 @@ impl Controller {
                     PhysicalKey::Code(KeyCode::KeyF) if pressed => {
                         if self.first_person {
                             self.fly_mode = !self.fly_mode;
-                            println!("Fly mode: {}", self.fly_mode);
+                            emit_from_env(
+                                LogLevel::Info,
+                                LogDomain::Input,
+                                format!("fly_mode enabled={}", self.fly_mode),
+                            );
                         }
                         return true;
                     }

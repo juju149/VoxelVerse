@@ -62,10 +62,25 @@ impl LodAnimator {
 
     pub fn get_opacity(&self, key: AnyKey, now: Instant) -> f32 {
         if let Some(start) = self.spawning_chunks.get(&key) {
-            let t = (now - *start).as_secs_f32() / self.fade_duration;
+            let t = (now - *start).as_secs_f32() / self.fade_duration.max(0.001);
             return Self::smoothstep(t);
         }
         1.0
+    }
+
+    pub fn limit_retained(&mut self, max_dying: usize, max_spawning: usize) {
+        while self.dying_chunks.len() > max_dying {
+            let Some(key) = self.dying_chunks.keys().next().copied() else {
+                break;
+            };
+            self.dying_chunks.remove(&key);
+        }
+        while self.spawning_chunks.len() > max_spawning {
+            let Some(key) = self.spawning_chunks.keys().next().copied() else {
+                break;
+            };
+            self.spawning_chunks.remove(&key);
+        }
     }
 
     /// Advance dying animations; returns `(key, current_alpha)` for each
@@ -74,7 +89,7 @@ impl LodAnimator {
         let mut results = Vec::new();
         let mut to_remove = Vec::new();
         for (key, state) in &self.dying_chunks {
-            let t = (now - state.start_time).as_secs_f32() / state.duration;
+            let t = (now - state.start_time).as_secs_f32() / state.duration.max(0.001);
             if t >= 1.0 {
                 to_remove.push(*key);
             } else {

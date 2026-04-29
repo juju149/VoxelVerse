@@ -1,9 +1,9 @@
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use vv_core::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
 use vv_planet::CoordSystem;
-use vv_registry::BlockRenderSource;
+use vv_registry::{BlockId as ContentBlockId, BlockRenderSource};
 use vv_world_runtime::{ChunkMods, PlanetData};
 
 // --- Vertex format ----------------------------------------------------------
@@ -39,6 +39,9 @@ impl MeshGen {
         let v_start = key.v_idx * CHUNK_SIZE;
         let u_end = (u_start + CHUNK_SIZE).min(res);
         let v_end = (v_start + CHUNK_SIZE).min(res);
+        let feature_blocks = data
+            .terrain
+            .feature_blocks_in_region(key.face, u_start, v_start, u_end, v_end);
 
         let get_h = |f: u8, u: u32, v: u32| -> u32 {
             if u >= res || v >= res {
@@ -59,21 +62,6 @@ impl MeshGen {
                     u,
                     v,
                 });
-                for layer in data.terrain.feature_candidate_layers(key.face, u, v) {
-                    let id = BlockId {
-                        face: key.face,
-                        layer,
-                        u,
-                        v,
-                    };
-                    if data
-                        .terrain
-                        .generated_feature_block(key.face, u, v, layer)
-                        .is_some()
-                    {
-                        candidates.insert(id);
-                    }
-                }
                 let mut min_h = h;
                 if u > 0 {
                     min_h = min_h.min(get_h(key.face, u - 1, v));
@@ -100,6 +88,7 @@ impl MeshGen {
                 }
             }
         }
+        candidates.extend(feature_blocks.keys().copied());
 
         if let Some(mods) = data.chunks.get(&key) {
             for &id in mods.placed.keys() {
@@ -134,8 +123,17 @@ impl MeshGen {
 
         for id in candidates {
             if id.u >= u_start && id.u < u_end && id.v >= v_start && id.v < v_end {
-                if data.exists(id) {
-                    Self::add_voxel(id, data, blocks, &mut verts, &mut inds, &mut idx);
+                if feature_blocks.contains_key(&id) || data.exists(id) {
+                    Self::add_voxel(
+                        id,
+                        data,
+                        blocks,
+                        &feature_blocks,
+                        (u_start, v_start, u_end, v_end),
+                        &mut verts,
+                        &mut inds,
+                        &mut idx,
+                    );
                 }
             }
         }
@@ -173,12 +171,14 @@ impl MeshGen {
         id: BlockId,
         data: &PlanetData,
         blocks: &impl BlockRenderSource,
+        feature_blocks: &HashMap<BlockId, ContentBlockId>,
+        target_region: (u32, u32, u32, u32),
         verts: &mut Vec<Vertex>,
         inds: &mut Vec<u32>,
         idx: &mut u32,
     ) {
         let res = data.resolution;
-        let Some(block_id) = data.block_at(id) else {
+        let Some(block_id) = Self::mesh_block_at(data, id, feature_blocks, target_region) else {
             return;
         };
         let Some(render) = blocks.block_render(block_id) else {
@@ -196,7 +196,9 @@ impl MeshGen {
                     u: u as u32,
                     v: v as u32,
                 };
-                let Some(neighbor_block) = data.block_at(neighbor) else {
+                let Some(neighbor_block) =
+                    Self::mesh_block_at(data, neighbor, feature_blocks, target_region)
+                else {
                     return false;
                 };
                 return blocks
@@ -298,6 +300,40 @@ impl MeshGen {
         }
     }
 
+    fn mesh_block_at(
+        data: &PlanetData,
+        id: BlockId,
+        feature_blocks: &HashMap<BlockId, ContentBlockId>,
+        target_region: (u32, u32, u32, u32),
+    ) -> Option<ContentBlockId> {
+        if let Some(block_id) = feature_blocks.get(&id) {
+            return Some(*block_id);
+        }
+
+        let (u_start, v_start, u_end, v_end) = target_region;
+        let inside_region = id.u >= u_start && id.u < u_end && id.v >= v_start && id.v < v_end;
+        if !inside_region {
+            return data.block_at(id);
+        }
+
+        let key = PlanetData::chunk_key(id);
+        if let Some(mods) = data.chunks.get(&key) {
+            if let Some(block_id) = mods.placed.get(&id) {
+                return Some(*block_id);
+            }
+            if mods.mined.contains(&id) {
+                return None;
+            }
+        }
+
+        let height = data.terrain.get_height(id.face, id.u, id.v);
+        if id.layer <= height {
+            Some(data.terrain.get_block(id.face, id.u, id.v, id.layer))
+        } else {
+            None
+        }
+    }
+
     fn calculate_ao(side1: bool, side2: bool, corner: bool) -> f32 {
         let mut occ = 0;
         if side1 {
@@ -357,31 +393,41 @@ impl MeshGen {
         grid_res: u32,
         blocks: &impl BlockRenderSource,
     ) -> (Vec<Vertex>, Vec<u32>) {
-        let terrain_block = data.terrain.get_surface_block(key.face, key.x, key.y);
-        let Some(terrain_render) = blocks.block_render(terrain_block) else {
-            return (Vec::new(), Vec::new());
-        };
-        let terrain_color = terrain_render.color;
         let mut verts = Vec::new();
         let mut inds = Vec::new();
         let row_len = grid_res + 1;
 
-        let get_sample_pos = |gx: i32, gy: i32| -> Vec3 {
+        let sample = |gx: i32, gy: i32| -> (Vec3, [f32; 3]) {
             let step_u = (gx as i64 * key.size as i64) / grid_res as i64;
             let step_v = (gy as i64 * key.size as i64) / grid_res as i64;
             let abs_u = (key.x as i64 + step_u).clamp(0, data.resolution as i64) as u32;
             let abs_v = (key.y as i64 + step_v).clamp(0, data.resolution as i64) as u32;
-            let h = data.terrain.get_height(key.face, abs_u, abs_v);
-            CoordSystem::get_vertex_pos(key.face, abs_u, abs_v, h, data.geometry)
+            let (layer, color) = Self::lod_visual_surface(key.face, abs_u, abs_v, data, blocks);
+            let pos = CoordSystem::get_vertex_pos(key.face, abs_u, abs_v, layer, data.geometry);
+            (pos, color)
+        };
+        let padded_len = grid_res as usize + 3;
+        let mut samples = Vec::with_capacity(padded_len * padded_len);
+        for vy in -1..=(grid_res as i32 + 1) {
+            for ux in -1..=(grid_res as i32 + 1) {
+                samples.push(sample(ux, vy));
+            }
+        }
+        let sample_at = |ux: i32, vy: i32, samples: &[(Vec3, [f32; 3])]| -> (Vec3, [f32; 3]) {
+            let x = (ux + 1) as usize;
+            let y = (vy + 1) as usize;
+            samples[y * padded_len + x]
         };
 
         for vy in 0..=grid_res {
             for ux in 0..=grid_res {
-                let pos = get_sample_pos(ux as i32, vy as i32);
-                let p_right = get_sample_pos(ux as i32 + 1, vy as i32);
-                let p_left = get_sample_pos(ux as i32 - 1, vy as i32);
-                let p_down = get_sample_pos(ux as i32, vy as i32 + 1);
-                let p_up = get_sample_pos(ux as i32, vy as i32 - 1);
+                let ux = ux as i32;
+                let vy = vy as i32;
+                let (pos, mut color) = sample_at(ux, vy, &samples);
+                let (p_right, _) = sample_at(ux + 1, vy, &samples);
+                let (p_left, _) = sample_at(ux - 1, vy, &samples);
+                let (p_down, _) = sample_at(ux, vy + 1, &samples);
+                let (p_up, _) = sample_at(ux, vy - 1, &samples);
                 let tangent_u = p_right - p_left;
                 let tangent_v = p_down - p_up;
                 let mut normal = tangent_u.cross(tangent_v).normalize();
@@ -390,7 +436,6 @@ impl MeshGen {
                 }
 
                 let slope = normal.dot(pos.normalize()).abs();
-                let mut color = terrain_color;
                 if slope < 0.85 {
                     color = [color[0] * 0.75, color[1] * 0.75, color[2] * 0.75];
                 }
@@ -471,6 +516,32 @@ impl MeshGen {
         add_skirt_edge(&right, false);
 
         (verts, inds)
+    }
+
+    fn lod_visual_surface(
+        face: u8,
+        u: u32,
+        v: u32,
+        data: &PlanetData,
+        blocks: &impl BlockRenderSource,
+    ) -> (u32, [f32; 3]) {
+        let surface = data.terrain.get_height(face, u, v);
+        for offset in 0..=8 {
+            let layer = surface.saturating_sub(offset);
+            let block = data.terrain.get_block(face, u, v, layer);
+            if let Some(render) = blocks.block_render(block) {
+                if !render.translucent {
+                    return (layer, render.color);
+                }
+            }
+        }
+
+        let block = data.terrain.get_surface_block(face, u, v);
+        let color = blocks
+            .block_render(block)
+            .map(|render| render.color)
+            .unwrap_or([0.45, 0.70, 0.45]);
+        (surface, color)
     }
 
     // --- Collision debug mesh -----------------------------------------------

@@ -10,5 +10,6 @@ vv-world-runtime = { path = "../vv-world-runtime" }
 vv-physics       = { path = "../vv-physics" }
 vv-gameplay      = { path = "../vv-gameplay" }
 vv-config        = { path = "../vv-config" }
+vv-diagnostics   = { path = "../vv-diagnostics" }
 glam   = "0.25"
 winit  = "0.29"

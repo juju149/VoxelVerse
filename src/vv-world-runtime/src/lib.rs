@@ -134,6 +134,26 @@ impl PlanetData {
         }
     }
 
+    pub fn runtime_stats(&self) -> PlanetRuntimeStats {
+        let mut mined_blocks = 0usize;
+        let mut placed_blocks = 0usize;
+        let mut dirty_chunks = 0usize;
+        for mods in self.chunks.values() {
+            let dirty = !mods.mined.is_empty() || !mods.placed.is_empty();
+            if dirty {
+                dirty_chunks += 1;
+            }
+            mined_blocks += mods.mined.len();
+            placed_blocks += mods.placed.len();
+        }
+        PlanetRuntimeStats {
+            edited_chunks: self.chunks.len(),
+            mined_blocks,
+            placed_blocks,
+            dirty_chunks,
+        }
+    }
+
     // --- Chunk key ----------------------------------------------------------
 
     #[inline]
@@ -144,4 +164,12 @@ impl PlanetData {
             v_idx: id.v / CHUNK_SIZE,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PlanetRuntimeStats {
+    pub edited_chunks: usize,
+    pub mined_blocks: usize,
+    pub placed_blocks: usize,
+    pub dirty_chunks: usize,
 }

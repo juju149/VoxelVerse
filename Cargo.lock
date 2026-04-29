@@ -1781,6 +1781,7 @@ dependencies = [
  "vv-compiler",
  "vv-config",
  "vv-core",
+ "vv-diagnostics",
  "vv-gameplay",
  "vv-input",
  "vv-physics",
@@ -1811,6 +1812,10 @@ name = "vv-core"
 version = "0.1.0"
 
 [[package]]
+name = "vv-diagnostics"
+version = "0.1.0"
+
+[[package]]
 name = "vv-gameplay"
 version = "0.1.0"
 dependencies = [
@@ -1818,6 +1823,7 @@ dependencies = [
  "vv-compiler",
  "vv-config",
  "vv-core",
+ "vv-diagnostics",
  "vv-physics",
  "vv-planet",
  "vv-registry",
@@ -1831,6 +1837,7 @@ dependencies = [
  "glam",
  "vv-config",
  "vv-core",
+ "vv-diagnostics",
  "vv-gameplay",
  "vv-physics",
  "vv-planet",
@@ -1894,6 +1901,7 @@ dependencies = [
  "glyphon",
  "vv-config",
  "vv-core",
+ "vv-diagnostics",
  "vv-gameplay",
  "vv-input",
  "vv-mesh",

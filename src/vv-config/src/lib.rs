@@ -81,6 +81,32 @@ pub struct WorldGenConfig {
 pub struct LodConfig {
     /// Vertex grid resolution used when rasterising LOD heightmap tiles.
     pub tile_grid_res: u32,
+    /// Maximum voxel chunks the renderer is allowed to require in one frame.
+    pub max_required_chunks: usize,
+    /// Maximum chunk keys retained in the streaming queue.
+    pub max_chunk_queue: usize,
+    /// Maximum chunk meshes kept alive by the current coverage set.
+    pub max_active_chunks: usize,
+    /// Maximum new chunk mesh jobs started per frame.
+    pub chunk_jobs_per_frame: usize,
+    /// Maximum chunk mesh jobs in flight.
+    pub max_pending_chunk_jobs: usize,
+    /// Maximum chunk mesh uploads accepted per frame.
+    pub chunk_uploads_per_frame: usize,
+    /// Maximum LOD tiles the renderer is allowed to require in one frame.
+    pub max_required_lods: usize,
+    /// Maximum LOD meshes kept alive by the current coverage set.
+    pub max_active_lods: usize,
+    /// Maximum new LOD mesh jobs started per frame.
+    pub lod_jobs_per_frame: usize,
+    /// Maximum LOD mesh jobs in flight.
+    pub max_pending_lod_jobs: usize,
+    /// Maximum LOD mesh uploads accepted per frame.
+    pub lod_uploads_per_frame: usize,
+    /// Hard cap for GPU buffer creations in one frame.
+    pub max_gpu_uploads_per_frame: u32,
+    /// Maximum retiring meshes kept for cross-fade fallback.
+    pub max_retiring_meshes: usize,
 }
 
 // --- Default implementations ------------------------------------------------
@@ -131,7 +157,7 @@ impl Default for RenderConfig {
             fov_orbit_deg: 45.0,
             near_plane: 0.1,
             far_plane: 20000.0,
-            lod_fade_duration: 2.0,
+            lod_fade_duration: 0.0,
         }
     }
 }
@@ -149,6 +175,21 @@ impl Default for WorldGenConfig {
 
 impl Default for LodConfig {
     fn default() -> Self {
-        Self { tile_grid_res: 64 }
+        Self {
+            tile_grid_res: 32,
+            max_required_chunks: 160,
+            max_chunk_queue: 96,
+            max_active_chunks: 192,
+            chunk_jobs_per_frame: 1,
+            max_pending_chunk_jobs: 2,
+            chunk_uploads_per_frame: 2,
+            max_required_lods: 192,
+            max_active_lods: 224,
+            lod_jobs_per_frame: 4,
+            max_pending_lod_jobs: 8,
+            lod_uploads_per_frame: 4,
+            max_gpu_uploads_per_frame: 4,
+            max_retiring_meshes: 64,
+        }
     }
 }

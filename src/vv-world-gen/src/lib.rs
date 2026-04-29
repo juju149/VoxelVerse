@@ -1,9 +1,14 @@
 use glam::Vec3;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, RwLock,
+    },
+    time::Instant,
 };
 use vv_config::WorldGenConfig;
+use vv_core::BlockId;
 use vv_planet::{CoordSystem, PlanetGeometry};
 use vv_registry::{
     BiomeId, BlockId as ContentBlockId, CompiledBiome, CompiledClimateCurves, CompiledFlora,
@@ -59,7 +64,10 @@ struct TerrainNoiseConfig {
 /// Content data is captured from runtime registries at construction time, then
 /// columns are computed on demand and cached as chunks or LOD tiles request them.
 pub struct PlanetTerrain {
-    columns: Arc<Mutex<HashMap<u64, TerrainColumn>>>,
+    columns: Arc<RwLock<HashMap<u64, TerrainColumn>>>,
+    cache_hits: Arc<AtomicU64>,
+    cache_misses: Arc<AtomicU64>,
+    cache_compute_micros: Arc<AtomicU64>,
     biomes: Arc<Vec<TerrainBiome>>,
     flora: Arc<Vec<TerrainFlora>>,
     ores: Arc<Vec<TerrainOre>>,
@@ -69,6 +77,7 @@ pub struct PlanetTerrain {
     noise: TerrainNoiseConfig,
     geometry: PlanetGeometry,
     max_feature_height_m: f32,
+    max_feature_radius_m: f32,
 }
 
 impl PlanetTerrain {
@@ -93,10 +102,6 @@ impl PlanetTerrain {
         cfg: &WorldGenConfig,
         content: &WorldgenContentView<'_>,
     ) -> Result<Self, TerrainGenerationError> {
-        println!(
-            "Generating registry-driven terrain map (radius {:.1} m, voxel {:.3} m, res {})...",
-            geometry.radius_m, geometry.voxel_size_m, geometry.resolution
-        );
         let default_planet = content
             .default_planet_type()
             .ok_or(TerrainGenerationError::MissingDefaultPlanetType)?;
@@ -138,9 +143,12 @@ impl PlanetTerrain {
             })
             .collect();
         let max_feature_height_m = max_feature_height_m(&terrain_flora);
-        println!("Terrain generation ready; columns will be generated lazily.");
+        let max_feature_radius_m = max_feature_radius_m(&terrain_flora);
         Ok(Self {
-            columns: Arc::new(Mutex::new(HashMap::new())),
+            columns: Arc::new(RwLock::new(HashMap::new())),
+            cache_hits: Arc::new(AtomicU64::new(0)),
+            cache_misses: Arc::new(AtomicU64::new(0)),
+            cache_compute_micros: Arc::new(AtomicU64::new(0)),
             biomes: Arc::new(terrain_biomes),
             flora: Arc::new(terrain_flora),
             ores: Arc::new(terrain_ores),
@@ -154,6 +162,7 @@ impl PlanetTerrain {
             },
             geometry,
             max_feature_height_m,
+            max_feature_radius_m,
         })
     }
 
@@ -163,6 +172,19 @@ impl PlanetTerrain {
 
     pub fn resolution(&self) -> u32 {
         self.geometry.resolution
+    }
+
+    pub fn cache_stats(&self) -> TerrainCacheStats {
+        TerrainCacheStats {
+            cached_columns: self
+                .columns
+                .read()
+                .expect("terrain cache should not be poisoned")
+                .len(),
+            cache_hits: self.cache_hits.load(Ordering::Relaxed),
+            cache_misses: self.cache_misses.load(Ordering::Relaxed),
+            compute_micros: self.cache_compute_micros.load(Ordering::Relaxed),
+        }
     }
 
     #[inline(always)]
@@ -255,23 +277,84 @@ impl PlanetTerrain {
         h.saturating_add(1)..=h.saturating_add(max_layers)
     }
 
+    pub fn feature_blocks_in_region(
+        &self,
+        face: u8,
+        u_start: u32,
+        v_start: u32,
+        u_end: u32,
+        v_end: u32,
+    ) -> HashMap<BlockId, ContentBlockId> {
+        let u_end = u_end.min(self.geometry.resolution);
+        let v_end = v_end.min(self.geometry.resolution);
+        if u_start >= u_end || v_start >= v_end {
+            return HashMap::new();
+        }
+
+        let margin = if self.max_feature_radius_m > 0.0 {
+            self.geometry
+                .meters_to_voxels_ceil(self.max_feature_radius_m)
+        } else {
+            0
+        };
+        let scan_u_start = u_start.saturating_sub(margin);
+        let scan_v_start = v_start.saturating_sub(margin);
+        let scan_u_end = u_end.saturating_add(margin).min(self.geometry.resolution);
+        let scan_v_end = v_end.saturating_add(margin).min(self.geometry.resolution);
+
+        let mut blocks = HashMap::new();
+        for u in scan_u_start..scan_u_end {
+            for v in scan_v_start..scan_v_end {
+                let column = self.column(face, u, v);
+                let biome = &self.biomes[column.biome_index as usize];
+                for flora in self.flora.iter() {
+                    if !tags_match(
+                        &flora.data.required_tags,
+                        &flora.data.forbidden_tags,
+                        &biome.data.provided_tags,
+                    ) || !self.flora_origin_for_column(face, u, v, column, flora)
+                    {
+                        continue;
+                    }
+                    self.add_flora_feature_blocks(
+                        face,
+                        u,
+                        v,
+                        column.height as u32,
+                        flora,
+                        (u_start, v_start, u_end, v_end),
+                        &mut blocks,
+                    );
+                }
+            }
+        }
+        blocks
+    }
+
     fn column(&self, face: u8, u: u32, v: u32) -> TerrainColumn {
         let u = u.min(self.geometry.resolution - 1);
         let v = v.min(self.geometry.resolution - 1);
         let key = Self::cache_key(face, u, v);
         if let Some(column) = self
             .columns
-            .lock()
+            .read()
             .expect("terrain cache should not be poisoned")
             .get(&key)
             .copied()
         {
+            self.cache_hits.fetch_add(1, Ordering::Relaxed);
             return column;
         }
 
+        self.cache_misses.fetch_add(1, Ordering::Relaxed);
+        let compute_start = Instant::now();
         let column = self.compute_column(face, u, v);
+        self.cache_compute_micros.fetch_add(
+            compute_start.elapsed().as_micros().min(u64::MAX as u128) as u64,
+            Ordering::Relaxed,
+        );
         self.columns
-            .lock()
+            .write()
             .expect("terrain cache should not be poisoned")
             .insert(key, column);
         column
@@ -467,6 +550,119 @@ impl PlanetTerrain {
         }
     }
 
+    fn add_flora_feature_blocks(
+        &self,
+        face: u8,
+        u: u32,
+        v: u32,
+        surface: u32,
+        flora: &TerrainFlora,
+        target: (u32, u32, u32, u32),
+        blocks: &mut HashMap<BlockId, ContentBlockId>,
+    ) {
+        let (u_start, v_start, u_end, v_end) = target;
+        let mut add_block = |u: u32, v: u32, layer: u32, block: ContentBlockId| {
+            if u >= u_start && u < u_end && v >= v_start && v < v_end {
+                blocks.entry(BlockId { face, layer, u, v }).or_insert(block);
+            }
+        };
+
+        match flora.data.feature {
+            CompiledFloraFeature::Plant {
+                block,
+                height_max_m,
+                ..
+            } => {
+                let height_layers = self.geometry.meters_to_voxels_ceil(height_max_m);
+                for layer in surface.saturating_add(1)..=surface.saturating_add(height_layers) {
+                    add_block(u, v, layer, block);
+                }
+            }
+            CompiledFloraFeature::Tree {
+                log_block,
+                leaf_block,
+                trunk_height_min_m,
+                trunk_height_max_m,
+                canopy_radius_m,
+                canopy_height_m,
+            } => {
+                let trunk_height_m = ranged_f32(
+                    face,
+                    u,
+                    v,
+                    flora.index,
+                    trunk_height_min_m,
+                    trunk_height_max_m,
+                );
+                let trunk_height = self.geometry.meters_to_voxels_ceil(trunk_height_m);
+                for layer in surface.saturating_add(1)..=surface.saturating_add(trunk_height) {
+                    add_block(u, v, layer, log_block);
+                }
+
+                let radius = self.geometry.meters_to_voxels_ceil(canopy_radius_m) as i32;
+                let canopy_center = surface.saturating_add(trunk_height);
+                let vertical_layers = self
+                    .geometry
+                    .meters_to_voxels_ceil(canopy_height_m.max(self.geometry.voxel_size_m));
+                for du in -radius..=radius {
+                    for dv in -radius..=radius {
+                        let ou = u as i32 + du;
+                        let ov = v as i32 + dv;
+                        if ou < 0
+                            || ov < 0
+                            || ou >= self.geometry.resolution as i32
+                            || ov >= self.geometry.resolution as i32
+                        {
+                            continue;
+                        }
+                        let horizontal_m =
+                            ((du * du + dv * dv) as f32).sqrt() * self.geometry.voxel_size_m;
+                        if horizontal_m > canopy_radius_m {
+                            continue;
+                        }
+                        for layer in canopy_center.saturating_sub(vertical_layers)
+                            ..=canopy_center.saturating_add(vertical_layers)
+                        {
+                            let vertical_m =
+                                layer.abs_diff(canopy_center) as f32 * self.geometry.voxel_size_m;
+                            if vertical_m <= canopy_height_m.max(self.geometry.voxel_size_m) {
+                                add_block(ou as u32, ov as u32, layer, leaf_block);
+                            }
+                        }
+                    }
+                }
+            }
+            CompiledFloraFeature::Cluster {
+                block,
+                radius_max_m,
+                ..
+            } => {
+                let radius = self.geometry.meters_to_voxels_ceil(radius_max_m) as i32;
+                for du in -radius..=radius {
+                    for dv in -radius..=radius {
+                        let ou = u as i32 + du;
+                        let ov = v as i32 + dv;
+                        if ou < 0
+                            || ov < 0
+                            || ou >= self.geometry.resolution as i32
+                            || ov >= self.geometry.resolution as i32
+                        {
+                            continue;
+                        }
+                        let horizontal_m =
+                            ((du * du + dv * dv) as f32).sqrt() * self.geometry.voxel_size_m;
+                        if horizontal_m <= radius_max_m {
+                            let ou = ou as u32;
+                            let ov = ov as u32;
+                            let surface = self.column(face, ou, ov).height as u32;
+                            add_block(ou, ov, surface.saturating_add(1), block);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn flora_origin(
         &self,
         face: u8,
@@ -475,11 +671,24 @@ impl PlanetTerrain {
         biome: &TerrainBiome,
         flora: &TerrainFlora,
     ) -> bool {
+        self.flora_origin_for_column(face, u, v, self.column(face, u, v), flora)
+            && tags_match(
+                &flora.data.required_tags,
+                &flora.data.forbidden_tags,
+                &biome.data.provided_tags,
+            )
+    }
+
+    fn flora_origin_for_column(
+        &self,
+        face: u8,
+        u: u32,
+        v: u32,
+        column: TerrainColumn,
+        flora: &TerrainFlora,
+    ) -> bool {
         let placement = flora.data.placement;
-        let surface = self
-            .geometry
-            .layer_radius_m(self.column(face, u, v).height as u32)
-            - self.geometry.radius_m;
+        let surface = self.geometry.layer_radius_m(column.height as u32) - self.geometry.radius_m;
         if placement
             .altitude_max_m
             .is_some_and(|altitude_max| surface > altitude_max)
@@ -488,11 +697,7 @@ impl PlanetTerrain {
         }
         let cell_area_m2 = self.geometry.voxel_size_m * self.geometry.voxel_size_m;
         let origin_chance = (placement.density_base * cell_area_m2).clamp(0.0, 1.0);
-        tags_match(
-            &flora.data.required_tags,
-            &flora.data.forbidden_tags,
-            &biome.data.provided_tags,
-        ) && hash01(face, u, v, 0, flora.index) < origin_chance
+        hash01(face, u, v, 0, flora.index) < origin_chance
     }
 }
 
@@ -500,6 +705,9 @@ impl Clone for PlanetTerrain {
     fn clone(&self) -> Self {
         Self {
             columns: self.columns.clone(),
+            cache_hits: self.cache_hits.clone(),
+            cache_misses: self.cache_misses.clone(),
+            cache_compute_micros: self.cache_compute_micros.clone(),
             biomes: self.biomes.clone(),
             flora: self.flora.clone(),
             ores: self.ores.clone(),
@@ -509,8 +717,17 @@ impl Clone for PlanetTerrain {
             noise: self.noise,
             geometry: self.geometry,
             max_feature_height_m: self.max_feature_height_m,
+            max_feature_radius_m: self.max_feature_radius_m,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TerrainCacheStats {
+    pub cached_columns: usize,
+    pub cache_hits: u64,
+    pub cache_misses: u64,
+    pub compute_micros: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -736,6 +953,19 @@ fn max_feature_height_m(flora: &[TerrainFlora]) -> f32 {
             CompiledFloraFeature::Cluster { radius_max_m, .. } => radius_max_m,
         })
         .fold(1.0, f32::max)
+}
+
+fn max_feature_radius_m(flora: &[TerrainFlora]) -> f32 {
+    flora
+        .iter()
+        .map(|flora| match flora.data.feature {
+            CompiledFloraFeature::Plant { .. } => 0.0,
+            CompiledFloraFeature::Tree {
+                canopy_radius_m, ..
+            } => canopy_radius_m,
+            CompiledFloraFeature::Cluster { radius_max_m, .. } => radius_max_m,
+        })
+        .fold(0.0, f32::max)
 }
 
 struct NoiseGenerator {

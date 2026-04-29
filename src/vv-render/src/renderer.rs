@@ -6,12 +6,17 @@ use glyphon::{
 };
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::time::{Duration, Instant};
 use wgpu::util::DeviceExt;
 use wgpu::PresentMode;
 use winit::window::Window;
 
-use vv_config::{EngineConfig, RenderConfig};
+use vv_config::{EngineConfig, LodConfig, RenderConfig};
 use vv_core::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
+use vv_diagnostics::{
+    emit, DiagnosticConfig, GpuCounters, LodCounters, LogDomain, LogLevel, MeshCounters,
+    RuntimeSnapshot, StreamingCounters, WorldCounters, WorldgenCounters,
+};
 use vv_gameplay::{can_craft_hand_recipe, Console, Player, PlayerGameplayState};
 use vv_input::Controller;
 use vv_mesh::{MeshGen, Vertex};
@@ -45,6 +50,32 @@ pub struct LocalUniform {
     pub params: [f32; 4], // x = opacity
 }
 
+#[derive(Clone, Copy, Debug)]
+struct MeshJobResult<K> {
+    key: K,
+    vertices: usize,
+    indices: usize,
+    duration: Duration,
+}
+
+#[derive(Clone, Debug, Default)]
+struct RendererFrameTelemetry {
+    streaming: StreamingCounters,
+    lod: LodCounters,
+    mesh: MeshCounters,
+    gpu: GpuCounters,
+    render_prep_time: Duration,
+    lod_coverage_time: Duration,
+    chunk_streaming_time: Duration,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum MeshJobKind {
+    Chunk,
+    Lod,
+    Remesh,
+}
+
 // --- Renderer ---------------------------------------------------------------
 
 pub struct Renderer<'a> {
@@ -56,8 +87,9 @@ pub struct Renderer<'a> {
 
     // Config snapshots stored at construction time
     render_cfg: RenderConfig,
-    lod_grid_res: u32,
+    lod_cfg: LodConfig,
     block_content: BlockContent,
+    diagnostic_config: DiagnosticConfig,
 
     // Text engine
     font_system: FontSystem,
@@ -130,12 +162,13 @@ pub struct Renderer<'a> {
     // Async mesh loading
     load_queue: Vec<ChunkKey>,
     player_chunk_pos: Option<ChunkKey>,
-    mesh_tx: Sender<(ChunkKey, Vec<Vertex>, Vec<u32>)>,
-    mesh_rx: Receiver<(ChunkKey, Vec<Vertex>, Vec<u32>)>,
+    mesh_tx: Sender<(MeshJobResult<ChunkKey>, Vec<Vertex>, Vec<u32>)>,
+    mesh_rx: Receiver<(MeshJobResult<ChunkKey>, Vec<Vertex>, Vec<u32>)>,
     pending_chunks: HashSet<ChunkKey>,
-    lod_tx: Sender<(LodKey, Vec<Vertex>, Vec<u32>)>,
-    lod_rx: Receiver<(LodKey, Vec<Vertex>, Vec<u32>)>,
+    lod_tx: Sender<(MeshJobResult<LodKey>, Vec<Vertex>, Vec<u32>)>,
+    lod_rx: Receiver<(MeshJobResult<LodKey>, Vec<Vertex>, Vec<u32>)>,
     pending_lods: HashSet<LodKey>,
+    frame_telemetry: RendererFrameTelemetry,
 
     // FPS counter
     last_fps_time: std::time::Instant,
@@ -144,7 +177,12 @@ pub struct Renderer<'a> {
 }
 
 impl<'a> Renderer<'a> {
-    pub async fn new(window: &'a Window, cfg: &EngineConfig, block_content: BlockContent) -> Self {
+    pub async fn new(
+        window: &'a Window,
+        cfg: &EngineConfig,
+        block_content: BlockContent,
+        diagnostic_config: DiagnosticConfig,
+    ) -> Self {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window).unwrap();
         let adapter = instance
@@ -156,12 +194,13 @@ impl<'a> Renderer<'a> {
             .await
             .unwrap();
 
-        // Log GPU info
         let info = adapter.get_info();
-        println!("--- GPU ---");
-        println!("Name   : {}", info.name);
-        println!("Backend: {:?}", info.backend);
-        println!("-----------");
+        emit(
+            diagnostic_config,
+            LogLevel::Info,
+            LogDomain::Gpu,
+            format!("adapter name=\"{}\" backend={:?}", info.name, info.backend),
+        );
 
         let mut limits = adapter.limits();
         limits.max_buffer_size = (8u64 * 1024 * 1024 * 1024).min(limits.max_buffer_size);
@@ -555,8 +594,9 @@ impl<'a> Renderer<'a> {
             queue,
             config: surf_cfg,
             render_cfg: cfg.render.clone(),
-            lod_grid_res: cfg.lod.tile_grid_res,
+            lod_cfg: cfg.lod.clone(),
             block_content,
+            diagnostic_config,
             font_system,
             swash_cache,
             text_atlas,
@@ -618,6 +658,7 @@ impl<'a> Renderer<'a> {
             lod_tx,
             lod_rx,
             pending_lods: HashSet::new(),
+            frame_telemetry: RendererFrameTelemetry::default(),
             last_fps_time: std::time::Instant::now(),
             frame_count: 0,
             current_fps: 0,
@@ -626,7 +667,7 @@ impl<'a> Renderer<'a> {
 
     // --- Pipeline helpers ---------------------------------------------------
 
-    fn vertex_state(shader: &wgpu::ShaderModule) -> wgpu::VertexState {
+    fn vertex_state(shader: &wgpu::ShaderModule) -> wgpu::VertexState<'_> {
         wgpu::VertexState {
             module: shader,
             entry_point: "vs_main",
@@ -718,24 +759,41 @@ impl<'a> Renderer<'a> {
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
         self.depth = Self::mk_depth(&self.device, &self.config);
+        emit(
+            self.diagnostic_config,
+            LogLevel::Info,
+            LogDomain::Render,
+            format!("surface resized width={} height={}", width, height),
+        );
+    }
+
+    pub fn begin_diagnostic_frame(&mut self) {
+        self.frame_telemetry = RendererFrameTelemetry::default();
     }
 
     pub fn update_view(&mut self, player_pos: Vec3, planet: &PlanetData) {
+        let lod_start = Instant::now();
         let res = planet.resolution;
         let player_id = CoordSystem::pos_to_id(player_pos, planet.geometry);
 
         let mut upload_count = 0;
-        while let Ok((key, v, i)) = self.lod_rx.try_recv() {
-            self.pending_lods.remove(&key);
-            self.upload_lod_buffer(key, v, i);
-            upload_count += 1;
-            if upload_count > 20 {
+        while upload_count < self.lod_cfg.lod_uploads_per_frame
+            && self.frame_telemetry.gpu.uploads < self.lod_cfg.max_gpu_uploads_per_frame
+        {
+            let Ok((job, v, i)) = self.lod_rx.try_recv() else {
                 break;
+            };
+            self.pending_lods.remove(&job.key);
+            self.record_mesh_job(job.duration, job.vertices, job.indices, MeshJobKind::Lod);
+            if !v.is_empty() {
+                self.upload_lod_buffer(job.key, v, i);
+                self.frame_telemetry.lod.lods_uploaded += 1;
+                upload_count += 1;
             }
         }
 
-        let mut required_voxels: HashSet<ChunkKey> = HashSet::new();
-        let mut required_lods: HashSet<LodKey> = HashSet::new();
+        let mut raw_required_voxels: HashSet<ChunkKey> = HashSet::new();
+        let mut raw_required_lods: HashSet<LodKey> = HashSet::new();
         let logical_size = res.next_power_of_two();
 
         for face in 0u8..6 {
@@ -747,17 +805,40 @@ impl<'a> Renderer<'a> {
                 player_pos,
                 planet,
                 player_id,
-                &mut required_voxels,
-                &mut required_lods,
+                &mut raw_required_voxels,
+                &mut raw_required_lods,
             );
         }
 
+        let (required_voxels, dropped_voxels) = self.prioritized_chunk_split(
+            raw_required_voxels,
+            player_pos,
+            planet,
+            self.lod_cfg.max_required_chunks,
+        );
         let missing_voxels: Vec<ChunkKey> = required_voxels
             .iter()
             .filter(|k| !self.chunks.contains_key(k))
             .cloned()
             .collect();
+        let required_chunk_count = required_voxels.len();
+        let missing_chunk_count = missing_voxels.len();
 
+        let mut required_lods = self.prioritized_lods(
+            raw_required_lods,
+            player_pos,
+            planet,
+            self.lod_cfg.max_required_lods,
+        );
+        self.add_chunk_fallback_lods(
+            missing_voxels
+                .iter()
+                .copied()
+                .chain(dropped_voxels.iter().copied()),
+            &mut required_lods,
+            player_pos,
+            planet,
+        );
         let current_lods: Vec<LodKey> = self.lod_chunks.keys().cloned().collect();
         for k in current_lods {
             if required_lods.contains(&k) {
@@ -782,12 +863,38 @@ impl<'a> Renderer<'a> {
                 self.animator.retire(AnyKey::Lod(k), mesh);
             }
         }
+        self.limit_lod_pressure(player_pos, planet);
+        self.animator.limit_retained(
+            self.lod_cfg.max_retiring_meshes,
+            self.lod_cfg.max_retiring_meshes,
+        );
+
+        let required_lod_count = required_lods.len();
+        let covered_lod_count = required_lods
+            .iter()
+            .filter(|key| self.lod_chunks.contains_key(key))
+            .count();
+        let missing_lod_count = required_lod_count.saturating_sub(covered_lod_count);
 
         let mut spawn_count = 0;
-        let grid_res = self.lod_grid_res;
-        for key in required_lods {
+        let grid_res = self.lod_cfg.tile_grid_res;
+        let mut missing_lods: Vec<LodKey> = required_lods
+            .iter()
+            .copied()
+            .filter(|key| !self.lod_chunks.contains_key(key) && !self.pending_lods.contains(key))
+            .collect();
+        missing_lods.sort_by(|a, b| {
+            Self::lod_distance_squared(a, player_pos, planet)
+                .partial_cmp(&Self::lod_distance_squared(b, player_pos, planet))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        for key in missing_lods {
             if !self.lod_chunks.contains_key(&key) && !self.pending_lods.contains(&key) {
-                if spawn_count >= 8 {
+                if spawn_count >= self.lod_cfg.lod_jobs_per_frame
+                    || self.pending_lods.len() >= self.lod_cfg.max_pending_lod_jobs
+                    || self.lod_chunks.len() + self.pending_lods.len()
+                        >= self.lod_cfg.max_active_lods
+                {
                     break;
                 }
                 self.pending_lods.insert(key);
@@ -795,12 +902,20 @@ impl<'a> Renderer<'a> {
                 let p = planet.clone();
                 let blocks = self.block_content.clone();
                 std::thread::spawn(move || {
+                    let start = Instant::now();
                     let (v, i) = MeshGen::generate_lod_mesh(key, &p, grid_res, &blocks);
-                    let _ = tx.send((key, v, i));
+                    let job = MeshJobResult {
+                        key,
+                        vertices: v.len(),
+                        indices: i.len(),
+                        duration: start.elapsed(),
+                    };
+                    let _ = tx.send((job, v, i));
                 });
                 spawn_count += 1;
             }
         }
+        self.frame_telemetry.lod.lod_jobs_started += spawn_count as u32;
 
         let current_voxels: Vec<ChunkKey> = self.chunks.keys().cloned().collect();
         for k in current_voxels {
@@ -810,28 +925,36 @@ impl<'a> Renderer<'a> {
                 }
             }
         }
+        self.frame_telemetry.lod_coverage_time += lod_start.elapsed();
 
-        self.load_queue.retain(|k| required_voxels.contains(k));
-        for k in required_voxels {
-            if !self.chunks.contains_key(&k) && !self.load_queue.contains(&k) {
-                self.load_queue.push(k);
-            }
-        }
-        self.load_queue.sort_by(|a, b| {
-            let center = |k: &ChunkKey| {
-                CoordSystem::get_vertex_pos(
-                    k.face,
-                    k.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2,
-                    k.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2,
-                    planet.geometry.surface_layer(),
-                    planet.geometry,
-                )
-            };
-            let da = center(a).distance_squared(player_pos);
-            let db = center(b).distance_squared(player_pos);
-            db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        let streaming_start = Instant::now();
+        let mut queued: Vec<(ChunkKey, f32)> = required_voxels
+            .iter()
+            .copied()
+            .filter(|k| !self.chunks.contains_key(k) && !self.pending_chunks.contains(k))
+            .map(|k| (k, Self::chunk_distance_squared(&k, player_pos, planet)))
+            .collect();
+        queued.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        queued.truncate(self.lod_cfg.max_chunk_queue);
+        self.load_queue = queued.into_iter().rev().map(|(key, _)| key).collect();
         self.process_load_queue(player_pos, planet);
+        self.frame_telemetry.chunk_streaming_time += streaming_start.elapsed();
+
+        self.frame_telemetry.streaming.active_chunks = self.chunks.len();
+        self.frame_telemetry.streaming.required_chunks = required_chunk_count;
+        self.frame_telemetry.streaming.missing_chunks = missing_chunk_count;
+        self.frame_telemetry.streaming.load_queue = self.load_queue.len();
+        self.frame_telemetry.streaming.pending_chunk_jobs = self.pending_chunks.len();
+        self.frame_telemetry.lod.active_lods = self.lod_chunks.len();
+        self.frame_telemetry.lod.required_lods = required_lod_count;
+        self.frame_telemetry.lod.covered_lods = covered_lod_count;
+        self.frame_telemetry.lod.missing_lods = missing_lod_count;
+        self.frame_telemetry.lod.pending_lod_jobs = self.pending_lods.len();
+        self.frame_telemetry.lod.coverage_percent = if required_lod_count == 0 {
+            100.0
+        } else {
+            covered_lod_count as f32 * 100.0 / required_lod_count as f32
+        };
     }
 
     pub fn update_cursor(&mut self, planet: &PlanetData, id: Option<BlockId>) {
@@ -979,12 +1102,16 @@ impl<'a> Renderer<'a> {
             },
         ] {
             if self.chunks.contains_key(&key) {
+                let start = Instant::now();
                 let (v, i) = MeshGen::build_chunk(key, planet, &self.block_content);
+                self.record_mesh_job(start.elapsed(), v.len(), i.len(), MeshJobKind::Remesh);
                 if v.is_empty() {
                     self.chunks.remove(&key);
+                    self.frame_telemetry.streaming.empty_chunks += 1;
                 } else {
                     self.upload_chunk_buffers(key, v, i);
                 }
+                self.frame_telemetry.streaming.chunks_invalidated += 1;
             }
         }
     }
@@ -1004,12 +1131,90 @@ impl<'a> Renderer<'a> {
             (v + c.num_verts, i + c.num_inds as usize)
         });
         let mb = ((tv * 36) + (ti * 4)) as f32 / (1024.0 * 1024.0);
-        println!(
-            "Resolution: {} | Chunks: {} | GPU: {:.2} MB",
-            planet.resolution,
-            self.chunks.len(),
-            mb
+        emit(
+            self.diagnostic_config,
+            LogLevel::Info,
+            LogDomain::Memory,
+            format!(
+                "resolution={} chunks={} mesh_cpu={:.2}MB",
+                planet.resolution,
+                self.chunks.len(),
+                mb
+            ),
         );
+    }
+
+    pub fn render_prep_time(&self) -> Duration {
+        self.frame_telemetry.render_prep_time
+    }
+
+    pub fn lod_coverage_time(&self) -> Duration {
+        self.frame_telemetry.lod_coverage_time
+    }
+
+    pub fn chunk_streaming_time(&self) -> Duration {
+        self.frame_telemetry.chunk_streaming_time
+    }
+
+    pub fn diagnostic_snapshot(
+        &self,
+        planet: &PlanetData,
+        gameplay: &PlayerGameplayState,
+    ) -> RuntimeSnapshot {
+        let planet_stats = planet.runtime_stats();
+        let terrain_stats = planet.terrain.cache_stats();
+        let mut snapshot = RuntimeSnapshot {
+            world: WorldCounters {
+                edited_chunks: planet_stats.edited_chunks,
+                mined_blocks: planet_stats.mined_blocks,
+                placed_blocks: planet_stats.placed_blocks,
+                dirty_chunks: planet_stats.dirty_chunks,
+            },
+            worldgen: WorldgenCounters {
+                cached_columns: terrain_stats.cached_columns,
+                cache_hits: terrain_stats.cache_hits,
+                cache_misses: terrain_stats.cache_misses,
+                compute_time: Duration::from_micros(terrain_stats.compute_micros),
+            },
+            streaming: self.frame_telemetry.streaming.clone(),
+            lod: self.frame_telemetry.lod.clone(),
+            mesh: self.frame_telemetry.mesh.clone(),
+            gpu: self.frame_telemetry.gpu.clone(),
+            dropped_items: gameplay.dropped_items.len(),
+            inventory_open: gameplay.inventory_open,
+        };
+
+        snapshot.streaming.active_chunks = self.chunks.len();
+        snapshot.streaming.load_queue = self.load_queue.len();
+        snapshot.streaming.pending_chunk_jobs = self.pending_chunks.len();
+        snapshot.lod.active_lods = self.lod_chunks.len();
+        snapshot.lod.pending_lod_jobs = self.pending_lods.len();
+
+        let mesh_totals = self.mesh_totals();
+        snapshot.mesh.active_meshes = self.chunks.len() + self.lod_chunks.len();
+        snapshot.mesh.vertices = mesh_totals.0;
+        snapshot.mesh.indices = mesh_totals.1;
+        snapshot.mesh.mesh_cpu_mb = mesh_totals.2;
+        snapshot.gpu.active_buffers =
+            (self.chunks.len() + self.lod_chunks.len() + self.animator.dying_chunks.len()) * 3;
+        snapshot
+    }
+
+    fn mesh_totals(&self) -> (usize, usize, f32) {
+        let mut vertices = 0usize;
+        let mut indices = 0usize;
+        for mesh in self
+            .chunks
+            .values()
+            .chain(self.lod_chunks.values())
+            .chain(self.animator.dying_chunks.values().map(|state| &state.mesh))
+        {
+            vertices += mesh.num_verts;
+            indices += mesh.num_inds as usize;
+        }
+        let mb =
+            ((vertices * std::mem::size_of::<Vertex>()) + (indices * 4)) as f32 / (1024.0 * 1024.0);
+        (vertices, indices, mb)
     }
 
     // --- Render -------------------------------------------------------------
@@ -1024,6 +1229,7 @@ impl<'a> Renderer<'a> {
         gameplay: &PlayerGameplayState,
         content: &CompiledContent,
     ) {
+        let prep_start = Instant::now();
         self.update_console_mesh(console.height_fraction);
         self.update_gameplay_ui_mesh(controller, gameplay, content);
         self.update_block_break_feedback(planet, gameplay);
@@ -1156,10 +1362,38 @@ impl<'a> Renderer<'a> {
                 }
             }
         }
+        self.frame_telemetry.render_prep_time += prep_start.elapsed();
 
         let mut enc = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+
+        let shadow_visible_chunks = self
+            .chunks
+            .values()
+            .filter(|mesh| frustum.intersects_sphere(mesh.center, mesh.radius))
+            .count();
+        let shadow_visible_lods = self
+            .lod_chunks
+            .values()
+            .filter(|mesh| frustum.intersects_sphere(mesh.center, mesh.radius))
+            .count();
+        let main_visible_chunks = self
+            .chunks
+            .values()
+            .filter(|mesh| cull_frustum.intersects_sphere(mesh.center, mesh.radius))
+            .count();
+        let main_visible_lods = self
+            .lod_chunks
+            .values()
+            .filter(|mesh| cull_frustum.intersects_sphere(mesh.center, mesh.radius))
+            .count();
+        let dying_visible = self
+            .animator
+            .dying_chunks
+            .values()
+            .filter(|state| frustum.intersects_sphere(state.mesh.center, state.mesh.radius))
+            .count();
 
         // Shadow pass
         {
@@ -1437,6 +1671,23 @@ impl<'a> Renderer<'a> {
         self.queue.submit(std::iter::once(enc.finish()));
         out.present();
         self.text_atlas.trim();
+        let overlay_draws = (!controller.first_person) as u32
+            + (self.collision_inds > 0) as u32
+            + (self.cursor_inds > 0) as u32
+            + (self.break_inds > 0) as u32
+            + (self.drop_inds > 0) as u32
+            + (self.console_inds > 0) as u32
+            + (self.ui_inds > 0) as u32;
+        self.frame_telemetry.gpu.draw_calls = (shadow_visible_chunks
+            + shadow_visible_lods
+            + main_visible_chunks
+            + main_visible_lods
+            + dying_visible) as u32
+            + overlay_draws;
+        self.frame_telemetry.gpu.visible_chunks = main_visible_chunks;
+        self.frame_telemetry.gpu.visible_lods = main_visible_lods;
+        self.frame_telemetry.gpu.active_buffers =
+            (self.chunks.len() + self.lod_chunks.len() + self.animator.dying_chunks.len()) * 3;
     }
 
     // --- Private internals --------------------------------------------------
@@ -2256,7 +2507,137 @@ impl<'a> Renderer<'a> {
         }
     }
 
+    fn prioritized_chunk_split(
+        &self,
+        keys: HashSet<ChunkKey>,
+        player_pos: Vec3,
+        planet: &PlanetData,
+        limit: usize,
+    ) -> (HashSet<ChunkKey>, Vec<ChunkKey>) {
+        let mut ranked: Vec<(ChunkKey, f32)> = keys
+            .into_iter()
+            .map(|key| (key, Self::chunk_distance_squared(&key, player_pos, planet)))
+            .collect();
+        ranked.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        let keep = limit.min(self.lod_cfg.max_active_chunks).min(ranked.len());
+        let required = ranked[..keep].iter().map(|(key, _)| *key).collect();
+        let dropped = ranked[keep..].iter().map(|(key, _)| *key).collect();
+        (required, dropped)
+    }
+
+    fn prioritized_lods(
+        &self,
+        keys: HashSet<LodKey>,
+        player_pos: Vec3,
+        planet: &PlanetData,
+        limit: usize,
+    ) -> HashSet<LodKey> {
+        let mut ranked: Vec<(LodKey, f32)> = keys
+            .into_iter()
+            .map(|key| (key, Self::lod_distance_squared(&key, player_pos, planet)))
+            .collect();
+        ranked.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        ranked.truncate(limit.min(self.lod_cfg.max_active_lods));
+        ranked.into_iter().map(|(key, _)| key).collect()
+    }
+
+    fn add_chunk_fallback_lods(
+        &self,
+        chunks: impl Iterator<Item = ChunkKey>,
+        lods: &mut HashSet<LodKey>,
+        player_pos: Vec3,
+        planet: &PlanetData,
+    ) {
+        let mut ranked: Vec<(LodKey, f32)> = chunks
+            .filter_map(|chunk| Self::chunk_fallback_lod(chunk, planet))
+            .map(|key| (key, Self::lod_distance_squared(&key, player_pos, planet)))
+            .collect();
+        ranked.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        for (key, _) in ranked {
+            lods.insert(key);
+        }
+        if lods.len() > self.lod_cfg.max_required_lods {
+            let mut ranked_lods: Vec<(LodKey, f32)> = lods
+                .iter()
+                .copied()
+                .map(|key| (key, Self::lod_distance_squared(&key, player_pos, planet)))
+                .collect();
+            ranked_lods.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            for (key, _) in ranked_lods
+                .into_iter()
+                .take(lods.len() - self.lod_cfg.max_required_lods)
+            {
+                lods.remove(&key);
+            }
+        }
+    }
+
+    fn chunk_fallback_lod(chunk: ChunkKey, planet: &PlanetData) -> Option<LodKey> {
+        let size = (CHUNK_SIZE * 4).min(planet.resolution.next_power_of_two());
+        if size <= CHUNK_SIZE {
+            return None;
+        }
+        let x = (chunk.u_idx * CHUNK_SIZE / size) * size;
+        let y = (chunk.v_idx * CHUNK_SIZE / size) * size;
+        if x >= planet.resolution || y >= planet.resolution {
+            return None;
+        }
+        Some(LodKey {
+            face: chunk.face,
+            x,
+            y,
+            size,
+        })
+    }
+
+    fn limit_lod_pressure(&mut self, player_pos: Vec3, planet: &PlanetData) {
+        if self.lod_chunks.len() <= self.lod_cfg.max_active_lods {
+            return;
+        }
+        let mut ranked: Vec<(LodKey, f32)> = self
+            .lod_chunks
+            .keys()
+            .copied()
+            .map(|key| (key, Self::lod_distance_squared(&key, player_pos, planet)))
+            .collect();
+        ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let remove_count = self.lod_chunks.len() - self.lod_cfg.max_active_lods;
+        for (key, _) in ranked.into_iter().take(remove_count) {
+            if let Some(mesh) = self.lod_chunks.remove(&key) {
+                self.animator.retire(AnyKey::Lod(key), mesh);
+            }
+        }
+    }
+
+    fn chunk_distance_squared(key: &ChunkKey, player_pos: Vec3, planet: &PlanetData) -> f32 {
+        CoordSystem::get_vertex_pos(
+            key.face,
+            key.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2,
+            key.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2,
+            planet.geometry.surface_layer(),
+            planet.geometry,
+        )
+        .distance_squared(player_pos)
+    }
+
+    fn lod_distance_squared(key: &LodKey, player_pos: Vec3, planet: &PlanetData) -> f32 {
+        CoordSystem::get_vertex_pos(
+            key.face,
+            key.x
+                .saturating_add(key.size / 2)
+                .min(planet.resolution - 1),
+            key.y
+                .saturating_add(key.size / 2)
+                .min(planet.resolution - 1),
+            planet.geometry.surface_layer(),
+            planet.geometry,
+        )
+        .distance_squared(player_pos)
+    }
+
     fn upload_lod_buffer(&mut self, key: LodKey, v: Vec<Vertex>, i: Vec<u32>) {
+        let upload_start = Instant::now();
+        self.record_upload(v.len(), i.len());
         let v_buf = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -2277,7 +2658,7 @@ impl<'a> Renderer<'a> {
                 label: Some("LOD Uniform"),
                 contents: bytemuck::cast_slice(&[LocalUniform {
                     model: glam::Mat4::IDENTITY.to_cols_array(),
-                    params: [0.0; 4],
+                    params: [1.0, 0.0, 0.0, 0.0],
                 }]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
@@ -2303,10 +2684,12 @@ impl<'a> Renderer<'a> {
                 radius,
             },
         );
-        self.animator.start_spawn(AnyKey::Lod(key));
+        self.frame_telemetry.gpu.upload_time += upload_start.elapsed();
     }
 
     fn upload_chunk_buffers(&mut self, key: ChunkKey, v: Vec<Vertex>, i: Vec<u32>) {
+        let upload_start = Instant::now();
+        self.record_upload(v.len(), i.len());
         let v_buf = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -2321,15 +2704,13 @@ impl<'a> Renderer<'a> {
                 contents: bytemuck::cast_slice(&i),
                 usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             });
-        let is_update = self.chunks.contains_key(&key);
-        let start_opacity = if is_update { 1.0f32 } else { 0.0 };
         let uniform_buf = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Chunk Uniform"),
                 contents: bytemuck::cast_slice(&[LocalUniform {
                     model: glam::Mat4::IDENTITY.to_cols_array(),
-                    params: [start_opacity, 0.0, 0.0, 0.0],
+                    params: [1.0, 0.0, 0.0, 0.0],
                 }]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
@@ -2355,9 +2736,7 @@ impl<'a> Renderer<'a> {
                 radius,
             },
         );
-        if !is_update {
-            self.animator.start_spawn(AnyKey::Voxel(key));
-        }
+        self.frame_telemetry.gpu.upload_time += upload_start.elapsed();
     }
 
     fn bounds_from_verts(v: &[Vertex]) -> (Vec3, f32) {
@@ -2376,21 +2755,32 @@ impl<'a> Renderer<'a> {
     }
 
     fn process_load_queue(&mut self, _player_pos: Vec3, planet: &PlanetData) {
-        let mut budget = 4i32;
-        while let Ok((key, v, i)) = self.mesh_rx.try_recv() {
-            self.pending_chunks.remove(&key);
-            if !v.is_empty() {
-                self.upload_chunk_buffers(key, v, i);
-                budget -= 1;
-            }
-            if budget <= 0 {
+        let mut uploads = 0usize;
+        while uploads < self.lod_cfg.chunk_uploads_per_frame
+            && self.frame_telemetry.gpu.uploads < self.lod_cfg.max_gpu_uploads_per_frame
+        {
+            let Ok((job, v, i)) = self.mesh_rx.try_recv() else {
                 break;
+            };
+            self.pending_chunks.remove(&job.key);
+            self.record_mesh_job(job.duration, job.vertices, job.indices, MeshJobKind::Chunk);
+            if !v.is_empty() {
+                self.upload_chunk_buffers(job.key, v, i);
+                self.frame_telemetry.streaming.chunks_uploaded += 1;
+                uploads += 1;
+            } else {
+                self.frame_telemetry.streaming.empty_chunks += 1;
             }
         }
-        if budget <= 0 || self.load_queue.is_empty() || self.pending_chunks.len() >= 12 {
+        if self.load_queue.is_empty()
+            || self.pending_chunks.len() >= self.lod_cfg.max_pending_chunk_jobs
+        {
             return;
         }
-        for _ in 0..4 {
+        for _ in 0..self.lod_cfg.chunk_jobs_per_frame {
+            if self.pending_chunks.len() >= self.lod_cfg.max_pending_chunk_jobs {
+                break;
+            }
             if let Some(key) = self.load_queue.pop() {
                 if self.chunks.contains_key(&key) || self.pending_chunks.contains(&key) {
                     continue;
@@ -2400,12 +2790,45 @@ impl<'a> Renderer<'a> {
                 let tx = self.mesh_tx.clone();
                 let blocks = self.block_content.clone();
                 std::thread::spawn(move || {
+                    let start = Instant::now();
                     let (v, i) = MeshGen::build_chunk(key, &p, &blocks);
-                    let _ = tx.send((key, v, i));
+                    let job = MeshJobResult {
+                        key,
+                        vertices: v.len(),
+                        indices: i.len(),
+                        duration: start.elapsed(),
+                    };
+                    let _ = tx.send((job, v, i));
                 });
+                self.frame_telemetry.streaming.chunk_jobs_started += 1;
             } else {
                 break;
             }
         }
+    }
+
+    fn record_upload(&mut self, vertices: usize, indices: usize) {
+        self.frame_telemetry.gpu.uploads += 1;
+        self.frame_telemetry.gpu.upload_vertices += vertices;
+        self.frame_telemetry.gpu.upload_indices += indices;
+    }
+
+    fn record_mesh_job(
+        &mut self,
+        duration: Duration,
+        vertices: usize,
+        indices: usize,
+        kind: MeshJobKind,
+    ) {
+        match kind {
+            MeshJobKind::Chunk => self.frame_telemetry.mesh.chunk_jobs_completed += 1,
+            MeshJobKind::Lod => self.frame_telemetry.mesh.lod_jobs_completed += 1,
+            MeshJobKind::Remesh => self.frame_telemetry.mesh.remeshes += 1,
+        }
+        self.frame_telemetry.mesh.total_job_time += duration;
+        self.frame_telemetry.mesh.max_job_time =
+            self.frame_telemetry.mesh.max_job_time.max(duration);
+        self.frame_telemetry.mesh.vertices += vertices;
+        self.frame_telemetry.mesh.indices += indices;
     }
 }

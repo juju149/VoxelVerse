@@ -13,6 +13,7 @@ vv-gameplay      = { path = "../vv-gameplay" }
 vv-physics       = { path = "../vv-physics" }
 vv-config        = { path = "../vv-config" }
 vv-registry      = { path = "../vv-registry" }
+vv-diagnostics   = { path = "../vv-diagnostics" }
 glam     = "0.25"
 wgpu     = "0.19"
 bytemuck = { version = "1.14", features = ["derive"] }

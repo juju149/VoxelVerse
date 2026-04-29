@@ -1,4 +1,5 @@
 use crate::player::Player;
+use vv_diagnostics::{emit_from_env, LogDomain, LogLevel};
 
 /// In-game developer console.
 ///
@@ -32,7 +33,11 @@ impl Console {
     }
 
     pub fn log(&mut self, text: &str, color: [f32; 3]) {
-        println!("{}", text);
+        emit_from_env(
+            LogLevel::Info,
+            LogDomain::Gameplay,
+            format!("console {}", text),
+        );
         if self.history.len() >= self.history_capacity {
             self.history.remove(0);
         }
