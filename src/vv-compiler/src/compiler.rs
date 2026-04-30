@@ -706,6 +706,9 @@ impl ContentCompiler {
                 trunk_height_max_m,
                 canopy_radius_m,
                 canopy_height_m,
+                canopy_start_t,
+                trunk_girth,
+                crown_bias,
             } => {
                 let log = self
                     .resolve_block("flora", doc, log_block, index)
@@ -720,6 +723,9 @@ impl ContentCompiler {
                     trunk_height_max_m: *trunk_height_max_m,
                     canopy_radius_m: *canopy_radius_m,
                     canopy_height_m: *canopy_height_m,
+                    canopy_start_t: *canopy_start_t,
+                    trunk_girth: *trunk_girth,
+                    crown_bias: *crown_bias,
                 }
             }
             FloraFeature::Cluster {

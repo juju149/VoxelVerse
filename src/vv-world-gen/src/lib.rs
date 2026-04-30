@@ -466,6 +466,9 @@ impl PlanetTerrain {
                 trunk_height_max_m,
                 canopy_radius_m,
                 canopy_height_m,
+                canopy_start_t,
+                trunk_girth,
+                crown_bias,
             } => {
                 let radius = TreeShape::expanded_scan_radius_layers(
                     self.geometry.voxel_size_m,
@@ -503,6 +506,9 @@ impl PlanetTerrain {
                             trunk_height_max_m,
                             canopy_radius_m,
                             canopy_height_m,
+                            canopy_start_t,
+                            trunk_girth,
+                            crown_bias,
                         });
                         let rel_layer = layer - origin_surface;
                         if shape.has_log_at(-du, -dv, rel_layer) {
@@ -581,6 +587,9 @@ impl PlanetTerrain {
                 trunk_height_max_m,
                 canopy_radius_m,
                 canopy_height_m,
+                canopy_start_t,
+                trunk_girth,
+                crown_bias,
             } => {
                 let shape = TreeShape::new(TreeShapeConfig {
                     face,
@@ -593,6 +602,9 @@ impl PlanetTerrain {
                     trunk_height_max_m,
                     canopy_radius_m,
                     canopy_height_m,
+                    canopy_start_t,
+                    trunk_girth,
+                    crown_bias,
                 });
 
                 let radius = shape.scan_radius_layers();
@@ -1298,10 +1310,10 @@ mod tests {
         let coarse_layers = coarse.meters_to_voxels_ceil(trunk_height_max_m);
         let fine_layers = fine.meters_to_voxels_ceil(trunk_height_max_m);
 
-        assert_eq!(trunk_height_max_m, 6.0);
-        assert_eq!(coarse_layers, 12);
-        assert_eq!(fine_layers, 120);
-        assert!((coarse.voxel_extent_m(coarse_layers) - 6.0).abs() <= coarse.voxel_size_m);
-        assert!((fine.voxel_extent_m(fine_layers) - 6.0).abs() <= fine.voxel_size_m);
+        assert_eq!(trunk_height_max_m, 7.5);
+        assert_eq!(coarse_layers, 15);
+        assert_eq!(fine_layers, 150);
+        assert!((coarse.voxel_extent_m(coarse_layers) - 7.5).abs() <= coarse.voxel_size_m);
+        assert!((fine.voxel_extent_m(fine_layers) - 7.5).abs() <= fine.voxel_size_m);
     }
 }

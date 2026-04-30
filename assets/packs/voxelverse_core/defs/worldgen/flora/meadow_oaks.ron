@@ -17,8 +17,11 @@
         log_block: "voxelverse:wood_log",
         leaf_block: "voxelverse:leaves_oak",
         trunk_height_min_m: 4.0,
-        trunk_height_max_m: 5.0,
-        canopy_radius_m: 2.0,
+        trunk_height_max_m: 6.0,
+        canopy_radius_m: 2.5,
         canopy_height_m: 1.5,
+        canopy_start_t: 0.60,
+        trunk_girth: 0.15,
+        crown_bias: 0.3,
     ),
 )

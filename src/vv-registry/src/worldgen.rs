@@ -132,6 +132,9 @@ pub enum CompiledFloraFeature {
         trunk_height_max_m: f32,
         canopy_radius_m: f32,
         canopy_height_m: f32,
+        canopy_start_t: f32,
+        trunk_girth: f32,
+        crown_bias: f32,
     },
     Cluster {
         block: BlockId,

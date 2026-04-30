@@ -25,6 +25,10 @@ fn one() -> f32 {
     1.0
 }
 
+fn default_canopy_start_t() -> f32 {
+    0.75
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct FloraPlacement {
@@ -72,6 +76,18 @@ pub enum FloraFeature {
         /// Physical canopy dimensions in meters.
         canopy_radius_m: f32,
         canopy_height_m: f32,
+        /// Fraction of trunk height at which foliage begins (0.0 = ground, 1.0 = top).
+        /// Default 0.75 produces a crown that starts near the top of the trunk.
+        #[serde(default = "default_canopy_start_t")]
+        canopy_start_t: f32,
+        /// Girth multiplier for the trunk cross-section (0.0 = single-voxel, 1.0 = widest).
+        /// Values above 0.5 enable multi-voxel trunks on tall trees.
+        #[serde(default)]
+        trunk_girth: f32,
+        /// Silhouette bias: negative values favour a columnar crown, positive values
+        /// favour a spreading crown. Clamped to [-1.0, 1.0].
+        #[serde(default)]
+        crown_bias: f32,
     },
     Cluster {
         block: BlockRef,
