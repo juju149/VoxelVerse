@@ -16,6 +16,15 @@
         color: (r: 0.58, g: 0.36, b: 0.24),
         texture: single,
         textures: (single: Some("voxelverse:copper_ore")),
+        material: (
+            visual_type: ore,
+            secondary_color: Some((r: 0.78, g: 0.44, b: 0.24)),
+            texture_influence: 0.34,
+            block_variation: 0.14,
+            face_variation: 0.08,
+            macro_variation: 0.10,
+            detail_strength: 0.04,
+        ),
     ),
     physics: (
         phase: solid,

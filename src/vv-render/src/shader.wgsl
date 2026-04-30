@@ -213,7 +213,7 @@ fn material_for(block_id: i32) -> BlockMaterial {
 }
 
 fn rotated_variant_uv(uv: vec2<f32>, face_hash: f32, material_kind: f32) -> vec2<f32> {
-    if (material_kind == 8.0) {
+    if (material_kind == 9.0 || material_kind == 10.0 || material_kind == 12.0) {
         return uv;
     }
     let tile = floor(face_hash * 4.0);
@@ -232,25 +232,121 @@ fn rotated_variant_uv(uv: vec2<f32>, face_hash: f32, material_kind: f32) -> vec2
 
 fn material_color_shift(kind: f32, n: f32) -> vec3<f32> {
     if (kind == 1.0) {
-        return vec3<f32>(-0.04 + n * 0.08, -0.01 + n * 0.10, -0.05 + n * 0.04);
+        return vec3<f32>(-0.06 + n * 0.11, -0.02 + n * 0.13, -0.07 + n * 0.055);
     }
     if (kind == 2.0) {
-        return vec3<f32>(-0.03 + n * 0.07, -0.02 + n * 0.04, -0.025 + n * 0.03);
+        return vec3<f32>(-0.04 + n * 0.08, -0.025 + n * 0.055, -0.03 + n * 0.04);
     }
-    if (kind == 3.0 || kind == 7.0 || kind == 9.0) {
-        let v = -0.045 + n * 0.09;
-        return vec3<f32>(v, v, v * 0.95);
+    if (kind == 3.0) {
+        let v = -0.025 + n * 0.055;
+        return vec3<f32>(v * 0.82, v * 0.9, v);
     }
     if (kind == 4.0) {
+        let v = -0.055 + n * 0.105;
+        return vec3<f32>(v, v, v * 0.94);
+    }
+    if (kind == 5.0) {
         return vec3<f32>(-0.02 + n * 0.08, -0.015 + n * 0.065, -0.035 + n * 0.04);
     }
-    if (kind == 5.0 || kind == 8.0) {
+    if (kind == 6.0 || kind == 10.0) {
         return vec3<f32>(-0.035 + n * 0.07, -0.02 + n * 0.045, -0.03 + n * 0.035);
     }
-    if (kind == 6.0) {
+    if (kind == 7.0) {
         return vec3<f32>(-0.045 + n * 0.07, -0.025 + n * 0.11, -0.05 + n * 0.04);
     }
+    if (kind == 8.0) {
+        return vec3<f32>(-0.025 + n * 0.055, -0.01 + n * 0.04, -0.005 + n * 0.07);
+    }
+    if (kind == 9.0 || kind == 11.0) {
+        let v = -0.04 + n * 0.08;
+        return vec3<f32>(v, v, v * 0.96);
+    }
     return vec3<f32>(-0.03 + n * 0.06);
+}
+
+fn luminance(color: vec3<f32>) -> f32 {
+    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+}
+
+fn material_texture_strength(kind: f32, authored: f32) -> f32 {
+    if (kind == 1.0 || kind == 2.0 || kind == 3.0 || kind == 5.0 || kind == 7.0) {
+        return authored * 0.36;
+    }
+    if (kind == 4.0 || kind == 6.0 || kind == 8.0 || kind == 11.0) {
+        return authored * 0.44;
+    }
+    if (kind == 9.0 || kind == 10.0) {
+        return authored * 0.58;
+    }
+    return authored * 0.42;
+}
+
+fn material_face_grade(kind: f32, topness: f32, sideness: f32, bottomness: f32) -> vec3<f32> {
+    if (kind == 1.0) {
+        return vec3<f32>(1.0 + topness * 0.08 - bottomness * 0.14,
+                         1.0 + topness * 0.12 - bottomness * 0.10,
+                         1.0 - topness * 0.04 - bottomness * 0.08);
+    }
+    if (kind == 2.0) {
+        return vec3<f32>(1.0 + topness * 0.04 - bottomness * 0.08,
+                         1.0 + topness * 0.02 - bottomness * 0.08,
+                         1.0 - bottomness * 0.08);
+    }
+    if (kind == 3.0 || kind == 8.0) {
+        return vec3<f32>(1.0 + topness * 0.035 - sideness * 0.035,
+                         1.0 + topness * 0.045 - sideness * 0.025,
+                         1.0 + topness * 0.065);
+    }
+    if (kind == 4.0 || kind == 9.0 || kind == 11.0) {
+        return vec3<f32>(1.0 + topness * 0.03 - bottomness * 0.10);
+    }
+    if (kind == 5.0) {
+        return vec3<f32>(1.0 + topness * 0.06, 1.0 + topness * 0.045, 1.0 - sideness * 0.04);
+    }
+    if (kind == 6.0 || kind == 10.0) {
+        return vec3<f32>(1.0 + topness * 0.025, 1.0 + topness * 0.015, 1.0 - bottomness * 0.045);
+    }
+    if (kind == 7.0) {
+        return vec3<f32>(1.0 - bottomness * 0.12, 1.0 + topness * 0.05, 1.0 - bottomness * 0.12);
+    }
+    return vec3<f32>(1.0);
+}
+
+fn material_palette(
+    kind: f32,
+    base: vec3<f32>,
+    secondary: vec3<f32>,
+    topness: f32,
+    sideness: f32,
+    macro_a: f32,
+    macro_b: f32,
+) -> vec3<f32> {
+    let natural_mix = 0.18 + macro_a * 0.34 + topness * 0.16;
+    var color = mix(base, secondary, natural_mix);
+    if (kind == 1.0) {
+        let meadow = vec3<f32>(0.48, 0.78, 0.25);
+        let deep = vec3<f32>(0.18, 0.46, 0.16);
+        color = mix(mix(deep, meadow, macro_a), secondary, topness * 0.38);
+    } else if (kind == 2.0) {
+        color = mix(vec3<f32>(0.24, 0.145, 0.085), vec3<f32>(0.50, 0.32, 0.17), macro_a * 0.75 + macro_b * 0.25);
+    } else if (kind == 3.0) {
+        color = mix(vec3<f32>(0.72, 0.78, 0.84), vec3<f32>(0.96, 0.98, 1.0), macro_a);
+    } else if (kind == 4.0 || kind == 11.0) {
+        color = mix(vec3<f32>(0.33, 0.34, 0.33), vec3<f32>(0.62, 0.61, 0.56), macro_a);
+    } else if (kind == 5.0) {
+        color = mix(vec3<f32>(0.62, 0.54, 0.34), vec3<f32>(0.91, 0.80, 0.52), macro_a);
+    } else if (kind == 6.0) {
+        color = mix(vec3<f32>(0.34, 0.18, 0.08), vec3<f32>(0.72, 0.44, 0.20), macro_a);
+    } else if (kind == 7.0) {
+        color = mix(vec3<f32>(0.12, 0.35, 0.12), vec3<f32>(0.38, 0.70, 0.22), macro_a);
+    } else if (kind == 8.0) {
+        color = mix(vec3<f32>(0.38, 0.68, 0.86), vec3<f32>(0.80, 0.95, 1.0), macro_a);
+    } else if (kind == 9.0) {
+        color = mix(base, secondary, macro_a * 0.22);
+    } else if (kind == 10.0) {
+        color = mix(base, secondary, macro_a * 0.18 + sideness * 0.04);
+    }
+    return color * material_face_grade(kind, topness, sideness, 1.0 - max(topness, sideness));
 }
 
 // --- TONE MAPPING (ACES) ---
@@ -276,30 +372,49 @@ fn fs_feedback(in: VertexOut) -> @location(0) vec4<f32> {
 fn block_albedo(in: VertexOut) -> vec3<f32> {
     let material = material_for(in.block_id);
     let kind = material.flags.x;
+    let N = normalize(in.world_normal);
+    let radial_up = normalize(in.world_pos);
+    let up_dot = clamp(dot(N, radial_up), -1.0, 1.0);
+    let topness = smoothstep(0.18, 0.92, up_dot);
+    let bottomness = smoothstep(0.15, 0.82, -up_dot);
+    let sideness = clamp(1.0 - max(topness, bottomness), 0.0, 1.0);
+
     let block_cell = floor(in.world_pos * 2.0);
-    let face_key = block_cell + floor(abs(in.world_normal) * 17.0);
+    let face_key = block_cell + floor(abs(N) * 17.0);
     let block_hash = hash13(block_cell + vec3<f32>(f32(in.block_id) * 0.37, 3.1, 9.7));
     let face_hash = hash13(face_key + vec3<f32>(f32(in.block_id) * 0.11, 5.3, 1.7));
-    let macro_hash = value_noise(in.world_pos * 0.018 + vec3<f32>(f32(in.block_id), 0.0, 0.0));
-    let detail_hash = value_noise(in.world_pos * 2.7 + in.world_normal * 11.0);
+    let macro_hash = value_noise(in.world_pos * 0.011 + radial_up * 3.0 + vec3<f32>(f32(in.block_id), 0.0, 0.0));
+    let broad_hash = value_noise(in.world_pos * 0.0035 + vec3<f32>(0.0, f32(in.block_id), length(in.world_pos) * 0.002));
+    let detail_hash = value_noise(in.world_pos * 2.1 + N * 9.0);
 
     let vert_color_linear = pow(in.color, vec3<f32>(2.2));
-    let material_mix = mix(vert_color_linear, material.secondary_color_texture.rgb, face_hash * 0.45);
-    var identity_color = material_mix;
+    var identity_color = material_palette(
+        kind,
+        vert_color_linear,
+        material.secondary_color_texture.rgb,
+        topness,
+        sideness,
+        macro_hash,
+        broad_hash,
+    );
     if (in.texture_id >= 0) {
         let rect = block_atlas_rects[u32(in.texture_id)];
         let varied_uv = rotated_variant_uv(in.uv, face_hash, kind);
         let atlas_uv = mix(rect.xy, rect.zw, varied_uv);
         let tex_color = textureSample(t_block_atlas, s_block_atlas, atlas_uv).rgb;
-        let texture_influence = material.secondary_color_texture.w;
-        identity_color = mix(material_mix, tex_color * vert_color_linear, texture_influence);
+        let texture_strength = material_texture_strength(kind, material.secondary_color_texture.w);
+        let tex_luma = luminance(tex_color);
+        let luma_detail = (tex_luma - 0.5) * texture_strength;
+        let chroma_detail = (tex_color - vec3<f32>(tex_luma)) * (texture_strength * 0.16);
+        identity_color = identity_color * (1.0 + luma_detail) + chroma_detail;
     }
     let organic_shift =
         material_color_shift(kind, block_hash) * material.variation.x +
         material_color_shift(kind, face_hash) * material.variation.y +
-        material_color_shift(kind, macro_hash) * material.variation.z;
-    let detail = (detail_hash * 2.0 - 1.0) * material.variation.w;
-    return clamp(identity_color * (1.0 + organic_shift + detail), vec3<f32>(0.0), vec3<f32>(3.0));
+        material_color_shift(kind, broad_hash) * material.variation.z;
+    let detail = (detail_hash * 2.0 - 1.0) * material.variation.w * (0.55 + sideness * 0.35);
+    let exposure_tint = mix(vec3<f32>(0.94, 0.95, 0.96), vec3<f32>(1.04, 1.035, 1.0), topness);
+    return clamp(identity_color * exposure_tint * (1.0 + organic_shift + detail), vec3<f32>(0.0), vec3<f32>(3.0));
 }
 
 @fragment
@@ -328,7 +443,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let shadow = mix(1.0 - SHADOW_OPACITY, 1.0, shadow_raw);
 
     // A. Direct Sun Light
-    let direct_light = global.atmosphere.sun_color.xyz * NdotL * shadow;
+    let roughness = material.flags.y;
+    let soft_shadow = mix(shadow, smoothstep(0.0, 1.0, shadow), clamp(roughness, 0.0, 1.0) * 0.35);
+    let direct_light = global.atmosphere.sun_color.xyz * NdotL * soft_shadow;
 
     // B. Hemispheric Ambient
     // Top of objects gets Sky Color, Bottom gets Ground Bounce
@@ -338,12 +455,12 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         global.atmosphere.ground_ambient_color.xyz,
         global.atmosphere.sky_color.xyz,
         hemi_factor
-    );
+    ) * (0.86 + roughness * 0.20);
 
     // C. Fresnel Rim
     // Adds a subtle glow at grazing angles (atmosphere dust effect)
     let fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-    let rim_light = global.atmosphere.sky_color.xyz * fresnel * 0.2 * shadow;
+    let rim_light = global.atmosphere.sky_color.xyz * fresnel * (0.12 + roughness * 0.10) * soft_shadow;
 
     // Combine
     // Note: Ambient is multiplied by albedo (diffuse reflection)

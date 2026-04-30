@@ -14,6 +14,15 @@
         translucent: true,
         texture: single,
         tint: grass_color,
+        material: (
+            visual_type: leaves,
+            secondary_color: Some((r: 0.52, g: 0.80, b: 0.26)),
+            texture_influence: 0.0,
+            block_variation: 0.22,
+            face_variation: 0.12,
+            macro_variation: 0.16,
+            detail_strength: 0.035,
+        ),
     ),
     physics: (
         phase: passable,

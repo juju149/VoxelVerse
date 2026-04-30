@@ -17,7 +17,7 @@
         material: (
             visual_type: planks,
             secondary_color: Some((r: 0.76, g: 0.52, b: 0.28)),
-            texture_influence: 0.84,
+            texture_influence: 0.48,
             block_variation: 0.05,
             face_variation: 0.03,
             macro_variation: 0.025,

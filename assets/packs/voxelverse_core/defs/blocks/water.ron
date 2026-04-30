@@ -18,7 +18,7 @@
         material: (
             visual_type: water,
             secondary_color: Some((r: 0.30, g: 0.62, b: 0.92)),
-            texture_influence: 0.50,
+            texture_influence: 0.20,
             block_variation: 0.06,
             face_variation: 0.04,
             macro_variation: 0.08,

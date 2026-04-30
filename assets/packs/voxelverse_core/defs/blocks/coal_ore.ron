@@ -17,6 +17,15 @@
         color: (r: 0.14, g: 0.14, b: 0.13),
         texture: single,
         textures: (single: Some("voxelverse:coal_ore")),
+        material: (
+            visual_type: ore,
+            secondary_color: Some((r: 0.36, g: 0.36, b: 0.34)),
+            texture_influence: 0.34,
+            block_variation: 0.14,
+            face_variation: 0.08,
+            macro_variation: 0.10,
+            detail_strength: 0.045,
+        ),
     ),
     physics: (
         phase: solid,

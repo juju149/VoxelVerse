@@ -18,7 +18,7 @@
         material: (
             visual_type: cut_stone,
             secondary_color: Some((r: 0.47, g: 0.47, b: 0.44)),
-            texture_influence: 0.78,
+            texture_influence: 0.42,
             block_variation: 0.07,
             face_variation: 0.045,
             macro_variation: 0.035,
