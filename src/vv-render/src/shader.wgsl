@@ -17,6 +17,9 @@ struct Global {
     light_view_proj: mat4x4<f32>,
     camera_pos: vec4<f32>,
     atmosphere: Atmosphere,
+    // Inverse view-projection matrix: used by sky shader to reconstruct world-space ray direction.
+    // Field order must match GlobalUniform in renderer.rs exactly.
+    inv_view_proj: mat4x4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> global: Global;
@@ -486,4 +489,83 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     final_color = pow(final_color, vec3<f32>(1.0 / 2.2));
 
     return vec4<f32>(final_color, 1.0);
+}
+
+// --- SKY SHADER ---
+// Renders a procedural stylized sky as the first draw in the main pass.
+// Drawn with depth_write_enabled=false so terrain always occludes it.
+
+struct SkyOut {
+    @builtin(position) clip_pos: vec4<f32>,
+    @location(0) ndc: vec2<f32>,
+};
+
+fn sky_gradient(view_dir: vec3<f32>) -> vec3<f32> {
+    let L = normalize(global.atmosphere.sun_direction.xyz);
+    let sky = global.atmosphere.sky_color.xyz;
+    let fog = global.atmosphere.fog_color_density.xyz;
+    let sun = global.atmosphere.sun_color.xyz;
+
+    // On a round planet, "up" is radial from planet centre to camera.
+    let radial_up = normalize(global.camera_pos.xyz);
+    let elevation = dot(view_dir, radial_up); // -1..1
+
+    // Sky gradient: zenith is a deeper, richer blue; near horizon blends to fog haze.
+    let zenith_color = sky * vec3<f32>(0.68, 0.75, 1.18);
+    let sky_t = clamp(smoothstep(-0.06, 0.30, elevation), 0.0, 1.0);
+    let sky_base = mix(fog, zenith_color, sky_t * sky_t);
+
+    // Below horizon: fade gently into ground haze.
+    let below_t = smoothstep(0.0, -0.20, elevation);
+    let sky_with_ground = mix(sky_base, fog * vec3<f32>(0.80, 0.85, 0.90), below_t);
+
+    // Sun contribution: tight disk + inner glow + outer scatter halo.
+    let sun_dot = clamp(dot(view_dir, L), 0.0, 1.0);
+    let sun_disk  = smoothstep(0.9993, 0.9998, sun_dot);
+    let sun_glow  = pow(sun_dot, 72.0) * 1.8;
+    let sun_halo  = pow(sun_dot, 6.0)  * 0.22;
+    // Suppress sun when it is below the horizon or the view ray is underground.
+    let sun_elev  = dot(L, radial_up);
+    let sun_above = smoothstep(-0.12, 0.08, sun_elev);
+    let sun_vis   = smoothstep(-0.18, 0.05, elevation);
+    let sun_contrib = sun * (sun_disk * 2.4 + sun_glow + sun_halo) * sun_above * sun_vis;
+
+    // Horizon haze: brightened glow band at the horizon line.
+    let haze_t = pow(max(0.0, 1.0 - abs(elevation) * 5.0), 2.5);
+    let haze = fog * haze_t * 0.35;
+
+    return sky_with_ground + sun_contrib + haze;
+}
+
+@vertex
+fn vs_sky(@builtin(vertex_index) vi: u32) -> SkyOut {
+    // Three vertices that form a single triangle covering the entire clip space.
+    let positions = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>( 3.0, -1.0),
+        vec2<f32>(-1.0,  3.0),
+    );
+    let pos = positions[vi];
+    var out: SkyOut;
+    // z=1.0, w=1.0 → NDC depth = 1.0 (far plane). The sky pipeline uses depth_compare=Always
+    // so it always draws, and depth_write_enabled=false so terrain overwrites it later.
+    out.clip_pos = vec4<f32>(pos.x, pos.y, 1.0, 1.0);
+    out.ndc = pos;
+    return out;
+}
+
+@fragment
+fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
+    // Unproject from NDC to world space to get the per-pixel view direction.
+    let clip_far  = vec4<f32>(in.ndc.x, in.ndc.y, 1.0, 1.0);
+    let world_far = global.inv_view_proj * clip_far;
+    let view_dir  = normalize(world_far.xyz / world_far.w - global.camera_pos.xyz);
+
+    var color = sky_gradient(view_dir);
+
+    // Apply the same tone mapping and gamma as the terrain shader for a seamless match.
+    color = aces_approx(color);
+    color = pow(color, vec3<f32>(1.0 / 2.2));
+
+    return vec4<f32>(color, 1.0);
 }

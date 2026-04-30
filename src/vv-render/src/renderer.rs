@@ -48,6 +48,8 @@ struct GlobalUniform {
     light_view_proj: [f32; 16],
     cam_pos: [f32; 4],
     atmosphere: AtmosphereUniform,
+    /// Inverse of view_proj, used by the sky shader to reconstruct world-space ray directions.
+    inv_view_proj: [f32; 16],
 }
 
 #[repr(C)]
@@ -200,6 +202,7 @@ pub struct Renderer<'a> {
     pipeline_wire: wgpu::RenderPipeline,
     pipeline_line: wgpu::RenderPipeline,
     pipeline_feedback: wgpu::RenderPipeline,
+    pipeline_sky: wgpu::RenderPipeline,
 
     chunks: HashMap<ChunkKey, ChunkMesh>,
     lod_chunks: HashMap<LodKey, ChunkMesh>,
@@ -622,6 +625,34 @@ impl<'a> Renderer<'a> {
         );
         let pipeline_feedback =
             Self::create_feedback_pipeline(&device, &surf_cfg, &layout, &shader);
+        let pipeline_sky = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Sky Pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: "vs_sky",
+                buffers: &[], // Fullscreen triangle generated in shader from vertex_index
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: "fs_sky",
+                targets: &[Some(surf_cfg.format.into())],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                cull_mode: None,
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: false, // Sky must not occlude terrain
+                depth_compare: wgpu::CompareFunction::Always, // Drawn first, always passes
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+            multisample: Default::default(),
+            multiview: None,
+        });
         let depth = Self::mk_depth(&device, &surf_cfg);
 
         let pipeline_ui = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -718,6 +749,7 @@ impl<'a> Renderer<'a> {
             light_view_proj: identity_mat.to_cols_array(),
             cam_pos: [0.0; 4],
             atmosphere: AtmosphereUniform::from_config(&cfg.render.atmosphere),
+            inv_view_proj: identity_mat.to_cols_array(),
         };
         let global_buf_id = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Global Identity"),
@@ -796,6 +828,7 @@ impl<'a> Renderer<'a> {
             pipeline_wire,
             pipeline_line,
             pipeline_feedback,
+            pipeline_sky,
             chunks: HashMap::new(),
             lod_chunks: HashMap::new(),
             global_buf,
@@ -1455,6 +1488,7 @@ impl<'a> Renderer<'a> {
             light_view_proj: light_vp.to_cols_array(),
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
             atmosphere,
+            inv_view_proj: mvp.inverse().to_cols_array(),
         };
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
@@ -1619,6 +1653,14 @@ impl<'a> Renderer<'a> {
             } else {
                 &self.pipeline_fill
             };
+
+            // Sky: draw first (behind all terrain). Uses depth_write_enabled=false +
+            // depth_compare=Always so terrain always occludes it in subsequent draws.
+            pass.set_pipeline(&self.pipeline_sky);
+            pass.set_bind_group(0, &self.global_bind, &[]);
+            pass.set_bind_group(1, &self.local_bind_identity, &[]);
+            pass.draw(0..3, 0..1);
+
             pass.set_pipeline(terrain_pipeline);
             pass.set_bind_group(0, &self.global_bind, &[]);
 
