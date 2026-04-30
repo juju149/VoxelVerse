@@ -1,0 +1,24 @@
+(
+    display_key: Some("block.voxelverse.marble"),
+    tags: [
+        "voxelverse:solid",
+        "voxelverse:natural",
+        "voxelverse:mineable_pickaxe",
+    ],
+    mining: (
+        hardness: 1.7,
+        tool: pickaxe,
+        tool_tier_min: 1,
+        sound_material: stone,
+    ),
+    render: (
+        color: (r: 0.90, g: 0.90, b: 0.92),
+        texture: single,
+        textures: (single: Some("voxelverse:stone")),
+    ),
+    physics: (
+        phase: solid,
+        density: 2.6,
+        collider: full,
+    ),
+)
