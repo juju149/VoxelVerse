@@ -44,6 +44,7 @@ pub struct MeshGen;
 
 #[derive(Clone, Copy, Debug)]
 struct VisualBevel {
+    edge_width: f32,
     top_edge: f32,
     side_edge: f32,
 }
@@ -319,58 +320,113 @@ impl MeshGen {
             }
         };
 
-        if !has_top {
-            let texture_id = Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Top));
+        let top_visible = !has_top;
+        let bottom_visible = !has_btm;
+        let front_visible = !has_front;
+        let back_visible = !has_back;
+        let left_visible = !has_left;
+        let right_visible = !has_right;
+        let bevel_width = visual_bevel.edge_width;
+        let top_pos = Self::inset_face(
+            [o_bl, o_br, o_tr, o_tl],
+            [front_visible, right_visible, back_visible, left_visible],
+            bevel_width,
+        );
+        let bottom_pos = Self::inset_face(
+            [i_tl, i_tr, i_br, i_bl],
+            [back_visible, right_visible, front_visible, left_visible],
+            bevel_width,
+        );
+        let front_pos = Self::inset_face(
+            [i_bl, i_br, o_br, o_bl],
+            [bottom_visible, right_visible, top_visible, left_visible],
+            bevel_width,
+        );
+        let back_pos = Self::inset_face(
+            [o_tl, o_tr, i_tr, i_tl],
+            [top_visible, right_visible, bottom_visible, left_visible],
+            bevel_width,
+        );
+        let left_pos = Self::inset_face(
+            [i_tl, i_bl, o_bl, o_tl],
+            [bottom_visible, front_visible, top_visible, back_visible],
+            bevel_width,
+        );
+        let right_pos = Self::inset_face(
+            [i_br, i_tr, o_tr, o_br],
+            [bottom_visible, back_visible, top_visible, front_visible],
+            bevel_width,
+        );
+
+        let top_texture_id = Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Top));
+        let bottom_texture_id =
+            Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Bottom));
+        let front_texture_id =
+            Self::face_texture_id(render.texture_for_face(CompiledBlockFace::North));
+        let back_texture_id =
+            Self::face_texture_id(render.texture_for_face(CompiledBlockFace::South));
+        let left_texture_id =
+            Self::face_texture_id(render.texture_for_face(CompiledBlockFace::West));
+        let right_texture_id =
+            Self::face_texture_id(render.texture_for_face(CompiledBlockFace::East));
+
+        let top_ao = if top_visible {
             let n = |u, v| check(id.face, 1, u, v);
-            let ao_bl = Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1));
-            let ao_br = Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1));
-            let ao_tr = Self::calculate_ao(n(1, 0), n(0, 1), n(1, 1));
-            let ao_tl = Self::calculate_ao(n(-1, 0), n(0, 1), n(-1, 1));
+            [
+                Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1)),
+                Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1)),
+                Self::calculate_ao(n(1, 0), n(0, 1), n(1, 1)),
+                Self::calculate_ao(n(-1, 0), n(0, 1), n(-1, 1)),
+            ]
+        } else {
+            [1.0; 4]
+        };
+        let top_colors = [
+            apply(top_ao[0], top_texture_id),
+            apply(top_ao[1], top_texture_id),
+            apply(top_ao[2], top_texture_id),
+            apply(top_ao[3], top_texture_id),
+        ];
+        let bottom_c = apply(0.4, bottom_texture_id);
+        let front_c = apply(0.8, front_texture_id);
+        let back_c = apply(0.8, back_texture_id);
+        let left_c = apply(0.8, left_texture_id);
+        let right_c = apply(0.8, right_texture_id);
+
+        if !has_top {
             Self::quad(
                 verts,
                 inds,
                 idx,
-                [o_bl, o_br, o_tr, o_tl],
-                [
-                    apply(ao_bl, texture_id),
-                    apply(ao_br, texture_id),
-                    apply(ao_tr, texture_id),
-                    apply(ao_tl, texture_id),
-                ],
-                texture_id,
+                top_pos,
+                top_colors,
+                top_texture_id,
                 block_raw_id,
                 true,
                 Some(top_normals),
             );
         }
         if !has_btm {
-            let texture_id =
-                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Bottom));
-            let c = apply(0.4, texture_id);
             Self::quad(
                 verts,
                 inds,
                 idx,
-                [i_tl, i_tr, i_br, i_bl],
-                [c, c, c, c],
-                texture_id,
+                bottom_pos,
+                [bottom_c; 4],
+                bottom_texture_id,
                 block_raw_id,
                 true,
                 Some(bottom_normals),
             );
         }
         if !has_front {
-            let texture_id =
-                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::North));
-            let side_c = apply(0.8, texture_id);
-            let sc = [side_c, side_c, side_c, side_c];
             Self::quad(
                 verts,
                 inds,
                 idx,
-                [i_bl, i_br, o_br, o_bl],
-                sc,
-                texture_id,
+                front_pos,
+                [front_c; 4],
+                front_texture_id,
                 block_raw_id,
                 false,
                 Some(Self::rounded_corner_normals(
@@ -386,17 +442,13 @@ impl MeshGen {
             );
         }
         if !has_back {
-            let texture_id =
-                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::South));
-            let side_c = apply(0.8, texture_id);
-            let sc = [side_c, side_c, side_c, side_c];
             Self::quad(
                 verts,
                 inds,
                 idx,
-                [o_tl, o_tr, i_tr, i_tl],
-                sc,
-                texture_id,
+                back_pos,
+                [back_c; 4],
+                back_texture_id,
                 block_raw_id,
                 false,
                 Some(Self::rounded_corner_normals(
@@ -412,17 +464,13 @@ impl MeshGen {
             );
         }
         if !has_left {
-            let texture_id =
-                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::West));
-            let side_c = apply(0.8, texture_id);
-            let sc = [side_c, side_c, side_c, side_c];
             Self::quad(
                 verts,
                 inds,
                 idx,
-                [i_tl, i_bl, o_bl, o_tl],
-                sc,
-                texture_id,
+                left_pos,
+                [left_c; 4],
+                left_texture_id,
                 block_raw_id,
                 false,
                 Some(Self::rounded_corner_normals(
@@ -438,17 +486,13 @@ impl MeshGen {
             );
         }
         if !has_right {
-            let texture_id =
-                Self::face_texture_id(render.texture_for_face(CompiledBlockFace::East));
-            let side_c = apply(0.8, texture_id);
-            let sc = [side_c, side_c, side_c, side_c];
             Self::quad(
                 verts,
                 inds,
                 idx,
-                [i_br, i_tr, o_tr, o_br],
-                sc,
-                texture_id,
+                right_pos,
+                [right_c; 4],
+                right_texture_id,
                 block_raw_id,
                 false,
                 Some(Self::rounded_corner_normals(
@@ -461,6 +505,42 @@ impl MeshGen {
                     ],
                     visual_bevel.side_edge,
                 )),
+            );
+        }
+
+        if bevel_width > 0.0 {
+            Self::add_edge_bevels(
+                verts,
+                inds,
+                idx,
+                block_raw_id,
+                [
+                    top_visible,
+                    bottom_visible,
+                    front_visible,
+                    back_visible,
+                    left_visible,
+                    right_visible,
+                ],
+                [
+                    top_pos, bottom_pos, front_pos, back_pos, left_pos, right_pos,
+                ],
+                [
+                    (top_texture_id, top_colors),
+                    (bottom_texture_id, [bottom_c; 4]),
+                    (front_texture_id, [front_c; 4]),
+                    (back_texture_id, [back_c; 4]),
+                    (left_texture_id, [left_c; 4]),
+                    (right_texture_id, [right_c; 4]),
+                ],
+                [
+                    top_radial,
+                    bottom_radial,
+                    front_normal,
+                    back_normal,
+                    left_normal,
+                    right_normal,
+                ],
             );
         }
     }
@@ -525,32 +605,172 @@ impl MeshGen {
             | CompiledVisualMaterialType::Snow
             | CompiledVisualMaterialType::Sand
             | CompiledVisualMaterialType::Leaves => VisualBevel {
+                edge_width: 0.14,
                 top_edge: 0.30,
                 side_edge: 0.24,
             },
             CompiledVisualMaterialType::Stone
             | CompiledVisualMaterialType::Ore
             | CompiledVisualMaterialType::Ice => VisualBevel {
+                edge_width: 0.10,
                 top_edge: 0.22,
                 side_edge: 0.17,
             },
             CompiledVisualMaterialType::Wood => VisualBevel {
+                edge_width: 0.07,
                 top_edge: 0.16,
                 side_edge: 0.12,
             },
             CompiledVisualMaterialType::CutStone | CompiledVisualMaterialType::Planks => {
                 VisualBevel {
+                    edge_width: 0.025,
                     top_edge: 0.06,
                     side_edge: 0.045,
                 }
             }
             CompiledVisualMaterialType::Generic | CompiledVisualMaterialType::Water => {
                 VisualBevel {
+                    edge_width: 0.0,
                     top_edge: 0.0,
                     side_edge: 0.0,
                 }
             }
         }
+    }
+
+    fn inset_face(mut pos: [Vec3; 4], exposed_edges: [bool; 4], width: f32) -> [Vec3; 4] {
+        if width <= 0.0 {
+            return pos;
+        }
+
+        let original = pos;
+        if exposed_edges[0] {
+            pos[0] += (original[3] - original[0]) * width;
+            pos[1] += (original[2] - original[1]) * width;
+        }
+        if exposed_edges[1] {
+            pos[1] += (original[0] - original[1]) * width;
+            pos[2] += (original[3] - original[2]) * width;
+        }
+        if exposed_edges[2] {
+            pos[2] += (original[1] - original[2]) * width;
+            pos[3] += (original[0] - original[3]) * width;
+        }
+        if exposed_edges[3] {
+            pos[3] += (original[2] - original[3]) * width;
+            pos[0] += (original[1] - original[0]) * width;
+        }
+        pos
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn add_edge_bevels(
+        verts: &mut Vec<Vertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        block_id: i32,
+        visible: [bool; 6],
+        face_pos: [[Vec3; 4]; 6],
+        face_style: [(i32, [[f32; 3]; 4]); 6],
+        face_normals: [Vec3; 6],
+    ) {
+        const TOP: usize = 0;
+        const BOTTOM: usize = 1;
+        const FRONT: usize = 2;
+        const BACK: usize = 3;
+        const LEFT: usize = 4;
+        const RIGHT: usize = 5;
+
+        let mut edge = |a: usize, b: usize, a0: usize, a1: usize, b0: usize, b1: usize| {
+            if !(visible[a] && visible[b]) {
+                return;
+            }
+            let normal = (face_normals[a] + face_normals[b]).normalize();
+            let (texture_id, colors) = face_style[a];
+            let color = [
+                colors[a0],
+                colors[a1],
+                Self::mix_color(colors[a1], face_style[b].1[b1], 0.5),
+                Self::mix_color(colors[a0], face_style[b].1[b0], 0.5),
+            ];
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [
+                    face_pos[a][a0],
+                    face_pos[a][a1],
+                    face_pos[b][b1],
+                    face_pos[b][b0],
+                ],
+                color,
+                texture_id,
+                block_id,
+                false,
+                Some([normal; 4]),
+            );
+        };
+
+        edge(TOP, FRONT, 0, 1, 3, 2);
+        edge(TOP, RIGHT, 1, 2, 3, 2);
+        edge(TOP, BACK, 2, 3, 1, 0);
+        edge(TOP, LEFT, 3, 0, 3, 2);
+        edge(BOTTOM, FRONT, 2, 3, 0, 1);
+        edge(BOTTOM, RIGHT, 1, 2, 0, 1);
+        edge(BOTTOM, BACK, 0, 1, 3, 2);
+        edge(BOTTOM, LEFT, 3, 0, 0, 1);
+        edge(FRONT, LEFT, 3, 0, 2, 1);
+        edge(FRONT, RIGHT, 1, 2, 0, 3);
+        edge(BACK, LEFT, 3, 0, 3, 0);
+        edge(BACK, RIGHT, 1, 2, 2, 1);
+
+        let mut corner = |faces: [usize; 3], points: [(usize, usize); 3]| {
+            if !faces.iter().all(|face| visible[*face]) {
+                return;
+            }
+            let normal = (face_normals[faces[0]] + face_normals[faces[1]] + face_normals[faces[2]])
+                .normalize();
+            let texture_id = face_style[faces[0]].0;
+            let colors = [
+                face_style[points[0].0].1[points[0].1],
+                face_style[points[1].0].1[points[1].1],
+                face_style[points[2].0].1[points[2].1],
+            ];
+            Self::tri(
+                verts,
+                inds,
+                idx,
+                [
+                    face_pos[points[0].0][points[0].1],
+                    face_pos[points[1].0][points[1].1],
+                    face_pos[points[2].0][points[2].1],
+                ],
+                colors,
+                texture_id,
+                block_id,
+                normal,
+            );
+        };
+
+        corner([TOP, FRONT, LEFT], [(TOP, 0), (FRONT, 3), (LEFT, 2)]);
+        corner([TOP, FRONT, RIGHT], [(TOP, 1), (RIGHT, 3), (FRONT, 2)]);
+        corner([TOP, BACK, RIGHT], [(TOP, 2), (BACK, 1), (RIGHT, 2)]);
+        corner([TOP, BACK, LEFT], [(TOP, 3), (LEFT, 3), (BACK, 0)]);
+        corner([BOTTOM, FRONT, LEFT], [(BOTTOM, 3), (LEFT, 1), (FRONT, 0)]);
+        corner(
+            [BOTTOM, FRONT, RIGHT],
+            [(BOTTOM, 2), (FRONT, 1), (RIGHT, 0)],
+        );
+        corner([BOTTOM, BACK, RIGHT], [(BOTTOM, 1), (RIGHT, 1), (BACK, 2)]);
+        corner([BOTTOM, BACK, LEFT], [(BOTTOM, 0), (BACK, 3), (LEFT, 0)]);
+    }
+
+    fn mix_color(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+        [
+            a[0] + (b[0] - a[0]) * t,
+            a[1] + (b[1] - a[1]) * t,
+            a[2] + (b[2] - a[2]) * t,
+        ]
     }
 
     fn face_normal(pos: [Vec3; 4]) -> Vec3 {
@@ -610,6 +830,32 @@ impl MeshGen {
         }
         inds.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
         *idx += 4;
+    }
+
+    fn tri(
+        verts: &mut Vec<Vertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        pos: [Vec3; 3],
+        colors: [[f32; 3]; 3],
+        texture_id: i32,
+        block_id: i32,
+        normal: Vec3,
+    ) {
+        let base = *idx;
+        let uvs = [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]];
+        for ((p, color), uv) in pos.iter().zip(colors).zip(uvs) {
+            verts.push(Vertex {
+                pos: p.to_array(),
+                color,
+                normal: normal.to_array(),
+                uv,
+                texture_id,
+                block_id,
+            });
+        }
+        inds.extend_from_slice(&[base, base + 1, base + 2]);
+        *idx += 3;
     }
 
     fn face_texture_id(texture: Option<TextureId>) -> i32 {
