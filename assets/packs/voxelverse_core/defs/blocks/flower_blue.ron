@@ -14,6 +14,15 @@
         color: (r: 0.34, g: 0.48, b: 0.92),
         translucent: true,
         texture: single,
+        material: (
+            visual_type: leaves,
+            secondary_color: Some((r: 0.62, g: 0.72, b: 1.00)),
+            texture_influence: 0.0,
+            block_variation: 0.12,
+            face_variation: 0.08,
+            macro_variation: 0.06,
+            detail_strength: 0.025,
+        ),
     ),
     physics: (
         phase: passable,

@@ -19,6 +19,15 @@
             bottom: Some("voxelverse:dirt"),
         ),
         tint: grass_color,
+        material: (
+            visual_type: grass,
+            secondary_color: Some((r: 0.42, g: 0.72, b: 0.24)),
+            texture_influence: 0.72,
+            block_variation: 0.18,
+            face_variation: 0.09,
+            macro_variation: 0.12,
+            detail_strength: 0.045,
+        ),
     ),
     physics: (
         phase: solid,

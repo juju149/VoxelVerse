@@ -1,7 +1,7 @@
 mod diagnostics;
 use diagnostics::SystemDiagnostics;
 
-use glam::Vec3;
+use glam::{Quat, Vec3};
 use std::collections::BTreeMap;
 use std::env;
 use std::path::Path;
@@ -26,6 +26,7 @@ use vv_world_gen::PlanetTerrain;
 use vv_world_runtime::PlanetData;
 
 fn main() {
+    let app_start = Instant::now();
     let mut diagnostics = EngineDiagnostics::from_env();
     diagnostics.log(
         LogLevel::Info,
@@ -40,7 +41,18 @@ fn main() {
 
     // --- Configuration ------------------------------------------------------
     // All engine parameters live here. Change a value; it propagates everywhere.
-    let config = EngineConfig::default();
+    let mut config = EngineConfig::default();
+    if let Ok(seed) = env::var("VV_SEED") {
+        if let Ok(seed) = seed.parse::<u32>() {
+            config.worldgen.noise_seed = seed;
+        } else {
+            diagnostics.log(
+                LogLevel::Warn,
+                LogDomain::Config,
+                format!("ignoring invalid VV_SEED={seed:?}; expected u32"),
+            );
+        }
+    }
     diagnostics.log(
         LogLevel::Info,
         LogDomain::Config,
@@ -129,6 +141,16 @@ fn main() {
     let spawn_r = CoordSystem::get_layer_radius(ground_h, planet.geometry)
         + config.player.spawn_height_offset;
     player.spawn(Vec3::new(0.0, spawn_r, 0.0));
+    apply_reference_view(
+        env::var("VV_BASELINE_SCENE")
+            .as_deref()
+            .unwrap_or("spawn_meadow"),
+        &mut player,
+        &mut controller,
+        &planet,
+        &diagnostics,
+    );
+    diagnostics.record_initial_load_time(app_start.elapsed());
 
     // --- Main loop ----------------------------------------------------------
     let mut last_time = Instant::now();
@@ -375,6 +397,104 @@ fn main() {
             }
         })
         .unwrap();
+}
+
+fn apply_reference_view(
+    scene: &str,
+    player: &mut Player,
+    controller: &mut Controller,
+    planet: &PlanetData,
+    diagnostics: &EngineDiagnostics,
+) {
+    let view = match scene {
+        "spawn_meadow" => ReferenceView {
+            face: 0,
+            u_frac: 0.50,
+            v_frac: 0.50,
+            height_offset_m: 3.0,
+            yaw_rad: 0.0,
+            pitch_rad: -0.18,
+            first_person: true,
+            orbit_distance_m: 120.0,
+        },
+        "forest_props" => ReferenceView {
+            face: 0,
+            u_frac: 0.63,
+            v_frac: 0.46,
+            height_offset_m: 4.0,
+            yaw_rad: 1.2,
+            pitch_rad: -0.12,
+            first_person: true,
+            orbit_distance_m: 120.0,
+        },
+        "lod_orbit" => ReferenceView {
+            face: 4,
+            u_frac: 0.35,
+            v_frac: 0.58,
+            height_offset_m: 160.0,
+            yaw_rad: 0.0,
+            pitch_rad: 0.0,
+            first_person: false,
+            orbit_distance_m: 280.0,
+        },
+        other => {
+            diagnostics.log(
+                LogLevel::Warn,
+                LogDomain::Config,
+                format!(
+                    "unknown VV_BASELINE_SCENE={other:?}; using spawn_meadow (valid: spawn_meadow, forest_props, lod_orbit)"
+                ),
+            );
+            ReferenceView {
+                face: 0,
+                u_frac: 0.50,
+                v_frac: 0.50,
+                height_offset_m: 3.0,
+                yaw_rad: 0.0,
+                pitch_rad: -0.18,
+                first_person: true,
+                orbit_distance_m: 120.0,
+            }
+        }
+    };
+
+    let u = ((planet.resolution - 1) as f32 * view.u_frac).round() as u32;
+    let v = ((planet.resolution - 1) as f32 * view.v_frac).round() as u32;
+    let surface = planet.terrain.get_height(view.face, u, v);
+    let radius = CoordSystem::get_layer_radius(surface, planet.geometry) + view.height_offset_m;
+    let dir = CoordSystem::get_direction(view.face, u, v, planet.resolution);
+    player.spawn(dir * radius);
+    let up = vv_physics::Physics::get_up_vector(player.position);
+    player.rotation =
+        Quat::from_axis_angle(up, view.yaw_rad) * Quat::from_rotation_arc(Vec3::Y, up);
+    player.cam_pitch = view.pitch_rad;
+    controller.first_person = view.first_person;
+    controller.cam_dist = view.orbit_distance_m;
+    diagnostics.log(
+        LogLevel::Info,
+        LogDomain::Config,
+        format!(
+            "baseline scene={} face={} u={} v={} first_person={} height_offset_m={:.1} orbit_distance_m={:.1}",
+            scene,
+            view.face,
+            u,
+            v,
+            view.first_person,
+            view.height_offset_m,
+            view.orbit_distance_m,
+        ),
+    );
+}
+
+struct ReferenceView {
+    face: u8,
+    u_frac: f32,
+    v_frac: f32,
+    height_offset_m: f32,
+    yaw_rad: f32,
+    pitch_rad: f32,
+    first_person: bool,
+    orbit_distance_m: f32,
 }
 
 fn log_planet_info(

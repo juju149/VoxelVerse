@@ -44,9 +44,45 @@ pub struct CompiledBlockRender {
     pub roughness: f32,
     pub translucent: bool,
     pub emits_light: u8,
+    pub tint: CompiledTintMode,
+    pub material: CompiledStylizedMaterial,
     pub texture_layout: CompiledTextureLayout,
     pub textures: CompiledBlockTextures,
     pub model: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompiledTintMode {
+    None,
+    GrassColor,
+    FoliageColor,
+    WaterColor,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct CompiledStylizedMaterial {
+    pub visual_type: CompiledVisualMaterialType,
+    pub secondary_color: [f32; 3],
+    pub texture_influence: f32,
+    pub block_variation: f32,
+    pub face_variation: f32,
+    pub macro_variation: f32,
+    pub detail_strength: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompiledVisualMaterialType {
+    Generic,
+    Grass,
+    Dirt,
+    Stone,
+    Sand,
+    Wood,
+    Leaves,
+    CutStone,
+    Planks,
+    Ore,
+    Water,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

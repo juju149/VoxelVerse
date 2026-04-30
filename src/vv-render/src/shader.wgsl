@@ -23,6 +23,13 @@ struct Global {
 @group(0) @binding(4) var s_block_atlas: sampler;
 @group(0) @binding(5) var<storage, read> block_atlas_rects: array<vec4<f32>>;
 
+struct BlockMaterial {
+    secondary_color_texture: vec4<f32>,
+    variation: vec4<f32>,
+    flags: vec4<f32>,
+}
+@group(0) @binding(6) var<storage, read> block_materials: array<BlockMaterial>;
+
 struct Local {
     model: mat4x4<f32>,
     params: vec4<f32>, // x = opacity
@@ -40,6 +47,7 @@ struct VertexIn {
     @location(2) normal: vec3<f32>,
     @location(3) uv: vec2<f32>,
     @location(4) texture_id: i32,
+    @location(5) block_id: i32,
 };
 
 struct VertexOut {
@@ -51,6 +59,7 @@ struct VertexOut {
     @location(4) shadow_pos: vec3<f32>,
     @location(5) uv: vec2<f32>,
     @location(6) @interpolate(flat) texture_id: i32,
+    @location(7) @interpolate(flat) block_id: i32,
 };
 
 @vertex
@@ -76,6 +85,7 @@ fn vs_main(in: VertexIn) -> VertexOut {
     out.color = in.color;
     out.uv = in.uv;
     out.texture_id = in.texture_id;
+    out.block_id = in.block_id;
     out.view_pos = global.camera_pos.xyz;
 
     // Shadow Calculation Space
@@ -164,6 +174,85 @@ fn triplanar_detail(pos: vec3<f32>, normal: vec3<f32>) -> f32 {
     return (hx * weights.x + hy * weights.y + hz * weights.z) * 2.0 - 1.0;
 }
 
+fn hash13(p: vec3<f32>) -> f32 {
+    let q = fract(p * vec3<f32>(0.1031, 0.11369, 0.13787));
+    let r = q + dot(q, q.yzx + 19.19);
+    return fract((r.x + r.y) * r.z);
+}
+
+fn value_noise(p: vec3<f32>) -> f32 {
+    let i = floor(p);
+    let f = fract(p);
+    let u = f * f * (3.0 - 2.0 * f);
+    let n000 = hash13(i + vec3<f32>(0.0, 0.0, 0.0));
+    let n100 = hash13(i + vec3<f32>(1.0, 0.0, 0.0));
+    let n010 = hash13(i + vec3<f32>(0.0, 1.0, 0.0));
+    let n110 = hash13(i + vec3<f32>(1.0, 1.0, 0.0));
+    let n001 = hash13(i + vec3<f32>(0.0, 0.0, 1.0));
+    let n101 = hash13(i + vec3<f32>(1.0, 0.0, 1.0));
+    let n011 = hash13(i + vec3<f32>(0.0, 1.0, 1.0));
+    let n111 = hash13(i + vec3<f32>(1.0, 1.0, 1.0));
+    let x00 = mix(n000, n100, u.x);
+    let x10 = mix(n010, n110, u.x);
+    let x01 = mix(n001, n101, u.x);
+    let x11 = mix(n011, n111, u.x);
+    let y0 = mix(x00, x10, u.y);
+    let y1 = mix(x01, x11, u.y);
+    return mix(y0, y1, u.z);
+}
+
+fn material_for(block_id: i32) -> BlockMaterial {
+    if (block_id < 0) {
+        return BlockMaterial(
+            vec4<f32>(1.0, 1.0, 1.0, 1.0),
+            vec4<f32>(0.03, 0.02, 0.02, 0.015),
+            vec4<f32>(0.0, 0.7, 0.0, 0.0),
+        );
+    }
+    return block_materials[u32(block_id)];
+}
+
+fn rotated_variant_uv(uv: vec2<f32>, face_hash: f32, material_kind: f32) -> vec2<f32> {
+    if (material_kind == 8.0) {
+        return uv;
+    }
+    let tile = floor(face_hash * 4.0);
+    let local = fract(uv);
+    if (tile < 1.0) {
+        return local;
+    }
+    if (tile < 2.0) {
+        return vec2<f32>(1.0 - local.y, local.x);
+    }
+    if (tile < 3.0) {
+        return vec2<f32>(1.0 - local.x, 1.0 - local.y);
+    }
+    return vec2<f32>(local.y, 1.0 - local.x);
+}
+
+fn material_color_shift(kind: f32, n: f32) -> vec3<f32> {
+    if (kind == 1.0) {
+        return vec3<f32>(-0.04 + n * 0.08, -0.01 + n * 0.10, -0.05 + n * 0.04);
+    }
+    if (kind == 2.0) {
+        return vec3<f32>(-0.03 + n * 0.07, -0.02 + n * 0.04, -0.025 + n * 0.03);
+    }
+    if (kind == 3.0 || kind == 7.0 || kind == 9.0) {
+        let v = -0.045 + n * 0.09;
+        return vec3<f32>(v, v, v * 0.95);
+    }
+    if (kind == 4.0) {
+        return vec3<f32>(-0.02 + n * 0.08, -0.015 + n * 0.065, -0.035 + n * 0.04);
+    }
+    if (kind == 5.0 || kind == 8.0) {
+        return vec3<f32>(-0.035 + n * 0.07, -0.02 + n * 0.045, -0.03 + n * 0.035);
+    }
+    if (kind == 6.0) {
+        return vec3<f32>(-0.045 + n * 0.07, -0.025 + n * 0.11, -0.05 + n * 0.04);
+    }
+    return vec3<f32>(-0.03 + n * 0.06);
+}
+
 // --- TONE MAPPING (ACES) ---
 // Industry standard for realistic color reproduction
 fn aces_approx(v: vec3<f32>) -> vec3<f32> {
@@ -185,15 +274,32 @@ fn fs_feedback(in: VertexOut) -> @location(0) vec4<f32> {
 }
 
 fn block_albedo(in: VertexOut) -> vec3<f32> {
-    let vert_color_linear = pow(in.color, vec3<f32>(2.2));
-    if (in.texture_id < 0) {
-        return vert_color_linear;
-    }
+    let material = material_for(in.block_id);
+    let kind = material.flags.x;
+    let block_cell = floor(in.world_pos * 2.0);
+    let face_key = block_cell + floor(abs(in.world_normal) * 17.0);
+    let block_hash = hash13(block_cell + vec3<f32>(f32(in.block_id) * 0.37, 3.1, 9.7));
+    let face_hash = hash13(face_key + vec3<f32>(f32(in.block_id) * 0.11, 5.3, 1.7));
+    let macro_hash = value_noise(in.world_pos * 0.018 + vec3<f32>(f32(in.block_id), 0.0, 0.0));
+    let detail_hash = value_noise(in.world_pos * 2.7 + in.world_normal * 11.0);
 
-    let rect = block_atlas_rects[u32(in.texture_id)];
-    let atlas_uv = mix(rect.xy, rect.zw, fract(in.uv));
-    let tex_color = textureSample(t_block_atlas, s_block_atlas, atlas_uv).rgb;
-    return tex_color * vert_color_linear;
+    let vert_color_linear = pow(in.color, vec3<f32>(2.2));
+    let material_mix = mix(vert_color_linear, material.secondary_color_texture.rgb, face_hash * 0.45);
+    var identity_color = material_mix;
+    if (in.texture_id >= 0) {
+        let rect = block_atlas_rects[u32(in.texture_id)];
+        let varied_uv = rotated_variant_uv(in.uv, face_hash, kind);
+        let atlas_uv = mix(rect.xy, rect.zw, varied_uv);
+        let tex_color = textureSample(t_block_atlas, s_block_atlas, atlas_uv).rgb;
+        let texture_influence = material.secondary_color_texture.w;
+        identity_color = mix(material_mix, tex_color * vert_color_linear, texture_influence);
+    }
+    let organic_shift =
+        material_color_shift(kind, block_hash) * material.variation.x +
+        material_color_shift(kind, face_hash) * material.variation.y +
+        material_color_shift(kind, macro_hash) * material.variation.z;
+    let detail = (detail_hash * 2.0 - 1.0) * material.variation.w;
+    return clamp(identity_color * (1.0 + organic_shift + detail), vec3<f32>(0.0), vec3<f32>(3.0));
 }
 
 @fragment
@@ -209,8 +315,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 
     // 2. Material Setup
     // Apply Detail Noise (Grain)
+    let material = material_for(in.block_id);
     let noise = triplanar_detail(in.world_pos, N);
-    let albedo = block_albedo(in) * (1.0 + 0.03 * noise);
+    let albedo = block_albedo(in) * (1.0 + material.variation.w * noise);
 
     // 3. Lighting Math
     let NdotL = max(dot(N, L), 0.0);

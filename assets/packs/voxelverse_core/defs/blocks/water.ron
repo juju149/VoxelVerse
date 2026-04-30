@@ -15,6 +15,15 @@
         texture: single,
         textures: (single: Some("voxelverse:water")),
         tint: water_color,
+        material: (
+            visual_type: water,
+            secondary_color: Some((r: 0.30, g: 0.62, b: 0.92)),
+            texture_influence: 0.50,
+            block_variation: 0.06,
+            face_variation: 0.04,
+            macro_variation: 0.08,
+            detail_strength: 0.025,
+        ),
     ),
     physics: (
         phase: liquid,

@@ -119,6 +119,9 @@ pub struct BlockRenderDef {
     pub textures: BlockTextureRefs,
     /// Dynamic tint (grass, leaves, water based on biome).
     pub tint: TintMode,
+    /// Stylized material controls consumed by the renderer to reduce visible
+    /// tiling while preserving the block's authored identity.
+    pub material: StylizedMaterialDef,
     /// Custom model override. Absent = standard cube.
     #[serde(default)]
     pub model: Option<ResourceRef>,
@@ -135,6 +138,7 @@ impl Default for BlockRenderDef {
             texture: TextureLayout::Single,
             textures: BlockTextureRefs::default(),
             tint: TintMode::None,
+            material: StylizedMaterialDef::default(),
             model: None,
         }
     }
@@ -200,6 +204,54 @@ pub enum TintMode {
 impl Default for TintMode {
     fn default() -> Self {
         TintMode::None
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct StylizedMaterialDef {
+    pub visual_type: VisualMaterialType,
+    pub secondary_color: Option<RgbColor>,
+    pub texture_influence: f32,
+    pub block_variation: f32,
+    pub face_variation: f32,
+    pub macro_variation: f32,
+    pub detail_strength: f32,
+}
+
+impl Default for StylizedMaterialDef {
+    fn default() -> Self {
+        Self {
+            visual_type: VisualMaterialType::Generic,
+            secondary_color: None,
+            texture_influence: 1.0,
+            block_variation: 0.08,
+            face_variation: 0.04,
+            macro_variation: 0.05,
+            detail_strength: 0.03,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VisualMaterialType {
+    Generic,
+    Grass,
+    Dirt,
+    Stone,
+    Sand,
+    Wood,
+    Leaves,
+    CutStone,
+    Planks,
+    Ore,
+    Water,
+}
+
+impl Default for VisualMaterialType {
+    fn default() -> Self {
+        VisualMaterialType::Generic
     }
 }
 

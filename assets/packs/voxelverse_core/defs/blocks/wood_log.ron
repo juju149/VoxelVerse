@@ -19,6 +19,15 @@
             side: Some("voxelverse:oak_log"),
             bottom: Some("voxelverse:oak_log_top"),
         ),
+        material: (
+            visual_type: wood,
+            secondary_color: Some((r: 0.60, g: 0.36, b: 0.16)),
+            texture_influence: 0.76,
+            block_variation: 0.10,
+            face_variation: 0.05,
+            macro_variation: 0.06,
+            detail_strength: 0.04,
+        ),
     ),
     physics: (
         phase: solid,

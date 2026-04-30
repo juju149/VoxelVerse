@@ -24,7 +24,8 @@ use vv_mesh::{MeshGen, Vertex};
 use vv_physics::Physics;
 use vv_planet::CoordSystem;
 use vv_registry::{
-    BlockContent, BlockRenderSource, CompiledContent, CompiledItemKind, ItemId, RecipeId,
+    BlockContent, BlockRenderSource, CompiledContent, CompiledItemKind, CompiledTintMode,
+    CompiledVisualMaterialType, ItemId, RecipeId,
 };
 use vv_world_runtime::PlanetData;
 
@@ -56,6 +57,14 @@ struct LocalUniform {
     params: [f32; 4], // x = opacity
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct BlockMaterialUniform {
+    secondary_color_texture: [f32; 4],
+    variation: [f32; 4],
+    flags: [f32; 4],
+}
+
 #[derive(Clone, Copy, Debug)]
 struct MeshJobResult<K> {
     key: K,
@@ -80,6 +89,66 @@ enum MeshJobKind {
     Chunk,
     Lod,
     Remesh,
+}
+
+fn build_block_materials(content: &CompiledContent) -> Vec<BlockMaterialUniform> {
+    let mut materials = Vec::with_capacity(content.blocks.len().max(1));
+    for block in content.blocks.entries() {
+        let material = block.render.material;
+        materials.push(BlockMaterialUniform {
+            secondary_color_texture: [
+                material.secondary_color[0],
+                material.secondary_color[1],
+                material.secondary_color[2],
+                material.texture_influence,
+            ],
+            variation: [
+                material.block_variation,
+                material.face_variation,
+                material.macro_variation,
+                material.detail_strength,
+            ],
+            flags: [
+                visual_material_code(material.visual_type),
+                block.render.roughness,
+                tint_mode_code(block.render.tint),
+                if block.render.translucent { 1.0 } else { 0.0 },
+            ],
+        });
+    }
+    if materials.is_empty() {
+        materials.push(BlockMaterialUniform {
+            secondary_color_texture: [1.0, 1.0, 1.0, 1.0],
+            variation: [0.05, 0.03, 0.03, 0.02],
+            flags: [0.0, 0.7, 0.0, 0.0],
+        });
+    }
+    materials
+}
+
+fn visual_material_code(kind: CompiledVisualMaterialType) -> f32 {
+    match kind {
+        CompiledVisualMaterialType::Generic => 0.0,
+        CompiledVisualMaterialType::Grass => 1.0,
+        CompiledVisualMaterialType::Dirt => 2.0,
+        CompiledVisualMaterialType::Stone => 3.0,
+        CompiledVisualMaterialType::Sand => 4.0,
+        CompiledVisualMaterialType::Wood => 5.0,
+        CompiledVisualMaterialType::Leaves => 6.0,
+        CompiledVisualMaterialType::CutStone => 7.0,
+        CompiledVisualMaterialType::Planks => 8.0,
+        CompiledVisualMaterialType::Ore => 9.0,
+        CompiledVisualMaterialType::Water => 10.0,
+    }
+}
+
+fn tint_mode_code(mode: CompiledTintMode) -> f32 {
+    match mode {
+        CompiledTintMode::None => 0.0,
+        CompiledTintMode::GrassColor => 1.0,
+        CompiledTintMode::FoliageColor => 2.0,
+        CompiledTintMode::WaterColor => 3.0,
+    }
 }
 
 // --- Renderer ---------------------------------------------------------------
@@ -135,6 +204,7 @@ pub struct Renderer<'a> {
 
     global_buf: wgpu::Buffer,
     global_bind: wgpu::BindGroup,
+    _block_material_buf: wgpu::Buffer,
 
     local_buf_identity: wgpu::Buffer,
     local_bind_identity: wgpu::BindGroup,
@@ -330,6 +400,16 @@ impl<'a> Renderer<'a> {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let local_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -351,6 +431,12 @@ impl<'a> Renderer<'a> {
             size: std::mem::size_of::<GlobalUniform>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
+        });
+        let block_materials = build_block_materials(content);
+        let block_material_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Block Material Params"),
+            contents: bytemuck::cast_slice(&block_materials),
+            usage: wgpu::BufferUsages::STORAGE,
         });
         let global_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &global_layout,
@@ -378,6 +464,10 @@ impl<'a> Renderer<'a> {
                 wgpu::BindGroupEntry {
                     binding: 5,
                     resource: block_atlas.rect_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: block_material_buf.as_entire_binding(),
                 },
             ],
             label: None,
@@ -431,6 +521,10 @@ impl<'a> Renderer<'a> {
                 wgpu::BindGroupEntry {
                     binding: 5,
                     resource: block_atlas.rect_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: block_material_buf.as_entire_binding(),
                 },
             ],
         });
@@ -656,6 +750,10 @@ impl<'a> Renderer<'a> {
                     binding: 5,
                     resource: block_atlas.rect_buffer.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: block_material_buf.as_entire_binding(),
+                },
             ],
         });
 
@@ -700,6 +798,7 @@ impl<'a> Renderer<'a> {
             lod_chunks: HashMap::new(),
             global_buf,
             global_bind,
+            _block_material_buf: block_material_buf,
             local_buf_identity,
             local_bind_identity,
             local_buf_player,
@@ -776,6 +875,11 @@ impl<'a> Renderer<'a> {
                         format: wgpu::VertexFormat::Sint32,
                         offset: 44,
                         shader_location: 4,
+                    },
+                    wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Sint32,
+                        offset: 48,
+                        shader_location: 5,
                     },
                 ],
             }],

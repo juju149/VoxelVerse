@@ -1,6 +1,7 @@
 use std::{
     collections::VecDeque,
-    env, fmt,
+    env, fmt, fs,
+    path::PathBuf,
     time::{Duration, Instant},
 };
 
@@ -429,6 +430,7 @@ pub struct EngineDiagnostics {
     recent_frames: VecDeque<Duration>,
     recent_spikes: VecDeque<Duration>,
     last_worldgen_compute_time: Duration,
+    baseline: Option<BaselineCapture>,
 }
 
 impl EngineDiagnostics {
@@ -441,6 +443,7 @@ impl EngineDiagnostics {
             recent_frames: VecDeque::with_capacity(240),
             recent_spikes: VecDeque::with_capacity(16),
             last_worldgen_compute_time: Duration::ZERO,
+            baseline: BaselineCapture::from_env(),
         }
     }
 
@@ -467,6 +470,9 @@ impl EngineDiagnostics {
         record.record_duration(PerfPhase::Frame, total);
         self.record_frame(total);
         self.warn_on_budget_overruns(&record, &snapshot);
+        if let Some(baseline) = &mut self.baseline {
+            baseline.record(&record, &snapshot);
+        }
         if worldgen_delta > self.config.budgets.worldgen {
             self.log(
                 LogLevel::Warn,
@@ -511,6 +517,12 @@ impl EngineDiagnostics {
                     fmt_duration(duration)
                 ),
             );
+        }
+    }
+
+    pub fn record_initial_load_time(&mut self, duration: Duration) {
+        if let Some(baseline) = &mut self.baseline {
+            baseline.initial_load_time = duration;
         }
     }
 
@@ -750,6 +762,227 @@ impl EngineDiagnostics {
     }
 }
 
+struct BaselineCapture {
+    path: PathBuf,
+    label: String,
+    scene: String,
+    seed: String,
+    warmup_frames: u64,
+    sample_count: u64,
+    frame_count_seen: u64,
+    frame_total: Duration,
+    worst_frame: Duration,
+    render_total: Duration,
+    worst_render: Duration,
+    meshing_total: Duration,
+    worst_meshing: Duration,
+    worldgen_total: Duration,
+    worst_worldgen: Duration,
+    gpu_upload_total: Duration,
+    worst_gpu_upload: Duration,
+    render_prep_total: Duration,
+    worst_render_prep: Duration,
+    chunk_streaming_total: Duration,
+    worst_chunk_streaming: Duration,
+    lod_coverage_total: Duration,
+    worst_lod_coverage: Duration,
+    max_active_chunks: usize,
+    max_active_lods: usize,
+    max_mesh_cpu_mb: f32,
+    max_vertices: usize,
+    max_indices: usize,
+    max_draw_calls: u32,
+    max_visible_chunks: usize,
+    max_visible_lods: usize,
+    max_gpu_buffers: usize,
+    initial_load_time: Duration,
+    last_write: Instant,
+}
+
+impl BaselineCapture {
+    fn from_env() -> Option<Self> {
+        let path = env::var_os("VV_BASELINE_OUT").map(PathBuf::from)?;
+        Some(Self {
+            path,
+            label: env::var("VV_BASELINE_LABEL").unwrap_or_else(|_| "baseline".to_owned()),
+            scene: env::var("VV_BASELINE_SCENE").unwrap_or_else(|_| "spawn_meadow".to_owned()),
+            seed: env::var("VV_SEED").unwrap_or_else(|_| "42".to_owned()),
+            warmup_frames: env::var("VV_BASELINE_WARMUP_FRAMES")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(60),
+            sample_count: 0,
+            frame_count_seen: 0,
+            frame_total: Duration::ZERO,
+            worst_frame: Duration::ZERO,
+            render_total: Duration::ZERO,
+            worst_render: Duration::ZERO,
+            meshing_total: Duration::ZERO,
+            worst_meshing: Duration::ZERO,
+            worldgen_total: Duration::ZERO,
+            worst_worldgen: Duration::ZERO,
+            gpu_upload_total: Duration::ZERO,
+            worst_gpu_upload: Duration::ZERO,
+            render_prep_total: Duration::ZERO,
+            worst_render_prep: Duration::ZERO,
+            chunk_streaming_total: Duration::ZERO,
+            worst_chunk_streaming: Duration::ZERO,
+            lod_coverage_total: Duration::ZERO,
+            worst_lod_coverage: Duration::ZERO,
+            max_active_chunks: 0,
+            max_active_lods: 0,
+            max_mesh_cpu_mb: 0.0,
+            max_vertices: 0,
+            max_indices: 0,
+            max_draw_calls: 0,
+            max_visible_chunks: 0,
+            max_visible_lods: 0,
+            max_gpu_buffers: 0,
+            initial_load_time: Duration::ZERO,
+            last_write: Instant::now(),
+        })
+    }
+
+    fn record(&mut self, record: &FrameRecord, snapshot: &RuntimeSnapshot) {
+        self.frame_count_seen += 1;
+        if self.frame_count_seen <= self.warmup_frames {
+            return;
+        }
+
+        self.sample_count += 1;
+        self.add_phase(record.phase_duration(PerfPhase::Frame), PerfPhase::Frame);
+        self.add_phase(record.phase_duration(PerfPhase::Render), PerfPhase::Render);
+        self.add_phase(
+            record.phase_duration(PerfPhase::Meshing),
+            PerfPhase::Meshing,
+        );
+        self.add_phase(
+            record.phase_duration(PerfPhase::Worldgen),
+            PerfPhase::Worldgen,
+        );
+        self.add_phase(
+            record.phase_duration(PerfPhase::GpuUpload),
+            PerfPhase::GpuUpload,
+        );
+        self.add_phase(
+            record.phase_duration(PerfPhase::RenderPrep),
+            PerfPhase::RenderPrep,
+        );
+        self.add_phase(
+            record.phase_duration(PerfPhase::ChunkStreaming),
+            PerfPhase::ChunkStreaming,
+        );
+        self.add_phase(
+            record.phase_duration(PerfPhase::LodCoverage),
+            PerfPhase::LodCoverage,
+        );
+
+        self.max_active_chunks = self.max_active_chunks.max(snapshot.streaming.active_chunks);
+        self.max_active_lods = self.max_active_lods.max(snapshot.lod.active_lods);
+        self.max_mesh_cpu_mb = self.max_mesh_cpu_mb.max(snapshot.mesh.mesh_cpu_mb);
+        self.max_vertices = self.max_vertices.max(snapshot.mesh.vertices);
+        self.max_indices = self.max_indices.max(snapshot.mesh.indices);
+        self.max_draw_calls = self.max_draw_calls.max(snapshot.gpu.draw_calls);
+        self.max_visible_chunks = self.max_visible_chunks.max(snapshot.gpu.visible_chunks);
+        self.max_visible_lods = self.max_visible_lods.max(snapshot.gpu.visible_lods);
+        self.max_gpu_buffers = self.max_gpu_buffers.max(snapshot.gpu.active_buffers);
+
+        if self.last_write.elapsed() >= Duration::from_secs(1) {
+            self.write_summary();
+            self.last_write = Instant::now();
+        }
+    }
+
+    fn add_phase(&mut self, duration: Duration, phase: PerfPhase) {
+        match phase {
+            PerfPhase::Frame => {
+                self.frame_total += duration;
+                self.worst_frame = self.worst_frame.max(duration);
+            }
+            PerfPhase::Render => {
+                self.render_total += duration;
+                self.worst_render = self.worst_render.max(duration);
+            }
+            PerfPhase::Meshing => {
+                self.meshing_total += duration;
+                self.worst_meshing = self.worst_meshing.max(duration);
+            }
+            PerfPhase::Worldgen => {
+                self.worldgen_total += duration;
+                self.worst_worldgen = self.worst_worldgen.max(duration);
+            }
+            PerfPhase::GpuUpload => {
+                self.gpu_upload_total += duration;
+                self.worst_gpu_upload = self.worst_gpu_upload.max(duration);
+            }
+            PerfPhase::RenderPrep => {
+                self.render_prep_total += duration;
+                self.worst_render_prep = self.worst_render_prep.max(duration);
+            }
+            PerfPhase::ChunkStreaming => {
+                self.chunk_streaming_total += duration;
+                self.worst_chunk_streaming = self.worst_chunk_streaming.max(duration);
+            }
+            PerfPhase::LodCoverage => {
+                self.lod_coverage_total += duration;
+                self.worst_lod_coverage = self.worst_lod_coverage.max(duration);
+            }
+            _ => {}
+        }
+    }
+
+    fn write_summary(&self) {
+        if self.sample_count == 0 {
+            return;
+        }
+        if let Some(parent) = self.path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let header = "label,scene,seed,warmup_frames,sample_frames,initial_load_ms,avg_frame_ms,worst_frame_ms,avg_render_ms,worst_render_ms,avg_meshing_ms,worst_meshing_ms,avg_worldgen_ms,worst_worldgen_ms,avg_gpu_upload_ms,worst_gpu_upload_ms,avg_render_prep_ms,worst_render_prep_ms,avg_chunk_streaming_ms,worst_chunk_streaming_ms,avg_lod_coverage_ms,worst_lod_coverage_ms,max_active_chunks,max_active_lods,max_mesh_cpu_mb,max_vertices,max_indices,max_draw_calls,max_visible_chunks,max_visible_lods,max_gpu_buffers\n";
+        let row = format!(
+            "{},{},{},{},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{},{},{:.3},{},{},{},{},{},{}\n",
+            csv(&self.label),
+            csv(&self.scene),
+            csv(&self.seed),
+            self.warmup_frames,
+            self.sample_count,
+            duration_ms(self.initial_load_time),
+            duration_ms(self.frame_total / self.sample_count as u32),
+            duration_ms(self.worst_frame),
+            duration_ms(self.render_total / self.sample_count as u32),
+            duration_ms(self.worst_render),
+            duration_ms(self.meshing_total / self.sample_count as u32),
+            duration_ms(self.worst_meshing),
+            duration_ms(self.worldgen_total / self.sample_count as u32),
+            duration_ms(self.worst_worldgen),
+            duration_ms(self.gpu_upload_total / self.sample_count as u32),
+            duration_ms(self.worst_gpu_upload),
+            duration_ms(self.render_prep_total / self.sample_count as u32),
+            duration_ms(self.worst_render_prep),
+            duration_ms(self.chunk_streaming_total / self.sample_count as u32),
+            duration_ms(self.worst_chunk_streaming),
+            duration_ms(self.lod_coverage_total / self.sample_count as u32),
+            duration_ms(self.worst_lod_coverage),
+            self.max_active_chunks,
+            self.max_active_lods,
+            self.max_mesh_cpu_mb,
+            self.max_vertices,
+            self.max_indices,
+            self.max_draw_calls,
+            self.max_visible_chunks,
+            self.max_visible_lods,
+            self.max_gpu_buffers,
+        );
+        let _ = fs::write(&self.path, format!("{header}{row}"));
+    }
+}
+
+impl Drop for BaselineCapture {
+    fn drop(&mut self) {
+        self.write_summary();
+    }
+}
+
 fn average_duration(values: &VecDeque<Duration>) -> Duration {
     if values.is_empty() {
         return Duration::ZERO;
@@ -773,6 +1006,18 @@ fn ms(value: f64) -> String {
     format!("{value:.2}ms")
 }
 
+fn duration_ms(duration: Duration) -> f64 {
+    duration.as_secs_f64() * 1000.0
+}
+
 fn mb(value: f32) -> String {
     format!("{value:.2}MB")
+}
+
+fn csv(value: &str) -> String {
+    if value.contains([',', '"', '\n']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_owned()
+    }
 }

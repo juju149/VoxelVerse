@@ -9,14 +9,17 @@ use vv_registry::{
     CompiledFloraFeature, CompiledFloraPlacement, CompiledIdealRange, CompiledIngredient,
     CompiledItem, CompiledItemKind, CompiledLootEntry, CompiledLootPool, CompiledLootTable,
     CompiledMaterialPhase, CompiledOre, CompiledOreVein, CompiledPlaceable, CompiledPlanetType,
-    CompiledRecipe, CompiledRecipePattern, CompiledStructure, CompiledSurfaceLayer, CompiledTag,
-    CompiledTextureLayout, CompiledTextureResource, CompiledToolKind, CompiledWeather,
+    CompiledRecipe, CompiledRecipePattern, CompiledStructure, CompiledStylizedMaterial,
+    CompiledSurfaceLayer, CompiledTag, CompiledTextureLayout, CompiledTextureResource,
+    CompiledTintMode, CompiledToolKind, CompiledVisualMaterialType, CompiledWeather,
     CompiledWorldSettings, ContentKey, EntityId, FaunaId, FloraId, ItemId, LootTableId, OreId,
     PlaceableId, PlanetTypeId, RecipeId, StructureId, TagDomain, TagId, TaggedContent, TextureId,
     WeatherId,
 };
 use vv_schema::{
-    block::{BlockDef, BlockTextureRefs, MaterialPhase, TextureLayout},
+    block::{
+        BlockDef, BlockTextureRefs, MaterialPhase, TextureLayout, TintMode, VisualMaterialType,
+    },
     common::tool::ToolKind,
     common::{BlockRef, EntityRef, ItemRef, LootTableRef, PlaceableRef, ResourceRef, TagRef},
     item::ItemKind,
@@ -299,6 +302,8 @@ impl ContentCompiler {
                 roughness: doc.value.render.roughness,
                 translucent: doc.value.render.translucent,
                 emits_light: doc.value.render.emits_light,
+                tint: compiled_tint_mode(&doc.value.render.tint),
+                material: compiled_stylized_material(doc),
                 texture_layout: match doc.value.render.texture {
                     TextureLayout::Single => CompiledTextureLayout::Single,
                     TextureLayout::Sides => CompiledTextureLayout::Sides,
@@ -1230,6 +1235,63 @@ fn compiled_tool_kind(kind: ToolKind) -> CompiledToolKind {
         ToolKind::Sword => CompiledToolKind::Sword,
         ToolKind::Shears => CompiledToolKind::Shears,
         ToolKind::Hoe => CompiledToolKind::Hoe,
+    }
+}
+
+fn compiled_tint_mode(mode: &TintMode) -> CompiledTintMode {
+    match mode {
+        TintMode::None => CompiledTintMode::None,
+        TintMode::GrassColor => CompiledTintMode::GrassColor,
+        TintMode::FoliageColor => CompiledTintMode::FoliageColor,
+        TintMode::WaterColor => CompiledTintMode::WaterColor,
+    }
+}
+
+fn compiled_stylized_material(doc: &RawDocument<BlockDef>) -> CompiledStylizedMaterial {
+    let material = &doc.value.render.material;
+    let secondary = material
+        .secondary_color
+        .as_ref()
+        .map(|color| [color.r, color.g, color.b])
+        .unwrap_or_else(|| {
+            default_secondary_color(
+                doc.value.render.color.r,
+                doc.value.render.color.g,
+                doc.value.render.color.b,
+            )
+        });
+    CompiledStylizedMaterial {
+        visual_type: compiled_visual_material_type(material.visual_type),
+        secondary_color: secondary,
+        texture_influence: material.texture_influence.clamp(0.0, 1.0),
+        block_variation: material.block_variation.clamp(0.0, 0.5),
+        face_variation: material.face_variation.clamp(0.0, 0.35),
+        macro_variation: material.macro_variation.clamp(0.0, 0.4),
+        detail_strength: material.detail_strength.clamp(0.0, 0.25),
+    }
+}
+
+fn default_secondary_color(r: f32, g: f32, b: f32) -> [f32; 3] {
+    [
+        (r * 1.12 + 0.025).min(1.0),
+        (g * 1.08 + 0.020).min(1.0),
+        (b * 0.96 + 0.015).min(1.0),
+    ]
+}
+
+fn compiled_visual_material_type(kind: VisualMaterialType) -> CompiledVisualMaterialType {
+    match kind {
+        VisualMaterialType::Generic => CompiledVisualMaterialType::Generic,
+        VisualMaterialType::Grass => CompiledVisualMaterialType::Grass,
+        VisualMaterialType::Dirt => CompiledVisualMaterialType::Dirt,
+        VisualMaterialType::Stone => CompiledVisualMaterialType::Stone,
+        VisualMaterialType::Sand => CompiledVisualMaterialType::Sand,
+        VisualMaterialType::Wood => CompiledVisualMaterialType::Wood,
+        VisualMaterialType::Leaves => CompiledVisualMaterialType::Leaves,
+        VisualMaterialType::CutStone => CompiledVisualMaterialType::CutStone,
+        VisualMaterialType::Planks => CompiledVisualMaterialType::Planks,
+        VisualMaterialType::Ore => CompiledVisualMaterialType::Ore,
+        VisualMaterialType::Water => CompiledVisualMaterialType::Water,
     }
 }
 

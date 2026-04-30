@@ -13,6 +13,15 @@
     render: (
         color: (r: 0.43, g: 0.42, b: 0.39),
         texture: single,
+        material: (
+            visual_type: stone,
+            secondary_color: Some((r: 0.56, g: 0.55, b: 0.51)),
+            texture_influence: 0.35,
+            block_variation: 0.16,
+            face_variation: 0.10,
+            macro_variation: 0.07,
+            detail_strength: 0.06,
+        ),
     ),
     physics: (
         phase: solid,

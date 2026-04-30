@@ -15,6 +15,15 @@
         color: (r: 0.48, g: 0.48, b: 0.46),
         texture: single,
         textures: (single: Some("voxelverse:stone")),
+        material: (
+            visual_type: stone,
+            secondary_color: Some((r: 0.58, g: 0.57, b: 0.53)),
+            texture_influence: 0.68,
+            block_variation: 0.13,
+            face_variation: 0.08,
+            macro_variation: 0.09,
+            detail_strength: 0.045,
+        ),
     ),
     physics: (
         phase: solid,

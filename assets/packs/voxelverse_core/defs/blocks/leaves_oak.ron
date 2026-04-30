@@ -17,6 +17,15 @@
         texture: single,
         textures: (single: Some("voxelverse:oak_leaves")),
         tint: foliage_color,
+        material: (
+            visual_type: leaves,
+            secondary_color: Some((r: 0.30, g: 0.64, b: 0.20)),
+            texture_influence: 0.66,
+            block_variation: 0.20,
+            face_variation: 0.11,
+            macro_variation: 0.14,
+            detail_strength: 0.055,
+        ),
     ),
     physics: (
         phase: passable,

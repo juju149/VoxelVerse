@@ -16,7 +16,8 @@ pub mod worldgen;
 pub use block::{
     BlockRegistry, CompiledBlock, CompiledBlockFace, CompiledBlockMining, CompiledBlockPhysics,
     CompiledBlockRender, CompiledBlockTextures, CompiledDrops, CompiledMaterialPhase,
-    CompiledTextureLayout, CompiledTextureResource, TextureRegistry,
+    CompiledStylizedMaterial, CompiledTextureLayout, CompiledTextureResource, CompiledTintMode,
+    CompiledVisualMaterialType, TextureRegistry,
 };
 pub use content_key::{ContentKey, ContentKeyParseError};
 pub use entity::{CompiledEntity, EntityRegistry};

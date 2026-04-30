@@ -18,6 +18,8 @@ pub struct Vertex {
     pub uv: [f32; 2],
     /// -1 means no block texture; shader uses the fallback color directly.
     pub texture_id: i32,
+    /// -1 means non-block helper geometry; shader uses a neutral fallback material.
+    pub block_id: i32,
 }
 
 impl Vertex {
@@ -28,6 +30,7 @@ impl Vertex {
             normal,
             uv: [0.0, 0.0],
             texture_id: -1,
+            block_id: -1,
         }
     }
 }
@@ -270,6 +273,7 @@ impl MeshGen {
         let o_tl = p(0, 1, 1);
         let o_tr = p(1, 1, 1);
 
+        let block_raw_id = block_id.raw() as i32;
         let apply = |ao: f32, texture_id: i32| -> [f32; 3] {
             if texture_id >= 0 {
                 let light = light_val * ao;
@@ -298,6 +302,7 @@ impl MeshGen {
                     apply(ao_tl, texture_id),
                 ],
                 texture_id,
+                block_raw_id,
                 true,
             );
         }
@@ -312,6 +317,7 @@ impl MeshGen {
                 [i_tl, i_tr, i_br, i_bl],
                 [c, c, c, c],
                 texture_id,
+                block_raw_id,
                 true,
             );
         }
@@ -327,6 +333,7 @@ impl MeshGen {
                 [i_bl, i_br, o_br, o_bl],
                 sc,
                 texture_id,
+                block_raw_id,
                 false,
             );
         }
@@ -342,6 +349,7 @@ impl MeshGen {
                 [o_tl, o_tr, i_tr, i_tl],
                 sc,
                 texture_id,
+                block_raw_id,
                 false,
             );
         }
@@ -357,6 +365,7 @@ impl MeshGen {
                 [i_tl, i_bl, o_bl, o_tl],
                 sc,
                 texture_id,
+                block_raw_id,
                 false,
             );
         }
@@ -372,6 +381,7 @@ impl MeshGen {
                 [i_br, i_tr, o_tr, o_br],
                 sc,
                 texture_id,
+                block_raw_id,
                 false,
             );
         }
@@ -437,6 +447,7 @@ impl MeshGen {
         pos: [Vec3; 4],
         colors: [[f32; 3]; 4],
         texture_id: i32,
+        block_id: i32,
         force_radial: bool,
     ) {
         let normal = if force_radial {
@@ -458,6 +469,7 @@ impl MeshGen {
                 normal,
                 uv,
                 texture_id,
+                block_id,
             });
         }
         inds.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
@@ -482,19 +494,19 @@ impl MeshGen {
         let mut inds = Vec::new();
         let row_len = grid_res + 1;
 
-        let sample = |gx: i32, gy: i32| -> (Vec3, [f32; 3], [f32; 2], i32) {
+        let sample = |gx: i32, gy: i32| -> (Vec3, [f32; 3], [f32; 2], i32, i32) {
             let step_u = (gx as i64 * key.size as i64) / grid_res as i64;
             let step_v = (gy as i64 * key.size as i64) / grid_res as i64;
             let abs_u = (key.x as i64 + step_u).clamp(0, data.resolution as i64) as u32;
             let abs_v = (key.y as i64 + step_v).clamp(0, data.resolution as i64) as u32;
-            let (layer, color, texture_id) =
+            let (layer, color, texture_id, block_id) =
                 Self::lod_visual_surface(key.face, abs_u, abs_v, data, blocks);
             let pos = CoordSystem::get_vertex_pos(key.face, abs_u, abs_v, layer, data.geometry);
             let uv = [
                 (abs_u as f32 / data.resolution.max(1) as f32).fract(),
                 (abs_v as f32 / data.resolution.max(1) as f32).fract(),
             ];
-            (pos, color, uv, texture_id)
+            (pos, color, uv, texture_id, block_id)
         };
         let padded_len = grid_res as usize + 3;
         let mut samples = Vec::with_capacity(padded_len * padded_len);
@@ -505,8 +517,8 @@ impl MeshGen {
         }
         let sample_at = |ux: i32,
                          vy: i32,
-                         samples: &[(Vec3, [f32; 3], [f32; 2], i32)]|
-         -> (Vec3, [f32; 3], [f32; 2], i32) {
+                         samples: &[(Vec3, [f32; 3], [f32; 2], i32, i32)]|
+         -> (Vec3, [f32; 3], [f32; 2], i32, i32) {
             let x = (ux + 1) as usize;
             let y = (vy + 1) as usize;
             samples[y * padded_len + x]
@@ -516,11 +528,11 @@ impl MeshGen {
             for ux in 0..=grid_res {
                 let ux = ux as i32;
                 let vy = vy as i32;
-                let (pos, mut color, uv, texture_id) = sample_at(ux, vy, &samples);
-                let (p_right, _, _, _) = sample_at(ux + 1, vy, &samples);
-                let (p_left, _, _, _) = sample_at(ux - 1, vy, &samples);
-                let (p_down, _, _, _) = sample_at(ux, vy + 1, &samples);
-                let (p_up, _, _, _) = sample_at(ux, vy - 1, &samples);
+                let (pos, mut color, uv, texture_id, block_id) = sample_at(ux, vy, &samples);
+                let (p_right, _, _, _, _) = sample_at(ux + 1, vy, &samples);
+                let (p_left, _, _, _, _) = sample_at(ux - 1, vy, &samples);
+                let (p_down, _, _, _, _) = sample_at(ux, vy + 1, &samples);
+                let (p_up, _, _, _, _) = sample_at(ux, vy - 1, &samples);
                 let tangent_u = p_right - p_left;
                 let tangent_v = p_down - p_up;
                 let mut normal = tangent_u.cross(tangent_v).normalize();
@@ -539,6 +551,7 @@ impl MeshGen {
                     normal: normal.to_array(),
                     uv,
                     texture_id,
+                    block_id,
                 });
             }
         }
@@ -576,6 +589,7 @@ impl MeshGen {
                     normal: src_v.normal,
                     uv: src_v.uv,
                     texture_id: src_v.texture_id,
+                    block_id: src_v.block_id,
                 });
             }
             let len = coord_pairs.len() as u32;
@@ -621,7 +635,7 @@ impl MeshGen {
         v: u32,
         data: &PlanetData,
         blocks: &impl BlockRenderSource,
-    ) -> (u32, [f32; 3], i32) {
+    ) -> (u32, [f32; 3], i32, i32) {
         let surface = data.terrain.get_height(face, u, v);
         for offset in 0..=8 {
             let layer = surface.saturating_sub(offset);
@@ -635,7 +649,7 @@ impl MeshGen {
                     } else {
                         render.color
                     };
-                    return (layer, color, texture_id);
+                    return (layer, color, texture_id, block.raw() as i32);
                 }
             }
         }
@@ -655,7 +669,7 @@ impl MeshGen {
         } else {
             color
         };
-        (surface, color, texture_id)
+        (surface, color, texture_id, block.raw() as i32)
     }
 
     // --- Collision debug mesh -----------------------------------------------
