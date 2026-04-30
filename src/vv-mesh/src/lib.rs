@@ -3,7 +3,10 @@ use glam::Vec3;
 use std::collections::{HashMap, HashSet};
 use vv_core::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
 use vv_planet::CoordSystem;
-use vv_registry::{BlockId as ContentBlockId, BlockRenderSource, CompiledBlockFace, TextureId};
+use vv_registry::{
+    BlockId as ContentBlockId, BlockRenderSource, CompiledBlockFace, CompiledBlockRender,
+    CompiledVisualMaterialType, TextureId,
+};
 use vv_world_runtime::{ChunkMods, PlanetData};
 
 // --- Vertex format ----------------------------------------------------------
@@ -38,6 +41,12 @@ impl Vertex {
 // --- CPU mesh builder -------------------------------------------------------
 
 pub struct MeshGen;
+
+#[derive(Clone, Copy, Debug)]
+struct VisualBevel {
+    top_edge: f32,
+    side_edge: f32,
+}
 
 impl MeshGen {
     // --- Chunk mesh ---------------------------------------------------------
@@ -272,6 +281,33 @@ impl MeshGen {
         let o_br = p(1, 0, 1);
         let o_tl = p(0, 1, 1);
         let o_tr = p(1, 1, 1);
+        let visual_bevel = Self::visual_bevel(render);
+        let top_radial = ((o_bl + o_br + o_tr + o_tl) * 0.25).normalize();
+        let bottom_radial = ((i_tl + i_tr + i_br + i_bl) * 0.25).normalize();
+        let front_normal = Self::face_normal([i_bl, i_br, o_br, o_bl]);
+        let back_normal = Self::face_normal([o_tl, o_tr, i_tr, i_tl]);
+        let left_normal = Self::face_normal([i_tl, i_bl, o_bl, o_tl]);
+        let right_normal = Self::face_normal([i_br, i_tr, o_tr, o_br]);
+        let top_normals = Self::rounded_corner_normals(
+            top_radial,
+            [
+                [(!has_left, left_normal), (!has_front, front_normal)],
+                [(!has_right, right_normal), (!has_front, front_normal)],
+                [(!has_right, right_normal), (!has_back, back_normal)],
+                [(!has_left, left_normal), (!has_back, back_normal)],
+            ],
+            visual_bevel.top_edge,
+        );
+        let bottom_normals = Self::rounded_corner_normals(
+            bottom_radial,
+            [
+                [(!has_left, left_normal), (!has_back, back_normal)],
+                [(!has_right, right_normal), (!has_back, back_normal)],
+                [(!has_right, right_normal), (!has_front, front_normal)],
+                [(!has_left, left_normal), (!has_front, front_normal)],
+            ],
+            visual_bevel.top_edge,
+        );
 
         let block_raw_id = block_id.raw() as i32;
         let apply = |ao: f32, texture_id: i32| -> [f32; 3] {
@@ -304,6 +340,7 @@ impl MeshGen {
                 texture_id,
                 block_raw_id,
                 true,
+                Some(top_normals),
             );
         }
         if !has_btm {
@@ -319,6 +356,7 @@ impl MeshGen {
                 texture_id,
                 block_raw_id,
                 true,
+                Some(bottom_normals),
             );
         }
         if !has_front {
@@ -335,6 +373,16 @@ impl MeshGen {
                 texture_id,
                 block_raw_id,
                 false,
+                Some(Self::rounded_corner_normals(
+                    front_normal,
+                    [
+                        [(!has_btm, bottom_radial), (!has_left, left_normal)],
+                        [(!has_btm, bottom_radial), (!has_right, right_normal)],
+                        [(!has_top, top_radial), (!has_right, right_normal)],
+                        [(!has_top, top_radial), (!has_left, left_normal)],
+                    ],
+                    visual_bevel.side_edge,
+                )),
             );
         }
         if !has_back {
@@ -351,6 +399,16 @@ impl MeshGen {
                 texture_id,
                 block_raw_id,
                 false,
+                Some(Self::rounded_corner_normals(
+                    back_normal,
+                    [
+                        [(!has_top, top_radial), (!has_left, left_normal)],
+                        [(!has_top, top_radial), (!has_right, right_normal)],
+                        [(!has_btm, bottom_radial), (!has_right, right_normal)],
+                        [(!has_btm, bottom_radial), (!has_left, left_normal)],
+                    ],
+                    visual_bevel.side_edge,
+                )),
             );
         }
         if !has_left {
@@ -367,6 +425,16 @@ impl MeshGen {
                 texture_id,
                 block_raw_id,
                 false,
+                Some(Self::rounded_corner_normals(
+                    left_normal,
+                    [
+                        [(!has_btm, bottom_radial), (!has_back, back_normal)],
+                        [(!has_btm, bottom_radial), (!has_front, front_normal)],
+                        [(!has_top, top_radial), (!has_front, front_normal)],
+                        [(!has_top, top_radial), (!has_back, back_normal)],
+                    ],
+                    visual_bevel.side_edge,
+                )),
             );
         }
         if !has_right {
@@ -383,6 +451,16 @@ impl MeshGen {
                 texture_id,
                 block_raw_id,
                 false,
+                Some(Self::rounded_corner_normals(
+                    right_normal,
+                    [
+                        [(!has_btm, bottom_radial), (!has_front, front_normal)],
+                        [(!has_btm, bottom_radial), (!has_back, back_normal)],
+                        [(!has_top, top_radial), (!has_back, back_normal)],
+                        [(!has_top, top_radial), (!has_front, front_normal)],
+                    ],
+                    visual_bevel.side_edge,
+                )),
             );
         }
     }
@@ -440,6 +518,67 @@ impl MeshGen {
         }
     }
 
+    fn visual_bevel(render: &CompiledBlockRender) -> VisualBevel {
+        match render.material.visual_type {
+            CompiledVisualMaterialType::Grass
+            | CompiledVisualMaterialType::Dirt
+            | CompiledVisualMaterialType::Snow
+            | CompiledVisualMaterialType::Sand
+            | CompiledVisualMaterialType::Leaves => VisualBevel {
+                top_edge: 0.30,
+                side_edge: 0.24,
+            },
+            CompiledVisualMaterialType::Stone
+            | CompiledVisualMaterialType::Ore
+            | CompiledVisualMaterialType::Ice => VisualBevel {
+                top_edge: 0.22,
+                side_edge: 0.17,
+            },
+            CompiledVisualMaterialType::Wood => VisualBevel {
+                top_edge: 0.16,
+                side_edge: 0.12,
+            },
+            CompiledVisualMaterialType::CutStone | CompiledVisualMaterialType::Planks => {
+                VisualBevel {
+                    top_edge: 0.06,
+                    side_edge: 0.045,
+                }
+            }
+            CompiledVisualMaterialType::Generic | CompiledVisualMaterialType::Water => {
+                VisualBevel {
+                    top_edge: 0.0,
+                    side_edge: 0.0,
+                }
+            }
+        }
+    }
+
+    fn face_normal(pos: [Vec3; 4]) -> Vec3 {
+        (pos[1] - pos[0]).cross(pos[2] - pos[0]).normalize()
+    }
+
+    fn rounded_corner_normals(
+        base: Vec3,
+        adjacent_faces: [[(bool, Vec3); 2]; 4],
+        strength: f32,
+    ) -> [Vec3; 4] {
+        if strength <= 0.0 {
+            return [base; 4];
+        }
+
+        let mut normals = [base; 4];
+        for (normal, adjacent) in normals.iter_mut().zip(adjacent_faces) {
+            let mut blended = base;
+            for (visible, face_normal) in adjacent {
+                if visible {
+                    blended += face_normal * strength;
+                }
+            }
+            *normal = blended.normalize();
+        }
+        normals
+    }
+
     fn quad(
         verts: &mut Vec<Vertex>,
         inds: &mut Vec<u32>,
@@ -449,24 +588,21 @@ impl MeshGen {
         texture_id: i32,
         block_id: i32,
         force_radial: bool,
+        normals: Option<[Vec3; 4]>,
     ) {
-        let normal = if force_radial {
-            ((pos[0] + pos[1] + pos[2] + pos[3]) * 0.25)
-                .normalize()
-                .to_array()
+        let fallback_normal = if force_radial {
+            ((pos[0] + pos[1] + pos[2] + pos[3]) * 0.25).normalize()
         } else {
-            (pos[1] - pos[0])
-                .cross(pos[2] - pos[0])
-                .normalize()
-                .to_array()
+            (pos[1] - pos[0]).cross(pos[2] - pos[0]).normalize()
         };
+        let normals = normals.unwrap_or([fallback_normal; 4]);
         let base = *idx;
         let uvs = [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
-        for ((p, c), uv) in pos.iter().zip(colors.iter()).zip(uvs) {
+        for (((p, c), uv), normal) in pos.iter().zip(colors.iter()).zip(uvs).zip(normals) {
             verts.push(Vertex {
                 pos: p.to_array(),
                 color: *c,
-                normal,
+                normal: normal.to_array(),
                 uv,
                 texture_id,
                 block_id,
