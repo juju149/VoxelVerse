@@ -166,6 +166,7 @@ fn main() {
             last_time = now;
 
             renderer.begin_diagnostic_frame();
+            renderer.advance_time(dt);
             let mut frame = diagnostics.begin_frame(dt);
 
             let input_timer = PhaseTimer::start(PerfPhase::Input);

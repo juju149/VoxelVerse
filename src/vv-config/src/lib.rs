@@ -12,6 +12,22 @@ pub struct EngineConfig {
     pub render: RenderConfig,
     pub worldgen: WorldGenConfig,
     pub lod: LodConfig,
+    pub day_cycle: DayCycleConfig,
+}
+
+/// Parameters for the world day/night cycle.
+#[derive(Clone, Debug)]
+pub struct DayCycleConfig {
+    /// Total real-world seconds for one complete day/night cycle.
+    pub day_duration_secs: f32,
+    /// Time multiplier applied to real elapsed time.
+    /// 1.0 = normal speed. Use higher values to debug the full cycle quickly.
+    pub time_scale: f32,
+    /// Starting moment as a fraction of the day:
+    /// 0.0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset.
+    pub initial_time: f32,
+    /// When true, the clock never advances. Useful for locking a specific time of day.
+    pub freeze_time: bool,
 }
 
 /// Physical constants used by the movement and collision solver.
@@ -147,6 +163,7 @@ impl Default for EngineConfig {
             render: RenderConfig::default(),
             worldgen: WorldGenConfig::default(),
             lod: LodConfig::default(),
+            day_cycle: DayCycleConfig::default(),
         }
     }
 }
@@ -217,6 +234,17 @@ impl Default for WorldGenConfig {
             noise_octaves: 4,
             noise_persistence: 0.5,
             noise_lacunarity: 2.0,
+        }
+    }
+}
+
+impl Default for DayCycleConfig {
+    fn default() -> Self {
+        Self {
+            day_duration_secs: 1200.0, // 20 real-world minutes per full day
+            time_scale: 1.0,
+            initial_time: 0.35, // Start in the morning — visually impactful
+            freeze_time: false,
         }
     }
 }

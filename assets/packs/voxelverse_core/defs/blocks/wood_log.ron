@@ -12,7 +12,7 @@
         sound_material: wood,
     ),
     render: (
-        color: (r: 0.45, g: 0.27, b: 0.12),
+        color: (r: 0.42, g: 0.21, b: 0.075),
         texture: sides,
         textures: (
             top: Some("voxelverse:oak_log_top"),
@@ -21,12 +21,12 @@
         ),
         material: (
             visual_type: wood,
-            secondary_color: Some((r: 0.60, g: 0.36, b: 0.16)),
-            texture_influence: 0.36,
-            block_variation: 0.14,
+            secondary_color: Some((r: 0.78, g: 0.42, b: 0.15)),
+            texture_influence: 0.08,
+            block_variation: 0.20,
             face_variation: 0.07,
-            macro_variation: 0.09,
-            detail_strength: 0.04,
+            macro_variation: 0.14,
+            detail_strength: 0.025,
         ),
     ),
     physics: (

@@ -36,6 +36,7 @@ use crate::{
         block_break_mesh, selection_outline_mesh, BlockBreakStyle, SelectionOutlineStyle,
     },
     gameplay_ui::{GameplayUiLayout, RectPx},
+    sky_state::SkyState,
     AnyKey, ChunkMesh, Frustum, LodAnimator,
 };
 
@@ -62,6 +63,7 @@ struct LocalUniform {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 struct BlockMaterialUniform {
+    base_color_flags: [f32; 4],
     secondary_color_texture: [f32; 4],
     variation: [f32; 4],
     flags: [f32; 4],
@@ -98,6 +100,12 @@ fn build_block_materials(content: &CompiledContent) -> Vec<BlockMaterialUniform>
     for block in content.blocks.entries() {
         let material = block.render.material;
         materials.push(BlockMaterialUniform {
+            base_color_flags: [
+                block.render.color[0],
+                block.render.color[1],
+                block.render.color[2],
+                0.0,
+            ],
             secondary_color_texture: [
                 material.secondary_color[0],
                 material.secondary_color[1],
@@ -120,6 +128,7 @@ fn build_block_materials(content: &CompiledContent) -> Vec<BlockMaterialUniform>
     }
     if materials.is_empty() {
         materials.push(BlockMaterialUniform {
+            base_color_flags: [1.0, 1.0, 1.0, 0.0],
             secondary_color_texture: [1.0, 1.0, 1.0, 1.0],
             variation: [0.05, 0.03, 0.03, 0.02],
             flags: [0.0, 0.7, 0.0, 0.0],
@@ -241,6 +250,9 @@ pub struct Renderer<'a> {
     collision_inds: u32,
 
     frozen_frustum: Option<Frustum>,
+
+    /// Day/night cycle clock. Owns the current time and computes atmosphere per frame.
+    sky_state: SkyState,
 
     // Async mesh loading
     load_queue: Vec<ChunkKey>,
@@ -861,6 +873,7 @@ impl<'a> Renderer<'a> {
             collision_i_buf,
             collision_inds: 0,
             frozen_frustum: None,
+            sky_state: SkyState::new(cfg.day_cycle.clone()),
             load_queue: Vec::new(),
             player_chunk_pos: None,
             mesh_tx,
@@ -1015,6 +1028,12 @@ impl<'a> Renderer<'a> {
     }
 
     // --- Public interface ---------------------------------------------------
+
+    /// Advances the day/night cycle clock by `dt` real-world seconds.
+    /// Call this once per frame before `render()`.
+    pub fn advance_time(&mut self, dt: f32) {
+        self.sky_state.advance(dt);
+    }
 
     pub fn resize(&mut self, width: u32, height: u32) {
         self.config.width = width;
@@ -1449,7 +1468,7 @@ impl<'a> Renderer<'a> {
         let h = self.config.height as f32;
         let mvp = controller.get_matrix(player, physics, w, h, &self.render_cfg);
 
-        let atmosphere = AtmosphereUniform::from_config(&self.render_cfg.atmosphere);
+        let atmosphere = AtmosphereUniform::from_config(&self.sky_state.to_atmosphere());
         let sun_dir = atmosphere.sun_direction_vec3();
         let shadow_dist = 200.0f32;
         let proj_size = 60.0f32;

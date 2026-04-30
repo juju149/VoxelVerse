@@ -30,6 +30,7 @@ struct Global {
 @group(0) @binding(5) var<storage, read> block_atlas_rects: array<vec4<f32>>;
 
 struct BlockMaterial {
+    base_color_flags: vec4<f32>,
     secondary_color_texture: vec4<f32>,
     variation: vec4<f32>,
     flags: vec4<f32>,
@@ -210,6 +211,7 @@ fn value_noise(p: vec3<f32>) -> f32 {
 fn material_for(block_id: i32) -> BlockMaterial {
     if (block_id < 0) {
         return BlockMaterial(
+            vec4<f32>(1.0, 1.0, 1.0, 0.0),
             vec4<f32>(1.0, 1.0, 1.0, 1.0),
             vec4<f32>(0.03, 0.02, 0.02, 0.015),
             vec4<f32>(0.0, 0.7, 0.0, 0.0),
@@ -276,15 +278,15 @@ fn luminance(color: vec3<f32>) -> f32 {
 
 fn material_texture_strength(kind: f32, authored: f32) -> f32 {
     if (kind == 1.0 || kind == 2.0 || kind == 3.0 || kind == 5.0 || kind == 7.0) {
-        return authored * 0.36;
+        return authored * 0.16;
     }
     if (kind == 4.0 || kind == 6.0 || kind == 8.0 || kind == 11.0) {
-        return authored * 0.44;
+        return authored * 0.24;
     }
     if (kind == 9.0 || kind == 10.0) {
-        return authored * 0.58;
+        return authored * 0.34;
     }
-    return authored * 0.42;
+    return authored * 0.22;
 }
 
 fn material_face_grade(kind: f32, topness: f32, sideness: f32, bottomness: f32) -> vec3<f32> {
@@ -327,26 +329,30 @@ fn material_palette(
     macro_a: f32,
     macro_b: f32,
 ) -> vec3<f32> {
-    let natural_mix = 0.18 + macro_a * 0.34 + topness * 0.16;
+    let natural_mix = 0.12 + macro_a * 0.28 + topness * 0.12;
     var color = mix(base, secondary, natural_mix);
     if (kind == 1.0) {
-        let meadow = vec3<f32>(0.48, 0.78, 0.25);
-        let deep = vec3<f32>(0.18, 0.46, 0.16);
-        color = mix(mix(deep, meadow, macro_a), secondary, topness * 0.38);
+        let sun = vec3<f32>(0.54, 0.80, 0.24);
+        let mid = vec3<f32>(0.31, 0.60, 0.18);
+        let deep = vec3<f32>(0.13, 0.34, 0.12);
+        color = mix(mix(deep, mid, macro_a), sun, topness * 0.46 + macro_b * 0.12);
     } else if (kind == 2.0) {
-        color = mix(vec3<f32>(0.24, 0.145, 0.085), vec3<f32>(0.50, 0.32, 0.17), macro_a * 0.75 + macro_b * 0.25);
+        color = mix(vec3<f32>(0.23, 0.13, 0.075), vec3<f32>(0.52, 0.30, 0.14), macro_a * 0.72 + macro_b * 0.22);
     } else if (kind == 3.0) {
-        color = mix(vec3<f32>(0.72, 0.78, 0.84), vec3<f32>(0.96, 0.98, 1.0), macro_a);
+        color = mix(vec3<f32>(0.76, 0.84, 0.92), vec3<f32>(0.98, 0.98, 0.94), macro_a);
     } else if (kind == 4.0 || kind == 11.0) {
-        color = mix(vec3<f32>(0.33, 0.34, 0.33), vec3<f32>(0.62, 0.61, 0.56), macro_a);
+        color = mix(vec3<f32>(0.30, 0.31, 0.30), vec3<f32>(0.58, 0.56, 0.50), macro_a);
     } else if (kind == 5.0) {
-        color = mix(vec3<f32>(0.62, 0.54, 0.34), vec3<f32>(0.91, 0.80, 0.52), macro_a);
+        color = mix(vec3<f32>(0.58, 0.48, 0.26), vec3<f32>(0.92, 0.77, 0.43), macro_a);
     } else if (kind == 6.0) {
-        color = mix(vec3<f32>(0.34, 0.18, 0.08), vec3<f32>(0.72, 0.44, 0.20), macro_a);
+        color = mix(vec3<f32>(0.30, 0.14, 0.055), vec3<f32>(0.78, 0.42, 0.16), macro_a);
     } else if (kind == 7.0) {
-        color = mix(vec3<f32>(0.12, 0.35, 0.12), vec3<f32>(0.38, 0.70, 0.22), macro_a);
+        let shadow_leaf = vec3<f32>(0.055, 0.19, 0.075);
+        let body_leaf = vec3<f32>(0.16, 0.43, 0.12);
+        let sun_leaf = vec3<f32>(0.48, 0.73, 0.20);
+        color = mix(mix(shadow_leaf, body_leaf, macro_a), sun_leaf, topness * 0.34 + macro_b * 0.18);
     } else if (kind == 8.0) {
-        color = mix(vec3<f32>(0.38, 0.68, 0.86), vec3<f32>(0.80, 0.95, 1.0), macro_a);
+        color = mix(vec3<f32>(0.30, 0.60, 0.78), vec3<f32>(0.76, 0.93, 0.98), macro_a);
     } else if (kind == 9.0) {
         color = mix(base, secondary, macro_a * 0.22);
     } else if (kind == 10.0) {
@@ -393,7 +399,7 @@ fn block_albedo(in: VertexOut) -> vec3<f32> {
     let broad_hash = value_noise(in.world_pos * 0.0035 + vec3<f32>(0.0, f32(in.block_id), length(in.world_pos) * 0.002));
     let detail_hash = value_noise(in.world_pos * 2.1 + N * 9.0);
 
-    let vert_color_linear = pow(in.color, vec3<f32>(2.2));
+    let vert_color_linear = material.base_color_flags.rgb;
     var identity_color = material_palette(
         kind,
         vert_color_linear,
@@ -494,61 +500,131 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 // --- SKY SHADER ---
 // Renders a procedural stylized sky as the first draw in the main pass.
 // Drawn with depth_write_enabled=false so terrain always occludes it.
+// All parameters are driven by the dynamic AtmosphereUniform (updated by SkyState on the CPU),
+// so the sky automatically reflects the day/night cycle every frame.
 
 struct SkyOut {
     @builtin(position) clip_pos: vec4<f32>,
     @location(0) ndc: vec2<f32>,
 };
 
+// --- Star field ---
+// Simple hash-based sparse star field.  Only visible when the sun is below the horizon.
+fn star_field(view_dir: vec3<f32>) -> vec3<f32> {
+    // Scale direction to control star density.
+    let p = view_dir * 165.0;
+    let cell = floor(p);
+    let h1 = hash13(cell);
+    let h2 = hash13(cell + vec3<f32>(13.71, 8.31, 19.17));
+    let h3 = hash13(cell + vec3<f32>(7.13, 23.47, 3.91));
+    // ~1.5 % of cells host a star.
+    let brightness = smoothstep(0.985, 1.0, h1);
+    // Vary color: blue-white to warm-white.
+    let color = mix(vec3<f32>(0.72, 0.88, 1.00), vec3<f32>(1.00, 0.96, 0.78), h2);
+    // Subtle pseudo-twinkling via the third hash.
+    let twinkle = 0.70 + h3 * 0.55;
+    return color * brightness * twinkle * 1.20;
+}
+
+// --- Sky gradient ---
+// Computes the sky color for a given view direction.
+// All atmosphere parameters are read from the global uniform (CPU-driven per frame).
 fn sky_gradient(view_dir: vec3<f32>) -> vec3<f32> {
-    let L = normalize(global.atmosphere.sun_direction.xyz);
-    let sky = global.atmosphere.sky_color.xyz;
-    let fog = global.atmosphere.fog_color_density.xyz;
-    let sun = global.atmosphere.sun_color.xyz;
+    let L          = normalize(global.atmosphere.sun_direction.xyz);
+    let sky        = global.atmosphere.sky_color.xyz;
+    let fog        = global.atmosphere.fog_color_density.xyz;
+    let sun_col    = global.atmosphere.sun_color.xyz;
+    // On a round planet "up" is radial from the planet centre to the camera.
+    let radial_up  = normalize(global.camera_pos.xyz);
+    let elevation  = dot(view_dir, radial_up);  // -1 = straight down, +1 = straight up
+    let sun_elev   = dot(L, radial_up);          // sun's elevation for this observer
 
-    // On a round planet, "up" is radial from planet centre to camera.
-    let radial_up = normalize(global.camera_pos.xyz);
-    let elevation = dot(view_dir, radial_up); // -1..1
+    // =========================================================================
+    // NIGHT SKY
+    // Fades in when the sun is below the horizon, fades out as it rises.
+    // =========================================================================
+    // night_t: 1.0 when fully dark, 0.0 when fully day.
+    let night_t = smoothstep(0.18, -0.08, sun_elev);
 
-    // Sky gradient: zenith is a deeper, richer blue; near horizon blends to fog haze.
-    let zenith_color = sky * vec3<f32>(0.68, 0.75, 1.18);
-    let sky_t = clamp(smoothstep(-0.06, 0.30, elevation), 0.0, 1.0);
-    let sky_base = mix(fog, zenith_color, sky_t * sky_t);
+    // Night sky gradient: deep indigo at zenith, slightly warmer near the horizon.
+    let night_zenith = vec3<f32>(0.008, 0.012, 0.060);
+    let night_horiz  = vec3<f32>(0.022, 0.028, 0.085);
+    let night_sky    = mix(night_horiz, night_zenith, clamp(elevation * 2.8, 0.0, 1.0));
 
-    // Below horizon: fade gently into ground haze.
-    let below_t = smoothstep(0.0, -0.20, elevation);
-    let sky_with_ground = mix(sky_base, fog * vec3<f32>(0.80, 0.85, 0.90), below_t);
+    // Stars: fade in with the night, only show above horizon.
+    let star_vis    = clamp(elevation * 3.5 + 0.6, 0.0, 1.0);
+    let stars       = star_field(view_dir) * night_t * star_vis;
 
-    // Sun contribution: tight disk + inner glow + outer scatter halo.
-    let sun_dot = clamp(dot(view_dir, L), 0.0, 1.0);
-    let sun_disk  = smoothstep(0.9993, 0.9998, sun_dot);
-    let sun_glow  = pow(sun_dot, 72.0) * 1.8;
-    let sun_halo  = pow(sun_dot, 6.0)  * 0.22;
-    // Suppress sun when it is below the horizon or the view ray is underground.
-    let sun_elev  = dot(L, radial_up);
-    let sun_above = smoothstep(-0.12, 0.08, sun_elev);
-    let sun_vis   = smoothstep(-0.18, 0.05, elevation);
-    let sun_contrib = sun * (sun_disk * 2.4 + sun_glow + sun_halo) * sun_above * sun_vis;
+    // Moon: appears directly opposite the sun at night.
+    let moon_dir    = -L;
+    let moon_dot    = clamp(dot(view_dir, moon_dir), 0.0, 1.0);
+    let moon_disk   = smoothstep(0.9996, 1.0, moon_dot) * 0.65;
+    let moon_halo   = pow(moon_dot, 22.0) * 0.035;
+    let moon_above  = smoothstep(-0.12, 0.06, dot(moon_dir, radial_up));
+    let moon_vis    = smoothstep(-0.14, 0.04, elevation);
+    let moon        = vec3<f32>(0.86, 0.91, 1.00) * (moon_disk + moon_halo) * moon_above * moon_vis * night_t;
 
-    // Horizon haze: brightened glow band at the horizon line.
-    let haze_t = pow(max(0.0, 1.0 - abs(elevation) * 5.0), 2.5);
-    let haze = fog * haze_t * 0.35;
+    // =========================================================================
+    // DAY SKY
+    // =========================================================================
+    // Gradient: fog at horizon → richer blue at zenith.
+    let zenith_color    = sky * vec3<f32>(0.62, 0.72, 1.22);
+    let sky_t           = clamp(smoothstep(-0.08, 0.32, elevation), 0.0, 1.0);
+    let sky_base        = mix(fog, zenith_color, sky_t * sky_t);
+    // Below horizon: fade into ground haze.
+    let below_t         = smoothstep(0.0, -0.22, elevation);
+    let sky_ground      = mix(sky_base, fog * vec3<f32>(0.72, 0.78, 0.88), below_t);
 
-    return sky_with_ground + sun_contrib + haze;
+    // Sun: disk + inner glow + scatter halo.
+    let sun_dot         = clamp(dot(view_dir, L), 0.0, 1.0);
+    let sun_disk        = smoothstep(0.9992, 0.9998, sun_dot) * 2.8;
+    let sun_glow        = pow(sun_dot, 58.0) * 1.50;
+    let sun_halo        = pow(sun_dot,  5.0) * 0.18;
+    let sun_above       = smoothstep(-0.15, 0.08, sun_elev);
+    let sun_vis         = smoothstep(-0.20, 0.04, elevation);
+    let sun_contrib     = sun_col * (sun_disk + sun_glow + sun_halo) * sun_above * sun_vis;
+
+    // Horizon haze band (independent of sun direction).
+    let haze_t          = pow(max(0.0, 1.0 - abs(elevation) * 5.5), 2.2);
+    let haze            = fog * haze_t * 0.42;
+
+    // Twilight glow: warm orange/pink band near the horizon, aligned towards the sun.
+    // Strongest when the sun is very close to the horizon (both sunrise and sunset).
+    let abs_sun_elev    = abs(sun_elev);
+    let twi_strength    = smoothstep(0.38, 0.0, abs_sun_elev);
+    // Sun's horizontal component (azimuth direction on the horizon plane).
+    let sun_horiz_dir   = normalize(L - radial_up * sun_elev);
+    let view_near_horiz = smoothstep(0.22, 0.0, abs(elevation));
+    let view_horiz_dir  = normalize(view_dir - radial_up * elevation);
+    let az_align        = max(0.0, dot(view_horiz_dir, sun_horiz_dir));
+    // Use fog color (driven by SkyState to be warm orange at sunrise/sunset) for the glow.
+    let twi_glow        = fog * vec3<f32>(2.20, 0.75, 0.10) * twi_strength
+                          * pow(az_align, 2.0) * view_near_horiz * 0.72;
+
+    let day_sky = sky_ground + sun_contrib + haze + twi_glow;
+
+    // =========================================================================
+    // BLEND NIGHT / DAY
+    // =========================================================================
+    // night_t=1 → full night sky. night_t=0 → full day sky.
+    // The transition through twilight is smooth due to the smoothstep threshold above.
+    // A tiny minimum of day_sky prevents it from going completely black even at midnight.
+    let base_sky = mix(day_sky, night_sky, night_t);
+    return base_sky + stars + moon;
 }
 
 @vertex
 fn vs_sky(@builtin(vertex_index) vi: u32) -> SkyOut {
-    // Three vertices that form a single triangle covering the entire clip space.
-    let positions = array<vec2<f32>, 3>(
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 3.0, -1.0),
-        vec2<f32>(-1.0,  3.0),
-    );
-    let pos = positions[vi];
+    // Fullscreen triangle — position selected with switch to satisfy WGSL constant-index rule.
+    var pos: vec2<f32>;
+    switch vi {
+        case 0u: { pos = vec2<f32>(-1.0, -1.0); }
+        case 1u: { pos = vec2<f32>( 3.0, -1.0); }
+        default: { pos = vec2<f32>(-1.0,  3.0); }
+    }
     var out: SkyOut;
-    // z=1.0, w=1.0 → NDC depth = 1.0 (far plane). The sky pipeline uses depth_compare=Always
-    // so it always draws, and depth_write_enabled=false so terrain overwrites it later.
+    // z=1.0, w=1.0 → NDC depth = far plane. depth_compare=Always so it always draws;
+    // depth_write_enabled=false so terrain draw calls overwrite it normally.
     out.clip_pos = vec4<f32>(pos.x, pos.y, 1.0, 1.0);
     out.ndc = pos;
     return out;
@@ -556,14 +632,14 @@ fn vs_sky(@builtin(vertex_index) vi: u32) -> SkyOut {
 
 @fragment
 fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
-    // Unproject from NDC to world space to get the per-pixel view direction.
+    // Reconstruct the world-space view direction from NDC via the inverse VP matrix.
     let clip_far  = vec4<f32>(in.ndc.x, in.ndc.y, 1.0, 1.0);
     let world_far = global.inv_view_proj * clip_far;
     let view_dir  = normalize(world_far.xyz / world_far.w - global.camera_pos.xyz);
 
     var color = sky_gradient(view_dir);
 
-    // Apply the same tone mapping and gamma as the terrain shader for a seamless match.
+    // Same tone mapping and gamma correction as the terrain shader → seamless blend.
     color = aces_approx(color);
     color = pow(color, vec3<f32>(1.0 / 2.2));
 

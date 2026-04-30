@@ -18,11 +18,11 @@
         material: (
             visual_type: stone,
             secondary_color: Some((r: 0.58, g: 0.57, b: 0.53)),
-            texture_influence: 0.32,
+            texture_influence: 0.06,
             block_variation: 0.17,
             face_variation: 0.10,
             macro_variation: 0.13,
-            detail_strength: 0.045,
+            detail_strength: 0.025,
         ),
     ),
     physics: (

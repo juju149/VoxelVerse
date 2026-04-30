@@ -11,7 +11,7 @@
         sound_material: grass,
     ),
     render: (
-        color: (r: 0.28, g: 0.58, b: 0.22),
+        color: (r: 0.24, g: 0.52, b: 0.16),
         texture: sides,
         textures: (
             top: Some("voxelverse:grass_top"),
@@ -21,12 +21,12 @@
         tint: grass_color,
         material: (
             visual_type: grass,
-            secondary_color: Some((r: 0.42, g: 0.72, b: 0.24)),
-            texture_influence: 0.34,
-            block_variation: 0.22,
-            face_variation: 0.12,
-            macro_variation: 0.18,
-            detail_strength: 0.045,
+            secondary_color: Some((r: 0.56, g: 0.78, b: 0.22)),
+            texture_influence: 0.06,
+            block_variation: 0.30,
+            face_variation: 0.16,
+            macro_variation: 0.28,
+            detail_strength: 0.03,
         ),
     ),
     physics: (
