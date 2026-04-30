@@ -80,6 +80,8 @@ pub struct AtmosphereConfig {
     pub sky_color: [f32; 3],
     /// Linear lower hemisphere ambient bounce color.
     pub ground_ambient_color: [f32; 3],
+    /// Linear color tint applied to sun-facing surfaces in shadow (warm/cool separation).
+    pub shadow_tint_color: [f32; 3],
     /// Linear fog color.
     pub fog_color: [f32; 3],
     /// Exponential squared fog density in world units.
@@ -191,13 +193,19 @@ impl Default for RenderConfig {
 impl Default for AtmosphereConfig {
     fn default() -> Self {
         Self {
-            sun_direction: [0.5, 0.8, 0.4],
-            sun_color: [1.6, 1.5, 1.3],
-            sky_color: [0.15, 0.3, 0.6],
-            ground_ambient_color: [0.05, 0.04, 0.03],
-            fog_color: [0.56, 0.68, 0.82],
-            fog_density: 0.0015,
-            clear_color: [0.02, 0.03, 0.05, 1.0],
+            // Lower angle (~35°) for strong side-lighting and visible terrain relief.
+            sun_direction: [0.65, 0.5, 0.4],
+            // Warm golden sun — high contrast with the cool shadow fill.
+            sun_color: [1.85, 1.55, 1.05],
+            // Richer saturated blue sky for hemisphere ambient.
+            sky_color: [0.18, 0.32, 0.74],
+            // Cool violet-purple ground bounce (sky reflected on under-faces).
+            ground_ambient_color: [0.08, 0.07, 0.13],
+            // Deep blue fill in shadow — creates warm/cool two-tone separation.
+            shadow_tint_color: [0.06, 0.10, 0.24],
+            fog_color: [0.58, 0.70, 0.86],
+            fog_density: 0.0012,
+            clear_color: [0.028, 0.04, 0.08, 1.0],
         }
     }
 }

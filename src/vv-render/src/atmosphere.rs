@@ -9,6 +9,9 @@ pub struct AtmosphereUniform {
     pub sun_color: [f32; 4],
     pub sky_color: [f32; 4],
     pub ground_ambient_color: [f32; 4],
+    /// Cool tint applied to sun-facing surfaces in shadow (warm/cool separation).
+    /// Field order must match the WGSL Atmosphere struct exactly.
+    pub shadow_tint_color: [f32; 4],
     pub fog_color_density: [f32; 4],
     pub clear_color: [f32; 4],
 }
@@ -35,6 +38,12 @@ impl AtmosphereUniform {
                 config.ground_ambient_color[0],
                 config.ground_ambient_color[1],
                 config.ground_ambient_color[2],
+                0.0,
+            ],
+            shadow_tint_color: [
+                config.shadow_tint_color[0],
+                config.shadow_tint_color[1],
+                config.shadow_tint_color[2],
                 0.0,
             ],
             fog_color_density: [

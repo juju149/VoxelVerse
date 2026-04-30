@@ -5,6 +5,9 @@ struct Atmosphere {
     sun_color: vec4<f32>,
     sky_color: vec4<f32>,
     ground_ambient_color: vec4<f32>,
+    // Cool fill tint applied to sun-facing surfaces in shadow.
+    // Field order must match AtmosphereUniform in atmosphere.rs exactly.
+    shadow_tint_color: vec4<f32>,
     fog_color_density: vec4<f32>,
     clear_color: vec4<f32>,
 }
@@ -37,7 +40,7 @@ struct Local {
 @group(1) @binding(0) var<uniform> local: Local;
 
 // --- CONSTANTS ---
-const SHADOW_OPACITY  = 0.85; // Shadows are not pitch black
+// (SHADOW_OPACITY removed: shadow tint is now data-driven via atmosphere.shadow_tint_color)
 
 // --- VERTEX SHADER ---
 
@@ -427,56 +430,59 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let N = normalize(in.world_normal);
     let L = normalize(global.atmosphere.sun_direction.xyz);
     let V = normalize(global.camera_pos.xyz - in.world_pos);
+    let radial_up = normalize(in.world_pos);
 
-    // 2. Material Setup
-    // Apply Detail Noise (Grain)
+    // 2. Material & Albedo
     let material = material_for(in.block_id);
+    let roughness = material.flags.y;
     let noise = triplanar_detail(in.world_pos, N);
     let albedo = block_albedo(in) * (1.0 + material.variation.w * noise);
 
-    // 3. Lighting Math
+    // 3. AO from baked vertex color (mesh encodes 1.0=open, 0.8=one-side, 0.6=two-sides, 0.4=corner)
+    let ao_raw = in.color.r;
+    // Remap to 0..1 for tinting (0.4..1.0 -> 0..1)
+    let ao_t = clamp((ao_raw - 0.4) / 0.6, 0.0, 1.0);
+    // Cool blue-violet tint in occluded cavities — richens depth and shadows
+    let ao_tint = mix(vec3<f32>(0.62, 0.70, 0.92), vec3<f32>(1.0), ao_t);
+    // AO quadratically suppresses ambient (strong), softly suppresses direct (subtle)
+    let ao_ambient = ao_raw * ao_raw;
+    let ao_direct  = mix(ao_raw, 1.0, 0.50);
+
+    // 4. Shadow
     let NdotL = max(dot(N, L), 0.0);
-    
-    // Shadow Map
     let shadow_raw = fetch_shadow_accurate(in.shadow_pos, NdotL);
-    // Smooth transition shadow
-    let shadow = mix(1.0 - SHADOW_OPACITY, 1.0, shadow_raw);
+    let soft_shadow = mix(shadow_raw, smoothstep(0.0, 1.0, shadow_raw),
+                          clamp(roughness, 0.0, 1.0) * 0.35);
 
-    // A. Direct Sun Light
-    let roughness = material.flags.y;
-    let soft_shadow = mix(shadow, smoothstep(0.0, 1.0, shadow), clamp(roughness, 0.0, 1.0) * 0.35);
-    let direct_light = global.atmosphere.sun_color.xyz * NdotL * soft_shadow;
+    // 5. Direct light — warm sun on lit surfaces, cool fill on shadowed sun-facing surfaces
+    let sun_lit     = global.atmosphere.sun_color.xyz * NdotL * soft_shadow;
+    let shadow_fill = global.atmosphere.shadow_tint_color.xyz * NdotL * (1.0 - soft_shadow);
+    let direct_light = (sun_lit + shadow_fill) * ao_direct;
 
-    // B. Hemispheric Ambient
-    // Top of objects gets Sky Color, Bottom gets Ground Bounce
-    let up_dot = dot(N, normalize(in.world_pos)); // Relative Up for sphere
-    let hemi_factor = up_dot * 0.5 + 0.5;
+    // 6. Hemispheric Ambient — sky above, cool ground bounce below
+    let hemi_factor = dot(N, radial_up) * 0.5 + 0.5;
     let ambient_light = mix(
         global.atmosphere.ground_ambient_color.xyz,
         global.atmosphere.sky_color.xyz,
         hemi_factor
-    ) * (0.86 + roughness * 0.20);
+    ) * (0.85 + roughness * 0.18) * ao_ambient;
 
-    // C. Fresnel Rim
-    // Adds a subtle glow at grazing angles (atmosphere dust effect)
+    // 7. Rim light — not shadow-dependent; serves silhouettes and back-lit geometry
     let fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-    let rim_light = global.atmosphere.sky_color.xyz * fresnel * (0.12 + roughness * 0.10) * soft_shadow;
+    let backlit  = pow(max(dot(N, -L), 0.0), 2.0);
+    let rim_light = global.atmosphere.sky_color.xyz * (fresnel * 0.10 + backlit * fresnel * 0.08);
 
-    // Combine
-    // Note: Ambient is multiplied by albedo (diffuse reflection)
-    var final_color = albedo * (direct_light + ambient_light + rim_light);
+    // 8. Combine
+    var final_color = albedo * ao_tint * (direct_light + ambient_light + rim_light);
 
-    // 4. Fog (Atmospheric Scattering)
+    // 9. Fog (Atmospheric Scattering)
     let dist = distance(global.camera_pos.xyz, in.world_pos);
     let fog_density = global.atmosphere.fog_color_density.w;
-    let fog_factor = 1.0 - exp(-(dist * fog_density) * (dist * fog_density * 0.5)); // Exp2 fog
+    let fog_factor = 1.0 - exp(-(dist * fog_density) * (dist * fog_density * 0.5));
     final_color = mix(final_color, global.atmosphere.fog_color_density.xyz, clamp(fog_factor, 0.0, 1.0));
 
-    // 5. Post Processing
-    // Tone Mapping (HDR -> LDR)
+    // 10. Tone mapping + Gamma
     final_color = aces_approx(final_color);
-    
-    // Gamma Correction (Linear -> sRGB)
     final_color = pow(final_color, vec3<f32>(1.0 / 2.2));
 
     return vec4<f32>(final_color, 1.0);
