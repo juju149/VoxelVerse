@@ -1,4 +1,8 @@
 fn shadow_visibility(shadow_pos: vec3<f32>, n_dot_l: f32) -> f32 {
+    if (n_dot_l <= 0.015) {
+        return 1.0;
+    }
+
     if (
         shadow_pos.z > 1.0 ||
         shadow_pos.x < 0.0 || shadow_pos.x > 1.0 ||
@@ -10,11 +14,11 @@ fn shadow_visibility(shadow_pos: vec3<f32>, n_dot_l: f32) -> f32 {
     let dim = vec2<f32>(textureDimensions(t_shadow));
     let texel = 1.0 / dim;
 
-    let bias = max(0.00012, 0.00065 * (1.0 - n_dot_l));
+    let grazing = saturate(1.0 - n_dot_l);
+    let bias = max(0.00010, 0.00042 + 0.00075 * grazing);
     let depth = shadow_pos.z - bias;
 
-    // Slightly wider at grazing angles.
-    let radius = mix(1.0, 2.25, saturate(1.0 - n_dot_l));
+    let radius = mix(0.85, 2.35, grazing);
 
     var sum = 0.0;
     var weight_sum = 0.0;
@@ -23,7 +27,7 @@ fn shadow_visibility(shadow_pos: vec3<f32>, n_dot_l: f32) -> f32 {
         for (var iy: i32 = -1; iy <= 1; iy = iy + 1) {
             let o = vec2<f32>(f32(ix), f32(iy));
             let dist2 = dot(o, o);
-            let w = exp(-dist2 * 0.85);
+            let w = exp(-dist2 * 0.78);
             let sample_uv = shadow_pos.xy + o * texel * radius;
             let sample_value = textureSampleCompare(t_shadow, s_shadow, sample_uv, depth);
 
@@ -32,5 +36,7 @@ fn shadow_visibility(shadow_pos: vec3<f32>, n_dot_l: f32) -> f32 {
         }
     }
 
-    return sum / max(weight_sum, 1e-5);
+    let visibility = sum / max(weight_sum, 1e-5);
+
+    return mix(visibility, 1.0, grazing * 0.12);
 }

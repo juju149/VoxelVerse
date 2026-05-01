@@ -3,6 +3,7 @@ fn vs_main(in: VertexIn) -> VertexOut {
     var out: VertexOut;
 
     let world_pos = local.model * vec4<f32>(in.pos, 1.0);
+
     out.world_pos = world_pos.xyz;
     out.clip_pos = global.view_proj * world_pos;
 
@@ -22,7 +23,11 @@ fn vs_main(in: VertexIn) -> VertexOut {
     out.variation_seed = in.variation_seed;
     out.ao = in.ao;
 
-    let pos_light = global.light_view_proj * vec4<f32>(out.world_pos + out.world_normal * 0.05, 1.0);
+    let pos_light = global.light_view_proj * vec4<f32>(
+        out.world_pos + out.world_normal * 0.05,
+        1.0,
+    );
+
     out.shadow_pos = vec3<f32>(
         pos_light.x * 0.5 + 0.5,
         -pos_light.y * 0.5 + 0.5,
@@ -43,6 +48,10 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         discard;
     }
 
+    if (in.block_id < 0) {
+        return vec4<f32>(in.color, local.params.x);
+    }
+
     let visual = visual_for(in.block_visual_id);
     let alpha = visual.surface.z;
 
@@ -51,7 +60,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     }
 
     let N = safe_normalize(in.world_normal);
-    let radial_up = safe_normalize(in.world_pos);
+    let V = safe_normalize(global.camera_pos.xyz - in.world_pos);
+    let up = local_up_at(in.world_pos);
 
     let albedo = procedural_block_albedo(
         in.world_pos,
@@ -62,11 +72,24 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         in.face_id,
         in.voxel_pos,
         in.variation_seed,
-        radial_up,
+        up,
     );
 
-    let lit = shade_voxel_surface(in, visual, albedo, alpha);
-    let encoded = encode_final_color(lit);
+    var lit = apply_planetary_lighting(
+        albedo,
+        visual.emission.rgb,
+        in.world_pos,
+        N,
+        V,
+        in.shadow_pos,
+        in.ao,
+        visual.variation_b.w,
+        visual.surface.x,
+        visual.surface.x,
+        0.10,
+    );
 
-    return vec4<f32>(encoded, alpha);
+    lit = apply_planetary_fog(lit, in.world_pos);
+
+    return vec4<f32>(encode_final_color(lit), alpha);
 }

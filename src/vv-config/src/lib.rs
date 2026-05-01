@@ -86,24 +86,36 @@ pub struct RenderConfig {
 /// These values are intentionally render configuration for now. Later systems
 /// such as biome fog, weather, or a day-night cycle can author a resolved
 /// atmosphere and feed the same renderer path.
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct AtmosphereConfig {
-    /// Direction from the world toward the sun.
     pub sun_direction: [f32; 3],
-    /// Linear sun radiance used by direct lighting.
     pub sun_color: [f32; 3],
-    /// Linear ambient sky color used by hemispheric lighting.
     pub sky_color: [f32; 3],
-    /// Linear lower hemisphere ambient bounce color.
     pub ground_ambient_color: [f32; 3],
-    /// Linear color tint applied to sun-facing surfaces in shadow (warm/cool separation).
     pub shadow_tint_color: [f32; 3],
-    /// Linear fog color.
     pub fog_color: [f32; 3],
-    /// Exponential squared fog density in world units.
     pub fog_density: f32,
-    /// Main pass clear color, used until a dedicated sky pass owns the background.
     pub clear_color: [f64; 4],
+
+    pub zenith_color: [f32; 3],
+    pub horizon_glow_color: [f32; 3],
+    pub moon_direction: [f32; 3],
+    pub moon_color: [f32; 3],
+
+    pub exposure: f32,
+    pub saturation: f32,
+    pub contrast: f32,
+
+    pub fog_start_m: f32,
+    pub sky_horizon_power: f32,
+    pub star_strength: f32,
+    pub night_amount: f32,
+
+    pub planet_center: [f32; 3],
+    pub atmosphere_height_m: f32,
+    pub atmosphere_fade_start_m: f32,
+    pub atmosphere_fade_end_m: f32,
+    pub terminator_softness: f32,
 }
 
 /// Procedural world generation parameters.
@@ -210,19 +222,34 @@ impl Default for RenderConfig {
 impl Default for AtmosphereConfig {
     fn default() -> Self {
         Self {
-            // Lower angle (~35°) for strong side-lighting and visible terrain relief.
-            sun_direction: [0.65, 0.5, 0.4],
-            // Warm golden sun — high contrast with the cool shadow fill.
-            sun_color: [1.85, 1.55, 1.05],
-            // Richer saturated blue sky for hemisphere ambient.
-            sky_color: [0.18, 0.32, 0.74],
-            // Cool violet-purple ground bounce (sky reflected on under-faces).
-            ground_ambient_color: [0.08, 0.07, 0.13],
-            // Deep blue fill in shadow — creates warm/cool two-tone separation.
-            shadow_tint_color: [0.06, 0.10, 0.24],
-            fog_color: [0.58, 0.70, 0.86],
-            fog_density: 0.0012,
+            sun_direction: [0.65, 0.50, 0.40],
+            sun_color: [2.10, 1.82, 1.24],
+            sky_color: [0.18, 0.50, 1.18],
+            ground_ambient_color: [0.09, 0.095, 0.125],
+            shadow_tint_color: [0.052, 0.105, 0.285],
+            fog_color: [0.56, 0.76, 1.02],
+            fog_density: 0.00090,
             clear_color: [0.028, 0.04, 0.08, 1.0],
+
+            zenith_color: [0.050, 0.205, 0.900],
+            horizon_glow_color: [0.760, 0.910, 1.120],
+            moon_direction: [-0.65, -0.50, -0.40],
+            moon_color: [0.34, 0.42, 0.72],
+
+            exposure: 1.04,
+            saturation: 1.26,
+            contrast: 1.16,
+
+            fog_start_m: 56.0,
+            sky_horizon_power: 0.72,
+            star_strength: 0.0,
+            night_amount: 0.0,
+
+            planet_center: [0.0, 0.0, 0.0],
+            atmosphere_height_m: 90_000.0,
+            atmosphere_fade_start_m: 55_000.0,
+            atmosphere_fade_end_m: 120_000.0,
+            terminator_softness: 0.095,
         }
     }
 }
@@ -243,7 +270,7 @@ impl Default for DayCycleConfig {
         Self {
             day_duration_secs: 1200.0, // 20 real-world minutes per full day
             time_scale: 1.0,
-            initial_time: 0.35, // Start in the morning — visually impactful
+            initial_time: 0.7,
             freeze_time: false,
         }
     }

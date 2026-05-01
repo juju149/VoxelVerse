@@ -13,9 +13,9 @@ pub(crate) struct GlobalUniform {
     pub view_proj: [f32; 16],
     pub light_view_proj: [f32; 16],
     pub cam_pos: [f32; 4],
-    pub atmosphere: AtmosphereUniform,
-    /// Inverse of view_proj, used by the sky shader to reconstruct world-space ray directions.
+    pub atmosphere: crate::atmosphere::AtmosphereUniform,
     pub inv_view_proj: [f32; 16],
+    pub planet: [f32; 4],
 }
 
 #[repr(C)]

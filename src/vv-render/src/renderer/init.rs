@@ -487,6 +487,7 @@ impl<'a> Renderer<'a> {
             cam_pos: [0.0; 4],
             atmosphere: AtmosphereUniform::from_config(&cfg.render.atmosphere),
             inv_view_proj: identity_mat.to_cols_array(),
+            planet: [1.0, 80_000.0, 0.0, 0.0],
         };
         let global_buf_id = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Global Identity"),

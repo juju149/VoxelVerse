@@ -1,12 +1,13 @@
-mod atmosphere;
-mod block_feedback;
+pub mod atmosphere;
+pub mod block_feedback;
+pub mod celestial;
 pub mod chunk_mesh;
 pub mod frustum;
-mod gameplay_ui;
+pub mod gameplay_ui;
 pub mod lod_animator;
 pub mod renderer;
-mod sky_state;
-mod shader_source;
+pub mod shader_source;
+pub mod sky_state;
 
 pub use chunk_mesh::ChunkMesh;
 pub use frustum::Frustum;

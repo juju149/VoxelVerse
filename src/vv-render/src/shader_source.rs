@@ -3,6 +3,8 @@ pub const MAIN_SHADER_SOURCE: &str = concat!(
     "\n",
     include_str!("shaders/common.wgsl"),
     "\n",
+    include_str!("shaders/planetary.wgsl"),
+    "\n",
     include_str!("shaders/tone_mapping.wgsl"),
     "\n",
     include_str!("shaders/block_access.wgsl"),

@@ -28,3 +28,24 @@ fn hash11(x: f32) -> f32 {
 fn smooth01(edge0: f32, edge1: f32, x: f32) -> f32 {
     return smoothstep(edge0, edge1, x);
 }
+
+fn default_one(value: f32) -> f32 {
+    if (abs(value) < 0.0001) {
+        return 1.0;
+    }
+    return value;
+}
+
+fn default_zero(value: f32) -> f32 {
+    if (abs(value) < 0.0001) {
+        return 0.0;
+    }
+    return value;
+}
+
+fn safe_positive(value: f32, fallback: f32) -> f32 {
+    if (value <= 0.0001) {
+        return fallback;
+    }
+    return value;
+}
