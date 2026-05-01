@@ -1,19 +1,15 @@
-struct Atmosphere {
+struct ViewerGlobal {
+    view_proj: mat4x4<f32>,
+    camera_pos: vec4<f32>,
     sun_direction: vec4<f32>,
     sun_color: vec4<f32>,
     sky_color: vec4<f32>,
-    ground_ambient_color: vec4<f32>,
-    shadow_tint_color: vec4<f32>,
-    fog_color_density: vec4<f32>,
-    clear_color: vec4<f32>,
 }
 
-struct Global {
-    view_proj: mat4x4<f32>,
-    light_view_proj: mat4x4<f32>,
-    camera_pos: vec4<f32>,
-    atmosphere: Atmosphere,
-    inv_view_proj: mat4x4<f32>,
+struct ViewerLocal {
+    model: mat4x4<f32>,
+    params: vec4<f32>,
+    sliders: vec4<f32>,
 }
 
 struct BlockFaceVisual {
@@ -44,17 +40,12 @@ struct BlockVisual {
     details: array<BlockDetail, 8>,
 }
 
-struct Local {
-    model: mat4x4<f32>,
-    params: vec4<f32>,
-}
-
-@group(0) @binding(0) var<uniform> global: Global;
-@group(0) @binding(1) var t_shadow: texture_depth_2d;
-@group(0) @binding(2) var s_shadow: sampler_comparison;
+@group(0) @binding(0) var<uniform> g: ViewerGlobal;
+@group(0) @binding(1) var t_dummy_shadow: texture_depth_2d;
+@group(0) @binding(2) var s_dummy_shadow: sampler_comparison;
 @group(0) @binding(3) var<storage, read> block_visuals: array<BlockVisual>;
 @group(0) @binding(4) var<storage, read> block_visual_palette: array<vec4<f32>>;
-@group(1) @binding(0) var<uniform> local: Local;
+@group(1) @binding(0) var<uniform> local: ViewerLocal;
 
 struct VertexIn {
     @location(0) pos: vec3<f32>,
@@ -72,22 +63,20 @@ struct VertexIn {
 
 struct VertexOut {
     @builtin(position) clip_pos: vec4<f32>,
-    @location(0) color: vec3<f32>,
+    @location(0) world_pos: vec3<f32>,
     @location(1) world_normal: vec3<f32>,
-    @location(2) world_pos: vec3<f32>,
-    @location(3) shadow_pos: vec3<f32>,
-    @location(4) uv: vec2<f32>,
-    @location(5) @interpolate(flat) block_id: i32,
-    @location(6) @interpolate(flat) block_visual_id: u32,
-    @location(7) @interpolate(flat) face_id: u32,
-    @location(8) @interpolate(flat) voxel_pos: vec3<i32>,
-    @location(9) @interpolate(flat) variation_seed: u32,
-    @location(10) ao: f32,
+    @location(2) uv: vec2<f32>,
+    @location(3) @interpolate(flat) block_id: i32,
+    @location(4) @interpolate(flat) block_visual_id: u32,
+    @location(5) @interpolate(flat) face_id: u32,
+    @location(6) @interpolate(flat) voxel_pos: vec3<i32>,
+    @location(7) @interpolate(flat) variation_seed: u32,
+    @location(8) ao: f32,
 }
 
-struct SkyOut {
+struct GridOut {
     @builtin(position) clip_pos: vec4<f32>,
-    @location(0) ndc: vec2<f32>,
+    @location(0) color: vec4<f32>,
 }
 
 fn saturate(x: f32) -> f32 {
@@ -98,23 +87,10 @@ fn safe_normalize(v: vec3<f32>) -> vec3<f32> {
     return v / max(length(v), 1e-6);
 }
 
-fn luminance(color: vec3<f32>) -> f32 {
-    return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
-}
-
-fn dither_opacity(pos: vec4<f32>, alpha: f32) -> bool {
-    let dither_threshold = dot(vec2<f32>(171.0, 231.0), pos.xy);
-    return fract(dither_threshold / 71.0) > alpha;
-}
-
 fn hash13(p: vec3<f32>) -> f32 {
     let q = fract(p * vec3<f32>(0.1031, 0.11369, 0.13787));
     let r = q + dot(q, q.yzx + 19.19);
     return fract((r.x + r.y) * r.z);
-}
-
-fn hash11(x: f32) -> f32 {
-    return fract(sin(x * 17.123) * 43758.5453123);
 }
 
 fn palette_color(visual: BlockVisual, selector: f32) -> vec3<f32> {
@@ -218,41 +194,41 @@ fn detail_strength(
     var strength = 0.0;
 
     switch detail.kind_data.x {
-        case 1u: { // bark_ridges
+        case 1u: {
             let ridge_col = abs(fract((cell.x + f32(detail.kind_data.y & 7u)) * 0.33) - 0.5);
             let ridge = 1.0 - smoothstep(0.12, 0.34, ridge_col);
             strength = ridge * saturate(0.35 + density) * mix(0.5, 1.0, cluster_hash);
         }
-        case 2u: { // rings
+        case 2u: {
             let ring = 1.0 - smoothstep(0.10, 0.24, square_ring(cell / grid_size, grid_size));
             strength = ring * saturate(0.25 + density);
         }
-        case 3u: { // grass_blades
+        case 3u: {
             let stripe = 1.0 - smoothstep(0.10, 0.34, abs(fract((cell.x + f32(detail.kind_data.y & 15u)) * 0.5) - 0.5));
             strength = stripe * (1.0 - smoothstep(0.18, 0.42, uv.y)) * saturate(0.3 + density);
         }
-        case 4u: { // roots
+        case 4u: {
             let streak = 1.0 - smoothstep(0.12, 0.30, abs(fract((cell.x + f32(detail.kind_data.y & 31u)) * 0.4) - 0.5));
             strength = streak * smoothstep(0.52, 0.95, uv.y) * saturate(0.2 + density);
         }
-        case 5u: { // pebbles
+        case 5u: {
             strength = select(0.0, 1.0, cell_hash > (1.0 - density)) * mix(0.6, 1.0, cluster_hash);
         }
-        case 6u: { // moss
+        case 6u: {
             strength = select(0.0, 1.0, cluster_hash > (1.0 - density * 0.9)) * saturate(0.35 + topness * 0.45 + sideness * 0.2);
         }
-        case 7u: { // soil_grain
+        case 7u: {
             strength = select(0.0, 1.0, cell_hash > (0.55 - density * 0.4)) * 0.45;
         }
-        case 8u: { // fresh_cut
+        case 8u: {
             let speck = select(0.0, 1.0, cell_hash > (1.0 - density * 0.85));
             let ring = 1.0 - smoothstep(0.14, 0.30, square_ring(cell / grid_size, grid_size));
             strength = max(speck * 0.75, ring * 0.45);
         }
-        case 9u: { // tiny_flowers
+        case 9u: {
             strength = select(0.0, 1.0, cell_hash > (1.0 - density * 0.45)) * 0.9;
         }
-        default: { // generic clustered pixels
+        default: {
             strength = select(0.0, 1.0, cluster_hash > (1.0 - density)) * mix(0.45, 1.0, cell_hash);
         }
     }
@@ -276,14 +252,14 @@ fn procedural_block_albedo(
     face_id: u32,
     voxel_pos: vec3<i32>,
     variation_seed: u32,
-    up_dir: vec3<f32>,
+    variation_scale: f32,
+    edge_mult: f32,
 ) -> vec3<f32> {
     let visual = visual_for(block_visual_id);
     let face_visual = face_visual_for(visual, face_id);
     let grid_size = max(1u, visual.procedural.x);
     let grid_size_f = f32(grid_size);
     let cell = clamp(floor(uv * grid_size_f), vec2<f32>(0.0), vec2<f32>(grid_size_f - 1.0));
-    let cell_uv = cell / grid_size_f;
     let seed = face_seed(voxel_pos, block_id, block_visual_id, face_id, variation_seed, cell, 0.0);
     let cell_hash = hash13(seed);
     let face_hash = hash13(seed + vec3<f32>(3.1, 5.7, 7.3));
@@ -300,12 +276,12 @@ fn procedural_block_albedo(
         color = mix(color, face_visual.color_bias.rgb, clamp(0.55 + bias_delta * 0.18, 0.0, 0.92));
     }
 
-    color = color * (1.0 + (cell_hash - 0.5) * 2.0 * visual.variation_a.x);
-    color = color * (1.0 + (face_hash - 0.5) * 2.0 * visual.variation_a.y);
-    color = color * (1.0 + (macro_hash - 0.5) * 2.0 * visual.variation_a.w);
-    color = color * (1.0 + (micro_hash - 0.5) * 2.0 * visual.variation_b.y);
+    color = color * (1.0 + (cell_hash - 0.5) * 2.0 * visual.variation_a.x * variation_scale);
+    color = color * (1.0 + (face_hash - 0.5) * 2.0 * visual.variation_a.y * variation_scale);
+    color = color * (1.0 + (macro_hash - 0.5) * 2.0 * visual.variation_a.w * variation_scale);
+    color = color * (1.0 + (micro_hash - 0.5) * 2.0 * visual.variation_b.y * variation_scale);
 
-    let up_dot = clamp(dot(safe_normalize(world_normal), up_dir), -1.0, 1.0);
+    let up_dot = clamp(dot(safe_normalize(world_normal), vec3<f32>(0.0, 1.0, 0.0)), -1.0, 1.0);
     let topness = saturate(up_dot);
     let bottomness = saturate(-up_dot);
     let sideness = saturate(1.0 - max(topness, bottomness));
@@ -342,65 +318,34 @@ fn procedural_block_albedo(
         color = mix(color, detail.color.rgb, strength);
     }
 
-    color = color * (1.0 - edge_factor(uv) * visual.variation_b.z);
+    color = color * (1.0 - edge_factor(uv) * visual.variation_b.z * edge_mult);
     return clamp(color, vec3<f32>(0.0), vec3<f32>(3.5));
 }
 
-fn shadow_visibility(shadow_pos: vec3<f32>, n_dot_l: f32) -> f32 {
-    if (
-        shadow_pos.z > 1.0 ||
-        shadow_pos.x < 0.0 || shadow_pos.x > 1.0 ||
-        shadow_pos.y < 0.0 || shadow_pos.y > 1.0
-    ) {
-        return 1.0;
+fn face_id_color(face_id: u32) -> vec3<f32> {
+    switch face_id {
+        case 0u: { return vec3<f32>(0.9, 0.2, 0.2); }
+        case 1u: { return vec3<f32>(0.2, 0.4, 0.9); }
+        case 2u: { return vec3<f32>(0.2, 0.9, 0.2); }
+        case 3u: { return vec3<f32>(0.9, 0.9, 0.2); }
+        case 4u: { return vec3<f32>(0.9, 0.5, 0.2); }
+        case 5u: { return vec3<f32>(0.8, 0.2, 0.9); }
+        default: { return vec3<f32>(1.0); }
     }
-
-    let dim = vec2<f32>(textureDimensions(t_shadow));
-    let texel = 1.0 / dim;
-    let bias = max(0.00012, 0.00065 * (1.0 - n_dot_l));
-    let depth = shadow_pos.z - bias;
-    let radius = mix(1.0, 2.0, saturate(1.0 - n_dot_l));
-
-    var sum = 0.0;
-    var weight_sum = 0.0;
-    for (var ix: i32 = -1; ix <= 1; ix = ix + 1) {
-        for (var iy: i32 = -1; iy <= 1; iy = iy + 1) {
-            let o = vec2<f32>(f32(ix), f32(iy));
-            let dist2 = dot(o, o);
-            let w = exp(-dist2 * 0.9);
-            let sample_uv = shadow_pos.xy + o * texel * radius;
-            let sample_value = textureSampleCompare(t_shadow, s_shadow, sample_uv, depth);
-            sum = sum + sample_value * w;
-            weight_sum = weight_sum + w;
-        }
-    }
-    return sum / max(weight_sum, 1e-5);
 }
 
-fn aces_approx(v: vec3<f32>) -> vec3<f32> {
-    let a = 2.51;
-    let b = 0.03;
-    let c = 2.43;
-    let d = 0.59;
-    let e = 0.14;
-    return clamp((v * (a * v + b)) / (v * (c * v + d) + e), vec3<f32>(0.0), vec3<f32>(1.0));
+fn aces(v: vec3<f32>) -> vec3<f32> {
+    return clamp((v * (2.51 * v + 0.03)) / (v * (2.43 * v + 0.59) + 0.14), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 @vertex
 fn vs_main(in: VertexIn) -> VertexOut {
     var out: VertexOut;
-
     let world_pos = local.model * vec4<f32>(in.pos, 1.0);
     out.world_pos = world_pos.xyz;
-    out.clip_pos = global.view_proj * world_pos;
-
-    let normal_mat = mat3x3<f32>(
-        local.model[0].xyz,
-        local.model[1].xyz,
-        local.model[2].xyz,
-    );
-    out.world_normal = safe_normalize(normal_mat * in.normal);
-    out.color = in.color;
+    out.clip_pos = g.view_proj * world_pos;
+    let nm = mat3x3<f32>(local.model[0].xyz, local.model[1].xyz, local.model[2].xyz);
+    out.world_normal = safe_normalize(nm * in.normal);
     out.uv = in.uv;
     out.block_id = in.block_id;
     out.block_visual_id = in.block_visual_id;
@@ -408,39 +353,37 @@ fn vs_main(in: VertexIn) -> VertexOut {
     out.voxel_pos = in.voxel_pos;
     out.variation_seed = in.variation_seed;
     out.ao = in.ao;
-
-    let pos_light = global.light_view_proj * vec4<f32>(out.world_pos + out.world_normal * 0.05, 1.0);
-    out.shadow_pos = vec3<f32>(
-        pos_light.x * 0.5 + 0.5,
-        -pos_light.y * 0.5 + 0.5,
-        pos_light.z,
-    );
     return out;
 }
 
 @fragment
-fn fs_feedback(in: VertexOut) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.color, local.params.x * 0.82);
-}
-
-@fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    if (local.params.x < 1.0 && dither_opacity(in.clip_pos, local.params.x)) {
-        discard;
+    let debug_mode = i32(local.params.x);
+    let variation_scale = max(local.params.y, 0.0);
+    let edge_mult = max(local.params.z, 0.0);
+    let exposure = max(local.params.w, 0.1);
+
+    if (debug_mode == 5) {
+        return vec4<f32>(face_id_color(in.face_id), 1.0);
+    }
+    if (debug_mode == 6) {
+        return vec4<f32>(in.uv.x, in.uv.y, 0.0, 1.0);
+    }
+    if (debug_mode == 4) {
+        return vec4<f32>(vec3<f32>(in.ao), 1.0);
     }
 
     let visual = visual_for(in.block_visual_id);
-    let alpha = visual.surface.z;
-    if (alpha < 1.0 && dither_opacity(in.clip_pos, alpha)) {
-        discard;
+    if (debug_mode == 2 && visual.palette.y > 0u) {
+        let index = min(u32(floor(in.uv.x * f32(visual.palette.y))), max(visual.palette.y, 1u) - 1u);
+        return vec4<f32>(block_visual_palette[visual.palette.x + index].rgb, 1.0);
     }
 
     let N = safe_normalize(in.world_normal);
-    let L = safe_normalize(global.atmosphere.sun_direction.xyz);
-    let V = safe_normalize(global.camera_pos.xyz - in.world_pos);
-    let R = reflect(-L, N);
-    let radial_up = safe_normalize(in.world_pos);
-    let albedo = procedural_block_albedo(
+    let L = safe_normalize(g.sun_direction.xyz);
+    let V = safe_normalize(g.camera_pos.xyz - in.world_pos);
+
+    var albedo = procedural_block_albedo(
         in.world_pos,
         N,
         in.uv,
@@ -449,63 +392,39 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         in.face_id,
         in.voxel_pos,
         in.variation_seed,
-        radial_up,
+        select(variation_scale, 0.0, debug_mode == 8),
+        edge_mult,
     );
 
-    let ao_direct = mix(1.0, in.ao, visual.variation_b.w);
+    if (debug_mode == 1) {
+        return vec4<f32>(albedo, 1.0);
+    }
+
+    let ao_mult = max(local.sliders.x, 0.0);
+    let ao_direct = mix(1.0, in.ao, visual.variation_b.w * ao_mult);
     let ao_ambient = ao_direct * ao_direct;
     let n_dot_l = saturate(dot(N, L));
-    let n_dot_v = saturate(dot(N, V));
-    let shadow = shadow_visibility(in.shadow_pos, n_dot_l);
-    let hemi = dot(N, radial_up) * 0.5 + 0.5;
-    let ambient = mix(
-        global.atmosphere.ground_ambient_color.xyz,
-        global.atmosphere.sky_color.xyz,
-        hemi,
-    ) * (0.58 + visual.surface.x * 0.22) * ao_ambient;
-    let shadow_fill = global.atmosphere.shadow_tint_color.xyz * (1.0 - shadow) * (0.25 + n_dot_l * 0.45);
-    let diffuse = global.atmosphere.sun_color.xyz * shadow * mix(n_dot_l, saturate((n_dot_l + 0.25) / 1.25), 0.22);
-    let rim = global.atmosphere.sky_color.xyz * pow(1.0 - n_dot_v, 3.0) * 0.08;
-    let gloss = pow(1.0 - visual.surface.x, 2.0);
-    let specular = global.atmosphere.sun_color.xyz * shadow * pow(saturate(dot(R, V)), mix(8.0, 64.0, gloss)) * gloss * 0.10;
+    let hemi = dot(N, vec3<f32>(0.0, 1.0, 0.0)) * 0.5 + 0.5;
+    let ambient = mix(vec3<f32>(0.16, 0.14, 0.12), g.sky_color.rgb, hemi) * 0.78 * ao_ambient;
+    let diffuse = g.sun_color.rgb * mix(n_dot_l, saturate((n_dot_l + 0.25) / 1.25), 0.24) * ao_direct;
+    let spec = g.sun_color.rgb * pow(saturate(dot(reflect(-L, N), V)), mix(8.0, 48.0, pow(1.0 - visual.surface.x, 2.0))) * 0.06;
+    let rim = g.sky_color.rgb * pow(1.0 - saturate(dot(N, V)), 3.0) * 0.06;
 
-    var lit = albedo * (diffuse * ao_direct + ambient + shadow_fill + rim) + specular + visual.emission.rgb;
-
-    let dist = distance(global.camera_pos.xyz, in.world_pos);
-    let fog_density = global.atmosphere.fog_color_density.w;
-    let fog_base = global.atmosphere.fog_color_density.xyz;
-    let fog_factor = 1.0 - exp(-(dist * fog_density) * (dist * fog_density * 0.45));
-    lit = mix(lit, fog_base, saturate(fog_factor));
-
-    lit = aces_approx(lit);
+    var lit = albedo * (ambient + diffuse + rim) + spec + visual.emission.rgb;
+    lit = aces(lit * exposure);
     lit = pow(max(lit, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
-    return vec4<f32>(lit, alpha);
+    return vec4<f32>(lit, visual.surface.z);
 }
 
 @vertex
-fn vs_sky(@builtin(vertex_index) vertex_index: u32) -> SkyOut {
-    var out: SkyOut;
-    var pos = vec2<f32>(-1.0, -3.0);
-    switch vertex_index {
-        case 0u: { pos = vec2<f32>(-1.0, -3.0); }
-        case 1u: { pos = vec2<f32>(-1.0, 1.0); }
-        default: { pos = vec2<f32>(3.0, 1.0); }
-    }
-    out.clip_pos = vec4<f32>(pos, 0.0, 1.0);
-    out.ndc = pos;
+fn vs_line(in: VertexIn) -> GridOut {
+    var out: GridOut;
+    out.clip_pos = g.view_proj * (local.model * vec4<f32>(in.pos, 1.0));
+    out.color = vec4<f32>(in.color, 1.0);
     return out;
 }
 
 @fragment
-fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
-    let clip = vec4<f32>(in.ndc, 1.0, 1.0);
-    let world_far = global.inv_view_proj * clip;
-    let ray_dir = safe_normalize(world_far.xyz / world_far.w - global.camera_pos.xyz);
-    let up = vec3<f32>(0.0, 1.0, 0.0);
-    let horizon = saturate(ray_dir.y * 0.5 + 0.5);
-    let sun_amount = pow(saturate(dot(ray_dir, safe_normalize(global.atmosphere.sun_direction.xyz))), 64.0);
-    let base = mix(global.atmosphere.ground_ambient_color.xyz, global.atmosphere.sky_color.xyz, horizon);
-    let sun = global.atmosphere.sun_color.xyz * sun_amount * 0.35;
-    let color = aces_approx(base + sun);
-    return vec4<f32>(color, 1.0);
+fn fs_line(in: GridOut) -> @location(0) vec4<f32> {
+    return in.color;
 }

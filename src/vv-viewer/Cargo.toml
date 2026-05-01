@@ -1,0 +1,22 @@
+[package]
+name = "vv-viewer"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "vv-viewer"
+
+[dependencies]
+vv-compiler  = { path = "../vv-compiler" }
+vv-registry  = { path = "../vv-registry" }
+vv-mesh      = { path = "../vv-mesh" }
+
+glam         = "0.25"
+wgpu         = "0.19"
+bytemuck     = { version = "1.14", features = ["derive"] }
+winit        = "0.29"
+pollster     = "0.3"
+image        = { version = "0.24", default-features = false, features = ["png"] }
+egui         = "0.27"
+egui-wgpu    = "0.27"
+egui-winit   = "0.27"

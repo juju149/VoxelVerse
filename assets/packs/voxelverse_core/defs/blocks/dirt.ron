@@ -12,7 +12,7 @@
     ),
     render: (
         surface: (
-            material: "voxelverse:terrain_layered",
+            material: "voxelverse:procedural_pixel",
             base_color: "#573018",
             palette: ["#8A4D24", "#573018", "#3C2110"],
             roughness: 0.90,
@@ -34,6 +34,10 @@
             micro_noise_strength: 0.09,
             edge_darkening: 0.22,
             ao_influence: 1.0,
+        ),
+        procedural: (
+            grid_size: 10,
+            face_blend: false,
         ),
         faces: (),
         details: [

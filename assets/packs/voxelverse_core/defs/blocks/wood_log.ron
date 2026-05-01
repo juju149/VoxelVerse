@@ -13,13 +13,12 @@
     ),
     render: (
         surface: (
-            material: "voxelverse:wood_grain",
+            material: "voxelverse:procedural_pixel",
             base_color: "#6B3513",
             palette: ["#7D4218", "#5C2C10", "#9A5A24", "#3F210E"],
             roughness: 0.78,
             metallic: 0.0,
             alpha: 1.0,
-            texture_layout: sides,
         ),
         lighting: (),
         geometry: (
@@ -41,6 +40,10 @@
             snow_response: 0.12,
             dust_response: 0.08,
         ),
+        procedural: (
+            grid_size: 10,
+            face_blend: false,
+        ),
         faces: (
             top: Some((
                 color_bias: Some("#B67835"),
@@ -52,6 +55,22 @@
             )),
         ),
         details: [
+            (
+                kind: "voxelverse:rings",
+                density: 0.22,
+                color: Some("#C89454"),
+                min_size: 0.030,
+                max_size: 0.090,
+                slope_bias: 1.0,
+            ),
+            (
+                kind: "voxelverse:fresh_cut",
+                density: 0.10,
+                color: Some("#E1B56D"),
+                min_size: 0.015,
+                max_size: 0.050,
+                slope_bias: 1.0,
+            ),
             (
                 kind: "voxelverse:bark_ridges",
                 density: 0.22,

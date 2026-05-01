@@ -2,6 +2,7 @@ use crate::{
     BlockId, BlockVisualId, CompiledLootPool, CompiledToolKind, ContentKey, LootTableId,
     MaterialId, RegistryTable, TagId, TextureId,
 };
+use bytemuck::{Pod, Zeroable};
 use smallvec::SmallVec;
 
 #[derive(Debug, Clone)]
@@ -169,6 +170,7 @@ pub struct CompiledBlockVisual {
     pub bevel: f32,
     pub normal_strength: f32,
     pub variation: CompiledBlockVisualVariation,
+    pub procedural: BlockProceduralConfig,
     pub faces: CompiledBlockFaceVisuals,
     pub details: SmallVec<[CompiledBlockDetail; 8]>,
 }
@@ -216,45 +218,115 @@ pub struct CompiledBlockDetail {
     pub slope_bias: f32,
 }
 
-#[derive(Debug, Clone, Copy)]
+pub const BLOCK_VISUAL_FACE_COUNT: usize = 6;
+pub const BLOCK_VISUAL_DETAIL_COUNT: usize = 8;
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct BlockProceduralConfig {
+    pub grid_size: u32,
+    pub face_blend: u32,
+    pub _padding: [u32; 2],
+}
+
+impl BlockProceduralConfig {
+    pub fn new(grid_size: u32, face_blend: bool) -> Self {
+        Self {
+            grid_size,
+            face_blend: u32::from(face_blend),
+            _padding: [0; 2],
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct RuntimeBlockFaceVisual {
+    pub color_bias: [f32; 4],
+    pub detail_mask: u32,
+    pub _padding: [u32; 3],
+}
+
+impl Default for RuntimeBlockFaceVisual {
+    fn default() -> Self {
+        Self {
+            color_bias: [1.0, 1.0, 1.0, 1.0],
+            detail_mask: 0,
+            _padding: [0; 3],
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct RuntimeBlockDetail {
+    pub color: [f32; 4],
+    pub params: [f32; 4],
+    pub meta: [u32; 4],
+}
+
+impl Default for RuntimeBlockDetail {
+    fn default() -> Self {
+        Self {
+            color: [0.0; 4],
+            params: [0.0; 4],
+            meta: [0; 4],
+        }
+    }
+}
+
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, Default, Pod, Zeroable)]
+pub struct BlockVisualFlags(pub u32);
+
+impl BlockVisualFlags {
+    pub const TRANSPARENT: u32 = 1 << 0;
+    pub const EMISSIVE: u32 = 1 << 1;
+    pub const BIOME_TINTED: u32 = 1 << 2;
+    pub const OCCLUDES: u32 = 1 << 3;
+    pub const RECEIVES_AO: u32 = 1 << 4;
+
+    pub fn from_bits(bits: u32) -> Self {
+        Self(bits)
+    }
+
+    pub fn contains(self, bit: u32) -> bool {
+        self.0 & bit != 0
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct RuntimeBlockVisual {
-    pub material_id: MaterialId,
     pub base_color: [f32; 4],
-    pub palette_offset: u32,
-    pub palette_len: u32,
-    pub roughness: f32,
-    pub metallic: f32,
     pub emission: [f32; 4],
-    pub alpha: f32,
-    pub bevel: f32,
-    pub normal_strength: f32,
-    pub variation: RuntimeVisualVariation,
-    pub flags: BlockVisualFlags,
+    pub surface: [f32; 4],
+    pub shape: [f32; 4],
+    pub variation_a: [f32; 4],
+    pub variation_b: [f32; 4],
+    pub response: [f32; 4],
+    pub palette: [u32; 4],
+    pub procedural: [u32; 4],
+    pub faces: [RuntimeBlockFaceVisual; BLOCK_VISUAL_FACE_COUNT],
+    pub details: [RuntimeBlockDetail; BLOCK_VISUAL_DETAIL_COUNT],
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct RuntimeVisualVariation {
-    pub per_voxel_tint: f32,
-    pub per_face_tint: f32,
-    pub macro_noise_scale: f32,
-    pub macro_noise_strength: f32,
-    pub micro_noise_scale: f32,
-    pub micro_noise_strength: f32,
-    pub edge_darkening: f32,
-    pub ao_influence: f32,
-    pub biome_tint_strength: f32,
-    pub wetness_response: f32,
-    pub snow_response: f32,
-    pub dust_response: f32,
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub struct BlockVisualFlags {
-    pub transparent: bool,
-    pub emissive: bool,
-    pub biome_tinted: bool,
-    pub occludes: bool,
-    pub receives_ao: bool,
+impl RuntimeBlockVisual {
+    pub fn fallback() -> Self {
+        Self {
+            base_color: [0.55, 0.55, 0.55, 1.0],
+            emission: [0.0; 4],
+            surface: [1.0, 0.0, 1.0, 0.0],
+            shape: [0.0; 4],
+            variation_a: [0.0, 0.0, 1.0, 0.0],
+            variation_b: [1.0, 0.0, 0.0, 1.0],
+            response: [0.0; 4],
+            palette: [0, 1, 0, 0],
+            procedural: [10, 0, 0, 0],
+            faces: [RuntimeBlockFaceVisual::default(); BLOCK_VISUAL_FACE_COUNT],
+            details: [RuntimeBlockDetail::default(); BLOCK_VISUAL_DETAIL_COUNT],
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

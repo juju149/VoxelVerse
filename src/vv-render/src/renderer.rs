@@ -31,7 +31,6 @@ use vv_world_runtime::PlanetData;
 
 use crate::{
     atmosphere::AtmosphereUniform,
-    block_atlas::BlockTextureAtlas,
     block_feedback::{
         block_break_mesh, selection_outline_mesh, BlockBreakStyle, SelectionOutlineStyle,
     },
@@ -60,19 +59,6 @@ struct LocalUniform {
     params: [f32; 4], // x = opacity
 }
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable)]
-struct BlockVisualUniform {
-    base_color_alpha: [f32; 4],
-    emission_roughness_metallic: [f32; 4],
-    variation_a: [f32; 4],
-    variation_b: [f32; 4],
-    response: [f32; 4],
-    palette: [f32; 4],
-    params: [f32; 4],
-    flags: [f32; 4],
-}
-
 #[derive(Clone, Copy, Debug)]
 struct MeshJobResult<K> {
     key: K,
@@ -99,89 +85,15 @@ enum MeshJobKind {
     Remesh,
 }
 
-fn build_block_visuals(content: &CompiledContent) -> Vec<BlockVisualUniform> {
+fn build_block_visuals(content: &CompiledContent) -> Vec<RuntimeBlockVisual> {
     let mut visuals = Vec::with_capacity(content.block_visuals.len().max(1));
     for visual in content.block_visuals.entries() {
-        visuals.push(block_visual_uniform(*visual));
+        visuals.push(*visual);
     }
     if visuals.is_empty() {
-        visuals.push(block_visual_uniform(RuntimeBlockVisual {
-            material_id: vv_registry::MaterialId::new(0),
-            base_color: [0.55, 0.55, 0.55, 1.0],
-            palette_offset: 0,
-            palette_len: 1,
-            roughness: 1.0,
-            metallic: 0.0,
-            emission: [0.0, 0.0, 0.0, 0.0],
-            alpha: 1.0,
-            bevel: 0.0,
-            normal_strength: 0.0,
-            variation: vv_registry::RuntimeVisualVariation {
-                per_voxel_tint: 0.0,
-                per_face_tint: 0.0,
-                macro_noise_scale: 1.0,
-                macro_noise_strength: 0.0,
-                micro_noise_scale: 1.0,
-                micro_noise_strength: 0.0,
-                edge_darkening: 0.0,
-                ao_influence: 1.0,
-                biome_tint_strength: 0.0,
-                wetness_response: 0.0,
-                snow_response: 0.0,
-                dust_response: 0.0,
-            },
-            flags: vv_registry::BlockVisualFlags::default(),
-        }));
+        visuals.push(RuntimeBlockVisual::fallback());
     }
     visuals
-}
-
-fn block_visual_uniform(visual: RuntimeBlockVisual) -> BlockVisualUniform {
-    BlockVisualUniform {
-        base_color_alpha: [
-            visual.base_color[0],
-            visual.base_color[1],
-            visual.base_color[2],
-            visual.alpha,
-        ],
-        emission_roughness_metallic: [
-            visual.emission[0],
-            visual.emission[1],
-            visual.emission[2],
-            visual.roughness,
-        ],
-        variation_a: [
-            visual.variation.per_voxel_tint,
-            visual.variation.per_face_tint,
-            visual.variation.macro_noise_scale,
-            visual.variation.macro_noise_strength,
-        ],
-        variation_b: [
-            visual.variation.micro_noise_scale,
-            visual.variation.micro_noise_strength,
-            visual.variation.edge_darkening,
-            visual.variation.ao_influence,
-        ],
-        response: [
-            visual.variation.biome_tint_strength,
-            visual.variation.wetness_response,
-            visual.variation.snow_response,
-            visual.variation.dust_response,
-        ],
-        palette: [
-            visual.palette_offset as f32,
-            visual.palette_len as f32,
-            visual.material_id.raw() as f32,
-            visual.metallic,
-        ],
-        params: [visual.bevel, visual.normal_strength, 0.0, 0.0],
-        flags: [
-            if visual.flags.transparent { 1.0 } else { 0.0 },
-            if visual.flags.emissive { 1.0 } else { 0.0 },
-            if visual.flags.biome_tinted { 1.0 } else { 0.0 },
-            if visual.flags.occludes { 1.0 } else { 0.0 },
-        ],
-    }
 }
 
 fn build_block_visual_palette(content: &CompiledContent) -> Vec<[f32; 4]> {
@@ -205,7 +117,6 @@ pub struct Renderer<'a> {
     render_cfg: RenderConfig,
     lod_cfg: LodConfig,
     block_content: BlockContent,
-    _block_atlas: BlockTextureAtlas,
     diagnostic_config: DiagnosticConfig,
 
     // Text engine
@@ -305,7 +216,7 @@ impl<'a> Renderer<'a> {
         window: &'a Window,
         cfg: &EngineConfig,
         content: &CompiledContent,
-        assets_root: &Path,
+        _assets_root: &Path,
         diagnostic_config: DiagnosticConfig,
     ) -> Self {
         let instance = wgpu::Instance::default();
@@ -349,7 +260,6 @@ impl<'a> Renderer<'a> {
             .await
             .unwrap();
         let block_content = content.to_block_content();
-        let block_atlas = BlockTextureAtlas::build(&device, &queue, assets_root, &content.textures);
 
         let size = window.inner_size();
         let mut surf_cfg = surface
@@ -423,41 +333,15 @@ impl<'a> Renderer<'a> {
                 wgpu::BindGroupLayoutEntry {
                     binding: 3,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
                     count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 6,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 7,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -518,22 +402,10 @@ impl<'a> Renderer<'a> {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&block_atlas.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&block_atlas.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: block_atlas.rect_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
                     resource: block_visual_buf.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 7,
+                    binding: 4,
                     resource: block_visual_palette_buf.as_entire_binding(),
                 },
             ],
@@ -579,22 +451,10 @@ impl<'a> Renderer<'a> {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&block_atlas.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&block_atlas.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: block_atlas.rect_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
                     resource: block_visual_buf.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 7,
+                    binding: 4,
                     resource: block_visual_palette_buf.as_entire_binding(),
                 },
             ],
@@ -840,22 +700,10 @@ impl<'a> Renderer<'a> {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&block_atlas.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&block_atlas.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: block_atlas.rect_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
                     resource: block_visual_buf.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 7,
+                    binding: 4,
                     resource: block_visual_palette_buf.as_entire_binding(),
                 },
             ],
@@ -873,7 +721,6 @@ impl<'a> Renderer<'a> {
             render_cfg: cfg.render.clone(),
             lod_cfg: cfg.lod.clone(),
             block_content,
-            _block_atlas: block_atlas,
             diagnostic_config,
             font_system,
             swash_cache,

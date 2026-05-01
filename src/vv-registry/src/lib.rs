@@ -14,13 +14,14 @@ pub mod tag;
 pub mod worldgen;
 
 pub use block::{
-    BlockRegistry, BlockVisualFlags, BlockVisualRegistry, CompiledBlock, CompiledBlockDetail,
-    CompiledBlockFace, CompiledBlockFaceVisual, CompiledBlockFaceVisuals, CompiledBlockMining,
-    CompiledBlockMeshing, CompiledBlockPhysics, CompiledBlockRender, CompiledBlockShape,
-    CompiledBlockTextures, CompiledBlockVisual, CompiledBlockVisualVariation, CompiledDrops,
-    CompiledMaterialPhase, CompiledMaterialShader, CompiledRenderMode, CompiledTextureLayout,
-    CompiledTextureResource, CompiledTintMode, MaterialRegistry, RuntimeBlockVisual,
-    RuntimeVisualVariation, TextureRegistry,
+    BlockProceduralConfig, BlockRegistry, BlockVisualFlags, BlockVisualRegistry, CompiledBlock,
+    CompiledBlockDetail, CompiledBlockFace, CompiledBlockFaceVisual, CompiledBlockFaceVisuals,
+    CompiledBlockMeshing, CompiledBlockMining, CompiledBlockPhysics, CompiledBlockRender,
+    CompiledBlockShape, CompiledBlockTextures, CompiledBlockVisual, CompiledBlockVisualVariation,
+    CompiledDrops, CompiledMaterialPhase, CompiledMaterialShader, CompiledRenderMode,
+    CompiledTextureLayout, CompiledTextureResource, CompiledTintMode, MaterialRegistry,
+    RuntimeBlockDetail, RuntimeBlockFaceVisual, RuntimeBlockVisual, TextureRegistry,
+    BLOCK_VISUAL_DETAIL_COUNT, BLOCK_VISUAL_FACE_COUNT,
 };
 pub use content_key::{ContentKey, ContentKeyParseError};
 pub use entity::{CompiledEntity, EntityRegistry};

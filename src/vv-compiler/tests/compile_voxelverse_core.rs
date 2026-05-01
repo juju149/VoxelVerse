@@ -6,10 +6,7 @@ use vv_registry::{
     BiomeSource, BlockRenderSource, BlockRuntimeSource, CompiledIngredient, ContentKey,
     PlanetTypeSource, TaggedContent, WorldSettingsSource, WorldgenSettingsSource,
 };
-use vv_schema::{
-    block::{BlockDef, LegacyBlockColor},
-    common::HexColor,
-};
+use vv_schema::{block::BlockDef, common::HexColor};
 
 fn load_core() -> vv_pack::PackLoadOrder {
     let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets");
@@ -155,14 +152,18 @@ fn reports_missing_references_with_owner_and_path() {
 fn parses_raw_block_render_def_with_procedural_material() {
     let source = r##"(
         render: (
-            material: "terrain_layered",
-            base_color: "#6F4A2B",
-            palette: ["#8A5A32", "#4D321F"],
-            roughness: 0.85,
-            metallic: 0.0,
-            alpha: 1.0,
-            bevel: 0.035,
-            normal_strength: 0.45,
+            surface: (
+                material: "voxelverse:procedural_pixel",
+                base_color: "#6F4A2B",
+                palette: ["#8A5A32", "#4D321F"],
+                roughness: 0.85,
+                metallic: 0.0,
+                alpha: 1.0,
+            ),
+            geometry: (
+                bevel: 0.035,
+                normal_strength: 0.45,
+            ),
             variation: (
                 per_voxel_tint: 0.12,
                 per_face_tint: 0.08,
@@ -173,12 +174,16 @@ fn parses_raw_block_render_def_with_procedural_material() {
                 edge_darkening: 0.12,
                 biome_tint_strength: 0.25,
             ),
+            procedural: (
+                grid_size: 10,
+                face_blend: true,
+            ),
             faces: (
-                top: Some((color_bias: Some("#78A83A"), detail_bias: ["grass_blades"])),
+                top: Some((color_bias: Some("#78A83A"), detail_bias: ["voxelverse:grass_blades"])),
             ),
             details: [
                 (
-                    kind: "pebbles",
+                    kind: "voxelverse:pebbles",
                     density: 0.08,
                     color: Some("#9A8F7A"),
                     min_size: 0.015,
@@ -189,22 +194,23 @@ fn parses_raw_block_render_def_with_procedural_material() {
         ),
     )"##;
     let block: BlockDef = ron::from_str(source).expect("new block render schema should parse");
-    assert_eq!(block.render.palette.len(), 2);
-    assert_eq!(block.render.details[0].kind, "pebbles");
+    assert_eq!(block.render.surface.palette.len(), 2);
+    assert_eq!(block.render.procedural.grid_size, 10);
+    assert_eq!(block.render.details[0].kind.0, "voxelverse:pebbles");
 }
 
 #[test]
 fn reports_invalid_visual_range() {
     let mut load_order = load_core();
     let mut packs = load_order.into_packs();
-    packs[0].content.blocks[0].value.render.roughness = 2.0;
+    packs[0].content.blocks[0].value.render.surface.roughness = 2.0;
     load_order = vv_pack::PackLoadOrder::new(packs);
 
     let error = compile_packs(&load_order).expect_err("invalid roughness should fail");
     assert!(error.diagnostics().iter().any(|diagnostic| {
         matches!(
             diagnostic,
-            CompileDiagnostic::InvalidValue { field, .. } if field == "render.roughness"
+            CompileDiagnostic::InvalidValue { field, .. } if field == "render.surface.roughness"
         )
     }));
 }
@@ -213,15 +219,14 @@ fn reports_invalid_visual_range() {
 fn reports_invalid_hex_color() {
     let mut load_order = load_core();
     let mut packs = load_order.into_packs();
-    packs[0].content.blocks[0].value.render.color = LegacyBlockColor::None;
-    packs[0].content.blocks[0].value.render.base_color = HexColor("#GG00FF".to_owned());
+    packs[0].content.blocks[0].value.render.surface.base_color = HexColor("#GG00FF".to_owned());
     load_order = vv_pack::PackLoadOrder::new(packs);
 
     let error = compile_packs(&load_order).expect_err("invalid hex color should fail");
     assert!(error.diagnostics().iter().any(|diagnostic| {
         matches!(
             diagnostic,
-            CompileDiagnostic::InvalidValue { field, .. } if field == "render.base_color"
+            CompileDiagnostic::InvalidValue { field, .. } if field == "render.surface.base_color"
         )
     }));
 }
@@ -241,9 +246,11 @@ fn compiles_block_visuals_into_runtime_ids_and_palettes() {
         .expect("grass visual runtime");
 
     assert_eq!(render.visual_id.raw(), grass.raw());
-    assert!(visual.palette_len >= 1);
+    assert!(visual.palette[1] >= 1u32);
     assert!(!content.block_visual_palettes.is_empty());
     assert!(render.material.variation.per_voxel_tint > 0.0);
+    assert_eq!(visual.procedural[0], 10);
+    assert_ne!(visual.faces[0].color_bias, [1.0, 1.0, 1.0, 1.0]);
 }
 
 #[test]

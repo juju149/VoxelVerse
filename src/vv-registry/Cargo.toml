@@ -5,4 +5,5 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
+bytemuck = { version = "1.14", features = ["derive"] }
 smallvec = "1.15.1"

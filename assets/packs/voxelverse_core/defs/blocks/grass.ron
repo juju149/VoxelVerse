@@ -12,7 +12,7 @@
     ),
     render: (
         surface: (
-            material: "voxelverse:terrain_layered",
+            material: "voxelverse:procedural_pixel",
             base_color: "#6F4A2B",
             palette: ["#8A5A32", "#6F4A2B", "#4D321F", "#78A83A"],
             roughness: 0.85,
@@ -40,6 +40,10 @@
             snow_response: 0.28,
             dust_response: 0.12,
         ),
+        procedural: (
+            grid_size: 10,
+            face_blend: true,
+        ),
         faces: (
             top: Some((
                 color_bias: Some("#78A83A"),
@@ -47,10 +51,34 @@
             )),
             side: Some((
                 color_bias: Some("#6F4A2B"),
-                detail_bias: ["voxelverse:roots", "voxelverse:pebbles"],
+                detail_bias: ["voxelverse:grass_blades", "voxelverse:roots", "voxelverse:pebbles"],
             )),
         ),
         details: [
+            (
+                kind: "voxelverse:grass_blades",
+                density: 0.22,
+                color: Some("#6FAD34"),
+                min_size: 0.025,
+                max_size: 0.080,
+                slope_bias: 0.95,
+            ),
+            (
+                kind: "voxelverse:tiny_flowers",
+                density: 0.04,
+                color: Some("#F3EAD8"),
+                min_size: 0.015,
+                max_size: 0.035,
+                slope_bias: 1.0,
+            ),
+            (
+                kind: "voxelverse:roots",
+                density: 0.12,
+                color: Some("#5A341F"),
+                min_size: 0.020,
+                max_size: 0.070,
+                slope_bias: 0.25,
+            ),
             (
                 kind: "voxelverse:pebbles",
                 density: 0.08,

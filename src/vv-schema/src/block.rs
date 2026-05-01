@@ -109,6 +109,7 @@ pub struct RawBlockRenderDef {
     pub lighting: RawBlockLightingDef,
     pub geometry: RawBlockGeometryDef,
     pub variation: RawBlockVisualVariation,
+    pub procedural: RawBlockProceduralDef,
     pub faces: RawBlockFaceVisuals,
     pub details: Vec<RawBlockDetailDef>,
     pub meshing: RawBlockMeshingDef,
@@ -121,6 +122,7 @@ impl Default for RawBlockRenderDef {
             lighting: RawBlockLightingDef::default(),
             geometry: RawBlockGeometryDef::default(),
             variation: RawBlockVisualVariation::default(),
+            procedural: RawBlockProceduralDef::default(),
             faces: RawBlockFaceVisuals::default(),
             details: Vec::new(),
             meshing: RawBlockMeshingDef::default(),
@@ -263,6 +265,22 @@ impl Default for RawBlockVisualVariation {
             wetness_response: 0.0,
             snow_response: 0.0,
             dust_response: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockProceduralDef {
+    pub grid_size: u32,
+    pub face_blend: bool,
+}
+
+impl Default for RawBlockProceduralDef {
+    fn default() -> Self {
+        Self {
+            grid_size: 10,
+            face_blend: false,
         }
     }
 }
@@ -506,6 +524,7 @@ pub struct BlockRenderPatchDef {
     pub lighting: Option<RawBlockLightingPatch>,
     pub geometry: Option<RawBlockGeometryPatch>,
     pub variation: Option<RawBlockVisualVariationPatch>,
+    pub procedural: Option<RawBlockProceduralPatch>,
     pub faces: Option<RawBlockFaceVisualsPatch>,
     pub details: Option<Vec<RawBlockDetailDef>>,
     pub meshing: Option<RawBlockMeshingPatch>,
@@ -555,6 +574,13 @@ pub struct RawBlockVisualVariationPatch {
     pub wetness_response: Option<f32>,
     pub snow_response: Option<f32>,
     pub dust_response: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockProceduralPatch {
+    pub grid_size: Option<u32>,
+    pub face_blend: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

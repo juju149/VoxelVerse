@@ -19,7 +19,6 @@ wgpu     = "0.19"
 bytemuck = { version = "1.14", features = ["derive"] }
 winit    = "0.29"
 glyphon  = "0.5"
-image    = { version = "0.24", default-features = false, features = ["png"] }
 
 [dev-dependencies]
 naga = { version = "0.19.2", features = ["wgsl-in"] }

@@ -3,22 +3,22 @@ use std::{collections::HashMap, path::Path, str::FromStr};
 use smallvec::SmallVec;
 use vv_pack::{load_packs_from_assets, PackLoadOrder, RawDocument};
 use vv_registry::{
-    BiomeId, BlockId, BlockVisualFlags, BlockVisualId, CompiledBiome, CompiledBiomeRelief,
-    CompiledBlock, CompiledBlockDetail, CompiledBlockFaceVisual, CompiledBlockFaceVisuals,
-    CompiledBlockMeshing, CompiledBlockMining, CompiledBlockPhysics, CompiledBlockRender,
-    CompiledBlockShape, CompiledBlockVisual, CompiledBlockVisualVariation, CompiledClimateCurves,
-    CompiledClimateRange,
-    CompiledClimateSampleRanges, CompiledClimateTags, CompiledContent, CompiledDerivedTagRule,
-    CompiledDrops, CompiledEntity, CompiledFauna, CompiledFloatRange, CompiledFlora,
-    CompiledFloraFeature, CompiledFloraPlacement, CompiledIdealRange, CompiledIngredient,
-    CompiledItem, CompiledItemKind, CompiledLootEntry, CompiledLootPool, CompiledLootTable,
-    CompiledMaterialPhase, CompiledMaterialShader, CompiledOre, CompiledOreVein, CompiledPlaceable,
-    CompiledPlanetType, CompiledRecipe, CompiledRecipePattern, CompiledRenderMode,
-    CompiledStructure, CompiledSurfaceLayer, CompiledTag, CompiledTextureLayout,
-    CompiledTextureResource, CompiledTintMode, CompiledToolKind, CompiledWeather,
-    CompiledWorldSettings, ContentKey, EntityId, FaunaId, FloraId, ItemId, LootTableId,
-    MaterialId, OreId, PlaceableId, PlanetTypeId, RecipeId, RuntimeBlockVisual,
-    RuntimeVisualVariation, StructureId, TagDomain, TagId, TaggedContent, TextureId, WeatherId,
+    BiomeId, BlockId, BlockProceduralConfig, BlockVisualFlags, BlockVisualId, CompiledBiome,
+    CompiledBiomeRelief, CompiledBlock, CompiledBlockDetail, CompiledBlockFaceVisual,
+    CompiledBlockFaceVisuals, CompiledBlockMeshing, CompiledBlockMining, CompiledBlockPhysics,
+    CompiledBlockRender, CompiledBlockShape, CompiledBlockVisual, CompiledBlockVisualVariation,
+    CompiledClimateCurves, CompiledClimateRange, CompiledClimateSampleRanges, CompiledClimateTags,
+    CompiledContent, CompiledDerivedTagRule, CompiledDrops, CompiledEntity, CompiledFauna,
+    CompiledFloatRange, CompiledFlora, CompiledFloraFeature, CompiledFloraPlacement,
+    CompiledIdealRange, CompiledIngredient, CompiledItem, CompiledItemKind, CompiledLootEntry,
+    CompiledLootPool, CompiledLootTable, CompiledMaterialPhase, CompiledMaterialShader,
+    CompiledOre, CompiledOreVein, CompiledPlaceable, CompiledPlanetType, CompiledRecipe,
+    CompiledRecipePattern, CompiledRenderMode, CompiledStructure, CompiledSurfaceLayer,
+    CompiledTag, CompiledTextureLayout, CompiledTextureResource, CompiledTintMode,
+    CompiledToolKind, CompiledWeather, CompiledWorldSettings, ContentKey, EntityId, FaunaId,
+    FloraId, ItemId, LootTableId, MaterialId, OreId, PlaceableId, PlanetTypeId, RecipeId,
+    RuntimeBlockDetail, RuntimeBlockFaceVisual, RuntimeBlockVisual, StructureId, TagDomain, TagId,
+    TaggedContent, TextureId, WeatherId, BLOCK_VISUAL_DETAIL_COUNT, BLOCK_VISUAL_FACE_COUNT,
 };
 use vv_schema::{
     block::{
@@ -283,10 +283,16 @@ impl ContentCompiler {
         self.validate_drop_spec("block", doc, &doc.value.drops, index);
         let base_color = self.block_base_color(doc);
         self.validate_block_render(doc);
-        let roughness =
-            self.clamp_unit(doc, "render.surface.roughness", doc.value.render.surface.roughness);
-        let metallic =
-            self.clamp_unit(doc, "render.surface.metallic", doc.value.render.surface.metallic);
+        let roughness = self.clamp_unit(
+            doc,
+            "render.surface.roughness",
+            doc.value.render.surface.roughness,
+        );
+        let metallic = self.clamp_unit(
+            doc,
+            "render.surface.metallic",
+            doc.value.render.surface.metallic,
+        );
         let alpha = self.clamp_unit(doc, "render.surface.alpha", doc.value.render.surface.alpha);
         let emission = doc
             .value
@@ -381,39 +387,52 @@ impl ContentCompiler {
             .block_visual_palettes
             .extend(palette.iter().copied());
         let palette_len = palette.len() as u32;
-        let flags = BlockVisualFlags {
-            transparent: !matches!(doc.value.render.meshing.render_mode, RenderMode::Opaque),
-            emissive: compiled.emission.is_some() || doc.value.render.lighting.emits_light > 0,
-            biome_tinted: compiled.variation.biome_tint_strength > 0.0,
-            occludes: doc.value.render.meshing.occludes,
-            receives_ao: doc.value.render.meshing.receives_ao,
-        };
+        let flags = BlockVisualFlags::from_bits(
+            u32::from(!matches!(
+                doc.value.render.meshing.render_mode,
+                RenderMode::Opaque
+            )) * BlockVisualFlags::TRANSPARENT
+                | u32::from(
+                    compiled.emission.is_some() || doc.value.render.lighting.emits_light > 0,
+                ) * BlockVisualFlags::EMISSIVE
+                | u32::from(compiled.variation.biome_tint_strength > 0.0)
+                    * BlockVisualFlags::BIOME_TINTED
+                | u32::from(doc.value.render.meshing.occludes) * BlockVisualFlags::OCCLUDES
+                | u32::from(doc.value.render.meshing.receives_ao) * BlockVisualFlags::RECEIVES_AO,
+        );
+        let (faces, details, detail_count) = self.runtime_visual_layers(doc, &compiled);
         let runtime = RuntimeBlockVisual {
-            material_id,
             base_color: compiled.base_color,
-            palette_offset,
-            palette_len,
-            roughness: compiled.roughness,
-            metallic: compiled.metallic,
             emission: compiled.emission.unwrap_or([0.0, 0.0, 0.0, 0.0]),
-            alpha: compiled.alpha,
-            bevel: compiled.bevel,
-            normal_strength: compiled.normal_strength,
-            variation: RuntimeVisualVariation {
-                per_voxel_tint: compiled.variation.per_voxel_tint,
-                per_face_tint: compiled.variation.per_face_tint,
-                macro_noise_scale: compiled.variation.macro_noise_scale,
-                macro_noise_strength: compiled.variation.macro_noise_strength,
-                micro_noise_scale: compiled.variation.micro_noise_scale,
-                micro_noise_strength: compiled.variation.micro_noise_strength,
-                edge_darkening: compiled.variation.edge_darkening,
-                ao_influence: compiled.variation.ao_influence,
-                biome_tint_strength: compiled.variation.biome_tint_strength,
-                wetness_response: compiled.variation.wetness_response,
-                snow_response: compiled.variation.snow_response,
-                dust_response: compiled.variation.dust_response,
-            },
-            flags,
+            surface: [compiled.roughness, compiled.metallic, compiled.alpha, 0.0],
+            shape: [compiled.bevel, compiled.normal_strength, 0.0, 0.0],
+            variation_a: [
+                compiled.variation.per_voxel_tint,
+                compiled.variation.per_face_tint,
+                compiled.variation.macro_noise_scale,
+                compiled.variation.macro_noise_strength,
+            ],
+            variation_b: [
+                compiled.variation.micro_noise_scale,
+                compiled.variation.micro_noise_strength,
+                compiled.variation.edge_darkening,
+                compiled.variation.ao_influence,
+            ],
+            response: [
+                compiled.variation.biome_tint_strength,
+                compiled.variation.wetness_response,
+                compiled.variation.snow_response,
+                compiled.variation.dust_response,
+            ],
+            palette: [palette_offset, palette_len, material_id.raw(), flags.0],
+            procedural: [
+                compiled.procedural.grid_size,
+                compiled.procedural.face_blend,
+                detail_count,
+                0,
+            ],
+            faces,
+            details,
         };
         content.block_visuals.push(block_key.clone(), runtime)
     }
@@ -475,13 +494,20 @@ impl ContentCompiler {
             metallic: self.clamp_unit(doc, "render.surface.metallic", render.surface.metallic),
             emission,
             alpha: self.clamp_unit(doc, "render.surface.alpha", render.surface.alpha),
-            bevel: self.clamp_range(doc, "render.geometry.bevel", render.geometry.bevel, 0.0, 0.12),
+            bevel: self.clamp_range(
+                doc,
+                "render.geometry.bevel",
+                render.geometry.bevel,
+                0.0,
+                0.12,
+            ),
             normal_strength: self.clamp_unit(
                 doc,
                 "render.geometry.normal_strength",
                 render.geometry.normal_strength,
             ),
             variation,
+            procedural: self.compile_procedural(doc, render.procedural),
             faces: CompiledBlockFaceVisuals {
                 top: self.compile_face_visual(doc, "render.faces.top", render.faces.top.as_ref()),
                 side: self.compile_face_visual(
@@ -593,6 +619,17 @@ impl ContentCompiler {
         }
     }
 
+    fn compile_procedural(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        procedural: vv_schema::block::RawBlockProceduralDef,
+    ) -> BlockProceduralConfig {
+        BlockProceduralConfig::new(
+            self.grid_size(doc, "render.procedural.grid_size", procedural.grid_size),
+            procedural.face_blend,
+        )
+    }
+
     fn compile_face_visual(
         &mut self,
         doc: &RawDocument<BlockDef>,
@@ -645,6 +682,167 @@ impl ContentCompiler {
             min_size,
             max_size: max_size.max(min_size),
             slope_bias: self.clamp_unit(doc, &format!("{field}.slope_bias"), detail.slope_bias),
+        }
+    }
+
+    fn runtime_visual_layers(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        compiled: &CompiledBlockVisual,
+    ) -> (
+        [RuntimeBlockFaceVisual; BLOCK_VISUAL_FACE_COUNT],
+        [RuntimeBlockDetail; BLOCK_VISUAL_DETAIL_COUNT],
+        u32,
+    ) {
+        let detail_count = compiled.details.len().min(BLOCK_VISUAL_DETAIL_COUNT);
+        if compiled.details.len() > BLOCK_VISUAL_DETAIL_COUNT {
+            self.invalid_value(
+                doc,
+                "render.details",
+                &compiled.details.len().to_string(),
+                "at most 8 procedural details are supported per block visual",
+            );
+        }
+
+        let mut details = [RuntimeBlockDetail::default(); BLOCK_VISUAL_DETAIL_COUNT];
+        for (index, detail) in compiled.details.iter().take(detail_count).enumerate() {
+            let (pattern_kind, kind_hash) = detail_pattern(&detail.kind);
+            details[index] = RuntimeBlockDetail {
+                color: detail.color,
+                params: [
+                    detail.density,
+                    detail.min_size,
+                    detail.max_size,
+                    detail.slope_bias,
+                ],
+                meta: [pattern_kind, kind_hash, 0, 0],
+            };
+        }
+
+        let all_mask = if detail_count == 0 {
+            0
+        } else {
+            (1u32 << detail_count) - 1
+        };
+        let resolved = [
+            self.resolved_face_visual(
+                doc,
+                "render.faces.top",
+                compiled.faces.top.as_ref(),
+                &compiled.details,
+                detail_count,
+                all_mask,
+                [1.0, 1.0, 1.0, 1.0],
+            ),
+            self.resolved_face_visual(
+                doc,
+                "render.faces.bottom",
+                compiled.faces.bottom.as_ref(),
+                &compiled.details,
+                detail_count,
+                all_mask,
+                [1.0, 1.0, 1.0, 1.0],
+            ),
+            self.resolved_face_visual(
+                doc,
+                "render.faces.north",
+                compiled
+                    .faces
+                    .north
+                    .as_ref()
+                    .or(compiled.faces.side.as_ref()),
+                &compiled.details,
+                detail_count,
+                all_mask,
+                [1.0, 1.0, 1.0, 1.0],
+            ),
+            self.resolved_face_visual(
+                doc,
+                "render.faces.south",
+                compiled
+                    .faces
+                    .south
+                    .as_ref()
+                    .or(compiled.faces.side.as_ref()),
+                &compiled.details,
+                detail_count,
+                all_mask,
+                [1.0, 1.0, 1.0, 1.0],
+            ),
+            self.resolved_face_visual(
+                doc,
+                "render.faces.east",
+                compiled
+                    .faces
+                    .east
+                    .as_ref()
+                    .or(compiled.faces.side.as_ref()),
+                &compiled.details,
+                detail_count,
+                all_mask,
+                [1.0, 1.0, 1.0, 1.0],
+            ),
+            self.resolved_face_visual(
+                doc,
+                "render.faces.west",
+                compiled
+                    .faces
+                    .west
+                    .as_ref()
+                    .or(compiled.faces.side.as_ref()),
+                &compiled.details,
+                detail_count,
+                all_mask,
+                [1.0, 1.0, 1.0, 1.0],
+            ),
+        ];
+
+        (resolved, details, detail_count as u32)
+    }
+
+    fn resolved_face_visual(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        field: &str,
+        face: Option<&CompiledBlockFaceVisual>,
+        details: &[CompiledBlockDetail],
+        detail_count: usize,
+        all_mask: u32,
+        color_bias: [f32; 4],
+    ) -> RuntimeBlockFaceVisual {
+        let Some(face) = face else {
+            return RuntimeBlockFaceVisual {
+                color_bias,
+                detail_mask: all_mask,
+                ..RuntimeBlockFaceVisual::default()
+            };
+        };
+
+        let mut detail_mask = all_mask;
+        if !face.detail_bias.is_empty() {
+            detail_mask = 0;
+            for detail_name in &face.detail_bias {
+                if let Some(index) = details
+                    .iter()
+                    .take(detail_count)
+                    .position(|detail| detail.kind == *detail_name)
+                {
+                    detail_mask |= 1u32 << index;
+                } else {
+                    self.invalid_value(
+                        doc,
+                        &format!("{field}.detail_bias"),
+                        detail_name,
+                        "face detail bias must reference a detail declared in render.details",
+                    );
+                }
+            }
+        }
+
+        RuntimeBlockFaceVisual {
+            color_bias: face.color_bias,
+            detail_mask,
+            ..RuntimeBlockFaceVisual::default()
         }
     }
 
@@ -1605,6 +1803,20 @@ impl ContentCompiler {
         }
     }
 
+    fn grid_size<T>(&mut self, doc: &RawDocument<T>, field: &str, value: u32) -> u32 {
+        if (1..=64).contains(&value) {
+            value
+        } else {
+            self.invalid_value(
+                doc,
+                field,
+                &value.to_string(),
+                "expected a grid size between 1 and 64",
+            );
+            value.clamp(1, 64)
+        }
+    }
+
     fn clamp_range<T>(
         &mut self,
         doc: &RawDocument<T>,
@@ -1830,7 +2042,8 @@ fn parse_hex_color(value: &str) -> Option<[f32; 4]> {
 fn is_known_material_kind(name: &str) -> bool {
     matches!(
         name,
-        "standard_opaque"
+        "procedural_pixel"
+            | "standard_opaque"
             | "terrain_layered"
             | "organic"
             | "wood_grain"
@@ -1855,4 +2068,30 @@ fn block_texture_refs(textures: &BlockTextureRefs) -> impl Iterator<Item = &Reso
     ]
     .into_iter()
     .flatten()
+}
+
+fn detail_pattern(kind: &str) -> (u32, u32) {
+    let key = kind.rsplit(':').next().unwrap_or(kind);
+    let pattern = match key {
+        "bark_ridges" => 1,
+        "rings" => 2,
+        "grass_blades" => 3,
+        "roots" => 4,
+        "pebbles" => 5,
+        "moss" => 6,
+        "soil_grain" => 7,
+        "fresh_cut" => 8,
+        "tiny_flowers" => 9,
+        _ => 0,
+    };
+    (pattern, stable_hash32(kind))
+}
+
+fn stable_hash32(value: &str) -> u32 {
+    let mut hash = 0x811c_9dc5u32;
+    for byte in value.as_bytes() {
+        hash ^= *byte as u32;
+        hash = hash.wrapping_mul(0x0100_0193);
+    }
+    hash
 }
