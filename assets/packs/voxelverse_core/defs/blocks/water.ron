@@ -11,7 +11,7 @@
     ),
     render: (
         surface: (
-            material: "voxelverse:fluid_surface",
+            material: "voxelverse:liquid",
             base_color: "#2E6BB8",
             palette: ["#3878C4", "#2E6BB8", "#234F8A", "#4D9EEB"],
             roughness: 0.05,

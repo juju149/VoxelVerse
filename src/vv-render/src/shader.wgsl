@@ -221,8 +221,12 @@ fn apply_face_tint(color: vec3<f32>, face_id: u32, seed: u32, amount: f32) -> ve
 
 fn apply_edge_wear(color: vec3<f32>, uv: vec2<f32>, amount: f32) -> vec3<f32> {
     let edge_dist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-    let edge = 1.0 - smoothstep(0.0, 0.08, edge_dist);
-    return color * (1.0 - edge * amount);
+    // Wider edge band for more visible stylized block edges
+    let edge = 1.0 - smoothstep(0.0, 0.14, edge_dist);
+    // Corner peaks: sharpen the four block corners with extra darkening
+    let corner_dist = length(vec2<f32>(uv.x - 0.5, uv.y - 0.5));
+    let corner = saturate(1.0 - smoothstep(0.35, 0.50, corner_dist));
+    return color * (1.0 - (edge + corner * 0.38) * amount);
 }
 
 fn apply_voxel_variation(
@@ -236,11 +240,13 @@ fn apply_voxel_variation(
     let seed_vec = vec3<f32>(f32(seed & 65535u), f32(face_id), f32(block_visual_id));
     let r = hash13(floor(world_pos * 2.0) + seed_vec * 0.017);
     let tint = mix(1.0 - variation.per_voxel_tint, 1.0 + variation.per_voxel_tint, r);
-    let macro_n = fbm_3d(world_pos * variation.macro_noise_scale * 0.04 + seed_vec * 0.003);
+    // 0.10 instead of 0.04 — macro noise at block-level scale (10–15 blocks per cycle)
+    let macro_n = fbm_3d(world_pos * variation.macro_noise_scale * 0.10 + seed_vec * 0.003);
     let micro_n = fbm_3d(world_pos * variation.micro_noise_scale + seed_vec * 0.011);
     var color = base_color * tint;
-    color = color * (1.0 + ((macro_n - 0.5) * variation.macro_noise_strength));
-    color = color * (1.0 + ((micro_n - 0.5) * variation.micro_noise_strength));
+    // 1.6x and 2.0x amplifiers make variation much more visible
+    color = color * (1.0 + ((macro_n - 0.5) * variation.macro_noise_strength * 1.6));
+    color = color * (1.0 + ((micro_n - 0.5) * variation.micro_noise_strength * 2.0));
     return color;
 }
 
@@ -551,6 +557,7 @@ fn atlas_albedo(texture_id: i32, uv: vec2<f32>, face_hash: f32, kind: f32) -> ve
 fn block_albedo(in: VertexOut) -> vec3<f32> {
     let visual = visual_for(in.block_visual_id);
     let variation = variation_for(visual);
+    let kind = visual.palette.z;
     let N = safe_normalize(in.world_normal);
     let radial_up = safe_normalize(in.world_pos);
     let up_dot = clamp(dot(N, radial_up), -1.0, 1.0);
@@ -566,28 +573,61 @@ fn block_albedo(in: VertexOut) -> vec3<f32> {
     let face_hash = hash13(face_key + vec3<f32>(f32(in.face_id), 5.3, f32(in.block_visual_id)));
     let macro_warp = fbm_3d(in.world_pos * 0.008 + radial_up * 1.9 + vec3<f32>(f32(in.block_visual_id) * 0.13, 4.0, 9.0));
 
+    // === Biome tint: top-face palette shift ===
+    // biome_tint_strength > 0 on blocks like grass and leaves.
+    // The last palette entry holds the "top face" color (e.g. #78A83A grass green).
+    // Shift the selector toward 0.95 (last entry) based on topness × biome_tint_strength.
+    let top_bias = topness * saturate(variation.biome_tint_strength * 3.8);
+    let color_selector = mix(block_hash, 0.95, top_bias);
+
     var identity_color = mix(
         visual.base_color_alpha.rgb,
-        palette_color(visual, block_hash),
+        palette_color(visual, color_selector),
         smoothstep(0.15, 0.95, face_hash)
     );
+    let secondary_color = palette_color(visual, 1.0 - block_hash * 0.65);
 
+    // === Material palette → LIGHTING only (no hue override) ===
+    // material_palette() generates material-type colored output with hardcoded hues.
+    // Extract its luminance ratio to apply material-type shading (shadow/highlight)
+    // without replacing the block's actual color.
+    let mat_seed = vec3<f32>(f32(in.block_visual_id) * 0.11, 3.1, 5.7);
+    let macro_a = fbm_3d(in.world_pos * variation.macro_noise_scale * 0.10 + mat_seed);
+    let macro_b = fbm_3d(in.world_pos * variation.macro_noise_scale * 0.18 + vec3<f32>(7.3, face_hash * 1.9, 2.4));
+    let mat_color = material_palette(kind, identity_color, secondary_color, topness, sideness, macro_a, macro_b);
+    let mat_luma = max(luminance(mat_color), 0.001);
+    let id_luma = max(luminance(identity_color), 0.001);
+    // Clamp the ratio to avoid extreme blowouts in very bright or very dark areas
+    let lighting = clamp(mat_luma / id_luma, 0.35, 2.2);
+    let mat_strength = saturate(variation.macro_noise_strength * 1.6);
+    identity_color = identity_color * mix(1.0, lighting, mat_strength * 0.30);
+
+    // === Oriented grain: surface micro-character (stone veins, wood rings, leaf blades) ===
+    let grain = oriented_grain(kind, in.world_pos, N, face_hash);
+    let grain_shift = material_color_shift(kind, grain);
+    let grain_strength = variation.micro_noise_strength * 1.8;
+    identity_color = clamp(identity_color + grain_shift * grain_strength, vec3<f32>(0.0), vec3<f32>(2.5));
+
+    // === Texture atlas blend ===
     if (in.texture_id >= 0) {
-        let tex_color = atlas_albedo(in.texture_id, in.uv, face_hash, visual.palette.z);
+        let tex_color = atlas_albedo(in.texture_id, in.uv, face_hash, kind);
         let tex_luma = luminance(tex_color);
-        let tex_strength = 0.10 + variation.micro_noise_strength * 0.25;
+        let tex_strength = material_texture_strength(kind, variation.micro_noise_strength * 5.0);
         let luma_detail = (tex_luma - 0.5) * tex_strength;
-        let chroma_detail = (tex_color - vec3<f32>(tex_luma)) * (tex_strength * 0.10);
+        let chroma_detail = (tex_color - vec3<f32>(tex_luma)) * (tex_strength * 0.12);
         identity_color = identity_color * (1.0 + luma_detail) + chroma_detail;
     }
 
-    let broad_gradient = mix(vec3<f32>(0.93, 0.94, 0.965), vec3<f32>(1.055, 1.04, 0.99), topness);
-    let side_warmth = mix(vec3<f32>(1.0), vec3<f32>(1.015, 0.995, 0.965), sideness * (1.0 - bottomness));
+    // === Stylized face gradient (balanced — not crushing bottom faces) ===
+    // Top faces are slightly brighter and cooler; sides slightly warmer
+    let broad_gradient = mix(vec3<f32>(0.91, 0.92, 0.94), vec3<f32>(1.08, 1.05, 1.00), topness);
+    let side_warmth = mix(vec3<f32>(1.0), vec3<f32>(1.03, 0.98, 0.94), sideness * (1.0 - bottomness));
 
     var shaped = identity_color * broad_gradient * side_warmth;
+
     shaped = apply_voxel_variation(
         shaped,
-        in.world_pos + vec3<f32>(macro_warp),
+        in.world_pos + vec3<f32>(macro_warp * 0.22),
         in.block_visual_id,
         in.face_id,
         in.variation_seed,
@@ -721,11 +761,12 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let H = safe_normalize(L + V);
     let radial_up = safe_normalize(in.world_pos);
 
-    let albedo = block_albedo(in) * (1.0 + variation.micro_noise_strength * 0.35 * triplanar_detail(in.world_pos, N));
+    let albedo = block_albedo(in) * (1.0 + variation.micro_noise_strength * 0.45 * triplanar_detail(in.world_pos, N));
 
     let ao_raw = mix(1.0, in.ao, variation.ao_influence);
     let ao_t = clamp((ao_raw - 0.4) / 0.6, 0.0, 1.0);
-    let ao_tint = mix(vec3<f32>(0.64, 0.72, 0.93), vec3<f32>(1.0), ao_t);
+    // Stylized AO: slight blue tint in shadowed corners, quadratic falloff
+    let ao_tint = mix(vec3<f32>(0.62, 0.70, 0.90), vec3<f32>(1.0), ao_t);
     let ao_ambient = ao_raw * ao_raw;
     let ao_direct = mix(ao_raw, 1.0, 0.52);
 
@@ -757,8 +798,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let backlit = pow(saturate(dot(N, -L)), 1.8);
     let rim = sky_ambient * (fresnel * 0.10 + fresnel * backlit * 0.10);
 
-    let subsurface = 0.0;
-    let transmission = global.atmosphere.sun_color.xyz * backlit * (1.0 - shadow) * subsurface * 0.45;
+    // material_subsurface() returns > 0 for leaves (0.22) and water (0.08)
+    let subsurface = material_subsurface(visual.palette.z);
+    let transmission = global.atmosphere.sun_color.xyz * backlit * (1.0 - shadow) * subsurface * 0.55;
 
     let ambient_light = hemi_ambient * (0.85 + roughness * 0.16) * ao_ambient;
 

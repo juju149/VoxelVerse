@@ -15,7 +15,7 @@
     ),
     render: (
         surface: (
-            material: "voxelverse:terrain_layered",
+            material: "voxelverse:cut_stone",
             base_color: "#242421",
             palette: ["#2D2D2A", "#242421", "#1A1A17", "#5C5C57"],
             roughness: 0.90,
@@ -25,17 +25,17 @@
         lighting: (),
         geometry: (
             shape: cube,
-            bevel: 0.018,
-            normal_strength: 0.38,
+            bevel: 0.028,
+            normal_strength: 0.40,
         ),
         variation: (
-            per_voxel_tint: 0.14,
-            per_face_tint: 0.08,
+            per_voxel_tint: 0.18,
+            per_face_tint: 0.10,
             macro_noise_scale: 0.80,
-            macro_noise_strength: 0.10,
+            macro_noise_strength: 0.16,
             micro_noise_scale: 8.0,
-            micro_noise_strength: 0.045,
-            edge_darkening: 0.09,
+            micro_noise_strength: 0.08,
+            edge_darkening: 0.20,
             ao_influence: 1.0,
         ),
         faces: (),
