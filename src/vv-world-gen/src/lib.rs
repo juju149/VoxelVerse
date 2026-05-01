@@ -171,6 +171,10 @@ impl PlanetTerrain {
         })
     }
 
+    pub fn world_seed(&self) -> u32 {
+        self.world_seed
+    }
+
     pub fn geometry(&self) -> PlanetGeometry {
         self.geometry
     }

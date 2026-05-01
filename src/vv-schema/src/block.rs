@@ -1,5 +1,5 @@
 use crate::common::tool::ToolKind;
-use crate::common::{LangKey, ResourceRef, RgbColor, ScriptRef, TagRef};
+use crate::common::{HexColor, LangKey, ResourceRef, ScriptRef, TagRef};
 use crate::loot::DropSpec;
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ pub struct BlockDef {
     pub display_key: Option<LangKey>,
     pub tags: Vec<TagRef>,
     pub mining: BlockMiningDef,
-    pub render: BlockRenderDef,
+    pub render: RawBlockRenderDef,
     pub physics: BlockPhysicsDef,
     pub drops: DropSpec,
     /// Max stack size as an item. Default 64; use 1 for liquids.
@@ -100,46 +100,243 @@ impl Default for SoundMaterial {
 
 // ─── Render component ─────────────────────────────────────────────────────────
 
+pub type BlockRenderDef = RawBlockRenderDef;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct BlockRenderDef {
-    /// Fallback color for LOD and degraded rendering.
-    pub color: RgbColor,
-    pub roughness: f32,
-    pub translucent: bool,
-    /// Emitted light level (0–15).
-    pub emits_light: u8,
-    pub emission: Emission,
-    pub texture: TextureLayout,
-    /// Logical texture resources used by `texture`.
-    ///
-    /// Empty means the renderer should keep using the fallback color.
-    /// References are logical `namespace:name` resources, not filesystem paths.
-    #[serde(default)]
-    pub textures: BlockTextureRefs,
-    /// Dynamic tint (grass, leaves, water based on biome).
-    pub tint: TintMode,
-    /// Stylized material controls consumed by the renderer to reduce visible
-    /// tiling while preserving the block's authored identity.
-    pub material: StylizedMaterialDef,
-    /// Custom model override. Absent = standard cube.
-    #[serde(default)]
-    pub model: Option<ResourceRef>,
+pub struct RawBlockRenderDef {
+    pub surface: RawBlockSurfaceDef,
+    pub lighting: RawBlockLightingDef,
+    pub geometry: RawBlockGeometryDef,
+    pub variation: RawBlockVisualVariation,
+    pub faces: RawBlockFaceVisuals,
+    pub details: Vec<RawBlockDetailDef>,
+    pub meshing: RawBlockMeshingDef,
 }
 
-impl Default for BlockRenderDef {
+impl Default for RawBlockRenderDef {
     fn default() -> Self {
-        BlockRenderDef {
-            color: RgbColor::default(),
-            roughness: 0.7,
-            translucent: false,
-            emits_light: 0,
-            emission: Emission::default(),
-            texture: TextureLayout::Single,
-            textures: BlockTextureRefs::default(),
+        RawBlockRenderDef {
+            surface: RawBlockSurfaceDef::default(),
+            lighting: RawBlockLightingDef::default(),
+            geometry: RawBlockGeometryDef::default(),
+            variation: RawBlockVisualVariation::default(),
+            faces: RawBlockFaceVisuals::default(),
+            details: Vec::new(),
+            meshing: RawBlockMeshingDef::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockSurfaceDef {
+    pub material: BlockMaterialRef,
+    pub base_color: HexColor,
+    pub palette: Vec<HexColor>,
+    pub roughness: f32,
+    pub metallic: f32,
+    pub alpha: f32,
+    pub tint: TintMode,
+    pub texture_layout: TextureLayout,
+    pub textures: BlockTextureRefs,
+}
+
+impl Default for RawBlockSurfaceDef {
+    fn default() -> Self {
+        Self {
+            material: BlockMaterialRef("voxelverse:standard_opaque".to_owned()),
+            base_color: HexColor::default(),
+            palette: Vec::new(),
+            roughness: 1.0,
+            metallic: 0.0,
+            alpha: 1.0,
             tint: TintMode::None,
-            material: StylizedMaterialDef::default(),
-            model: None,
+            texture_layout: TextureLayout::Single,
+            textures: BlockTextureRefs::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockLightingDef {
+    pub emission: Option<HexColor>,
+    /// Emitted light level (0-15).
+    pub emits_light: u8,
+}
+
+impl Default for RawBlockLightingDef {
+    fn default() -> Self {
+        Self {
+            emission: None,
+            emits_light: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockGeometryDef {
+    pub shape: BlockShape,
+    pub bevel: f32,
+    pub normal_strength: f32,
+}
+
+impl Default for RawBlockGeometryDef {
+    fn default() -> Self {
+        Self {
+            shape: BlockShape::Cube,
+            bevel: 0.0,
+            normal_strength: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BlockMaterialRef(pub String);
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BlockDetailRef(pub String);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockShape {
+    Cube,
+    Cross,
+    Fluid,
+    Custom { model: ResourceRef },
+}
+
+impl Default for BlockShape {
+    fn default() -> Self {
+        BlockShape::Cube
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RenderMode {
+    Opaque,
+    Cutout,
+    Transparent,
+    Additive,
+}
+
+impl Default for RenderMode {
+    fn default() -> Self {
+        RenderMode::Opaque
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockVisualVariation {
+    pub per_voxel_tint: f32,
+    pub per_face_tint: f32,
+    pub macro_noise_scale: f32,
+    pub macro_noise_strength: f32,
+    pub micro_noise_scale: f32,
+    pub micro_noise_strength: f32,
+    pub edge_darkening: f32,
+    pub ao_influence: f32,
+    pub biome_tint_strength: f32,
+    pub wetness_response: f32,
+    pub snow_response: f32,
+    pub dust_response: f32,
+}
+
+impl Default for RawBlockVisualVariation {
+    fn default() -> Self {
+        Self {
+            per_voxel_tint: 0.0,
+            per_face_tint: 0.0,
+            macro_noise_scale: 1.0,
+            macro_noise_strength: 0.0,
+            micro_noise_scale: 1.0,
+            micro_noise_strength: 0.0,
+            edge_darkening: 0.0,
+            ao_influence: 1.0,
+            biome_tint_strength: 0.0,
+            wetness_response: 0.0,
+            snow_response: 0.0,
+            dust_response: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockFaceVisuals {
+    pub top: Option<RawBlockFaceVisual>,
+    pub side: Option<RawBlockFaceVisual>,
+    pub bottom: Option<RawBlockFaceVisual>,
+    pub north: Option<RawBlockFaceVisual>,
+    pub south: Option<RawBlockFaceVisual>,
+    pub east: Option<RawBlockFaceVisual>,
+    pub west: Option<RawBlockFaceVisual>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockFaceVisual {
+    pub color_bias: Option<HexColor>,
+    pub detail_bias: Vec<BlockDetailRef>,
+}
+
+impl Default for RawBlockFaceVisual {
+    fn default() -> Self {
+        Self {
+            color_bias: None,
+            detail_bias: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockDetailDef {
+    pub kind: BlockDetailRef,
+    pub density: f32,
+    pub color: Option<HexColor>,
+    pub min_size: f32,
+    pub max_size: f32,
+    pub slope_bias: f32,
+}
+
+impl Default for RawBlockDetailDef {
+    fn default() -> Self {
+        Self {
+            kind: BlockDetailRef("voxelverse:generic_detail".to_owned()),
+            density: 0.0,
+            color: None,
+            min_size: 0.0,
+            max_size: 0.0,
+            slope_bias: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockMeshingDef {
+    pub render_mode: RenderMode,
+    pub occludes: bool,
+    pub greedy_merge: bool,
+    pub casts_shadow: bool,
+    pub receives_ao: bool,
+}
+
+impl Default for RawBlockMeshingDef {
+    fn default() -> Self {
+        Self {
+            render_mode: RenderMode::Opaque,
+            occludes: true,
+            greedy_merge: true,
+            casts_shadow: true,
+            receives_ao: true,
         }
     }
 }
@@ -176,22 +373,6 @@ pub struct BlockTextureRefs {
     pub west: Option<ResourceRef>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct Emission {
-    pub emits: bool,
-    pub intensity: f32,
-}
-
-impl Default for Emission {
-    fn default() -> Self {
-        Emission {
-            emits: false,
-            intensity: 0.0,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TintMode {
@@ -204,56 +385,6 @@ pub enum TintMode {
 impl Default for TintMode {
     fn default() -> Self {
         TintMode::None
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct StylizedMaterialDef {
-    pub visual_type: VisualMaterialType,
-    pub secondary_color: Option<RgbColor>,
-    pub texture_influence: f32,
-    pub block_variation: f32,
-    pub face_variation: f32,
-    pub macro_variation: f32,
-    pub detail_strength: f32,
-}
-
-impl Default for StylizedMaterialDef {
-    fn default() -> Self {
-        Self {
-            visual_type: VisualMaterialType::Generic,
-            secondary_color: None,
-            texture_influence: 1.0,
-            block_variation: 0.08,
-            face_variation: 0.04,
-            macro_variation: 0.05,
-            detail_strength: 0.03,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum VisualMaterialType {
-    Generic,
-    Grass,
-    Dirt,
-    Snow,
-    Stone,
-    Sand,
-    Wood,
-    Leaves,
-    Ice,
-    CutStone,
-    Planks,
-    Ore,
-    Water,
-}
-
-impl Default for VisualMaterialType {
-    fn default() -> Self {
-        VisualMaterialType::Generic
     }
 }
 
@@ -358,7 +489,7 @@ pub enum StatePropertyKind {
 #[serde(deny_unknown_fields)]
 pub struct StateRenderOverride {
     pub when: Vec<StateCondition>,
-    pub render: BlockRenderDef,
+    pub patch: BlockRenderPatchDef,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -366,6 +497,86 @@ pub struct StateRenderOverride {
 pub struct StateCondition {
     pub property: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct BlockRenderPatchDef {
+    pub surface: Option<RawBlockSurfacePatch>,
+    pub lighting: Option<RawBlockLightingPatch>,
+    pub geometry: Option<RawBlockGeometryPatch>,
+    pub variation: Option<RawBlockVisualVariationPatch>,
+    pub faces: Option<RawBlockFaceVisualsPatch>,
+    pub details: Option<Vec<RawBlockDetailDef>>,
+    pub meshing: Option<RawBlockMeshingPatch>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockSurfacePatch {
+    pub material: Option<BlockMaterialRef>,
+    pub base_color: Option<HexColor>,
+    pub palette: Option<Vec<HexColor>>,
+    pub roughness: Option<f32>,
+    pub metallic: Option<f32>,
+    pub alpha: Option<f32>,
+    pub tint: Option<TintMode>,
+    pub texture_layout: Option<TextureLayout>,
+    pub textures: Option<BlockTextureRefs>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockLightingPatch {
+    pub emission: Option<Option<HexColor>>,
+    pub emits_light: Option<u8>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockGeometryPatch {
+    pub shape: Option<BlockShape>,
+    pub bevel: Option<f32>,
+    pub normal_strength: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockVisualVariationPatch {
+    pub per_voxel_tint: Option<f32>,
+    pub per_face_tint: Option<f32>,
+    pub macro_noise_scale: Option<f32>,
+    pub macro_noise_strength: Option<f32>,
+    pub micro_noise_scale: Option<f32>,
+    pub micro_noise_strength: Option<f32>,
+    pub edge_darkening: Option<f32>,
+    pub ao_influence: Option<f32>,
+    pub biome_tint_strength: Option<f32>,
+    pub wetness_response: Option<f32>,
+    pub snow_response: Option<f32>,
+    pub dust_response: Option<f32>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockFaceVisualsPatch {
+    pub top: Option<Option<RawBlockFaceVisual>>,
+    pub side: Option<Option<RawBlockFaceVisual>>,
+    pub bottom: Option<Option<RawBlockFaceVisual>>,
+    pub north: Option<Option<RawBlockFaceVisual>>,
+    pub south: Option<Option<RawBlockFaceVisual>>,
+    pub east: Option<Option<RawBlockFaceVisual>>,
+    pub west: Option<Option<RawBlockFaceVisual>>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockMeshingPatch {
+    pub render_mode: Option<RenderMode>,
+    pub occludes: Option<bool>,
+    pub greedy_merge: Option<bool>,
+    pub casts_shadow: Option<bool>,
+    pub receives_ao: Option<bool>,
 }
 
 // ─── Placement component ──────────────────────────────────────────────────────

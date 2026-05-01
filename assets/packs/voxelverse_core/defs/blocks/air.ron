@@ -7,9 +7,23 @@
         sound_material: grass,
     ),
     render: (
-        color: (r: 0.0, g: 0.0, b: 0.0),
-        translucent: true,
-        texture: single,
+        surface: (
+            material: "voxelverse:standard_opaque",
+            base_color: "#000000",
+            alpha: 0.0,
+        ),
+        lighting: (),
+        geometry: (shape: cube),
+        variation: (),
+        faces: (),
+        details: [],
+        meshing: (
+            render_mode: transparent,
+            occludes: false,
+            greedy_merge: false,
+            casts_shadow: false,
+            receives_ao: false,
+        ),
     ),
     physics: (
         phase: passable,

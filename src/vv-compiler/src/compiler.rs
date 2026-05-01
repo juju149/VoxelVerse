@@ -1,24 +1,29 @@
 use std::{collections::HashMap, path::Path, str::FromStr};
 
+use smallvec::SmallVec;
 use vv_pack::{load_packs_from_assets, PackLoadOrder, RawDocument};
 use vv_registry::{
-    BiomeId, BlockId, CompiledBiome, CompiledBiomeRelief, CompiledBlock, CompiledBlockMining,
-    CompiledBlockPhysics, CompiledBlockRender, CompiledClimateCurves, CompiledClimateRange,
+    BiomeId, BlockId, BlockVisualFlags, BlockVisualId, CompiledBiome, CompiledBiomeRelief,
+    CompiledBlock, CompiledBlockDetail, CompiledBlockFaceVisual, CompiledBlockFaceVisuals,
+    CompiledBlockMeshing, CompiledBlockMining, CompiledBlockPhysics, CompiledBlockRender,
+    CompiledBlockShape, CompiledBlockVisual, CompiledBlockVisualVariation, CompiledClimateCurves,
+    CompiledClimateRange,
     CompiledClimateSampleRanges, CompiledClimateTags, CompiledContent, CompiledDerivedTagRule,
     CompiledDrops, CompiledEntity, CompiledFauna, CompiledFloatRange, CompiledFlora,
     CompiledFloraFeature, CompiledFloraPlacement, CompiledIdealRange, CompiledIngredient,
     CompiledItem, CompiledItemKind, CompiledLootEntry, CompiledLootPool, CompiledLootTable,
-    CompiledMaterialPhase, CompiledOre, CompiledOreVein, CompiledPlaceable, CompiledPlanetType,
-    CompiledRecipe, CompiledRecipePattern, CompiledStructure, CompiledStylizedMaterial,
-    CompiledSurfaceLayer, CompiledTag, CompiledTextureLayout, CompiledTextureResource,
-    CompiledTintMode, CompiledToolKind, CompiledVisualMaterialType, CompiledWeather,
-    CompiledWorldSettings, ContentKey, EntityId, FaunaId, FloraId, ItemId, LootTableId, OreId,
-    PlaceableId, PlanetTypeId, RecipeId, StructureId, TagDomain, TagId, TaggedContent, TextureId,
-    WeatherId,
+    CompiledMaterialPhase, CompiledMaterialShader, CompiledOre, CompiledOreVein, CompiledPlaceable,
+    CompiledPlanetType, CompiledRecipe, CompiledRecipePattern, CompiledRenderMode,
+    CompiledStructure, CompiledSurfaceLayer, CompiledTag, CompiledTextureLayout,
+    CompiledTextureResource, CompiledTintMode, CompiledToolKind, CompiledWeather,
+    CompiledWorldSettings, ContentKey, EntityId, FaunaId, FloraId, ItemId, LootTableId,
+    MaterialId, OreId, PlaceableId, PlanetTypeId, RecipeId, RuntimeBlockVisual,
+    RuntimeVisualVariation, StructureId, TagDomain, TagId, TaggedContent, TextureId, WeatherId,
 };
 use vv_schema::{
     block::{
-        BlockDef, BlockTextureRefs, MaterialPhase, TextureLayout, TintMode, VisualMaterialType,
+        BlockDef, BlockShape, BlockTextureRefs, MaterialPhase, RawBlockDetailDef,
+        RawBlockFaceVisual, RawBlockVisualVariation, RenderMode, TextureLayout, TintMode,
     },
     common::tool::ToolKind,
     common::{BlockRef, EntityRef, ItemRef, LootTableRef, PlaceableRef, ResourceRef, TagRef},
@@ -163,13 +168,15 @@ impl ContentCompiler {
         content.climate_tags = self.compile_climate_tags(load_order, &index);
         content.climate_curves = self.compile_climate_curves(load_order);
         let texture_ids = self.compile_texture_registry(&block_docs, &mut content);
+        let mut material_ids = HashMap::<ContentKey, MaterialId>::new();
 
         for (key, doc) in &tag_docs {
             let tag = self.compile_tag(doc, &index);
             content.tags.push(key.clone(), tag);
         }
         for (key, doc) in &block_docs {
-            let block = self.compile_block(doc, &index, &texture_ids);
+            let visual_id = self.compile_block_visual(key, doc, &mut content, &mut material_ids);
+            let block = self.compile_block(doc, &index, &texture_ids, visual_id);
             content.blocks.push(key.clone(), block);
         }
         for (key, doc) in &placeable_docs {
@@ -271,8 +278,24 @@ impl ContentCompiler {
         doc: &RawDocument<BlockDef>,
         index: &ReferenceIndex,
         texture_ids: &HashMap<ContentKey, TextureId>,
+        visual_id: BlockVisualId,
     ) -> CompiledBlock {
         self.validate_drop_spec("block", doc, &doc.value.drops, index);
+        let base_color = self.block_base_color(doc);
+        self.validate_block_render(doc);
+        let roughness =
+            self.clamp_unit(doc, "render.surface.roughness", doc.value.render.surface.roughness);
+        let metallic =
+            self.clamp_unit(doc, "render.surface.metallic", doc.value.render.surface.metallic);
+        let alpha = self.clamp_unit(doc, "render.surface.alpha", doc.value.render.surface.alpha);
+        let emission = doc
+            .value
+            .render
+            .lighting
+            .emission
+            .as_ref()
+            .map(|color| self.parse_hex_color(doc, "render.lighting.emission", color));
+        let material = self.compile_compiled_block_visual(doc);
         CompiledBlock {
             display_key: doc.value.display_key.as_ref().map(|key| key.0.clone()),
             stack_max: doc.value.stack_max,
@@ -294,23 +317,29 @@ impl ContentCompiler {
                 drag: doc.value.physics.drag,
             },
             render: CompiledBlockRender {
-                color: [
-                    doc.value.render.color.r,
-                    doc.value.render.color.g,
-                    doc.value.render.color.b,
-                ],
-                roughness: doc.value.render.roughness,
-                translucent: doc.value.render.translucent,
-                emits_light: doc.value.render.emits_light,
-                tint: compiled_tint_mode(&doc.value.render.tint),
-                material: compiled_stylized_material(doc),
-                texture_layout: match doc.value.render.texture {
+                visual_id,
+                color: [base_color[0], base_color[1], base_color[2]],
+                roughness,
+                metallic,
+                emission,
+                alpha,
+                render_mode: compiled_render_mode(&doc.value.render.meshing.render_mode),
+                emits_light: doc.value.render.lighting.emits_light,
+                tint: compiled_tint_mode(&doc.value.render.surface.tint),
+                shape: compiled_block_shape(&doc.value.render.geometry.shape),
+                meshing: CompiledBlockMeshing {
+                    occludes: doc.value.render.meshing.occludes,
+                    greedy_merge: doc.value.render.meshing.greedy_merge,
+                    casts_shadow: doc.value.render.meshing.casts_shadow,
+                    receives_ao: doc.value.render.meshing.receives_ao,
+                },
+                material,
+                texture_layout: match doc.value.render.surface.texture_layout {
                     TextureLayout::Single => CompiledTextureLayout::Single,
                     TextureLayout::Sides => CompiledTextureLayout::Sides,
                     TextureLayout::Custom => CompiledTextureLayout::Custom,
                 },
                 textures: self.compile_block_textures(doc, texture_ids),
-                model: doc.value.render.model.as_ref().map(|model| model.0.clone()),
             },
             drops: self.compile_drop_spec("block", doc, &doc.value.drops, index),
         }
@@ -323,7 +352,7 @@ impl ContentCompiler {
     ) -> HashMap<ContentKey, TextureId> {
         let mut ids = HashMap::new();
         for (_, doc) in block_docs {
-            for resource in block_texture_refs(&doc.value.render.textures) {
+            for resource in block_texture_refs(&doc.value.render.surface.textures) {
                 let Some(key) = self.parse_texture_ref("block", doc, resource) else {
                     continue;
                 };
@@ -334,12 +363,297 @@ impl ContentCompiler {
         ids
     }
 
+    fn compile_block_visual(
+        &mut self,
+        block_key: &ContentKey,
+        doc: &RawDocument<BlockDef>,
+        content: &mut CompiledContent,
+        material_ids: &mut HashMap<ContentKey, MaterialId>,
+    ) -> BlockVisualId {
+        let compiled = self.compile_compiled_block_visual(doc);
+        let material_id = self.material_id(doc, &compiled.material_key, content, material_ids);
+        let palette_offset = content.block_visual_palettes.len() as u32;
+        let mut palette = compiled.palette.clone();
+        if palette.is_empty() {
+            palette.push(compiled.base_color);
+        }
+        content
+            .block_visual_palettes
+            .extend(palette.iter().copied());
+        let palette_len = palette.len() as u32;
+        let flags = BlockVisualFlags {
+            transparent: !matches!(doc.value.render.meshing.render_mode, RenderMode::Opaque),
+            emissive: compiled.emission.is_some() || doc.value.render.lighting.emits_light > 0,
+            biome_tinted: compiled.variation.biome_tint_strength > 0.0,
+            occludes: doc.value.render.meshing.occludes,
+            receives_ao: doc.value.render.meshing.receives_ao,
+        };
+        let runtime = RuntimeBlockVisual {
+            material_id,
+            base_color: compiled.base_color,
+            palette_offset,
+            palette_len,
+            roughness: compiled.roughness,
+            metallic: compiled.metallic,
+            emission: compiled.emission.unwrap_or([0.0, 0.0, 0.0, 0.0]),
+            alpha: compiled.alpha,
+            bevel: compiled.bevel,
+            normal_strength: compiled.normal_strength,
+            variation: RuntimeVisualVariation {
+                per_voxel_tint: compiled.variation.per_voxel_tint,
+                per_face_tint: compiled.variation.per_face_tint,
+                macro_noise_scale: compiled.variation.macro_noise_scale,
+                macro_noise_strength: compiled.variation.macro_noise_strength,
+                micro_noise_scale: compiled.variation.micro_noise_scale,
+                micro_noise_strength: compiled.variation.micro_noise_strength,
+                edge_darkening: compiled.variation.edge_darkening,
+                ao_influence: compiled.variation.ao_influence,
+                biome_tint_strength: compiled.variation.biome_tint_strength,
+                wetness_response: compiled.variation.wetness_response,
+                snow_response: compiled.variation.snow_response,
+                dust_response: compiled.variation.dust_response,
+            },
+            flags,
+        };
+        content.block_visuals.push(block_key.clone(), runtime)
+    }
+
+    fn material_id(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        key: &ContentKey,
+        content: &mut CompiledContent,
+        material_ids: &mut HashMap<ContentKey, MaterialId>,
+    ) -> MaterialId {
+        if let Some(id) = material_ids.get(key) {
+            return *id;
+        }
+        let id = content.materials.push(
+            key.clone(),
+            CompiledMaterialShader {
+                shader_key: key.clone(),
+            },
+        );
+        material_ids.insert(key.clone(), id);
+        if !is_known_material_kind(key.name()) {
+            self.diagnostics.push(CompileDiagnostic::InvalidReference {
+                owner: "block".to_owned(),
+                path: doc.source_path.clone(),
+                reference: key.to_string(),
+                expected: ReferenceKind::Material,
+                reason: "unknown voxel material shader kind".to_owned(),
+            });
+        }
+        id
+    }
+
+    fn compile_compiled_block_visual(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+    ) -> CompiledBlockVisual {
+        let render = &doc.value.render;
+        let base_color = self.block_base_color(doc);
+        let emission = render
+            .lighting
+            .emission
+            .as_ref()
+            .map(|color| self.parse_hex_color(doc, "render.lighting.emission", color));
+        let mut palette = SmallVec::<[[f32; 4]; 8]>::new();
+        for (index, color) in render.surface.palette.iter().enumerate() {
+            palette.push(self.parse_hex_color(
+                doc,
+                &format!("render.surface.palette[{index}]"),
+                color,
+            ));
+        }
+        let variation = self.compile_visual_variation(doc, render.variation);
+        CompiledBlockVisual {
+            material_key: self.material_key(doc, &render.surface.material.0),
+            base_color,
+            palette,
+            roughness: self.clamp_unit(doc, "render.surface.roughness", render.surface.roughness),
+            metallic: self.clamp_unit(doc, "render.surface.metallic", render.surface.metallic),
+            emission,
+            alpha: self.clamp_unit(doc, "render.surface.alpha", render.surface.alpha),
+            bevel: self.clamp_range(doc, "render.geometry.bevel", render.geometry.bevel, 0.0, 0.12),
+            normal_strength: self.clamp_unit(
+                doc,
+                "render.geometry.normal_strength",
+                render.geometry.normal_strength,
+            ),
+            variation,
+            faces: CompiledBlockFaceVisuals {
+                top: self.compile_face_visual(doc, "render.faces.top", render.faces.top.as_ref()),
+                side: self.compile_face_visual(
+                    doc,
+                    "render.faces.side",
+                    render.faces.side.as_ref(),
+                ),
+                bottom: self.compile_face_visual(
+                    doc,
+                    "render.faces.bottom",
+                    render.faces.bottom.as_ref(),
+                ),
+                north: self.compile_face_visual(
+                    doc,
+                    "render.faces.north",
+                    render.faces.north.as_ref(),
+                ),
+                south: self.compile_face_visual(
+                    doc,
+                    "render.faces.south",
+                    render.faces.south.as_ref(),
+                ),
+                east: self.compile_face_visual(
+                    doc,
+                    "render.faces.east",
+                    render.faces.east.as_ref(),
+                ),
+                west: self.compile_face_visual(
+                    doc,
+                    "render.faces.west",
+                    render.faces.west.as_ref(),
+                ),
+            },
+            details: render
+                .details
+                .iter()
+                .enumerate()
+                .map(|(index, detail)| self.compile_detail(doc, index, detail, base_color))
+                .collect(),
+        }
+    }
+
+    fn compile_visual_variation(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        variation: RawBlockVisualVariation,
+    ) -> CompiledBlockVisualVariation {
+        CompiledBlockVisualVariation {
+            per_voxel_tint: self.clamp_unit(
+                doc,
+                "render.variation.per_voxel_tint",
+                variation.per_voxel_tint,
+            ),
+            per_face_tint: self.clamp_unit(
+                doc,
+                "render.variation.per_face_tint",
+                variation.per_face_tint,
+            ),
+            macro_noise_scale: self.positive_scale(
+                doc,
+                "render.variation.macro_noise_scale",
+                variation.macro_noise_scale,
+            ),
+            macro_noise_strength: self.clamp_unit(
+                doc,
+                "render.variation.macro_noise_strength",
+                variation.macro_noise_strength,
+            ),
+            micro_noise_scale: self.positive_scale(
+                doc,
+                "render.variation.micro_noise_scale",
+                variation.micro_noise_scale,
+            ),
+            micro_noise_strength: self.clamp_unit(
+                doc,
+                "render.variation.micro_noise_strength",
+                variation.micro_noise_strength,
+            ),
+            edge_darkening: self.clamp_unit(
+                doc,
+                "render.variation.edge_darkening",
+                variation.edge_darkening,
+            ),
+            ao_influence: self.clamp_unit(
+                doc,
+                "render.variation.ao_influence",
+                variation.ao_influence,
+            ),
+            biome_tint_strength: self.clamp_unit(
+                doc,
+                "render.variation.biome_tint_strength",
+                variation.biome_tint_strength,
+            ),
+            wetness_response: self.clamp_unit(
+                doc,
+                "render.variation.wetness_response",
+                variation.wetness_response,
+            ),
+            snow_response: self.clamp_unit(
+                doc,
+                "render.variation.snow_response",
+                variation.snow_response,
+            ),
+            dust_response: self.clamp_unit(
+                doc,
+                "render.variation.dust_response",
+                variation.dust_response,
+            ),
+        }
+    }
+
+    fn compile_face_visual(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        field: &str,
+        face: Option<&RawBlockFaceVisual>,
+    ) -> Option<CompiledBlockFaceVisual> {
+        let face = face?;
+        Some(CompiledBlockFaceVisual {
+            color_bias: face
+                .color_bias
+                .as_ref()
+                .map(|color| self.parse_hex_color(doc, &format!("{field}.color_bias"), color))
+                .unwrap_or([1.0, 1.0, 1.0, 1.0]),
+            detail_bias: face
+                .detail_bias
+                .iter()
+                .map(|detail| detail.0.clone())
+                .collect(),
+        })
+    }
+
+    fn compile_detail(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        index: usize,
+        detail: &RawBlockDetailDef,
+        default_color: [f32; 4],
+    ) -> CompiledBlockDetail {
+        let field = format!("render.details[{index}]");
+        self.parse_content_ref(doc, &format!("{field}.kind"), &detail.kind.0);
+        let density = self.clamp_unit(doc, &format!("{field}.density"), detail.density);
+        let min_size = self.positive_scale(doc, &format!("{field}.min_size"), detail.min_size);
+        let max_size = self.positive_scale(doc, &format!("{field}.max_size"), detail.max_size);
+        if max_size < min_size {
+            self.invalid_value(
+                doc,
+                &format!("{field}.max_size"),
+                &max_size.to_string(),
+                "max_size must be greater than or equal to min_size",
+            );
+        }
+        CompiledBlockDetail {
+            kind: detail.kind.0.clone(),
+            density,
+            color: detail
+                .color
+                .as_ref()
+                .map(|color| self.parse_hex_color(doc, &format!("{field}.color"), color))
+                .unwrap_or(default_color),
+            min_size,
+            max_size: max_size.max(min_size),
+            slope_bias: self.clamp_unit(doc, &format!("{field}.slope_bias"), detail.slope_bias),
+        }
+    }
+
     fn compile_block_textures(
         &mut self,
         doc: &RawDocument<BlockDef>,
         texture_ids: &HashMap<ContentKey, TextureId>,
     ) -> vv_registry::CompiledBlockTextures {
-        let refs = &doc.value.render.textures;
+        let refs = &doc.value.render.surface.textures;
         vv_registry::CompiledBlockTextures {
             single: self.resolve_texture_ref(doc, refs.single.as_ref(), texture_ids),
             side: self.resolve_texture_ref(doc, refs.side.as_ref(), texture_ids),
@@ -900,6 +1214,75 @@ impl ContentCompiler {
         }
     }
 
+    fn validate_block_render(&mut self, doc: &RawDocument<BlockDef>) {
+        let render = &doc.value.render;
+        self.material_key(doc, &render.surface.material.0);
+        if let BlockShape::Custom { model } = &render.geometry.shape {
+            self.parse_resource_ref("block", doc, model, ReferenceKind::Resource);
+        }
+        for texture in block_texture_refs(&render.surface.textures) {
+            self.parse_texture_ref("block", doc, texture);
+        }
+        for detail in &render.details {
+            self.parse_content_ref(doc, "render.details.kind", &detail.kind.0);
+        }
+        for face in [
+            render.faces.top.as_ref(),
+            render.faces.side.as_ref(),
+            render.faces.bottom.as_ref(),
+            render.faces.north.as_ref(),
+            render.faces.south.as_ref(),
+            render.faces.east.as_ref(),
+            render.faces.west.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            for detail in &face.detail_bias {
+                self.parse_content_ref(doc, "render.faces.detail_bias", &detail.0);
+            }
+        }
+
+        match (doc.value.physics.phase, &render.meshing.render_mode) {
+            (MaterialPhase::Liquid, RenderMode::Opaque) => self.invalid_value(
+                doc,
+                "render.meshing.render_mode",
+                "opaque",
+                "liquid blocks must use transparent, additive, or cutout render mode",
+            ),
+            (MaterialPhase::Passable, RenderMode::Opaque) if render.meshing.occludes => {
+                self.invalid_value(
+                    doc,
+                    "render.meshing.occludes",
+                    "true",
+                    "passable opaque-occluding blocks would hide neighboring faces incorrectly",
+                );
+            }
+            _ => {}
+        }
+
+        if matches!(
+            render.meshing.render_mode,
+            RenderMode::Transparent | RenderMode::Additive
+        ) && render.meshing.occludes
+        {
+            self.invalid_value(
+                doc,
+                "render.meshing.occludes",
+                "true",
+                "transparent/additive blocks should not occlude neighboring voxel faces",
+            );
+        }
+        if matches!(render.geometry.shape, BlockShape::Cross) && render.meshing.occludes {
+            self.invalid_value(
+                doc,
+                "render.meshing.occludes",
+                "true",
+                "cross-shaped blocks should not occlude neighboring voxel faces",
+            );
+        }
+    }
+
     fn compile_drop_spec<T>(
         &mut self,
         owner: &str,
@@ -1102,6 +1485,157 @@ impl ContentCompiler {
         }
     }
 
+    fn parse_resource_ref<T>(
+        &mut self,
+        owner: &str,
+        doc: &RawDocument<T>,
+        reference: &ResourceRef,
+        expected: ReferenceKind,
+    ) -> Option<ContentKey> {
+        match ContentKey::from_str(&reference.0) {
+            Ok(key) => Some(key),
+            Err(err) => {
+                self.diagnostics.push(CompileDiagnostic::InvalidReference {
+                    owner: owner.to_owned(),
+                    path: doc.source_path.clone(),
+                    reference: reference.0.clone(),
+                    expected,
+                    reason: err.to_string(),
+                });
+                None
+            }
+        }
+    }
+
+    fn parse_content_ref<T>(
+        &mut self,
+        doc: &RawDocument<T>,
+        field: &str,
+        reference: &str,
+    ) -> Option<ContentKey> {
+        match ContentKey::from_str(reference) {
+            Ok(key) => Some(key),
+            Err(err) => {
+                self.diagnostics.push(CompileDiagnostic::InvalidValue {
+                    owner: "block".to_owned(),
+                    path: doc.source_path.clone(),
+                    field: field.to_owned(),
+                    value: reference.to_owned(),
+                    reason: err.to_string(),
+                });
+                None
+            }
+        }
+    }
+
+    fn material_key<T>(&mut self, doc: &RawDocument<T>, material_name: &str) -> ContentKey {
+        if material_name.contains(':') {
+            match ContentKey::from_str(material_name) {
+                Ok(key) => key,
+                Err(err) => {
+                    self.diagnostics.push(CompileDiagnostic::InvalidReference {
+                        owner: "block".to_owned(),
+                        path: doc.source_path.clone(),
+                        reference: material_name.to_owned(),
+                        expected: ReferenceKind::Material,
+                        reason: err.to_string(),
+                    });
+                    ContentKey::new(&doc.pack_namespace, "standard_opaque")
+                        .expect("fallback material key is valid")
+                }
+            }
+        } else {
+            ContentKey::new(&doc.pack_namespace, material_name).unwrap_or_else(|err| {
+                self.diagnostics.push(CompileDiagnostic::InvalidReference {
+                    owner: "block".to_owned(),
+                    path: doc.source_path.clone(),
+                    reference: material_name.to_owned(),
+                    expected: ReferenceKind::Material,
+                    reason: err.to_string(),
+                });
+                ContentKey::new(&doc.pack_namespace, "standard_opaque")
+                    .expect("fallback material key is valid")
+            })
+        }
+    }
+
+    fn block_base_color(&mut self, doc: &RawDocument<BlockDef>) -> [f32; 4] {
+        self.parse_hex_color(
+            doc,
+            "render.surface.base_color",
+            &doc.value.render.surface.base_color,
+        )
+    }
+
+    fn parse_hex_color<T>(
+        &mut self,
+        doc: &RawDocument<T>,
+        field: &str,
+        color: &vv_schema::common::HexColor,
+    ) -> [f32; 4] {
+        match parse_hex_color(&color.0) {
+            Some(color) => color,
+            None => {
+                self.invalid_value(
+                    doc,
+                    field,
+                    &color.0,
+                    "expected #RRGGBB or #RRGGBBAA hex color",
+                );
+                [1.0, 0.0, 1.0, 1.0]
+            }
+        }
+    }
+
+    fn clamp_unit<T>(&mut self, doc: &RawDocument<T>, field: &str, value: f32) -> f32 {
+        self.clamp_range(doc, field, value, 0.0, 1.0)
+    }
+
+    fn positive_scale<T>(&mut self, doc: &RawDocument<T>, field: &str, value: f32) -> f32 {
+        if value > 0.0 && value.is_finite() {
+            value
+        } else {
+            self.invalid_value(
+                doc,
+                field,
+                &value.to_string(),
+                "expected a positive finite value",
+            );
+            1.0
+        }
+    }
+
+    fn clamp_range<T>(
+        &mut self,
+        doc: &RawDocument<T>,
+        field: &str,
+        value: f32,
+        min: f32,
+        max: f32,
+    ) -> f32 {
+        if value.is_finite() && value >= min && value <= max {
+            value
+        } else {
+            self.invalid_value(
+                doc,
+                field,
+                &value.to_string(),
+                &format!("expected a finite value between {min} and {max}"),
+            );
+            value.clamp(min, max)
+        }
+    }
+
+    fn invalid_value<T>(&mut self, doc: &RawDocument<T>, field: &str, value: &str, reason: &str) {
+        self.diagnostics.push(CompileDiagnostic::InvalidValue {
+            owner: "block".to_owned(),
+            path: doc.source_path.clone(),
+            field: field.to_owned(),
+            value: value.to_owned(),
+            reason: reason.to_owned(),
+        });
+    }
+
     fn resolve_key<I>(
         &mut self,
         owner: &str,
@@ -1253,54 +1787,59 @@ fn compiled_tint_mode(mode: &TintMode) -> CompiledTintMode {
     }
 }
 
-fn compiled_stylized_material(doc: &RawDocument<BlockDef>) -> CompiledStylizedMaterial {
-    let material = &doc.value.render.material;
-    let secondary = material
-        .secondary_color
-        .as_ref()
-        .map(|color| [color.r, color.g, color.b])
-        .unwrap_or_else(|| {
-            default_secondary_color(
-                doc.value.render.color.r,
-                doc.value.render.color.g,
-                doc.value.render.color.b,
-            )
-        });
-    CompiledStylizedMaterial {
-        visual_type: compiled_visual_material_type(material.visual_type),
-        secondary_color: secondary,
-        texture_influence: material.texture_influence.clamp(0.0, 1.0),
-        block_variation: material.block_variation.clamp(0.0, 0.5),
-        face_variation: material.face_variation.clamp(0.0, 0.35),
-        macro_variation: material.macro_variation.clamp(0.0, 0.4),
-        detail_strength: material.detail_strength.clamp(0.0, 0.25),
+fn compiled_render_mode(mode: &RenderMode) -> CompiledRenderMode {
+    match mode {
+        RenderMode::Opaque => CompiledRenderMode::Opaque,
+        RenderMode::Cutout => CompiledRenderMode::Cutout,
+        RenderMode::Transparent => CompiledRenderMode::Transparent,
+        RenderMode::Additive => CompiledRenderMode::Additive,
     }
 }
 
-fn default_secondary_color(r: f32, g: f32, b: f32) -> [f32; 3] {
-    [
-        (r * 1.12 + 0.025).min(1.0),
-        (g * 1.08 + 0.020).min(1.0),
-        (b * 0.96 + 0.015).min(1.0),
-    ]
+fn compiled_block_shape(shape: &BlockShape) -> CompiledBlockShape {
+    match shape {
+        BlockShape::Cube => CompiledBlockShape::Cube,
+        BlockShape::Cross => CompiledBlockShape::Cross,
+        BlockShape::Fluid => CompiledBlockShape::Fluid,
+        BlockShape::Custom { model } => CompiledBlockShape::Custom {
+            model: model.0.clone(),
+        },
+    }
 }
 
-fn compiled_visual_material_type(kind: VisualMaterialType) -> CompiledVisualMaterialType {
-    match kind {
-        VisualMaterialType::Generic => CompiledVisualMaterialType::Generic,
-        VisualMaterialType::Grass => CompiledVisualMaterialType::Grass,
-        VisualMaterialType::Dirt => CompiledVisualMaterialType::Dirt,
-        VisualMaterialType::Snow => CompiledVisualMaterialType::Snow,
-        VisualMaterialType::Stone => CompiledVisualMaterialType::Stone,
-        VisualMaterialType::Sand => CompiledVisualMaterialType::Sand,
-        VisualMaterialType::Wood => CompiledVisualMaterialType::Wood,
-        VisualMaterialType::Leaves => CompiledVisualMaterialType::Leaves,
-        VisualMaterialType::Ice => CompiledVisualMaterialType::Ice,
-        VisualMaterialType::CutStone => CompiledVisualMaterialType::CutStone,
-        VisualMaterialType::Planks => CompiledVisualMaterialType::Planks,
-        VisualMaterialType::Ore => CompiledVisualMaterialType::Ore,
-        VisualMaterialType::Water => CompiledVisualMaterialType::Water,
+fn parse_hex_color(value: &str) -> Option<[f32; 4]> {
+    let hex = value.strip_prefix('#')?;
+    let parse = |range: std::ops::Range<usize>| u8::from_str_radix(&hex[range], 16).ok();
+    match hex.len() {
+        6 => Some([
+            parse(0..2)? as f32 / 255.0,
+            parse(2..4)? as f32 / 255.0,
+            parse(4..6)? as f32 / 255.0,
+            1.0,
+        ]),
+        8 => Some([
+            parse(0..2)? as f32 / 255.0,
+            parse(2..4)? as f32 / 255.0,
+            parse(4..6)? as f32 / 255.0,
+            parse(6..8)? as f32 / 255.0,
+        ]),
+        _ => None,
     }
+}
+
+fn is_known_material_kind(name: &str) -> bool {
+    matches!(
+        name,
+        "standard_opaque"
+            | "terrain_layered"
+            | "organic"
+            | "wood_grain"
+            | "foliage"
+            | "liquid"
+            | "emissive_crystal"
+            | "cut_stone"
+            | "ore"
+    )
 }
 
 fn block_texture_refs(textures: &BlockTextureRefs) -> impl Iterator<Item = &ResourceRef> {

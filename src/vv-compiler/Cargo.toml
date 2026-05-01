@@ -8,6 +8,13 @@ authors.workspace = true
 vv-pack = { path = "../vv-pack" }
 vv-registry = { path = "../vv-registry" }
 vv-schema = { path = "../vv-schema" }
+smallvec = "1.15.1"
 
 [dev-dependencies]
 ron = { workspace = true }
+vv-config = { path = "../vv-config" }
+vv-core = { path = "../vv-core" }
+vv-mesh = { path = "../vv-mesh" }
+vv-planet = { path = "../vv-planet" }
+vv-world-gen = { path = "../vv-world-gen" }
+vv-world-runtime = { path = "../vv-world-runtime" }

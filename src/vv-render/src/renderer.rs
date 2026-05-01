@@ -24,8 +24,8 @@ use vv_mesh::{MeshGen, Vertex};
 use vv_physics::Physics;
 use vv_planet::CoordSystem;
 use vv_registry::{
-    BlockContent, BlockRenderSource, CompiledContent, CompiledItemKind, CompiledTintMode,
-    CompiledVisualMaterialType, ItemId, RecipeId,
+    BlockContent, BlockRenderSource, CompiledContent, CompiledItemKind, ItemId, RecipeId,
+    RuntimeBlockVisual,
 };
 use vv_world_runtime::PlanetData;
 
@@ -62,10 +62,14 @@ struct LocalUniform {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
-struct BlockMaterialUniform {
-    base_color_flags: [f32; 4],
-    secondary_color_texture: [f32; 4],
-    variation: [f32; 4],
+struct BlockVisualUniform {
+    base_color_alpha: [f32; 4],
+    emission_roughness_metallic: [f32; 4],
+    variation_a: [f32; 4],
+    variation_b: [f32; 4],
+    response: [f32; 4],
+    palette: [f32; 4],
+    params: [f32; 4],
     flags: [f32; 4],
 }
 
@@ -95,73 +99,97 @@ enum MeshJobKind {
     Remesh,
 }
 
-fn build_block_materials(content: &CompiledContent) -> Vec<BlockMaterialUniform> {
-    let mut materials = Vec::with_capacity(content.blocks.len().max(1));
-    for block in content.blocks.entries() {
-        let material = block.render.material;
-        materials.push(BlockMaterialUniform {
-            base_color_flags: [
-                block.render.color[0],
-                block.render.color[1],
-                block.render.color[2],
-                0.0,
-            ],
-            secondary_color_texture: [
-                material.secondary_color[0],
-                material.secondary_color[1],
-                material.secondary_color[2],
-                material.texture_influence,
-            ],
-            variation: [
-                material.block_variation,
-                material.face_variation,
-                material.macro_variation,
-                material.detail_strength,
-            ],
-            flags: [
-                visual_material_code(material.visual_type),
-                block.render.roughness,
-                tint_mode_code(block.render.tint),
-                if block.render.translucent { 1.0 } else { 0.0 },
-            ],
-        });
+fn build_block_visuals(content: &CompiledContent) -> Vec<BlockVisualUniform> {
+    let mut visuals = Vec::with_capacity(content.block_visuals.len().max(1));
+    for visual in content.block_visuals.entries() {
+        visuals.push(block_visual_uniform(*visual));
     }
-    if materials.is_empty() {
-        materials.push(BlockMaterialUniform {
-            base_color_flags: [1.0, 1.0, 1.0, 0.0],
-            secondary_color_texture: [1.0, 1.0, 1.0, 1.0],
-            variation: [0.05, 0.03, 0.03, 0.02],
-            flags: [0.0, 0.7, 0.0, 0.0],
-        });
+    if visuals.is_empty() {
+        visuals.push(block_visual_uniform(RuntimeBlockVisual {
+            material_id: vv_registry::MaterialId::new(0),
+            base_color: [0.55, 0.55, 0.55, 1.0],
+            palette_offset: 0,
+            palette_len: 1,
+            roughness: 1.0,
+            metallic: 0.0,
+            emission: [0.0, 0.0, 0.0, 0.0],
+            alpha: 1.0,
+            bevel: 0.0,
+            normal_strength: 0.0,
+            variation: vv_registry::RuntimeVisualVariation {
+                per_voxel_tint: 0.0,
+                per_face_tint: 0.0,
+                macro_noise_scale: 1.0,
+                macro_noise_strength: 0.0,
+                micro_noise_scale: 1.0,
+                micro_noise_strength: 0.0,
+                edge_darkening: 0.0,
+                ao_influence: 1.0,
+                biome_tint_strength: 0.0,
+                wetness_response: 0.0,
+                snow_response: 0.0,
+                dust_response: 0.0,
+            },
+            flags: vv_registry::BlockVisualFlags::default(),
+        }));
     }
-    materials
+    visuals
 }
 
-fn visual_material_code(kind: CompiledVisualMaterialType) -> f32 {
-    match kind {
-        CompiledVisualMaterialType::Generic => 0.0,
-        CompiledVisualMaterialType::Grass => 1.0,
-        CompiledVisualMaterialType::Dirt => 2.0,
-        CompiledVisualMaterialType::Snow => 3.0,
-        CompiledVisualMaterialType::Stone => 4.0,
-        CompiledVisualMaterialType::Sand => 5.0,
-        CompiledVisualMaterialType::Wood => 6.0,
-        CompiledVisualMaterialType::Leaves => 7.0,
-        CompiledVisualMaterialType::Ice => 8.0,
-        CompiledVisualMaterialType::CutStone => 9.0,
-        CompiledVisualMaterialType::Planks => 10.0,
-        CompiledVisualMaterialType::Ore => 11.0,
-        CompiledVisualMaterialType::Water => 12.0,
+fn block_visual_uniform(visual: RuntimeBlockVisual) -> BlockVisualUniform {
+    BlockVisualUniform {
+        base_color_alpha: [
+            visual.base_color[0],
+            visual.base_color[1],
+            visual.base_color[2],
+            visual.alpha,
+        ],
+        emission_roughness_metallic: [
+            visual.emission[0],
+            visual.emission[1],
+            visual.emission[2],
+            visual.roughness,
+        ],
+        variation_a: [
+            visual.variation.per_voxel_tint,
+            visual.variation.per_face_tint,
+            visual.variation.macro_noise_scale,
+            visual.variation.macro_noise_strength,
+        ],
+        variation_b: [
+            visual.variation.micro_noise_scale,
+            visual.variation.micro_noise_strength,
+            visual.variation.edge_darkening,
+            visual.variation.ao_influence,
+        ],
+        response: [
+            visual.variation.biome_tint_strength,
+            visual.variation.wetness_response,
+            visual.variation.snow_response,
+            visual.variation.dust_response,
+        ],
+        palette: [
+            visual.palette_offset as f32,
+            visual.palette_len as f32,
+            visual.material_id.raw() as f32,
+            visual.metallic,
+        ],
+        params: [visual.bevel, visual.normal_strength, 0.0, 0.0],
+        flags: [
+            if visual.flags.transparent { 1.0 } else { 0.0 },
+            if visual.flags.emissive { 1.0 } else { 0.0 },
+            if visual.flags.biome_tinted { 1.0 } else { 0.0 },
+            if visual.flags.occludes { 1.0 } else { 0.0 },
+        ],
     }
 }
 
-fn tint_mode_code(mode: CompiledTintMode) -> f32 {
-    match mode {
-        CompiledTintMode::None => 0.0,
-        CompiledTintMode::GrassColor => 1.0,
-        CompiledTintMode::FoliageColor => 2.0,
-        CompiledTintMode::WaterColor => 3.0,
+fn build_block_visual_palette(content: &CompiledContent) -> Vec<[f32; 4]> {
+    let mut palette = content.block_visual_palettes.clone();
+    if palette.is_empty() {
+        palette.push([0.55, 0.55, 0.55, 1.0]);
     }
+    palette
 }
 
 // --- Renderer ---------------------------------------------------------------
@@ -218,7 +246,8 @@ pub struct Renderer<'a> {
 
     global_buf: wgpu::Buffer,
     global_bind: wgpu::BindGroup,
-    _block_material_buf: wgpu::Buffer,
+    _block_visual_buf: wgpu::Buffer,
+    _block_visual_palette_buf: wgpu::Buffer,
 
     local_buf_identity: wgpu::Buffer,
     local_bind_identity: wgpu::BindGroup,
@@ -427,6 +456,16 @@ impl<'a> Renderer<'a> {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 7,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
         let local_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -449,12 +488,19 @@ impl<'a> Renderer<'a> {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let block_materials = build_block_materials(content);
-        let block_material_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Block Material Params"),
-            contents: bytemuck::cast_slice(&block_materials),
+        let block_visuals = build_block_visuals(content);
+        let block_visual_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Block Visual Params"),
+            contents: bytemuck::cast_slice(&block_visuals),
             usage: wgpu::BufferUsages::STORAGE,
         });
+        let block_visual_palette = build_block_visual_palette(content);
+        let block_visual_palette_buf =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Block Visual Palette"),
+                contents: bytemuck::cast_slice(&block_visual_palette),
+                usage: wgpu::BufferUsages::STORAGE,
+            });
         let global_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &global_layout,
             entries: &[
@@ -484,7 +530,11 @@ impl<'a> Renderer<'a> {
                 },
                 wgpu::BindGroupEntry {
                     binding: 6,
-                    resource: block_material_buf.as_entire_binding(),
+                    resource: block_visual_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: block_visual_palette_buf.as_entire_binding(),
                 },
             ],
             label: None,
@@ -541,7 +591,11 @@ impl<'a> Renderer<'a> {
                 },
                 wgpu::BindGroupEntry {
                     binding: 6,
-                    resource: block_material_buf.as_entire_binding(),
+                    resource: block_visual_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: block_visual_palette_buf.as_entire_binding(),
                 },
             ],
         });
@@ -798,7 +852,11 @@ impl<'a> Renderer<'a> {
                 },
                 wgpu::BindGroupEntry {
                     binding: 6,
-                    resource: block_material_buf.as_entire_binding(),
+                    resource: block_visual_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: block_visual_palette_buf.as_entire_binding(),
                 },
             ],
         });
@@ -845,7 +903,8 @@ impl<'a> Renderer<'a> {
             lod_chunks: HashMap::new(),
             global_buf,
             global_bind,
-            _block_material_buf: block_material_buf,
+            _block_visual_buf: block_visual_buf,
+            _block_visual_palette_buf: block_visual_palette_buf,
             local_buf_identity,
             local_bind_identity,
             local_buf_player,
@@ -928,6 +987,31 @@ impl<'a> Renderer<'a> {
                         format: wgpu::VertexFormat::Sint32,
                         offset: 48,
                         shader_location: 5,
+                    },
+                    wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Uint32,
+                        offset: 52,
+                        shader_location: 6,
+                    },
+                    wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Uint32,
+                        offset: 56,
+                        shader_location: 7,
+                    },
+                    wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Sint32x3,
+                        offset: 60,
+                        shader_location: 8,
+                    },
+                    wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Uint32,
+                        offset: 72,
+                        shader_location: 9,
+                    },
+                    wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Float32,
+                        offset: 76,
+                        shader_location: 10,
                     },
                 ],
             }],

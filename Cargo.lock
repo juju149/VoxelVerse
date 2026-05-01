@@ -1886,9 +1886,16 @@ name = "vv-compiler"
 version = "0.1.0"
 dependencies = [
  "ron",
+ "smallvec",
+ "vv-config",
+ "vv-core",
+ "vv-mesh",
  "vv-pack",
+ "vv-planet",
  "vv-registry",
  "vv-schema",
+ "vv-world-gen",
+ "vv-world-runtime",
 ]
 
 [[package]]
@@ -1979,6 +1986,9 @@ dependencies = [
 [[package]]
 name = "vv-registry"
 version = "0.1.0"
+dependencies = [
+ "smallvec",
+]
 
 [[package]]
 name = "vv-render"
@@ -1988,6 +1998,7 @@ dependencies = [
  "glam",
  "glyphon",
  "image",
+ "naga",
  "vv-config",
  "vv-core",
  "vv-diagnostics",

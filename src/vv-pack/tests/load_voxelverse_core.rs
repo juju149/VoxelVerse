@@ -12,7 +12,7 @@ fn loads_voxelverse_core_raw_documents() {
         .find(|pack| pack.content.manifest.namespace == "voxelverse")
         .expect("voxelverse pack should be discovered");
 
-    assert_eq!(pack.content.blocks.len(), 18);
+    assert_eq!(pack.content.blocks.len(), 21);
     assert_eq!(pack.content.items.len(), 16);
     assert_eq!(pack.content.recipes.len(), 8);
     assert_eq!(pack.content.loot_tables.len(), 0);

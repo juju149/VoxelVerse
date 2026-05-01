@@ -110,8 +110,8 @@ fn voxelverse_core_examples_match_schema() {
         include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/biomes/meadow.ron"),
     );
     parse::<FloraDef>(
-        "defs/worldgen/flora/meadow_grass.ron",
-        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/flora/meadow_grass.ron"),
+        "defs/worldgen/flora/meadow_oaks.ron",
+        include_str!("../../../assets/packs/voxelverse_core/defs/worldgen/flora/meadow_oaks.ron"),
     );
     parse::<OreDef>(
         "defs/worldgen/ores/coal_ore.ron",

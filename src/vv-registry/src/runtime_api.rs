@@ -1,27 +1,35 @@
 use std::sync::Arc;
 
 use crate::{
-    BiomeId, BiomeRegistry, BlockId, BlockRegistry, CompiledBiome, CompiledBlockMining,
-    CompiledBlockPhysics, CompiledBlockRender, CompiledClimateCurves, CompiledClimateTags,
-    CompiledContent, CompiledDrops, CompiledFlora, CompiledOre, CompiledPlanetType,
-    CompiledWorldSettings, ContentKey, FloraId, FloraRegistry, OreId, OreRegistry, PlanetTypeId,
-    PlanetTypeRegistry, TagId,
+    BiomeId, BiomeRegistry, BlockId, BlockRegistry, BlockVisualId, BlockVisualRegistry,
+    CompiledBiome, CompiledBlockMining, CompiledBlockPhysics, CompiledBlockRender,
+    CompiledClimateCurves, CompiledClimateTags, CompiledContent, CompiledDrops, CompiledFlora,
+    CompiledOre, CompiledPlanetType, CompiledWorldSettings, ContentKey, FloraId, FloraRegistry,
+    OreId, OreRegistry, PlanetTypeId, PlanetTypeRegistry, RuntimeBlockVisual, TagId,
 };
 
 #[derive(Debug, Clone)]
 pub struct BlockContent {
     blocks: Arc<BlockRegistry>,
+    visuals: Arc<BlockVisualRegistry>,
+    palettes: Arc<Vec<[f32; 4]>>,
 }
 
 impl BlockContent {
-    pub fn new(blocks: BlockRegistry) -> Self {
+    pub fn new(
+        blocks: BlockRegistry,
+        visuals: BlockVisualRegistry,
+        palettes: Vec<[f32; 4]>,
+    ) -> Self {
         Self {
             blocks: Arc::new(blocks),
+            visuals: Arc::new(visuals),
+            palettes: Arc::new(palettes),
         }
     }
 
     pub fn as_view(&self) -> BlockContentView<'_> {
-        BlockContentView::new(&self.blocks)
+        BlockContentView::new(&self.blocks, &self.visuals, &self.palettes)
     }
 }
 
@@ -71,6 +79,8 @@ pub trait BlockRuntimeSource {
 
 pub trait BlockRenderSource {
     fn block_render(&self, id: BlockId) -> Option<&CompiledBlockRender>;
+    fn block_visual(&self, id: BlockVisualId) -> Option<&RuntimeBlockVisual>;
+    fn block_visual_palette(&self) -> &[[f32; 4]];
 }
 
 pub trait WorldSettingsSource {
@@ -102,11 +112,21 @@ pub trait WorldgenSettingsSource {
 #[derive(Debug, Clone, Copy)]
 pub struct BlockContentView<'a> {
     blocks: &'a BlockRegistry,
+    visuals: &'a BlockVisualRegistry,
+    palettes: &'a [[f32; 4]],
 }
 
 impl<'a> BlockContentView<'a> {
-    pub(crate) fn new(blocks: &'a BlockRegistry) -> Self {
-        Self { blocks }
+    pub(crate) fn new(
+        blocks: &'a BlockRegistry,
+        visuals: &'a BlockVisualRegistry,
+        palettes: &'a [[f32; 4]],
+    ) -> Self {
+        Self {
+            blocks,
+            visuals,
+            palettes,
+        }
     }
 }
 
@@ -133,6 +153,14 @@ impl BlockRenderSource for BlockContentView<'_> {
     fn block_render(&self, id: BlockId) -> Option<&CompiledBlockRender> {
         self.blocks.get(id).map(|block| &block.render)
     }
+
+    fn block_visual(&self, id: BlockVisualId) -> Option<&RuntimeBlockVisual> {
+        self.visuals.get(id)
+    }
+
+    fn block_visual_palette(&self) -> &[[f32; 4]] {
+        self.palettes
+    }
 }
 
 impl BlockRuntimeSource for BlockContent {
@@ -157,6 +185,14 @@ impl BlockRuntimeSource for BlockContent {
 impl BlockRenderSource for BlockContent {
     fn block_render(&self, id: BlockId) -> Option<&CompiledBlockRender> {
         self.blocks.get(id).map(|block| &block.render)
+    }
+
+    fn block_visual(&self, id: BlockVisualId) -> Option<&RuntimeBlockVisual> {
+        self.visuals.get(id)
+    }
+
+    fn block_visual_palette(&self) -> &[[f32; 4]] {
+        &self.palettes
     }
 }
 
@@ -310,15 +346,23 @@ impl WorldgenSettingsSource for WorldgenContentView<'_> {
 
 impl CompiledContent {
     pub fn to_block_content(&self) -> BlockContent {
-        BlockContent::new(self.blocks.clone())
+        BlockContent::new(
+            self.blocks.clone(),
+            self.block_visuals.clone(),
+            self.block_visual_palettes.clone(),
+        )
     }
 
     pub fn into_block_content(self) -> BlockContent {
-        BlockContent::new(self.blocks)
+        BlockContent::new(self.blocks, self.block_visuals, self.block_visual_palettes)
     }
 
     pub fn block_content(&self) -> BlockContentView<'_> {
-        BlockContentView::new(&self.blocks)
+        BlockContentView::new(
+            &self.blocks,
+            &self.block_visuals,
+            &self.block_visual_palettes,
+        )
     }
 
     pub fn world_content(&self) -> WorldContentView<'_> {

@@ -5,7 +5,7 @@ use vv_core::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
 use vv_planet::CoordSystem;
 use vv_registry::{
     BlockId as ContentBlockId, BlockRenderSource, CompiledBlockFace, CompiledBlockRender,
-    CompiledVisualMaterialType, TextureId,
+    CompiledRenderMode, TextureId,
 };
 use vv_world_runtime::{ChunkMods, PlanetData};
 
@@ -23,6 +23,11 @@ pub struct Vertex {
     pub texture_id: i32,
     /// -1 means non-block helper geometry; shader uses a neutral fallback material.
     pub block_id: i32,
+    pub block_visual_id: u32,
+    pub face_id: u32,
+    pub voxel_pos: [i32; 3],
+    pub variation_seed: u32,
+    pub ao: f32,
 }
 
 impl Vertex {
@@ -34,6 +39,11 @@ impl Vertex {
             uv: [0.0, 0.0],
             texture_id: -1,
             block_id: -1,
+            block_visual_id: 0,
+            face_id: 0,
+            voxel_pos: [0, 0, 0],
+            variation_seed: 0,
+            ao: 1.0,
         }
     }
 }
@@ -231,7 +241,7 @@ impl MeshGen {
                 };
                 return blocks
                     .block_render(neighbor_block)
-                    .map(|neighbor_render| !neighbor_render.translucent)
+                    .map(|neighbor_render| neighbor_render.meshing.occludes)
                     .unwrap_or(false);
             }
             l < 0
@@ -311,6 +321,9 @@ impl MeshGen {
         );
 
         let block_raw_id = block_id.raw() as i32;
+        let block_visual_id = render.visual_id.raw();
+        let voxel_pos = [id.u as i32, id.v as i32, id.layer as i32];
+        let planet_seed = data.terrain.world_seed();
         let apply = |ao: f32, texture_id: i32| -> [f32; 3] {
             if texture_id >= 0 {
                 let light = light_val * ao;
@@ -402,6 +415,10 @@ impl MeshGen {
                 top_colors,
                 top_texture_id,
                 block_raw_id,
+                block_visual_id,
+                0,
+                voxel_pos,
+                Self::stable_variation_seed(id, block_id, 0, planet_seed),
                 true,
                 Some(top_normals),
             );
@@ -415,6 +432,10 @@ impl MeshGen {
                 [bottom_c; 4],
                 bottom_texture_id,
                 block_raw_id,
+                block_visual_id,
+                1,
+                voxel_pos,
+                Self::stable_variation_seed(id, block_id, 1, planet_seed),
                 true,
                 Some(bottom_normals),
             );
@@ -428,6 +449,10 @@ impl MeshGen {
                 [front_c; 4],
                 front_texture_id,
                 block_raw_id,
+                block_visual_id,
+                2,
+                voxel_pos,
+                Self::stable_variation_seed(id, block_id, 2, planet_seed),
                 false,
                 Some(Self::rounded_corner_normals(
                     front_normal,
@@ -450,6 +475,10 @@ impl MeshGen {
                 [back_c; 4],
                 back_texture_id,
                 block_raw_id,
+                block_visual_id,
+                3,
+                voxel_pos,
+                Self::stable_variation_seed(id, block_id, 3, planet_seed),
                 false,
                 Some(Self::rounded_corner_normals(
                     back_normal,
@@ -472,6 +501,10 @@ impl MeshGen {
                 [left_c; 4],
                 left_texture_id,
                 block_raw_id,
+                block_visual_id,
+                4,
+                voxel_pos,
+                Self::stable_variation_seed(id, block_id, 4, planet_seed),
                 false,
                 Some(Self::rounded_corner_normals(
                     left_normal,
@@ -494,6 +527,10 @@ impl MeshGen {
                 [right_c; 4],
                 right_texture_id,
                 block_raw_id,
+                block_visual_id,
+                5,
+                voxel_pos,
+                Self::stable_variation_seed(id, block_id, 5, planet_seed),
                 false,
                 Some(Self::rounded_corner_normals(
                     right_normal,
@@ -541,6 +578,9 @@ impl MeshGen {
                     left_normal,
                     right_normal,
                 ],
+                block_visual_id,
+                voxel_pos,
+                Self::stable_variation_seed(id, block_id, 6, planet_seed),
             );
         }
     }
@@ -599,42 +639,19 @@ impl MeshGen {
     }
 
     fn visual_bevel(render: &CompiledBlockRender) -> VisualBevel {
-        match render.material.visual_type {
-            CompiledVisualMaterialType::Grass
-            | CompiledVisualMaterialType::Dirt
-            | CompiledVisualMaterialType::Snow
-            | CompiledVisualMaterialType::Sand
-            | CompiledVisualMaterialType::Leaves => VisualBevel {
-                edge_width: 0.14,
-                top_edge: 0.30,
-                side_edge: 0.24,
-            },
-            CompiledVisualMaterialType::Stone
-            | CompiledVisualMaterialType::Ore
-            | CompiledVisualMaterialType::Ice => VisualBevel {
-                edge_width: 0.10,
-                top_edge: 0.22,
-                side_edge: 0.17,
-            },
-            CompiledVisualMaterialType::Wood => VisualBevel {
-                edge_width: 0.07,
-                top_edge: 0.16,
-                side_edge: 0.12,
-            },
-            CompiledVisualMaterialType::CutStone | CompiledVisualMaterialType::Planks => {
-                VisualBevel {
-                    edge_width: 0.025,
-                    top_edge: 0.06,
-                    side_edge: 0.045,
-                }
-            }
-            CompiledVisualMaterialType::Generic | CompiledVisualMaterialType::Water => {
-                VisualBevel {
-                    edge_width: 0.0,
-                    top_edge: 0.0,
-                    side_edge: 0.0,
-                }
-            }
+        let edge_width = render.material.bevel.clamp(0.0, 0.12);
+        if edge_width <= 0.0 {
+            return VisualBevel {
+                edge_width: 0.0,
+                top_edge: 0.0,
+                side_edge: 0.0,
+            };
+        }
+        let normal_strength = render.material.normal_strength.clamp(0.0, 1.0);
+        VisualBevel {
+            edge_width,
+            top_edge: 0.08 + normal_strength * 0.36,
+            side_edge: 0.04 + normal_strength * 0.22,
         }
     }
 
@@ -673,6 +690,9 @@ impl MeshGen {
         face_pos: [[Vec3; 4]; 6],
         face_style: [(i32, [[f32; 3]; 4]); 6],
         face_normals: [Vec3; 6],
+        block_visual_id: u32,
+        voxel_pos: [i32; 3],
+        variation_seed: u32,
     ) {
         const TOP: usize = 0;
         const BOTTOM: usize = 1;
@@ -706,6 +726,10 @@ impl MeshGen {
                 color,
                 texture_id,
                 block_id,
+                block_visual_id,
+                a as u32,
+                voxel_pos,
+                variation_seed,
                 false,
                 Some([normal; 4]),
             );
@@ -807,6 +831,10 @@ impl MeshGen {
         colors: [[f32; 3]; 4],
         texture_id: i32,
         block_id: i32,
+        block_visual_id: u32,
+        face_id: u32,
+        voxel_pos: [i32; 3],
+        variation_seed: u32,
         force_radial: bool,
         normals: Option<[Vec3; 4]>,
     ) {
@@ -826,6 +854,11 @@ impl MeshGen {
                 uv,
                 texture_id,
                 block_id,
+                block_visual_id,
+                face_id,
+                voxel_pos,
+                variation_seed,
+                ao: c[0].max(c[1]).max(c[2]).clamp(0.0, 1.0),
             });
         }
         inds.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
@@ -852,6 +885,11 @@ impl MeshGen {
                 uv,
                 texture_id,
                 block_id,
+                block_visual_id: 0,
+                face_id: 0,
+                voxel_pos: [0, 0, 0],
+                variation_seed: 0,
+                ao: 1.0,
             });
         }
         inds.extend_from_slice(&[base, base + 1, base + 2]);
@@ -860,6 +898,27 @@ impl MeshGen {
 
     fn face_texture_id(texture: Option<TextureId>) -> i32 {
         texture.map(|id| id.raw() as i32).unwrap_or(-1)
+    }
+
+    pub fn stable_variation_seed(
+        voxel: BlockId,
+        block: ContentBlockId,
+        face_id: u32,
+        planet_seed: u32,
+    ) -> u32 {
+        let mut hash = 0x811c_9dc5u32 ^ planet_seed;
+        for value in [
+            voxel.face as u32,
+            voxel.u,
+            voxel.v,
+            voxel.layer,
+            block.raw(),
+            face_id,
+        ] {
+            hash ^= value.wrapping_mul(0x9e37_79b9);
+            hash = hash.rotate_left(13).wrapping_mul(0x85eb_ca6b);
+        }
+        hash ^ (hash >> 16)
     }
 
     // --- LOD heightmap tile -------------------------------------------------
@@ -934,6 +993,11 @@ impl MeshGen {
                     uv,
                     texture_id,
                     block_id,
+                    block_visual_id: block_id.max(0) as u32,
+                    face_id: 0,
+                    voxel_pos: [0, 0, 0],
+                    variation_seed: block_id.max(0) as u32,
+                    ao: color[0].max(color[1]).max(color[2]).clamp(0.0, 1.0),
                 });
             }
         }
@@ -972,6 +1036,11 @@ impl MeshGen {
                     uv: src_v.uv,
                     texture_id: src_v.texture_id,
                     block_id: src_v.block_id,
+                    block_visual_id: src_v.block_visual_id,
+                    face_id: src_v.face_id,
+                    voxel_pos: src_v.voxel_pos,
+                    variation_seed: src_v.variation_seed,
+                    ao: src_v.ao,
                 });
             }
             let len = coord_pairs.len() as u32;
@@ -1023,7 +1092,10 @@ impl MeshGen {
             let layer = surface.saturating_sub(offset);
             let block = data.terrain.get_block(face, u, v, layer);
             if let Some(render) = blocks.block_render(block) {
-                if !render.translucent {
+                if !matches!(
+                    render.render_mode,
+                    CompiledRenderMode::Transparent | CompiledRenderMode::Additive
+                ) {
                     let texture_id =
                         Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Top));
                     let color = if texture_id >= 0 {
@@ -1279,12 +1351,13 @@ mod tests {
 
         let vertex = verts
             .iter()
-            .find(|vertex| vertex.color[0] > 0.0)
-            .expect("generated chunk should contain colored vertices");
-        assert!(vertex.color[1] >= vertex.color[0]);
+            .find(|vertex| vertex.block_id >= 0)
+            .expect("generated chunk should contain block vertices");
+        assert!(vertex.ao > 0.0);
+        assert_ne!(vertex.variation_seed, 0);
         assert!(
-            verts.iter().any(|vertex| vertex.texture_id >= 0),
-            "generated chunk should contain textured block vertices"
+            verts.iter().any(|vertex| vertex.block_visual_id > 0),
+            "generated chunk should contain block visual ids"
         );
     }
 }

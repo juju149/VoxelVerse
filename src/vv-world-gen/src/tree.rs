@@ -121,8 +121,7 @@ impl TreeShape {
         let trunk_height = meters_to_layers(voxel_size_m, trunk_height_m).max(2);
 
         // --- Archetype selection ---
-        let archetype =
-            pick_archetype(unit(config, salt, 13), config.crown_bias.clamp(-1.0, 1.0));
+        let archetype = pick_archetype(unit(config, salt, 13), config.crown_bias.clamp(-1.0, 1.0));
 
         let (radius_mult, height_mult, canopy_start_adjust, canopy_solid_threshold) =
             match archetype {
@@ -196,8 +195,7 @@ impl TreeShape {
             dv: 0,
             climb: 0,
         }; BRANCH_CAPACITY];
-        let branch_count =
-            branch_count(canopy_radius_layers, trunk_height, unit(config, salt, 11));
+        let branch_count = branch_count(canopy_radius_layers, trunk_height, unit(config, salt, 11));
         for (index, branch) in branches.iter_mut().take(branch_count).enumerate() {
             let branch_dir = direction(unit(config, salt, 20 + index as u32));
             let start_t = 0.48 + unit(config, salt, 30 + index as u32) * 0.36;
@@ -331,7 +329,11 @@ impl TreeShape {
     }
 
     pub(crate) fn has_leaf_at(&self, du: i32, dv: i32, rel_layer: u32) -> bool {
-        if rel_layer < self.canopy_layer.saturating_sub(self.canopy_radius_y as u32 + 1) {
+        if rel_layer
+            < self
+                .canopy_layer
+                .saturating_sub(self.canopy_radius_y as u32 + 1)
+        {
             return false;
         }
         if self.has_log_at(du, dv, rel_layer) {
@@ -346,8 +348,7 @@ impl TreeShape {
             self.canopy_radius_v,
             self.canopy_radius_y,
         );
-        let threshold =
-            canopy_threshold(rel_layer, self.canopy_layer, self.canopy_solid_threshold);
+        let threshold = canopy_threshold(rel_layer, self.canopy_layer, self.canopy_solid_threshold);
         let mut inside = best_score <= threshold;
 
         for lobe in self.lobes.iter().take(self.lobe_count) {
@@ -503,8 +504,7 @@ fn compute_lobe(
                     .max(1.0),
                 radius_v: (canopy_radius_layers * (0.42 + unit(config, salt, 90 + i) * 0.30))
                     .max(1.0),
-                radius_y: (canopy_radius_y * (0.55 + unit(config, salt, 100 + i) * 0.32))
-                    .max(1.0),
+                radius_y: (canopy_radius_y * (0.55 + unit(config, salt, 100 + i) * 0.32)).max(1.0),
             }
         }
         Archetype::Spreading => {
@@ -522,8 +522,7 @@ fn compute_lobe(
                     .max(1.0),
                 radius_v: (canopy_radius_layers * (0.48 + unit(config, salt, 90 + i) * 0.30))
                     .max(1.0),
-                radius_y: (canopy_radius_y * (0.28 + unit(config, salt, 100 + i) * 0.25))
-                    .max(1.0),
+                radius_y: (canopy_radius_y * (0.28 + unit(config, salt, 100 + i) * 0.25)).max(1.0),
             }
         }
         Archetype::Columnar => {
@@ -539,8 +538,7 @@ fn compute_lobe(
                     .max(1.0),
                 radius_v: (canopy_radius_layers * (0.36 + unit(config, salt, 90 + i) * 0.18))
                     .max(1.0),
-                radius_y: (canopy_radius_y * (0.58 + unit(config, salt, 100 + i) * 0.32))
-                    .max(1.0),
+                radius_y: (canopy_radius_y * (0.58 + unit(config, salt, 100 + i) * 0.32)).max(1.0),
             }
         }
         Archetype::Layered => {
@@ -556,8 +554,7 @@ fn compute_lobe(
                     .max(1.0),
                 radius_v: (canopy_radius_layers * (0.52 + unit(config, salt, 90 + i) * 0.22))
                     .max(1.0),
-                radius_y: (canopy_radius_y * (0.20 + unit(config, salt, 100 + i) * 0.15))
-                    .max(1.0),
+                radius_y: (canopy_radius_y * (0.20 + unit(config, salt, 100 + i) * 0.15)).max(1.0),
             }
         }
         Archetype::Irregular => {

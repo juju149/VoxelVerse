@@ -1,20 +1,20 @@
 (
-    display_key: Some("block.voxelverse.gravel"),
+    display_key: Some("block.voxelverse.snow"),
     tags: [
         "voxelverse:solid",
         "voxelverse:natural",
         "voxelverse:mineable_shovel",
     ],
     mining: (
-        hardness: 0.65,
+        hardness: 0.35,
         tool: shovel,
-        sound_material: gravel,
+        sound_material: sand,
     ),
     render: (
         surface: (
             material: "voxelverse:terrain_layered",
-            base_color: "#6E6B63",
-            palette: ["#7E7B72", "#6E6B63", "#5C5A53", "#8F8C82"],
+            base_color: "#E7EEF4",
+            palette: ["#FFFFFF", "#D7E4EE", "#BFD0DC", "#F2F6F8"],
             roughness: 0.92,
             metallic: 0.0,
             alpha: 1.0,
@@ -22,18 +22,19 @@
         lighting: (),
         geometry: (
             shape: cube,
-            bevel: 0.022,
-            normal_strength: 0.35,
+            bevel: 0.025,
+            normal_strength: 0.22,
         ),
         variation: (
-            per_voxel_tint: 0.20,
-            per_face_tint: 0.12,
-            macro_noise_scale: 0.72,
-            macro_noise_strength: 0.11,
-            micro_noise_scale: 7.5,
-            micro_noise_strength: 0.06,
-            edge_darkening: 0.10,
-            ao_influence: 1.0,
+            per_voxel_tint: 0.05,
+            per_face_tint: 0.03,
+            macro_noise_scale: 0.55,
+            macro_noise_strength: 0.10,
+            micro_noise_scale: 6.0,
+            micro_noise_strength: 0.05,
+            edge_darkening: 0.04,
+            ao_influence: 0.8,
+            snow_response: 0.0,
         ),
         faces: (),
         details: [],
@@ -47,14 +48,9 @@
     ),
     physics: (
         phase: solid,
-        density: 1.8,
+        density: 0.35,
         collider: full,
+        friction: 0.85,
     ),
-    drops: inline([
-        (
-            entries: [
-                (item: "voxelverse:gravel", count: (min: 1, max: 1)),
-            ],
-        ),
-    ]),
+    drops: none,
 )

@@ -1,6 +1,8 @@
 use crate::{
-    BlockId, CompiledLootPool, CompiledToolKind, LootTableId, RegistryTable, TagId, TextureId,
+    BlockId, BlockVisualId, CompiledLootPool, CompiledToolKind, ContentKey, LootTableId,
+    MaterialId, RegistryTable, TagId, TextureId,
 };
+use smallvec::SmallVec;
 
 #[derive(Debug, Clone)]
 pub struct CompiledBlock {
@@ -40,15 +42,44 @@ pub struct CompiledBlockPhysics {
 
 #[derive(Debug, Clone)]
 pub struct CompiledBlockRender {
+    pub visual_id: BlockVisualId,
     pub color: [f32; 3],
     pub roughness: f32,
-    pub translucent: bool,
+    pub metallic: f32,
+    pub emission: Option<[f32; 4]>,
+    pub alpha: f32,
+    pub render_mode: CompiledRenderMode,
     pub emits_light: u8,
     pub tint: CompiledTintMode,
-    pub material: CompiledStylizedMaterial,
+    pub shape: CompiledBlockShape,
+    pub meshing: CompiledBlockMeshing,
+    pub material: CompiledBlockVisual,
     pub texture_layout: CompiledTextureLayout,
     pub textures: CompiledBlockTextures,
-    pub model: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompiledBlockShape {
+    Cube,
+    Cross,
+    Fluid,
+    Custom { model: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompiledRenderMode {
+    Opaque,
+    Cutout,
+    Transparent,
+    Additive,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct CompiledBlockMeshing {
+    pub occludes: bool,
+    pub greedy_merge: bool,
+    pub casts_shadow: bool,
+    pub receives_ao: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,34 +88,6 @@ pub enum CompiledTintMode {
     GrassColor,
     FoliageColor,
     WaterColor,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct CompiledStylizedMaterial {
-    pub visual_type: CompiledVisualMaterialType,
-    pub secondary_color: [f32; 3],
-    pub texture_influence: f32,
-    pub block_variation: f32,
-    pub face_variation: f32,
-    pub macro_variation: f32,
-    pub detail_strength: f32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CompiledVisualMaterialType {
-    Generic,
-    Grass,
-    Dirt,
-    Snow,
-    Stone,
-    Sand,
-    Wood,
-    Leaves,
-    Ice,
-    CutStone,
-    Planks,
-    Ore,
-    Water,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -146,6 +149,113 @@ impl CompiledBlockRender {
 pub struct CompiledTextureResource;
 
 pub type TextureRegistry = RegistryTable<TextureId, CompiledTextureResource>;
+pub type BlockVisualRegistry = RegistryTable<BlockVisualId, RuntimeBlockVisual>;
+pub type MaterialRegistry = RegistryTable<MaterialId, CompiledMaterialShader>;
+
+#[derive(Debug, Clone)]
+pub struct CompiledMaterialShader {
+    pub shader_key: ContentKey,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledBlockVisual {
+    pub material_key: ContentKey,
+    pub base_color: [f32; 4],
+    pub palette: SmallVec<[[f32; 4]; 8]>,
+    pub roughness: f32,
+    pub metallic: f32,
+    pub emission: Option<[f32; 4]>,
+    pub alpha: f32,
+    pub bevel: f32,
+    pub normal_strength: f32,
+    pub variation: CompiledBlockVisualVariation,
+    pub faces: CompiledBlockFaceVisuals,
+    pub details: SmallVec<[CompiledBlockDetail; 8]>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct CompiledBlockVisualVariation {
+    pub per_voxel_tint: f32,
+    pub per_face_tint: f32,
+    pub macro_noise_scale: f32,
+    pub macro_noise_strength: f32,
+    pub micro_noise_scale: f32,
+    pub micro_noise_strength: f32,
+    pub edge_darkening: f32,
+    pub ao_influence: f32,
+    pub biome_tint_strength: f32,
+    pub wetness_response: f32,
+    pub snow_response: f32,
+    pub dust_response: f32,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CompiledBlockFaceVisuals {
+    pub top: Option<CompiledBlockFaceVisual>,
+    pub side: Option<CompiledBlockFaceVisual>,
+    pub bottom: Option<CompiledBlockFaceVisual>,
+    pub north: Option<CompiledBlockFaceVisual>,
+    pub south: Option<CompiledBlockFaceVisual>,
+    pub east: Option<CompiledBlockFaceVisual>,
+    pub west: Option<CompiledBlockFaceVisual>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledBlockFaceVisual {
+    pub color_bias: [f32; 4],
+    pub detail_bias: SmallVec<[String; 4]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledBlockDetail {
+    pub kind: String,
+    pub density: f32,
+    pub color: [f32; 4],
+    pub min_size: f32,
+    pub max_size: f32,
+    pub slope_bias: f32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RuntimeBlockVisual {
+    pub material_id: MaterialId,
+    pub base_color: [f32; 4],
+    pub palette_offset: u32,
+    pub palette_len: u32,
+    pub roughness: f32,
+    pub metallic: f32,
+    pub emission: [f32; 4],
+    pub alpha: f32,
+    pub bevel: f32,
+    pub normal_strength: f32,
+    pub variation: RuntimeVisualVariation,
+    pub flags: BlockVisualFlags,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RuntimeVisualVariation {
+    pub per_voxel_tint: f32,
+    pub per_face_tint: f32,
+    pub macro_noise_scale: f32,
+    pub macro_noise_strength: f32,
+    pub micro_noise_scale: f32,
+    pub micro_noise_strength: f32,
+    pub edge_darkening: f32,
+    pub ao_influence: f32,
+    pub biome_tint_strength: f32,
+    pub wetness_response: f32,
+    pub snow_response: f32,
+    pub dust_response: f32,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BlockVisualFlags {
+    pub transparent: bool,
+    pub emissive: bool,
+    pub biome_tinted: bool,
+    pub occludes: bool,
+    pub receives_ao: bool,
+}
 
 #[derive(Debug, Clone)]
 pub enum CompiledDrops {

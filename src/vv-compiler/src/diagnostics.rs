@@ -9,6 +9,8 @@ pub enum ReferenceKind {
     LootTable,
     Tag,
     Texture,
+    Resource,
+    Material,
     PlanetType,
     Pack,
 }
@@ -23,6 +25,8 @@ impl fmt::Display for ReferenceKind {
             ReferenceKind::LootTable => "loot_table",
             ReferenceKind::Tag => "tag",
             ReferenceKind::Texture => "texture",
+            ReferenceKind::Resource => "resource",
+            ReferenceKind::Material => "material",
             ReferenceKind::PlanetType => "planet_type",
             ReferenceKind::Pack => "pack",
         };
@@ -52,6 +56,13 @@ pub enum CompileDiagnostic {
         path: PathBuf,
         reference: String,
         expected: ReferenceKind,
+        reason: String,
+    },
+    InvalidValue {
+        owner: String,
+        path: PathBuf,
+        field: String,
+        value: String,
         reason: String,
     },
 }
@@ -91,6 +102,17 @@ impl fmt::Display for CompileDiagnostic {
             } => write!(
                 f,
                 "`{owner}` in `{}` has invalid {expected} reference `{reference}`: {reason}",
+                path.display()
+            ),
+            CompileDiagnostic::InvalidValue {
+                owner,
+                path,
+                field,
+                value,
+                reason,
+            } => write!(
+                f,
+                "`{owner}` in `{}` has invalid value for `{field}` (`{value}`): {reason}",
                 path.display()
             ),
         }

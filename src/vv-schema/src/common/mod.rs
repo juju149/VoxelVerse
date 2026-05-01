@@ -4,7 +4,7 @@ pub mod noise;
 pub mod range;
 pub mod tool;
 
-pub use color::RgbColor;
+pub use color::{HexColor, RgbColor};
 pub use id::{
     BlockRef, ContentRef, EntityRef, ItemRef, LangKey, LootTableRef, PlaceableRef, RecipeRef,
     ResourceRef, ScriptRef, TagRef, UiThemeRef,

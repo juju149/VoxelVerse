@@ -42,102 +42,102 @@ const KEYFRAMES: &[DayKeyframe] = &[
     // 00:00 — Midnight
     DayKeyframe {
         time: 0.000,
-        sun_color:            [0.040, 0.050, 0.160], // Moonlight equivalent — very dim
-        sky_color:            [0.018, 0.025, 0.075],
+        sun_color: [0.040, 0.050, 0.160], // Moonlight equivalent — very dim
+        sky_color: [0.018, 0.025, 0.075],
         ground_ambient_color: [0.010, 0.012, 0.038],
-        shadow_tint_color:    [0.008, 0.010, 0.040],
-        fog_color:            [0.020, 0.025, 0.065],
-        fog_density:          0.0010,
+        shadow_tint_color: [0.008, 0.010, 0.040],
+        fog_color: [0.020, 0.025, 0.065],
+        fog_density: 0.0010,
     },
     // 04:48 — Pre-dawn
     DayKeyframe {
         time: 0.200,
-        sun_color:            [0.120, 0.080, 0.060],
-        sky_color:            [0.040, 0.050, 0.160],
+        sun_color: [0.120, 0.080, 0.060],
+        sky_color: [0.040, 0.050, 0.160],
         ground_ambient_color: [0.020, 0.022, 0.065],
-        shadow_tint_color:    [0.018, 0.022, 0.075],
-        fog_color:            [0.055, 0.058, 0.140],
-        fog_density:          0.0018,
+        shadow_tint_color: [0.018, 0.022, 0.075],
+        fog_color: [0.055, 0.058, 0.140],
+        fog_density: 0.0018,
     },
     // 06:00 — Sunrise
     DayKeyframe {
         time: 0.250,
-        sun_color:            [2.200, 1.050, 0.400], // Intense warm orange
-        sky_color:            [0.200, 0.260, 0.680],
+        sun_color: [2.200, 1.050, 0.400], // Intense warm orange
+        sky_color: [0.200, 0.260, 0.680],
         ground_ambient_color: [0.075, 0.055, 0.038],
-        shadow_tint_color:    [0.035, 0.055, 0.175],
-        fog_color:            [0.880, 0.500, 0.200], // Warm orange haze
-        fog_density:          0.0022,
+        shadow_tint_color: [0.035, 0.055, 0.175],
+        fog_color: [0.880, 0.500, 0.200], // Warm orange haze
+        fog_density: 0.0022,
     },
     // 07:55 — Morning
     DayKeyframe {
         time: 0.330,
-        sun_color:            [2.050, 1.580, 0.880],
-        sky_color:            [0.160, 0.280, 0.700],
+        sun_color: [2.050, 1.580, 0.880],
+        sky_color: [0.160, 0.280, 0.700],
         ground_ambient_color: [0.072, 0.068, 0.055],
-        shadow_tint_color:    [0.042, 0.072, 0.200],
-        fog_color:            [0.700, 0.620, 0.520],
-        fog_density:          0.0015,
+        shadow_tint_color: [0.042, 0.072, 0.200],
+        fog_color: [0.700, 0.620, 0.520],
+        fog_density: 0.0015,
     },
     // 12:00 — Noon
     DayKeyframe {
         time: 0.500,
-        sun_color:            [1.850, 1.550, 1.050], // Neutral warm
-        sky_color:            [0.180, 0.320, 0.740], // Rich saturated blue
+        sun_color: [1.850, 1.550, 1.050],            // Neutral warm
+        sky_color: [0.180, 0.320, 0.740],            // Rich saturated blue
         ground_ambient_color: [0.080, 0.070, 0.130], // Cool violet bounce
-        shadow_tint_color:    [0.060, 0.100, 0.240],
-        fog_color:            [0.580, 0.700, 0.860],
-        fog_density:          0.0012,
+        shadow_tint_color: [0.060, 0.100, 0.240],
+        fog_color: [0.580, 0.700, 0.860],
+        fog_density: 0.0012,
     },
     // 16:05 — Afternoon
     DayKeyframe {
         time: 0.670,
-        sun_color:            [1.950, 1.500, 0.920], // Getting warmer
-        sky_color:            [0.170, 0.300, 0.700],
+        sun_color: [1.950, 1.500, 0.920], // Getting warmer
+        sky_color: [0.170, 0.300, 0.700],
         ground_ambient_color: [0.078, 0.068, 0.112],
-        shadow_tint_color:    [0.055, 0.092, 0.220],
-        fog_color:            [0.620, 0.660, 0.820],
-        fog_density:          0.0013,
+        shadow_tint_color: [0.055, 0.092, 0.220],
+        fog_color: [0.620, 0.660, 0.820],
+        fog_density: 0.0013,
     },
     // 18:00 — Sunset
     DayKeyframe {
         time: 0.750,
-        sun_color:            [2.200, 1.000, 0.380], // Symmetric with sunrise
-        sky_color:            [0.200, 0.260, 0.660],
+        sun_color: [2.200, 1.000, 0.380], // Symmetric with sunrise
+        sky_color: [0.200, 0.260, 0.660],
         ground_ambient_color: [0.076, 0.052, 0.035],
-        shadow_tint_color:    [0.035, 0.050, 0.175],
-        fog_color:            [0.920, 0.480, 0.180], // Deep warm orange
-        fog_density:          0.0022,
+        shadow_tint_color: [0.035, 0.050, 0.175],
+        fog_color: [0.920, 0.480, 0.180], // Deep warm orange
+        fog_density: 0.0022,
     },
     // 19:41 — Dusk
     DayKeyframe {
         time: 0.820,
-        sun_color:            [0.280, 0.180, 0.140],
-        sky_color:            [0.075, 0.092, 0.300], // Blue-violet
+        sun_color: [0.280, 0.180, 0.140],
+        sky_color: [0.075, 0.092, 0.300], // Blue-violet
         ground_ambient_color: [0.038, 0.032, 0.058],
-        shadow_tint_color:    [0.028, 0.035, 0.115],
-        fog_color:            [0.200, 0.160, 0.280], // Purple-grey
-        fog_density:          0.0016,
+        shadow_tint_color: [0.028, 0.035, 0.115],
+        fog_color: [0.200, 0.160, 0.280], // Purple-grey
+        fog_density: 0.0016,
     },
     // 21:07 — Twilight
     DayKeyframe {
         time: 0.880,
-        sun_color:            [0.050, 0.040, 0.080],
-        sky_color:            [0.030, 0.042, 0.165],
+        sun_color: [0.050, 0.040, 0.080],
+        sky_color: [0.030, 0.042, 0.165],
         ground_ambient_color: [0.016, 0.018, 0.055],
-        shadow_tint_color:    [0.012, 0.016, 0.060],
-        fog_color:            [0.042, 0.045, 0.115],
-        fog_density:          0.0011,
+        shadow_tint_color: [0.012, 0.016, 0.060],
+        fog_color: [0.042, 0.045, 0.115],
+        fog_density: 0.0011,
     },
     // 00:00 — Midnight (closing frame, identical to t=0.000 for seamless loop)
     DayKeyframe {
         time: 1.000,
-        sun_color:            [0.040, 0.050, 0.160],
-        sky_color:            [0.018, 0.025, 0.075],
+        sun_color: [0.040, 0.050, 0.160],
+        sky_color: [0.018, 0.025, 0.075],
         ground_ambient_color: [0.010, 0.012, 0.038],
-        shadow_tint_color:    [0.008, 0.010, 0.040],
-        fog_color:            [0.020, 0.025, 0.065],
-        fog_density:          0.0010,
+        shadow_tint_color: [0.008, 0.010, 0.040],
+        fog_color: [0.020, 0.025, 0.065],
+        fog_density: 0.0010,
     },
 ];
 
@@ -150,7 +150,11 @@ fn lerp_f(a: f32, b: f32, t: f32) -> f32 {
 
 #[inline]
 fn lerp3(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
-    [lerp_f(a[0], b[0], t), lerp_f(a[1], b[1], t), lerp_f(a[2], b[2], t)]
+    [
+        lerp_f(a[0], b[0], t),
+        lerp_f(a[1], b[1], t),
+        lerp_f(a[2], b[2], t),
+    ]
 }
 
 /// Smoothstep easing for silky transitions between keyframes.
@@ -172,17 +176,21 @@ fn interpolate_keyframes(time: f32) -> DayKeyframe {
     let a = &KEYFRAMES[lo];
     let b = &KEYFRAMES[hi];
     let range = b.time - a.time;
-    let raw_t = if range > 1e-5 { (time - a.time) / range } else { 0.0 };
+    let raw_t = if range > 1e-5 {
+        (time - a.time) / range
+    } else {
+        0.0
+    };
     let t = ease(raw_t.clamp(0.0, 1.0));
 
     DayKeyframe {
         time,
-        sun_color:            lerp3(a.sun_color, b.sun_color, t),
-        sky_color:            lerp3(a.sky_color, b.sky_color, t),
+        sun_color: lerp3(a.sun_color, b.sun_color, t),
+        sky_color: lerp3(a.sky_color, b.sky_color, t),
         ground_ambient_color: lerp3(a.ground_ambient_color, b.ground_ambient_color, t),
-        shadow_tint_color:    lerp3(a.shadow_tint_color, b.shadow_tint_color, t),
-        fog_color:            lerp3(a.fog_color, b.fog_color, t),
-        fog_density:          lerp_f(a.fog_density, b.fog_density, t),
+        shadow_tint_color: lerp3(a.shadow_tint_color, b.shadow_tint_color, t),
+        fog_color: lerp3(a.fog_color, b.fog_color, t),
+        fog_density: lerp_f(a.fog_density, b.fog_density, t),
     }
 }
 
