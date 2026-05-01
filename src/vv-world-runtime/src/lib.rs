@@ -129,8 +129,7 @@ impl PlanetData {
         if id.layer <= height {
             Some(self.terrain.get_block(id.face, id.u, id.v, id.layer))
         } else {
-            self.terrain
-                .generated_feature_block(id.face, id.u, id.v, id.layer)
+            None
         }
     }
 
