@@ -1211,39 +1211,52 @@ impl ContentCompiler {
                     height_max_m: *height_max_m,
                 }
             }
-            FloraFeature::Tree {
-                log_block,
-                leaf_block,
-                trunk_height_min_m,
-                trunk_height_max_m,
-                canopy_radius_m,
-                canopy_height_m,
-                canopy_start_t,
-                trunk_girth,
-                crown_bias,
-            } => {
-                let log = self
-                    .resolve_block("flora", doc, log_block, index)
-                    .unwrap_or(BlockId::new(0));
-                let leaf = self
-                    .resolve_block("flora", doc, leaf_block, index)
-                    .unwrap_or(BlockId::new(0));
+            FloraFeature::Tree(tree) => {
+                let log_block = self
+                    .resolve_block("flora", doc, &tree.blocks.log, index)
+                    .expect("flora tree log block should resolve");
+
+                let leaf_block = self
+                    .resolve_block("flora", doc, &tree.blocks.leaves, index)
+                    .expect("flora tree leaf block should resolve");
+
+                let trunk_height_min_m = tree.size.height_min_m;
+                let trunk_height_max_m = tree.size.height_max_m;
+                let canopy_radius_m = tree.size.radius_max_m;
+                let canopy_height_m = tree.crown.height_max_m;
+                let canopy_start_t = tree.crown.start_t;
+                let trunk_girth = (tree.trunk.base_radius_m / 0.60).clamp(0.0, 1.0);
+                let crown_bias = tree
+                    .variation
+                    .archetypes
+                    .iter()
+                    .fold(0.0, |acc, archetype| {
+                        let bias = match archetype.kind {
+                            vv_schema::worldgen::flora::TreeArchetypeKind::Spreading => 1.0,
+                            vv_schema::worldgen::flora::TreeArchetypeKind::Columnar => -1.0,
+                            _ => 0.0,
+                        };
+                        acc + bias * archetype.weight.max(0.0)
+                    })
+                    .clamp(-1.0, 1.0);
+
                 CompiledFloraFeature::Tree {
-                    log_block: log,
-                    leaf_block: leaf,
-                    trunk_height_min_m: *trunk_height_min_m,
-                    trunk_height_max_m: *trunk_height_max_m,
-                    canopy_radius_m: *canopy_radius_m,
-                    canopy_height_m: *canopy_height_m,
-                    canopy_start_t: *canopy_start_t,
-                    trunk_girth: *trunk_girth,
-                    crown_bias: *crown_bias,
+                    log_block,
+                    leaf_block,
+                    trunk_height_min_m,
+                    trunk_height_max_m,
+                    canopy_radius_m,
+                    canopy_height_m,
+                    canopy_start_t,
+                    trunk_girth,
+                    crown_bias,
                 }
             }
             FloraFeature::Cluster {
                 block,
                 radius_min_m,
                 radius_max_m,
+                ..
             } => {
                 let block_id = self
                     .resolve_block("flora", doc, block, index)

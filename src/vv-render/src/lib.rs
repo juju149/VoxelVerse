@@ -6,6 +6,7 @@ mod gameplay_ui;
 pub mod lod_animator;
 pub mod renderer;
 mod sky_state;
+mod shader_source;
 
 pub use chunk_mesh::ChunkMesh;
 pub use frustum::Frustum;
