@@ -25,6 +25,7 @@
             bevel: 0.025,
             normal_strength: 0.22,
         ),
+        surface_program: (kind: snow),
         variation: (
             per_voxel_tint: 0.05,
             per_face_tint: 0.03,
@@ -34,6 +35,8 @@
             micro_noise_strength: 0.05,
             edge_darkening: 0.04,
             ao_influence: 0.8,
+        ),
+        environment: (
             snow_response: 0.0,
         ),
         faces: (),

@@ -26,6 +26,7 @@
             bevel: 0.018,
             normal_strength: 0.42,
         ),
+        surface_program: (kind: wood_log),
         variation: (
             per_voxel_tint: 0.16,
             per_face_tint: 0.06,
@@ -35,6 +36,8 @@
             micro_noise_strength: 0.08,
             edge_darkening: 0.08,
             ao_influence: 0.9,
+        ),
+        environment: (
             biome_tint_strength: 0.0,
             wetness_response: 0.10,
             snow_response: 0.12,

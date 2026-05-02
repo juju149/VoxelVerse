@@ -14,7 +14,9 @@
         ),
         lighting: (),
         geometry: (shape: cube),
+        surface_program: (kind: flat),
         variation: (),
+        environment: (),
         faces: (),
         details: [],
         meshing: (

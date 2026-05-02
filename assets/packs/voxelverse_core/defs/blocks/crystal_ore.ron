@@ -31,6 +31,7 @@
             bevel: 0.018,
             normal_strength: 0.52,
         ),
+        surface_program: (kind: crystal),
         variation: (
             per_voxel_tint: 0.09,
             per_face_tint: 0.06,
@@ -41,6 +42,7 @@
             edge_darkening: 0.05,
             ao_influence: 0.85,
         ),
+        environment: (),
         faces: (),
         details: [
             (

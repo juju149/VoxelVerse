@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(xargs head *)"
+      "Bash(xargs head *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\voxanet\\\\assets\" -Recurse -Filter \"*.ron\")",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }

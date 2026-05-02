@@ -26,6 +26,7 @@
             bevel: 0.014,
             normal_strength: 0.28,
         ),
+        surface_program: (kind: stone),
         variation: (
             per_voxel_tint: 0.07,
             per_face_tint: 0.04,
@@ -36,6 +37,7 @@
             edge_darkening: 0.14,
             ao_influence: 0.90,
         ),
+        environment: (),
         faces: (),
         details: [],
         meshing: (

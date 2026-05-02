@@ -108,7 +108,9 @@ pub struct RawBlockRenderDef {
     pub surface: RawBlockSurfaceDef,
     pub lighting: RawBlockLightingDef,
     pub geometry: RawBlockGeometryDef,
+    pub surface_program: RawBlockSurfaceProgramDef,
     pub variation: RawBlockVisualVariation,
+    pub environment: RawBlockEnvironmentResponseDef,
     pub procedural: RawBlockProceduralDef,
     pub faces: RawBlockFaceVisuals,
     pub details: Vec<RawBlockDetailDef>,
@@ -121,7 +123,9 @@ impl Default for RawBlockRenderDef {
             surface: RawBlockSurfaceDef::default(),
             lighting: RawBlockLightingDef::default(),
             geometry: RawBlockGeometryDef::default(),
+            surface_program: RawBlockSurfaceProgramDef::default(),
             variation: RawBlockVisualVariation::default(),
+            environment: RawBlockEnvironmentResponseDef::default(),
             procedural: RawBlockProceduralDef::default(),
             faces: RawBlockFaceVisuals::default(),
             details: Vec::new(),
@@ -144,22 +148,74 @@ pub struct RawBlockSurfaceDef {
     pub textures: BlockTextureRefs,
 }
 
+
 impl Default for RawBlockSurfaceDef {
     fn default() -> Self {
         Self {
-            material: BlockMaterialRef("voxelverse:standard_opaque".to_owned()),
-            base_color: HexColor::default(),
+            material: BlockMaterialRef("voxelverse:procedural_pixel".into()),
+            textures: Default::default(),
+            texture_layout: Default::default(),
+            tint: Default::default(),
+            base_color: HexColor("#8A8A8A".into()),
             palette: Vec::new(),
-            roughness: 1.0,
+            roughness: 0.85,
             metallic: 0.0,
             alpha: 1.0,
-            tint: TintMode::None,
-            texture_layout: TextureLayout::Single,
-            textures: BlockTextureRefs::default(),
+        }
+    }
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockSurfaceProgramDef {
+    pub kind: BlockSurfaceProgram,
+    pub variant: Option<String>,
+    pub scale: f32,
+    pub contrast: f32,
+    pub cavity_strength: f32,
+    pub edge_highlight: f32,
+    pub anisotropy: f32,
+}
+
+impl Default for RawBlockSurfaceProgramDef {
+    fn default() -> Self {
+        Self {
+            kind: BlockSurfaceProgram::Flat,
+            variant: None,
+            scale: 1.0,
+            contrast: 1.0,
+            cavity_strength: 0.0,
+            edge_highlight: 0.0,
+            anisotropy: 0.0,
         }
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockSurfaceProgram {
+    Flat,
+    Grass,
+    Dirt,
+    Stone,
+    StoneBricks,
+    WoodLog,
+    WoodPlanks,
+    Sand,
+    Snow,
+    Ice,
+    Leaves,
+    Lava,
+    Crystal,
+    Ore,
+    Mushroom,
+    Custom { program: ResourceRef },
+}
+
+impl Default for BlockSurfaceProgram {
+    fn default() -> Self {
+        BlockSurfaceProgram::Flat
+    }
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct RawBlockLightingDef {
@@ -181,7 +237,12 @@ impl Default for RawBlockLightingDef {
 #[serde(default, deny_unknown_fields)]
 pub struct RawBlockGeometryDef {
     pub shape: BlockShape,
+    pub profile: BlockGeometryProfile,
     pub bevel: f32,
+    pub edge_roundness: f32,
+    pub face_pillow: f32,
+    pub silhouette_noise: f32,
+    pub corner_softness: f32,
     pub normal_strength: f32,
 }
 
@@ -189,9 +250,35 @@ impl Default for RawBlockGeometryDef {
     fn default() -> Self {
         Self {
             shape: BlockShape::Cube,
+            profile: BlockGeometryProfile::HardCube,
             bevel: 0.0,
+            edge_roundness: 0.0,
+            face_pillow: 0.0,
+            silhouette_noise: 0.0,
+            corner_softness: 0.0,
             normal_strength: 0.0,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockGeometryProfile {
+    HardCube,
+    SoftCube,
+    PillowCube,
+    ChunkyStone,
+    StoneBrick,
+    LayeredSediment,
+    LeafCluster,
+    OrganicBlob,
+    Crystal,
+    LiquidCube,
+}
+
+impl Default for BlockGeometryProfile {
+    fn default() -> Self {
+        BlockGeometryProfile::HardCube
     }
 }
 
@@ -244,10 +331,6 @@ pub struct RawBlockVisualVariation {
     pub micro_noise_strength: f32,
     pub edge_darkening: f32,
     pub ao_influence: f32,
-    pub biome_tint_strength: f32,
-    pub wetness_response: f32,
-    pub snow_response: f32,
-    pub dust_response: f32,
 }
 
 impl Default for RawBlockVisualVariation {
@@ -261,10 +344,30 @@ impl Default for RawBlockVisualVariation {
             micro_noise_strength: 0.0,
             edge_darkening: 0.0,
             ao_influence: 1.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct RawBlockEnvironmentResponseDef {
+    pub biome_tint_strength: f32,
+    pub wetness_response: f32,
+    pub snow_response: f32,
+    pub dust_response: f32,
+    pub slope_moss_bias: f32,
+    pub cavity_dust_bias: f32,
+}
+
+impl Default for RawBlockEnvironmentResponseDef {
+    fn default() -> Self {
+        Self {
             biome_tint_strength: 0.0,
             wetness_response: 0.0,
             snow_response: 0.0,
             dust_response: 0.0,
+            slope_moss_bias: 0.0,
+            cavity_dust_bias: 0.0,
         }
     }
 }
@@ -318,10 +421,16 @@ impl Default for RawBlockFaceVisual {
 pub struct RawBlockDetailDef {
     pub kind: BlockDetailRef,
     pub density: f32,
+    pub weight: f32,
+    pub scale: f32,
+    pub strength: f32,
     pub color: Option<HexColor>,
     pub min_size: f32,
     pub max_size: f32,
     pub slope_bias: f32,
+    pub height_bias: f32,
+    pub blend: BlockDetailBlend,
+    pub target: BlockDetailTarget,
 }
 
 impl Default for RawBlockDetailDef {
@@ -329,11 +438,56 @@ impl Default for RawBlockDetailDef {
         Self {
             kind: BlockDetailRef("voxelverse:generic_detail".to_owned()),
             density: 0.0,
+            weight: 1.0,
+            scale: 1.0,
+            strength: 1.0,
             color: None,
             min_size: 0.0,
             max_size: 0.0,
             slope_bias: 0.0,
+            height_bias: 0.0,
+            blend: BlockDetailBlend::Overlay,
+            target: BlockDetailTarget::Any,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockDetailBlend {
+    Overlay,
+    Multiply,
+    Add,
+    Replace,
+    Emissive,
+    Cut,
+}
+
+impl Default for BlockDetailBlend {
+    fn default() -> Self {
+        BlockDetailBlend::Overlay
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockDetailTarget {
+    Any,
+    Top,
+    Bottom,
+    Sides,
+    North,
+    South,
+    East,
+    West,
+    UpFacing,
+    DownFacing,
+    Vertical,
+}
+
+impl Default for BlockDetailTarget {
+    fn default() -> Self {
+        BlockDetailTarget::Any
     }
 }
 
@@ -701,3 +855,6 @@ pub enum BlockUseAction {
     /// Calls a script. The script engine and compiled bindings live outside vv-schema.
     Custom { script: ScriptRef },
 }
+
+
+

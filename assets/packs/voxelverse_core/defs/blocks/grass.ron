@@ -26,6 +26,7 @@
             bevel: 0.042,
             normal_strength: 0.50,
         ),
+        surface_program: (kind: grass),
         variation: (
             per_voxel_tint: 0.18,
             per_face_tint: 0.10,
@@ -35,6 +36,8 @@
             micro_noise_strength: 0.10,
             edge_darkening: 0.24,
             ao_influence: 1.0,
+        ),
+        environment: (
             biome_tint_strength: 0.28,
             wetness_response: 0.18,
             snow_response: 0.28,

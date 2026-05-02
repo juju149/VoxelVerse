@@ -22,8 +22,8 @@ use vv_registry::{
 };
 use vv_schema::{
     block::{
-        BlockDef, BlockShape, BlockTextureRefs, MaterialPhase, RawBlockDetailDef,
-        RawBlockFaceVisual, RawBlockVisualVariation, RenderMode, TextureLayout, TintMode,
+        BlockDef, BlockGeometryProfile, BlockShape, BlockSurfaceProgram, BlockTextureRefs, MaterialPhase, RawBlockDetailDef,
+        RawBlockEnvironmentResponseDef, RawBlockFaceVisual, RawBlockVisualVariation, RenderMode, TextureLayout, TintMode,
     },
     common::tool::ToolKind,
     common::{BlockRef, EntityRef, ItemRef, LootTableRef, PlaceableRef, ResourceRef, TagRef},
@@ -401,11 +401,15 @@ impl ContentCompiler {
                 | u32::from(doc.value.render.meshing.receives_ao) * BlockVisualFlags::RECEIVES_AO,
         );
         let (faces, details, detail_count) = self.runtime_visual_layers(doc, &compiled);
+        let geometry_profile_id = geometry_profile_id(&doc.value.render.geometry.profile) as f32;
+        let surface_program_id = surface_program_id(&doc.value.render.surface_program.kind);
+        let face_pillow = self.clamp_unit(doc, "render.geometry.face_pillow", doc.value.render.geometry.face_pillow);
+        let edge_roundness = self.clamp_unit(doc, "render.geometry.edge_roundness", doc.value.render.geometry.edge_roundness);
         let runtime = RuntimeBlockVisual {
             base_color: compiled.base_color,
             emission: compiled.emission.unwrap_or([0.0, 0.0, 0.0, 0.0]),
-            surface: [compiled.roughness, compiled.metallic, compiled.alpha, 0.0],
-            shape: [compiled.bevel, compiled.normal_strength, 0.0, 0.0],
+            surface: [compiled.roughness, compiled.metallic, compiled.alpha, face_pillow],
+            shape: [compiled.bevel, compiled.normal_strength, geometry_profile_id, edge_roundness],
             variation_a: [
                 compiled.variation.per_voxel_tint,
                 compiled.variation.per_face_tint,
@@ -429,7 +433,7 @@ impl ContentCompiler {
                 compiled.procedural.grid_size,
                 compiled.procedural.face_blend,
                 detail_count,
-                0,
+                surface_program_id,
             ],
             faces,
             details,
@@ -485,7 +489,7 @@ impl ContentCompiler {
                 color,
             ));
         }
-        let variation = self.compile_visual_variation(doc, render.variation);
+        let variation = self.compile_visual_variation(doc, render.variation, render.environment);
         CompiledBlockVisual {
             material_key: self.material_key(doc, &render.surface.material.0),
             base_color,
@@ -554,6 +558,7 @@ impl ContentCompiler {
         &mut self,
         doc: &RawDocument<BlockDef>,
         variation: RawBlockVisualVariation,
+        environment: RawBlockEnvironmentResponseDef,
     ) -> CompiledBlockVisualVariation {
         CompiledBlockVisualVariation {
             per_voxel_tint: self.clamp_unit(
@@ -598,23 +603,23 @@ impl ContentCompiler {
             ),
             biome_tint_strength: self.clamp_unit(
                 doc,
-                "render.variation.biome_tint_strength",
-                variation.biome_tint_strength,
+                "render.environment.biome_tint_strength",
+                environment.biome_tint_strength,
             ),
             wetness_response: self.clamp_unit(
                 doc,
-                "render.variation.wetness_response",
-                variation.wetness_response,
+                "render.environment.wetness_response",
+                environment.wetness_response,
             ),
             snow_response: self.clamp_unit(
                 doc,
-                "render.variation.snow_response",
-                variation.snow_response,
+                "render.environment.snow_response",
+                environment.snow_response,
             ),
             dust_response: self.clamp_unit(
                 doc,
-                "render.variation.dust_response",
-                variation.dust_response,
+                "render.environment.dust_response",
+                environment.dust_response,
             ),
         }
     }
@@ -2021,6 +2026,41 @@ fn compiled_render_mode(mode: &RenderMode) -> CompiledRenderMode {
     }
 }
 
+fn geometry_profile_id(profile: &BlockGeometryProfile) -> u32 {
+    match profile {
+        BlockGeometryProfile::HardCube => 0,
+        BlockGeometryProfile::SoftCube => 1,
+        BlockGeometryProfile::PillowCube => 2,
+        BlockGeometryProfile::ChunkyStone => 3,
+        BlockGeometryProfile::StoneBrick => 4,
+        BlockGeometryProfile::LayeredSediment => 5,
+        BlockGeometryProfile::LeafCluster => 6,
+        BlockGeometryProfile::OrganicBlob => 7,
+        BlockGeometryProfile::Crystal => 8,
+        BlockGeometryProfile::LiquidCube => 9,
+    }
+}
+
+fn surface_program_id(program: &BlockSurfaceProgram) -> u32 {
+    match program {
+        BlockSurfaceProgram::Flat => 0,
+        BlockSurfaceProgram::Grass => 1,
+        BlockSurfaceProgram::Dirt => 2,
+        BlockSurfaceProgram::Stone => 3,
+        BlockSurfaceProgram::StoneBricks => 4,
+        BlockSurfaceProgram::WoodLog => 5,
+        BlockSurfaceProgram::WoodPlanks => 6,
+        BlockSurfaceProgram::Sand => 7,
+        BlockSurfaceProgram::Snow => 8,
+        BlockSurfaceProgram::Ice => 9,
+        BlockSurfaceProgram::Leaves => 10,
+        BlockSurfaceProgram::Lava => 11,
+        BlockSurfaceProgram::Crystal => 12,
+        BlockSurfaceProgram::Ore => 13,
+        BlockSurfaceProgram::Mushroom => 14,
+        BlockSurfaceProgram::Custom { .. } => 255,
+    }
+}
 fn compiled_block_shape(shape: &BlockShape) -> CompiledBlockShape {
     match shape {
         BlockShape::Cube => CompiledBlockShape::Cube,
@@ -2108,3 +2148,7 @@ fn stable_hash32(value: &str) -> u32 {
     }
     hash
 }
+
+
+
+

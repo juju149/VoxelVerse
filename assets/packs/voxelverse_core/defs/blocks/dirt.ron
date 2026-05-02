@@ -25,6 +25,7 @@
             bevel: 0.038,
             normal_strength: 0.44,
         ),
+        surface_program: (kind: dirt),
         variation: (
             per_voxel_tint: 0.22,
             per_face_tint: 0.10,
@@ -35,6 +36,7 @@
             edge_darkening: 0.22,
             ao_influence: 1.0,
         ),
+        environment: (),
         procedural: (
             grid_size: 10,
             face_blend: false,

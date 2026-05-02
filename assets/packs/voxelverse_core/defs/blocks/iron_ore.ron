@@ -27,6 +27,7 @@
             bevel: 0.028,
             normal_strength: 0.40,
         ),
+        surface_program: (kind: ore),
         variation: (
             per_voxel_tint: 0.17,
             per_face_tint: 0.10,
@@ -37,6 +38,7 @@
             edge_darkening: 0.20,
             ao_influence: 1.0,
         ),
+        environment: (),
         faces: (),
         details: [],
         meshing: (

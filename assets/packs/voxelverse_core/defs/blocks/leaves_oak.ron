@@ -26,6 +26,7 @@
             bevel: 0.0,
             normal_strength: 0.25,
         ),
+        surface_program: (kind: leaves),
         variation: (
             per_voxel_tint: 0.36,
             per_face_tint: 0.20,
@@ -35,6 +36,8 @@
             micro_noise_strength: 0.035,
             edge_darkening: 0.08,
             ao_influence: 0.75,
+        ),
+        environment: (
             biome_tint_strength: 0.40,
         ),
         faces: (),

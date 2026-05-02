@@ -25,6 +25,7 @@
             bevel: 0.0,
             normal_strength: 0.45,
         ),
+        surface_program: (kind: flat),
         variation: (
             per_voxel_tint: 0.06,
             per_face_tint: 0.04,
@@ -35,6 +36,7 @@
             edge_darkening: 0.0,
             ao_influence: 0.30,
         ),
+        environment: (),
         faces: (),
         details: [],
         meshing: (

@@ -25,6 +25,7 @@
             bevel: 0.016,
             normal_strength: 0.58,
         ),
+        surface_program: (kind: wood_planks),
         variation: (
             per_voxel_tint: 0.08,
             per_face_tint: 0.05,
@@ -35,6 +36,7 @@
             edge_darkening: 0.16,
             ao_influence: 0.95,
         ),
+        environment: (),
         faces: (),
         details: [],
         meshing: (

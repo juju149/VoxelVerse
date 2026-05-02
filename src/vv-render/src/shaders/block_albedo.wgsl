@@ -83,7 +83,24 @@ fn procedural_block_albedo(
         color = mix(color, detail.color.rgb, strength);
     }
 
-    color = color * (1.0 - edge_factor(uv) * visual.variation_b.z);
+    color = apply_surface_program_color(
+        visual,
+        color,
+        uv,
+        face_id,
+        cell,
+        grid_size_f,
+        seed,
+    );
 
+    color = apply_stylized_voxel_finish(
+        visual,
+        color,
+        uv,
+        face_id,
+        seed + vec3<f32>(131.0, 137.0, 139.0),
+    );
+
+    color = color * (1.0 - edge_factor(uv) * visual.variation_b.z);
     return clamp(color, vec3<f32>(0.0), vec3<f32>(3.5));
 }

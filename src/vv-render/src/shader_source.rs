@@ -11,6 +11,8 @@ pub const MAIN_SHADER_SOURCE: &str = concat!(
     "\n",
     include_str!("shaders/block_details.wgsl"),
     "\n",
+    include_str!("shaders/block_programs.wgsl"),
+    "\n",
     include_str!("shaders/block_albedo.wgsl"),
     "\n",
     include_str!("shaders/shadows.wgsl"),
