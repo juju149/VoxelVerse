@@ -4,6 +4,7 @@ mod lod;
 mod overlay;
 mod primitive_mesh;
 mod primitives;
+mod shape;
 mod vertex;
 mod visual;
 mod voxel;

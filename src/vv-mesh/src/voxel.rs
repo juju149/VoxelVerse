@@ -1,9 +1,8 @@
 use vv_core::BlockId;
-use vv_planet::CoordSystem;
 use vv_registry::{BlockId as ContentBlockId, BlockRenderSource, CompiledBlockFace};
 use vv_world_runtime::PlanetData;
 
-use crate::{overlay::FeatureOverlay, MeshGen, Vertex};
+use crate::{overlay::FeatureOverlay, shape::VoxelOcclusion, MeshGen, Vertex};
 
 impl MeshGen {
     #[allow(clippy::too_many_arguments)]
@@ -49,14 +48,16 @@ impl MeshGen {
             layer < 0
         };
 
-        let has_top = check(1, 0, 0);
-        let has_btm = check(-1, 0, 0);
-        let has_right = check(0, 1, 0);
-        let has_left = check(0, -1, 0);
-        let has_back = check(0, 0, 1);
-        let has_front = check(0, 0, -1);
+        let occ = VoxelOcclusion {
+            top: check(1, 0, 0),
+            bottom: check(-1, 0, 0),
+            right: check(0, 1, 0),
+            left: check(0, -1, 0),
+            back: check(0, 0, 1),
+            front: check(0, 0, -1),
+        };
 
-        if has_top && has_btm && has_left && has_right && has_front && has_back {
+        if occ.all_occluded() {
             return;
         }
 
@@ -70,7 +71,6 @@ impl MeshGen {
         }
 
         let natural_h = data.terrain.get_height(id.face, id.u, id.v);
-
         if id.layer >= natural_h {
             light_val = 1.0;
         }
@@ -80,57 +80,10 @@ impl MeshGen {
         base_color[1] *= light_val;
         base_color[2] *= light_val;
 
-        let p = |u_off: u32, v_off: u32, l_off: u32| {
-            CoordSystem::get_vertex_pos(
-                id.face,
-                id.u + u_off,
-                id.v + v_off,
-                id.layer + l_off,
-                data.geometry,
-            )
-        };
-
-        let i_bl = p(0, 0, 0);
-        let i_br = p(1, 0, 0);
-        let i_tl = p(0, 1, 0);
-        let i_tr = p(1, 1, 0);
-
-        let o_bl = p(0, 0, 1);
-        let o_br = p(1, 0, 1);
-        let o_tl = p(0, 1, 1);
-        let o_tr = p(1, 1, 1);
-
         let visual_bevel = Self::visual_bevel(render);
-
-        let top_radial = ((o_bl + o_br + o_tr + o_tl) * 0.25).normalize();
-        let bottom_radial = ((i_tl + i_tr + i_br + i_bl) * 0.25).normalize();
-
-        let front_normal = Self::face_normal([i_bl, i_br, o_br, o_bl]);
-        let back_normal = Self::face_normal([o_tl, o_tr, i_tr, i_tl]);
-        let left_normal = Self::face_normal([i_tl, i_bl, o_bl, o_tl]);
-        let right_normal = Self::face_normal([i_br, i_tr, o_tr, o_br]);
-
-        let top_normals = Self::rounded_corner_normals(
-            top_radial,
-            [
-                [(!has_left, left_normal), (!has_front, front_normal)],
-                [(!has_right, right_normal), (!has_front, front_normal)],
-                [(!has_right, right_normal), (!has_back, back_normal)],
-                [(!has_left, left_normal), (!has_back, back_normal)],
-            ],
-            visual_bevel.top_edge,
-        );
-
-        let bottom_normals = Self::rounded_corner_normals(
-            bottom_radial,
-            [
-                [(!has_left, left_normal), (!has_back, back_normal)],
-                [(!has_right, right_normal), (!has_back, back_normal)],
-                [(!has_right, right_normal), (!has_front, front_normal)],
-                [(!has_left, left_normal), (!has_front, front_normal)],
-            ],
-            visual_bevel.top_edge,
-        );
+        let corners = Self::voxel_corners(id, data);
+        let face_normals = Self::voxel_face_normals(corners);
+        let face_positions = Self::sculpted_face_positions(corners, occ, visual_bevel.edge_width);
 
         let block_raw_id = block_id.raw() as i32;
         let block_visual_id = render.visual_id.raw();
@@ -146,51 +99,6 @@ impl MeshGen {
             }
         };
 
-        let top_visible = !has_top;
-        let bottom_visible = !has_btm;
-        let front_visible = !has_front;
-        let back_visible = !has_back;
-        let left_visible = !has_left;
-        let right_visible = !has_right;
-
-        let bevel_width = visual_bevel.edge_width;
-
-        let top_pos = Self::inset_face(
-            [o_bl, o_br, o_tr, o_tl],
-            [front_visible, right_visible, back_visible, left_visible],
-            bevel_width,
-        );
-
-        let bottom_pos = Self::inset_face(
-            [i_tl, i_tr, i_br, i_bl],
-            [back_visible, right_visible, front_visible, left_visible],
-            bevel_width,
-        );
-
-        let front_pos = Self::inset_face(
-            [i_bl, i_br, o_br, o_bl],
-            [bottom_visible, right_visible, top_visible, left_visible],
-            bevel_width,
-        );
-
-        let back_pos = Self::inset_face(
-            [o_tl, o_tr, i_tr, i_tl],
-            [top_visible, right_visible, bottom_visible, left_visible],
-            bevel_width,
-        );
-
-        let left_pos = Self::inset_face(
-            [i_tl, i_bl, o_bl, o_tl],
-            [bottom_visible, front_visible, top_visible, back_visible],
-            bevel_width,
-        );
-
-        let right_pos = Self::inset_face(
-            [i_br, i_tr, o_tr, o_br],
-            [bottom_visible, back_visible, top_visible, front_visible],
-            bevel_width,
-        );
-
         let top_texture_id = Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Top));
         let bottom_texture_id =
             Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Bottom));
@@ -202,6 +110,13 @@ impl MeshGen {
             Self::face_texture_id(render.texture_for_face(CompiledBlockFace::West));
         let right_texture_id =
             Self::face_texture_id(render.texture_for_face(CompiledBlockFace::East));
+
+        let top_visible = !occ.top;
+        let bottom_visible = !occ.bottom;
+        let front_visible = !occ.front;
+        let back_visible = !occ.back;
+        let left_visible = !occ.left;
+        let right_visible = !occ.right;
 
         let top_ao = if top_visible {
             let n = |u, v| check(1, u, v);
@@ -234,7 +149,7 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                top_pos,
+                face_positions.top,
                 top_colors,
                 top_texture_id,
                 block_raw_id,
@@ -243,7 +158,11 @@ impl MeshGen {
                 voxel_pos,
                 Self::stable_variation_seed(id, block_id, 0, planet_seed),
                 true,
-                Some(top_normals),
+                Some(Self::top_corner_normals(
+                    face_normals,
+                    occ,
+                    visual_bevel.top_edge,
+                )),
             );
         }
 
@@ -252,7 +171,7 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                bottom_pos,
+                face_positions.bottom,
                 [bottom_c; 4],
                 bottom_texture_id,
                 block_raw_id,
@@ -261,7 +180,11 @@ impl MeshGen {
                 voxel_pos,
                 Self::stable_variation_seed(id, block_id, 1, planet_seed),
                 true,
-                Some(bottom_normals),
+                Some(Self::bottom_corner_normals(
+                    face_normals,
+                    occ,
+                    visual_bevel.top_edge,
+                )),
             );
         }
 
@@ -270,7 +193,7 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                front_pos,
+                face_positions.front,
                 [front_c; 4],
                 front_texture_id,
                 block_raw_id,
@@ -279,14 +202,9 @@ impl MeshGen {
                 voxel_pos,
                 Self::stable_variation_seed(id, block_id, 2, planet_seed),
                 false,
-                Some(Self::rounded_corner_normals(
-                    front_normal,
-                    [
-                        [(!has_btm, bottom_radial), (!has_left, left_normal)],
-                        [(!has_btm, bottom_radial), (!has_right, right_normal)],
-                        [(!has_top, top_radial), (!has_right, right_normal)],
-                        [(!has_top, top_radial), (!has_left, left_normal)],
-                    ],
+                Some(Self::front_corner_normals(
+                    face_normals,
+                    occ,
                     visual_bevel.side_edge,
                 )),
             );
@@ -297,7 +215,7 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                back_pos,
+                face_positions.back,
                 [back_c; 4],
                 back_texture_id,
                 block_raw_id,
@@ -306,14 +224,9 @@ impl MeshGen {
                 voxel_pos,
                 Self::stable_variation_seed(id, block_id, 3, planet_seed),
                 false,
-                Some(Self::rounded_corner_normals(
-                    back_normal,
-                    [
-                        [(!has_top, top_radial), (!has_left, left_normal)],
-                        [(!has_top, top_radial), (!has_right, right_normal)],
-                        [(!has_btm, bottom_radial), (!has_right, right_normal)],
-                        [(!has_btm, bottom_radial), (!has_left, left_normal)],
-                    ],
+                Some(Self::back_corner_normals(
+                    face_normals,
+                    occ,
                     visual_bevel.side_edge,
                 )),
             );
@@ -324,7 +237,7 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                left_pos,
+                face_positions.left,
                 [left_c; 4],
                 left_texture_id,
                 block_raw_id,
@@ -333,14 +246,9 @@ impl MeshGen {
                 voxel_pos,
                 Self::stable_variation_seed(id, block_id, 4, planet_seed),
                 false,
-                Some(Self::rounded_corner_normals(
-                    left_normal,
-                    [
-                        [(!has_btm, bottom_radial), (!has_back, back_normal)],
-                        [(!has_btm, bottom_radial), (!has_front, front_normal)],
-                        [(!has_top, top_radial), (!has_front, front_normal)],
-                        [(!has_top, top_radial), (!has_back, back_normal)],
-                    ],
+                Some(Self::left_corner_normals(
+                    face_normals,
+                    occ,
                     visual_bevel.side_edge,
                 )),
             );
@@ -351,7 +259,7 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                right_pos,
+                face_positions.right,
                 [right_c; 4],
                 right_texture_id,
                 block_raw_id,
@@ -360,36 +268,22 @@ impl MeshGen {
                 voxel_pos,
                 Self::stable_variation_seed(id, block_id, 5, planet_seed),
                 false,
-                Some(Self::rounded_corner_normals(
-                    right_normal,
-                    [
-                        [(!has_btm, bottom_radial), (!has_front, front_normal)],
-                        [(!has_btm, bottom_radial), (!has_back, back_normal)],
-                        [(!has_top, top_radial), (!has_back, back_normal)],
-                        [(!has_top, top_radial), (!has_front, front_normal)],
-                    ],
+                Some(Self::right_corner_normals(
+                    face_normals,
+                    occ,
                     visual_bevel.side_edge,
                 )),
             );
         }
 
-        if bevel_width > 0.0 {
+        if visual_bevel.is_enabled() {
             Self::add_edge_bevels(
                 verts,
                 inds,
                 idx,
                 block_raw_id,
-                [
-                    top_visible,
-                    bottom_visible,
-                    front_visible,
-                    back_visible,
-                    left_visible,
-                    right_visible,
-                ],
-                [
-                    top_pos, bottom_pos, front_pos, back_pos, left_pos, right_pos,
-                ],
+                occ.visible_array(),
+                face_positions.as_array(),
                 [
                     (top_texture_id, top_colors),
                     (bottom_texture_id, [bottom_c; 4]),
@@ -398,14 +292,7 @@ impl MeshGen {
                     (left_texture_id, [left_c; 4]),
                     (right_texture_id, [right_c; 4]),
                 ],
-                [
-                    top_radial,
-                    bottom_radial,
-                    front_normal,
-                    back_normal,
-                    left_normal,
-                    right_normal,
-                ],
+                face_normals.as_array(),
                 block_visual_id,
                 voxel_pos,
                 Self::stable_variation_seed(id, block_id, 6, planet_seed),
