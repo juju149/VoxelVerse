@@ -2,9 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(xargs head *)",
-      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\voxanet\\\\assets\" -Recurse -Filter \"*.ron\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\voxelverse\\\\assets\" -Recurse -Filter \"*.ron\")",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\voxanet\" -Recurse -File)",
+      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\voxelverse\" -Recurse -File)",
       "Bash(Sort-Object)",
       "Bash(cargo build *)"
     ]
