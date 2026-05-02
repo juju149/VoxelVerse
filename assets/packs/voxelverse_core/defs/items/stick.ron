@@ -1,9 +1,0 @@
-(
-    display_key: Some("item.voxelverse.stick"),
-    stack_max: 64,
-    weight: 0.05,
-    tags: ["voxelverse:wood_material"],
-    kind: (
-        type: "resource",
-    ),
-)

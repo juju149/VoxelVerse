@@ -190,7 +190,7 @@ impl<'a> Renderer<'a> {
         self.frame_telemetry.gpu.upload_indices += indices;
     }
 
-    pub(super)fn record_mesh_job(
+    pub(super) fn record_mesh_job(
         &mut self,
         duration: Duration,
         vertices: usize,

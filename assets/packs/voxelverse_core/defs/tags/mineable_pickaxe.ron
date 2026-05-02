@@ -1,10 +1,5 @@
 (
-    kind: block,
-    values: [
-        "voxelverse:stone",
-        "voxelverse:cobblestone",
-        "voxelverse:coal_ore",
-        "voxelverse:iron_ore",
-    ],
+    kind: any,
+    values: [],
     extends: [],
 )

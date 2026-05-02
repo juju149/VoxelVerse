@@ -1,7 +1,5 @@
 (
-    kind: item,
-    values: [
-        "voxelverse:coal",
-    ],
+    kind: any,
+    values: [],
     extends: [],
 )

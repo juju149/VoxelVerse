@@ -1,9 +1,5 @@
 (
     kind: any,
-    values: [
-        "voxelverse:wood_log",
-        "voxelverse:planks_oak",
-        "voxelverse:stick",
-    ],
+    values: [],
     extends: [],
 )

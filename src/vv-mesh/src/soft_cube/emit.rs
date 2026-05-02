@@ -1,0 +1,91 @@
+use crate::{shape::VoxelCorners, MeshGen, Vertex};
+
+use super::{sample_soft_cube, world, SoftCubeFace, SoftCubeParams};
+
+impl MeshGen {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn add_soft_cube_face(
+        verts: &mut Vec<Vertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        corners: VoxelCorners,
+        face: SoftCubeFace,
+        params: SoftCubeParams,
+        corner_colors: [[f32; 3]; 4],
+        texture_id: i32,
+        block_id: i32,
+        block_visual_id: u32,
+        voxel_pos: [i32; 3],
+        variation_seed: u32,
+    ) {
+        let params = params.sanitized();
+        let frame = world::SoftCubeWorldFrame::from_corners(corners);
+
+        let segments = params.segments;
+
+        for y in 0..segments {
+            for x in 0..segments {
+                let p00 = sample_soft_cube(face, x, y, params);
+                let p10 = sample_soft_cube(face, x + 1, y, params);
+                let p11 = sample_soft_cube(face, x + 1, y + 1, params);
+                let p01 = sample_soft_cube(face, x, y + 1, params);
+
+                let t00 = uv_to_color_t(p00.uv);
+                let t10 = uv_to_color_t(p10.uv);
+                let t11 = uv_to_color_t(p11.uv);
+                let t01 = uv_to_color_t(p01.uv);
+
+                let colors = [
+                    bilinear_color(corner_colors, t00[0], t00[1]),
+                    bilinear_color(corner_colors, t10[0], t10[1]),
+                    bilinear_color(corner_colors, t11[0], t11[1]),
+                    bilinear_color(corner_colors, t01[0], t01[1]),
+                ];
+
+                Self::quad(
+                    verts,
+                    inds,
+                    idx,
+                    [
+                        world::local_to_world(corners, p00.position),
+                        world::local_to_world(corners, p10.position),
+                        world::local_to_world(corners, p11.position),
+                        world::local_to_world(corners, p01.position),
+                    ],
+                    colors,
+                    texture_id,
+                    block_id,
+                    block_visual_id,
+                    face.id(),
+                    voxel_pos,
+                    variation_seed,
+                    false,
+                    Some([
+                        frame.normal_to_world(p00.normal),
+                        frame.normal_to_world(p10.normal),
+                        frame.normal_to_world(p11.normal),
+                        frame.normal_to_world(p01.normal),
+                    ]),
+                );
+            }
+        }
+    }
+}
+
+fn uv_to_color_t(uv: [f32; 2]) -> [f32; 2] {
+    [uv[0].clamp(0.0, 1.0), (1.0 - uv[1]).clamp(0.0, 1.0)]
+}
+
+fn bilinear_color(c: [[f32; 3]; 4], x: f32, y: f32) -> [f32; 3] {
+    let bottom = mix_color(c[0], c[1], x);
+    let top = mix_color(c[3], c[2], x);
+    mix_color(bottom, top, y)
+}
+
+fn mix_color(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ]
+}

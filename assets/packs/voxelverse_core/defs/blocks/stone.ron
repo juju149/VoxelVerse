@@ -4,42 +4,46 @@
         "voxelverse:solid",
         "voxelverse:natural",
         "voxelverse:mineable_pickaxe",
+        "voxelverse:stone_material",
     ],
     mining: (
         hardness: 1.5,
         tool: pickaxe,
-        tool_tier_min: 1,
+        tool_tier_min: 0,
         sound_material: stone,
     ),
     render: (
-        surface: (
-            material: "voxelverse:cut_stone",
+        material: (
+            kind: stone,
             base_color: "#7A7A75",
             palette: ["#888882", "#7A7A75", "#676762", "#949187"],
             roughness: 0.92,
             metallic: 0.0,
             alpha: 1.0,
+            tint: none,
         ),
         lighting: (),
-        geometry: (
-            shape: cube,
-            bevel: 0.032,
-            normal_strength: 0.44,
+        shape: (
+            kind: cube,
+            profile: soft_cube,
+            bevel: 0.055,
+            roundness: 0.65,
+            face_depth: 0.0,
+            normal_strength: 0.70,
         ),
-        surface_program: (kind: stone),
+        program: (kind: "flat"),
         variation: (
-            per_voxel_tint: 0.22,
-            per_face_tint: 0.12,
-            macro_noise_scale: 0.78,
-            macro_noise_strength: 0.18,
-            micro_noise_scale: 7.5,
-            micro_noise_strength: 0.055,
-            edge_darkening: 0.18,
+            per_voxel_tint: 0.0,
+            per_face_tint: 0.0,
+            macro_noise_scale: 1.0,
+            macro_noise_strength: 0.0,
+            micro_noise_scale: 1.0,
+            micro_noise_strength: 0.0,
+            edge_darkening: 0.0,
             ao_influence: 1.0,
         ),
         environment: (),
         faces: (),
-        details: [],
         meshing: (
             render_mode: opaque,
             occludes: true,
@@ -50,14 +54,10 @@
     ),
     physics: (
         phase: solid,
-        density: 2.75,
+        density: 2.7,
         collider: full,
     ),
-    drops: inline([
-        (
-            entries: [
-                (item: "voxelverse:cobblestone", count: (min: 1, max: 1)),
-            ],
-        ),
-    ]),
+    drops: none,
 )
+
+

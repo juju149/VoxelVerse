@@ -11,94 +11,43 @@
         sound_material: grass,
     ),
     render: (
-        surface: (
-            material: "voxelverse:procedural_pixel",
+        material: (
+            kind: grass,
             base_color: "#6F4A2B",
-            palette: ["#8A5A32", "#6F4A2B", "#4D321F", "#78A83A"],
+            palette: ["#78A83A", "#6F4A2B", "#4D321F"],
             roughness: 0.85,
             metallic: 0.0,
             alpha: 1.0,
             tint: grass_color,
         ),
         lighting: (),
-        geometry: (
-            shape: cube,
-            bevel: 0.042,
-            normal_strength: 0.50,
+        shape: (
+            kind: cube,
+            profile: soft_cube,
+            bevel: 0.055,
+            roundness: 0.65,
+            face_depth: 0.0,
+            normal_strength: 0.70,
         ),
-        surface_program: (kind: grass),
+        program: (kind: "flat"),
         variation: (
-            per_voxel_tint: 0.18,
-            per_face_tint: 0.10,
-            macro_noise_scale: 0.75,
-            macro_noise_strength: 0.22,
-            micro_noise_scale: 8.0,
-            micro_noise_strength: 0.10,
-            edge_darkening: 0.24,
+            per_voxel_tint: 0.0,
+            per_face_tint: 0.0,
+            macro_noise_scale: 1.0,
+            macro_noise_strength: 0.0,
+            micro_noise_scale: 1.0,
+            micro_noise_strength: 0.0,
+            edge_darkening: 0.0,
             ao_influence: 1.0,
         ),
         environment: (
-            biome_tint_strength: 0.28,
-            wetness_response: 0.18,
-            snow_response: 0.28,
-            dust_response: 0.12,
-        ),
-        procedural: (
-            grid_size: 10,
-            face_blend: true,
+            biome_tint_strength: 0.25,
         ),
         faces: (
-            top: Some((
-                color_bias: Some("#78A83A"),
-                detail_bias: ["voxelverse:grass_blades", "voxelverse:tiny_flowers"],
-            )),
-            side: Some((
-                color_bias: Some("#6F4A2B"),
-                detail_bias: ["voxelverse:grass_blades", "voxelverse:roots", "voxelverse:pebbles"],
-            )),
+            top: Some((color_bias: Some("#78A83A"))),
+            side: Some((color_bias: Some("#6F4A2B"))),
+            bottom: Some((color_bias: Some("#573018"))),
         ),
-        details: [
-            (
-                kind: "voxelverse:grass_blades",
-                density: 0.22,
-                color: Some("#6FAD34"),
-                min_size: 0.025,
-                max_size: 0.080,
-                slope_bias: 0.95,
-            ),
-            (
-                kind: "voxelverse:tiny_flowers",
-                density: 0.04,
-                color: Some("#F3EAD8"),
-                min_size: 0.015,
-                max_size: 0.035,
-                slope_bias: 1.0,
-            ),
-            (
-                kind: "voxelverse:roots",
-                density: 0.12,
-                color: Some("#5A341F"),
-                min_size: 0.020,
-                max_size: 0.070,
-                slope_bias: 0.25,
-            ),
-            (
-                kind: "voxelverse:pebbles",
-                density: 0.08,
-                color: Some("#9A8F7A"),
-                min_size: 0.015,
-                max_size: 0.055,
-                slope_bias: 0.2,
-            ),
-            (
-                kind: "voxelverse:moss",
-                density: 0.12,
-                color: Some("#3F6B2A"),
-                min_size: 0.020,
-                max_size: 0.075,
-                slope_bias: 0.7,
-            ),
-        ],
         meshing: (
             render_mode: opaque,
             occludes: true,
@@ -112,11 +61,7 @@
         density: 1.2,
         collider: full,
     ),
-    drops: inline([
-        (
-            entries: [
-                (item: "voxelverse:dirt", count: (min: 1, max: 1)),
-            ],
-        ),
-    ]),
+    drops: none,
 )
+
+

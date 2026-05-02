@@ -75,11 +75,6 @@ impl MeshGen {
             light_val = 1.0;
         }
 
-        let mut base_color = render.color;
-        base_color[0] *= light_val;
-        base_color[1] *= light_val;
-        base_color[2] *= light_val;
-
         let visual_bevel = Self::visual_bevel(render);
         let corners = Self::voxel_corners(id, data);
         let face_normals = Self::voxel_face_normals(corners);
@@ -89,15 +84,6 @@ impl MeshGen {
         let block_visual_id = render.visual_id.raw();
         let voxel_pos = [id.u as i32, id.v as i32, id.layer as i32];
         let planet_seed = data.terrain.world_seed();
-
-        let apply = |ao: f32, texture_id: i32| -> [f32; 3] {
-            if texture_id >= 0 {
-                let light = light_val * ao;
-                [light, light, light]
-            } else {
-                [base_color[0] * ao, base_color[1] * ao, base_color[2] * ao]
-            }
-        };
 
         let top_texture_id = Self::face_texture_id(render.texture_for_face(CompiledBlockFace::Top));
         let bottom_texture_id =
@@ -118,8 +104,17 @@ impl MeshGen {
         let left_visible = !occ.left;
         let right_visible = !occ.right;
 
+        let color = |ao: f32| -> [f32; 3] {
+            let v = (light_val * ao).clamp(0.0, 1.0);
+            [v, v, v]
+        };
+
+        let colors_from_ao = |ao: [f32; 4]| -> [[f32; 3]; 4] {
+            [color(ao[0]), color(ao[1]), color(ao[2]), color(ao[3])]
+        };
+
         let top_ao = if top_visible {
-            let n = |u, v| check(1, u, v);
+            let n = |du: i32, dv: i32| check(1, du, dv);
             [
                 Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1)),
                 Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1)),
@@ -128,24 +123,6 @@ impl MeshGen {
             ]
         } else {
             [1.0; 4]
-        };
-
-        let top_colors = [
-            apply(top_ao[0], top_texture_id),
-            apply(top_ao[1], top_texture_id),
-            apply(top_ao[2], top_texture_id),
-            apply(top_ao[3], top_texture_id),
-        ];
-
-        // Per-corner AO for all faces. Directional base factor baked in alongside AO
-        // so corners in recessed geometry darken naturally without a separate pass.
-        let apply4 = |base: f32, ao: [f32; 4], tid: i32| -> [[f32; 3]; 4] {
-            [
-                apply(base * ao[0], tid),
-                apply(base * ao[1], tid),
-                apply(base * ao[2], tid),
-                apply(base * ao[3], tid),
-            ]
         };
 
         let bottom_ao = if bottom_visible {
@@ -160,7 +137,6 @@ impl MeshGen {
             [1.0; 4]
         };
 
-        // front face = v-1 side; corners [i_bl, i_br, o_br, o_bl] → vary layer & u
         let front_ao = if front_visible {
             let n = |dl: i32, du: i32| check(dl, du, -1);
             [
@@ -173,7 +149,6 @@ impl MeshGen {
             [1.0; 4]
         };
 
-        // back face = v+1 side; corners [o_tl, o_tr, i_tr, i_tl]
         let back_ao = if back_visible {
             let n = |dl: i32, du: i32| check(dl, du, 1);
             [
@@ -186,7 +161,6 @@ impl MeshGen {
             [1.0; 4]
         };
 
-        // left face = u-1 side; corners [i_tl, i_bl, o_bl, o_tl] → vary layer & v
         let left_ao = if left_visible {
             let n = |dl: i32, dv: i32| check(dl, -1, dv);
             [
@@ -199,7 +173,6 @@ impl MeshGen {
             [1.0; 4]
         };
 
-        // right face = u+1 side; corners [i_br, i_tr, o_tr, o_br]
         let right_ao = if right_visible {
             let n = |dl: i32, dv: i32| check(dl, 1, dv);
             [
@@ -212,19 +185,118 @@ impl MeshGen {
             [1.0; 4]
         };
 
-        let bottom_colors = apply4(0.40, bottom_ao, bottom_texture_id);
-        let front_colors = apply4(0.80, front_ao, front_texture_id);
-        let back_colors = apply4(0.80, back_ao, back_texture_id);
-        let left_colors = apply4(0.80, left_ao, left_texture_id);
-        let right_colors = apply4(0.80, right_ao, right_texture_id);
+        if let Some(soft_params) = Self::soft_cube_params(render) {
+            if top_visible {
+                Self::add_soft_cube_face(
+                    verts,
+                    inds,
+                    idx,
+                    corners,
+                    crate::soft_cube::SoftCubeFace::Top,
+                    soft_params,
+                    colors_from_ao(top_ao),
+                    top_texture_id,
+                    block_raw_id,
+                    block_visual_id,
+                    voxel_pos,
+                    Self::stable_variation_seed(id, block_id, 0, planet_seed),
+                );
+            }
 
+            if bottom_visible {
+                Self::add_soft_cube_face(
+                    verts,
+                    inds,
+                    idx,
+                    corners,
+                    crate::soft_cube::SoftCubeFace::Bottom,
+                    soft_params,
+                    colors_from_ao(bottom_ao),
+                    bottom_texture_id,
+                    block_raw_id,
+                    block_visual_id,
+                    voxel_pos,
+                    Self::stable_variation_seed(id, block_id, 1, planet_seed),
+                );
+            }
+
+            if front_visible {
+                Self::add_soft_cube_face(
+                    verts,
+                    inds,
+                    idx,
+                    corners,
+                    crate::soft_cube::SoftCubeFace::Front,
+                    soft_params,
+                    colors_from_ao(front_ao),
+                    front_texture_id,
+                    block_raw_id,
+                    block_visual_id,
+                    voxel_pos,
+                    Self::stable_variation_seed(id, block_id, 2, planet_seed),
+                );
+            }
+
+            if back_visible {
+                Self::add_soft_cube_face(
+                    verts,
+                    inds,
+                    idx,
+                    corners,
+                    crate::soft_cube::SoftCubeFace::Back,
+                    soft_params,
+                    colors_from_ao(back_ao),
+                    back_texture_id,
+                    block_raw_id,
+                    block_visual_id,
+                    voxel_pos,
+                    Self::stable_variation_seed(id, block_id, 3, planet_seed),
+                );
+            }
+
+            if left_visible {
+                Self::add_soft_cube_face(
+                    verts,
+                    inds,
+                    idx,
+                    corners,
+                    crate::soft_cube::SoftCubeFace::Left,
+                    soft_params,
+                    colors_from_ao(left_ao),
+                    left_texture_id,
+                    block_raw_id,
+                    block_visual_id,
+                    voxel_pos,
+                    Self::stable_variation_seed(id, block_id, 4, planet_seed),
+                );
+            }
+
+            if right_visible {
+                Self::add_soft_cube_face(
+                    verts,
+                    inds,
+                    idx,
+                    corners,
+                    crate::soft_cube::SoftCubeFace::Right,
+                    soft_params,
+                    colors_from_ao(right_ao),
+                    right_texture_id,
+                    block_raw_id,
+                    block_visual_id,
+                    voxel_pos,
+                    Self::stable_variation_seed(id, block_id, 5, planet_seed),
+                );
+            }
+
+            return;
+        }
         if top_visible {
             Self::quad(
                 verts,
                 inds,
                 idx,
                 face_positions.top,
-                top_colors,
+                colors_from_ao(top_ao),
                 top_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -246,7 +318,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.bottom,
-                bottom_colors,
+                colors_from_ao(bottom_ao),
                 bottom_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -268,7 +340,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.front,
-                front_colors,
+                colors_from_ao(front_ao),
                 front_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -290,7 +362,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.back,
-                back_colors,
+                colors_from_ao(back_ao),
                 back_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -312,7 +384,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.left,
-                left_colors,
+                colors_from_ao(left_ao),
                 left_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -334,7 +406,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.right,
-                right_colors,
+                colors_from_ao(right_ao),
                 right_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -359,12 +431,12 @@ impl MeshGen {
                 occ.visible_array(),
                 face_positions.as_array(),
                 [
-                    (top_texture_id, top_colors),
-                    (bottom_texture_id, bottom_colors),
-                    (front_texture_id, front_colors),
-                    (back_texture_id, back_colors),
-                    (left_texture_id, left_colors),
-                    (right_texture_id, right_colors),
+                    (top_texture_id, colors_from_ao(top_ao)),
+                    (bottom_texture_id, colors_from_ao(bottom_ao)),
+                    (front_texture_id, colors_from_ao(front_ao)),
+                    (back_texture_id, colors_from_ao(back_ao)),
+                    (left_texture_id, colors_from_ao(left_ao)),
+                    (right_texture_id, colors_from_ao(right_ao)),
                 ],
                 face_normals.as_array(),
                 block_visual_id,

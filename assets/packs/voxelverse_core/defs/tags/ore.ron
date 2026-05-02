@@ -1,9 +1,5 @@
 (
     kind: any,
-    values: [
-        "voxelverse:coal_ore",
-        "voxelverse:iron_ore",
-        "voxelverse:iron_ore",
-    ],
+    values: [],
     extends: [],
 )

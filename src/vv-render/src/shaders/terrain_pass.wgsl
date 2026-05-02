@@ -75,21 +75,6 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         up,
     );
 
-    var lit = apply_planetary_lighting(
-        albedo,
-        visual.emission.rgb,
-        in.world_pos,
-        N,
-        V,
-        in.shadow_pos,
-        in.ao,
-        visual.variation_b.w,
-        visual.surface.x,
-        visual.surface.x,
-        0.10,
-    );
-
-    lit = apply_planetary_fog(lit, in.world_pos);
-
-    return vec4<f32>(encode_final_color(lit), alpha);
+    let encoded = pow(max(albedo, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+    return vec4<f32>(encoded, alpha);
 }

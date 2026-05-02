@@ -1,22 +1,15 @@
 use glam::Vec3;
-use glyphon::{
-    Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea,
-    TextBounds,
-};
+use glyphon::{Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea, TextBounds};
 use std::time::Instant;
 
 use vv_gameplay::{Console, Player, PlayerGameplayState};
 use vv_input::Controller;
+use vv_mesh::MeshGen;
 use vv_physics::Physics;
 use vv_registry::CompiledContent;
 use vv_world_runtime::PlanetData;
-use vv_mesh::MeshGen;
 
-use crate::{
-    AnyKey,
-    atmosphere::AtmosphereUniform,
-    Frustum,
-};
+use crate::{atmosphere::AtmosphereUniform, AnyKey, Frustum};
 
 use super::types::{GlobalUniform, LocalUniform};
 use super::Renderer;
@@ -61,7 +54,8 @@ impl<'a> Renderer<'a> {
         let h = self.config.height as f32;
         let mvp = controller.get_matrix(player, physics, w, h, &self.render_cfg);
 
-        let atmosphere = AtmosphereUniform::from_config(&self.sky_state.to_atmosphere()).with_planet_geometry(planet.geometry);
+        let atmosphere = AtmosphereUniform::from_config(&self.sky_state.to_atmosphere())
+            .with_planet_geometry(planet.geometry);
         let sun_dir = atmosphere.sun_direction_vec3();
         let shadow_dist = 200.0f32;
         let proj_size = 60.0f32;
@@ -103,12 +97,7 @@ impl<'a> Renderer<'a> {
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
             atmosphere,
             inv_view_proj: mvp.inverse().to_cols_array(),
-            planet: [
-                planet.geometry.radius_m,
-                atmosphere_height_m,
-                0.0,
-                0.0,
-            ],
+            planet: [planet.geometry.radius_m, atmosphere_height_m, 0.0, 0.0],
         };
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));

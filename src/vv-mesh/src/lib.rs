@@ -59,3 +59,5 @@ mod tests {
         );
     }
 }
+
+mod soft_cube;

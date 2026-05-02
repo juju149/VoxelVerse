@@ -1,5 +1,5 @@
 (
-    kind: item,
+    kind: any,
     values: [],
     extends: [],
 )

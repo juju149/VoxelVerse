@@ -19,9 +19,10 @@ pub use block::{
     CompiledBlockMeshing, CompiledBlockMining, CompiledBlockPhysics, CompiledBlockRender,
     CompiledBlockShape, CompiledBlockTextures, CompiledBlockVisual, CompiledBlockVisualVariation,
     CompiledDrops, CompiledMaterialPhase, CompiledMaterialShader, CompiledRenderMode,
-    CompiledTextureLayout, CompiledTextureResource, CompiledTintMode, MaterialRegistry,
-    RuntimeBlockDetail, RuntimeBlockFaceVisual, RuntimeBlockVisual, TextureRegistry,
-    BLOCK_VISUAL_DETAIL_COUNT, BLOCK_VISUAL_FACE_COUNT,
+    CompiledSurfaceProgram, CompiledSurfaceProgramKind, CompiledTextureLayout,
+    CompiledTextureResource, CompiledTintMode, MaterialRegistry, RuntimeBlockDetail,
+    RuntimeBlockFaceVisual, RuntimeBlockVisual, TextureRegistry, BLOCK_VISUAL_DETAIL_COUNT,
+    BLOCK_VISUAL_FACE_COUNT, RUNTIME_SURFACE_PROGRAM_FLAT,
 };
 pub use content_key::{ContentKey, ContentKeyParseError};
 pub use entity::{CompiledEntity, EntityRegistry};

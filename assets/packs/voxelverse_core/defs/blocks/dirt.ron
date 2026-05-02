@@ -11,47 +11,37 @@
         sound_material: dirt,
     ),
     render: (
-        surface: (
-            material: "voxelverse:procedural_pixel",
+        material: (
+            kind: dirt,
             base_color: "#573018",
             palette: ["#8A4D24", "#573018", "#3C2110"],
             roughness: 0.90,
             metallic: 0.0,
             alpha: 1.0,
+            tint: none,
         ),
         lighting: (),
-        geometry: (
-            shape: cube,
-            bevel: 0.038,
-            normal_strength: 0.44,
+        shape: (
+            kind: cube,
+            profile: hard_cube,
+            bevel: 0.0,
+            roundness: 0.0,
+            face_depth: 0.0,
+            normal_strength: 0.0,
         ),
-        surface_program: (kind: dirt),
+        program: (kind: "flat"),
         variation: (
-            per_voxel_tint: 0.22,
-            per_face_tint: 0.10,
-            macro_noise_scale: 0.8,
-            macro_noise_strength: 0.20,
-            micro_noise_scale: 7.0,
-            micro_noise_strength: 0.09,
-            edge_darkening: 0.22,
+            per_voxel_tint: 0.0,
+            per_face_tint: 0.0,
+            macro_noise_scale: 1.0,
+            macro_noise_strength: 0.0,
+            micro_noise_scale: 1.0,
+            micro_noise_strength: 0.0,
+            edge_darkening: 0.0,
             ao_influence: 1.0,
         ),
         environment: (),
-        procedural: (
-            grid_size: 10,
-            face_blend: false,
-        ),
         faces: (),
-        details: [
-            (
-                kind: "voxelverse:soil_grain",
-                density: 0.10,
-                color: Some("#3C2110"),
-                min_size: 0.010,
-                max_size: 0.045,
-                slope_bias: 0.2,
-            ),
-        ],
         meshing: (
             render_mode: opaque,
             occludes: true,
@@ -65,11 +55,7 @@
         density: 1.4,
         collider: full,
     ),
-    drops: inline([
-        (
-            entries: [
-                (item: "voxelverse:dirt", count: (min: 1, max: 1)),
-            ],
-        ),
-    ]),
+    drops: none,
 )
+
+

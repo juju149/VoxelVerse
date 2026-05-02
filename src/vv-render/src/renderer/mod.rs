@@ -1,7 +1,5 @@
 use glam::{Vec2, Vec3};
-use glyphon::{
-    FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer,
-};
+use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{Receiver, Sender};
 use wgpu::PresentMode;
@@ -16,23 +14,20 @@ use vv_mesh::Vertex;
 use vv_registry::{BlockContent, RuntimeBlockVisual};
 use vv_world_runtime::PlanetData;
 
-use crate::{
-    AnyKey, ChunkMesh, Frustum, LodAnimator,
-    sky_state::SkyState,
-};
+use crate::{sky_state::SkyState, AnyKey, ChunkMesh, Frustum, LodAnimator};
 
 use self::types::{MeshJobResult, RendererFrameTelemetry};
 
-mod types;
-mod visual_content;
+mod diagnostics;
+mod frame;
 mod init;
+mod mesh_upload;
 mod pipelines;
 mod public_api;
-mod frame;
 mod streaming;
-mod mesh_upload;
+mod types;
 mod ui_mesh;
-mod diagnostics;
+mod visual_content;
 
 pub struct Renderer<'a> {
     pub window: &'a Window,

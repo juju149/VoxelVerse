@@ -1,9 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 use std::time::Duration;
 
-use vv_diagnostics::{
-    GpuCounters, LodCounters, MeshCounters, StreamingCounters,
-};
+use vv_diagnostics::{GpuCounters, LodCounters, MeshCounters, StreamingCounters};
 
 use crate::atmosphere::AtmosphereUniform;
 

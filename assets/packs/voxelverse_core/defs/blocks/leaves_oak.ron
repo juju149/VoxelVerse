@@ -2,8 +2,8 @@
     display_key: Some("block.voxelverse.leaves_oak"),
     tags: [
         "voxelverse:natural",
-        "voxelverse:mineable_axe",
         "voxelverse:foliage",
+        "voxelverse:mineable_axe",
     ],
     mining: (
         hardness: 0.25,
@@ -11,8 +11,8 @@
         sound_material: grass,
     ),
     render: (
-        surface: (
-            material: "voxelverse:foliage",
+        material: (
+            kind: leaves,
             base_color: "#1F571C",
             palette: ["#266222", "#1F571C", "#163D14", "#75B833"],
             roughness: 0.90,
@@ -21,27 +21,29 @@
             tint: foliage_color,
         ),
         lighting: (),
-        geometry: (
-            shape: cube,
+        shape: (
+            kind: cube,
+            profile: hard_cube,
             bevel: 0.0,
-            normal_strength: 0.25,
+            roundness: 0.0,
+            face_depth: 0.0,
+            normal_strength: 0.0,
         ),
-        surface_program: (kind: leaves),
+        program: (kind: "flat"),
         variation: (
-            per_voxel_tint: 0.36,
-            per_face_tint: 0.20,
-            macro_noise_scale: 0.60,
-            macro_noise_strength: 0.34,
-            micro_noise_scale: 6.0,
-            micro_noise_strength: 0.035,
-            edge_darkening: 0.08,
-            ao_influence: 0.75,
+            per_voxel_tint: 0.0,
+            per_face_tint: 0.0,
+            macro_noise_scale: 1.0,
+            macro_noise_strength: 0.0,
+            micro_noise_scale: 1.0,
+            micro_noise_strength: 0.0,
+            edge_darkening: 0.0,
+            ao_influence: 1.0,
         ),
         environment: (
-            biome_tint_strength: 0.40,
+            biome_tint_strength: 0.35,
         ),
         faces: (),
-        details: [],
         meshing: (
             render_mode: cutout,
             occludes: false,
@@ -57,3 +59,5 @@
     ),
     drops: none,
 )
+
+

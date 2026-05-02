@@ -1,7 +1,5 @@
 (
-    kind: block,
-    values: [
-        "voxelverse:leaves_oak",
-    ],
+    kind: any,
+    values: [],
     extends: [],
 )

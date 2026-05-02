@@ -199,7 +199,7 @@ impl<'a> Renderer<'a> {
         };
     }
 
-fn process_quadtree(
+    fn process_quadtree(
         &self,
         face: u8,
         x: u32,
@@ -422,7 +422,7 @@ fn process_quadtree(
         .distance_squared(player_pos)
     }
 
-        pub fn refresh_neighbors(&mut self, id: BlockId, planet: &PlanetData) {
+    pub fn refresh_neighbors(&mut self, id: BlockId, planet: &PlanetData) {
         let u_c = id.u / CHUNK_SIZE;
         let v_c = id.v / CHUNK_SIZE;
         for key in [

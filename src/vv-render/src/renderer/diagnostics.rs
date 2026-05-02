@@ -1,8 +1,6 @@
 use std::time::Duration;
 
-use vv_diagnostics::{
-    emit, LogDomain, LogLevel, RuntimeSnapshot, WorldCounters, WorldgenCounters,
-};
+use vv_diagnostics::{emit, LogDomain, LogLevel, RuntimeSnapshot, WorldCounters, WorldgenCounters};
 use vv_gameplay::PlayerGameplayState;
 use vv_mesh::Vertex;
 use vv_world_runtime::PlanetData;

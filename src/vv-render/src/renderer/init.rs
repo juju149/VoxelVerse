@@ -12,10 +12,8 @@ use vv_mesh::{MeshGen, Vertex};
 use vv_registry::CompiledContent;
 
 use crate::{
-    atmosphere::AtmosphereUniform,
-    shader_source,
-    sky_state::SkyState,
-    AnyKey, ChunkMesh, LodAnimator,
+    atmosphere::AtmosphereUniform, shader_source, sky_state::SkyState, AnyKey, ChunkMesh,
+    LodAnimator,
 };
 
 use super::types::{GlobalUniform, LocalUniform, RendererFrameTelemetry};
