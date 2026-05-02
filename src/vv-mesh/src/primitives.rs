@@ -58,18 +58,30 @@ impl MeshGen {
             return [base; 4];
         }
 
+        let t = strength.clamp(0.0, 1.0);
         let mut normals = [base; 4];
 
         for (normal, adjacent) in normals.iter_mut().zip(adjacent_faces) {
-            let mut blended = base;
+            let mut target = Vec3::ZERO;
+            let mut count = 0u32;
 
             for (visible, face_normal) in adjacent {
                 if visible {
-                    blended += face_normal * strength;
+                    target += face_normal;
+                    count += 1;
                 }
             }
 
-            *normal = blended.normalize();
+            if count == 0 {
+                continue;
+            }
+
+            let len = target.length();
+            if len < 1e-8 {
+                continue;
+            }
+
+            *normal = slerp_normal(base, target / len, t);
         }
 
         normals
@@ -164,6 +176,10 @@ impl MeshGen {
         colors: [[f32; 3]; 3],
         texture_id: i32,
         block_id: i32,
+        block_visual_id: u32,
+        face_id: u32,
+        voxel_pos: [i32; 3],
+        variation_seed: u32,
         normal: Vec3,
     ) {
         let base = *idx;
@@ -177,11 +193,11 @@ impl MeshGen {
                 uv,
                 texture_id,
                 block_id,
-                block_visual_id: 0,
-                face_id: 0,
-                voxel_pos: [0, 0, 0],
-                variation_seed: 0,
-                ao: 1.0,
+                block_visual_id,
+                face_id,
+                voxel_pos,
+                variation_seed,
+                ao: color[0].max(color[1]).max(color[2]).clamp(0.0, 1.0),
             });
         }
 
@@ -311,6 +327,10 @@ impl MeshGen {
                 colors,
                 texture_id,
                 block_id,
+                block_visual_id,
+                faces[0] as u32,
+                voxel_pos,
+                variation_seed,
                 normal,
             );
         };
@@ -327,4 +347,15 @@ impl MeshGen {
         corner([BOTTOM, BACK, RIGHT], [(BOTTOM, 1), (RIGHT, 1), (BACK, 2)]);
         corner([BOTTOM, BACK, LEFT], [(BOTTOM, 0), (BACK, 3), (LEFT, 0)]);
     }
+}
+
+#[inline]
+fn slerp_normal(a: Vec3, b: Vec3, t: f32) -> Vec3 {
+    let dot = a.dot(b).clamp(-1.0, 1.0);
+    let theta = dot.acos();
+    if theta < 1e-6 {
+        return a;
+    }
+    let sin_theta = theta.sin();
+    (a * ((1.0 - t) * theta).sin() + b * (t * theta).sin()) / sin_theta
 }

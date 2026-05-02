@@ -3,7 +3,10 @@
     "allow": [
       "Bash(xargs head *)",
       "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\voxanet\\\\assets\" -Recurse -Filter \"*.ron\")",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\voxanet\" -Recurse -File)",
+      "Bash(Sort-Object)",
+      "Bash(cargo build *)"
     ]
   }
 }

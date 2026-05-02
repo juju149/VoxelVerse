@@ -137,7 +137,7 @@ impl MeshGen {
         occ: VoxelOcclusion,
         edge_width: f32,
     ) -> VoxelFacePositions {
-        let w = edge_width.clamp(0.0, 0.16);
+        let w = edge_width.clamp(0.0, 0.22);
 
         let top_visible = !occ.top;
         let bottom_visible = !occ.bottom;

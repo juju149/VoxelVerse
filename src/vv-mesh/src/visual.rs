@@ -40,13 +40,15 @@ impl MeshGen {
         let edge_width = if authored_bevel <= 0.001 {
             0.0
         } else {
-            (authored_bevel * 2.45).clamp(0.012, 0.075)
+            (authored_bevel * 1.80).clamp(0.015, 0.18)
         };
 
+        // Strength is used as slerp t ∈ [0, 1]: recalibrated so typical blocks sit
+        // at ~0.35 and high-bevel blocks can reach ~0.85 for a visually round edge.
         let normal_rounding = if edge_width > 0.0 {
-            (0.20 + edge_width * 3.25 + normal_strength * 0.34).clamp(0.0, 0.72)
+            (0.10 + edge_width * 1.80 + normal_strength * 0.40).clamp(0.0, 0.90)
         } else {
-            (normal_strength * 0.36).clamp(0.0, 0.42)
+            (normal_strength * 0.45).clamp(0.0, 0.50)
         };
 
         VisualBevel {

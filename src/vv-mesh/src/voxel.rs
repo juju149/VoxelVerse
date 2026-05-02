@@ -120,7 +120,6 @@ impl MeshGen {
 
         let top_ao = if top_visible {
             let n = |u, v| check(1, u, v);
-
             [
                 Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1)),
                 Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1)),
@@ -138,11 +137,86 @@ impl MeshGen {
             apply(top_ao[3], top_texture_id),
         ];
 
-        let bottom_c = apply(0.4, bottom_texture_id);
-        let front_c = apply(0.8, front_texture_id);
-        let back_c = apply(0.8, back_texture_id);
-        let left_c = apply(0.8, left_texture_id);
-        let right_c = apply(0.8, right_texture_id);
+        // Per-corner AO for all faces. Directional base factor baked in alongside AO
+        // so corners in recessed geometry darken naturally without a separate pass.
+        let apply4 = |base: f32, ao: [f32; 4], tid: i32| -> [[f32; 3]; 4] {
+            [
+                apply(base * ao[0], tid),
+                apply(base * ao[1], tid),
+                apply(base * ao[2], tid),
+                apply(base * ao[3], tid),
+            ]
+        };
+
+        let bottom_ao = if bottom_visible {
+            let n = |du: i32, dv: i32| check(-1, du, dv);
+            [
+                Self::calculate_ao(n(-1, 0), n(0, 1), n(-1, 1)),
+                Self::calculate_ao(n(1, 0), n(0, 1), n(1, 1)),
+                Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1)),
+                Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1)),
+            ]
+        } else {
+            [1.0; 4]
+        };
+
+        // front face = v-1 side; corners [i_bl, i_br, o_br, o_bl] → vary layer & u
+        let front_ao = if front_visible {
+            let n = |dl: i32, du: i32| check(dl, du, -1);
+            [
+                Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1)),
+                Self::calculate_ao(n(-1, 0), n(0, 1), n(-1, 1)),
+                Self::calculate_ao(n(1, 0), n(0, 1), n(1, 1)),
+                Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1)),
+            ]
+        } else {
+            [1.0; 4]
+        };
+
+        // back face = v+1 side; corners [o_tl, o_tr, i_tr, i_tl]
+        let back_ao = if back_visible {
+            let n = |dl: i32, du: i32| check(dl, du, 1);
+            [
+                Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1)),
+                Self::calculate_ao(n(1, 0), n(0, 1), n(1, 1)),
+                Self::calculate_ao(n(-1, 0), n(0, 1), n(-1, 1)),
+                Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1)),
+            ]
+        } else {
+            [1.0; 4]
+        };
+
+        // left face = u-1 side; corners [i_tl, i_bl, o_bl, o_tl] → vary layer & v
+        let left_ao = if left_visible {
+            let n = |dl: i32, dv: i32| check(dl, -1, dv);
+            [
+                Self::calculate_ao(n(-1, 0), n(0, 1), n(-1, 1)),
+                Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1)),
+                Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1)),
+                Self::calculate_ao(n(1, 0), n(0, 1), n(1, 1)),
+            ]
+        } else {
+            [1.0; 4]
+        };
+
+        // right face = u+1 side; corners [i_br, i_tr, o_tr, o_br]
+        let right_ao = if right_visible {
+            let n = |dl: i32, dv: i32| check(dl, 1, dv);
+            [
+                Self::calculate_ao(n(-1, 0), n(0, -1), n(-1, -1)),
+                Self::calculate_ao(n(-1, 0), n(0, 1), n(-1, 1)),
+                Self::calculate_ao(n(1, 0), n(0, 1), n(1, 1)),
+                Self::calculate_ao(n(1, 0), n(0, -1), n(1, -1)),
+            ]
+        } else {
+            [1.0; 4]
+        };
+
+        let bottom_colors = apply4(0.40, bottom_ao, bottom_texture_id);
+        let front_colors = apply4(0.80, front_ao, front_texture_id);
+        let back_colors = apply4(0.80, back_ao, back_texture_id);
+        let left_colors = apply4(0.80, left_ao, left_texture_id);
+        let right_colors = apply4(0.80, right_ao, right_texture_id);
 
         if top_visible {
             Self::quad(
@@ -172,7 +246,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.bottom,
-                [bottom_c; 4],
+                bottom_colors,
                 bottom_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -194,7 +268,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.front,
-                [front_c; 4],
+                front_colors,
                 front_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -216,7 +290,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.back,
-                [back_c; 4],
+                back_colors,
                 back_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -238,7 +312,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.left,
-                [left_c; 4],
+                left_colors,
                 left_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -260,7 +334,7 @@ impl MeshGen {
                 inds,
                 idx,
                 face_positions.right,
-                [right_c; 4],
+                right_colors,
                 right_texture_id,
                 block_raw_id,
                 block_visual_id,
@@ -286,11 +360,11 @@ impl MeshGen {
                 face_positions.as_array(),
                 [
                     (top_texture_id, top_colors),
-                    (bottom_texture_id, [bottom_c; 4]),
-                    (front_texture_id, [front_c; 4]),
-                    (back_texture_id, [back_c; 4]),
-                    (left_texture_id, [left_c; 4]),
-                    (right_texture_id, [right_c; 4]),
+                    (bottom_texture_id, bottom_colors),
+                    (front_texture_id, front_colors),
+                    (back_texture_id, back_colors),
+                    (left_texture_id, left_colors),
+                    (right_texture_id, right_colors),
                 ],
                 face_normals.as_array(),
                 block_visual_id,
