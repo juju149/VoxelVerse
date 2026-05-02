@@ -180,12 +180,14 @@ impl MeshGen {
         face_id: u32,
         voxel_pos: [i32; 3],
         variation_seed: u32,
-        normal: Vec3,
+        normals: Option<[Vec3; 3]>,
     ) {
+        let fallback = (pos[1] - pos[0]).cross(pos[2] - pos[0]).normalize();
+        let normals = normals.unwrap_or([fallback; 3]);
         let base = *idx;
         let uvs = [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]];
 
-        for ((p, color), uv) in pos.iter().zip(colors).zip(uvs) {
+        for (((p, color), uv), normal) in pos.iter().zip(colors).zip(uvs).zip(normals) {
             verts.push(Vertex {
                 pos: p.to_array(),
                 color,
@@ -249,40 +251,54 @@ impl MeshGen {
         const LEFT: usize = 4;
         const RIGHT: usize = 5;
 
+        // Sagitta-to-chord ratio for a 90° quarter-circle arc: (1/√2 − ½) ≈ 0.2071.
+        // Multiplied by the chord length it gives the outward push to the arc midpoint.
+        const ARC_K: f32 = 0.2071;
+
         let mut edge = |a: usize, b: usize, a0: usize, a1: usize, b0: usize, b1: usize| {
             if !(visible[a] && visible[b]) {
                 return;
             }
 
-            let normal = (face_normals[a] + face_normals[b]).normalize();
-            let (texture_id, colors) = face_style[a];
+            let n_a = face_normals[a];
+            let n_b = face_normals[b];
+            let n_mid = slerp_normal(n_a, n_b, 0.5);
+            // Bisector direction: outward toward the bevel's original corner.
+            let n_diag = (n_a + n_b).normalize();
 
-            let color = [
-                colors[a0],
-                colors[a1],
-                Self::mix_color(colors[a1], face_style[b].1[b1], 0.5),
-                Self::mix_color(colors[a0], face_style[b].1[b0], 0.5),
-            ];
+            let (texture_id, colors_a) = face_style[a];
+            let (_, colors_b) = face_style[b];
 
+            let pa0 = face_pos[a][a0];
+            let pa1 = face_pos[a][a1];
+            let pb0 = face_pos[b][b0];
+            let pb1 = face_pos[b][b1];
+
+            // Arc midpoints: push the chord midpoint outward by the sagitta amount.
+            let mid0 = (pa0 + pb0) * 0.5 + n_diag * ((pa0 - pb0).length() * ARC_K);
+            let mid1 = (pa1 + pb1) * 0.5 + n_diag * ((pa1 - pb1).length() * ARC_K);
+
+            let c_mid0 = Self::mix_color(colors_a[a0], colors_b[b0], 0.5);
+            let c_mid1 = Self::mix_color(colors_a[a1], colors_b[b1], 0.5);
+
+            // Quad A-side → arc midpoint (normals sweep from n_a to n_mid).
             Self::quad(
-                verts,
-                inds,
-                idx,
-                [
-                    face_pos[a][a0],
-                    face_pos[a][a1],
-                    face_pos[b][b1],
-                    face_pos[b][b0],
-                ],
-                color,
-                texture_id,
-                block_id,
-                block_visual_id,
-                a as u32,
-                voxel_pos,
-                variation_seed,
-                false,
-                Some([normal; 4]),
+                verts, inds, idx,
+                [pa0, pa1, mid1, mid0],
+                [colors_a[a0], colors_a[a1], c_mid1, c_mid0],
+                texture_id, block_id, block_visual_id, a as u32,
+                voxel_pos, variation_seed, false,
+                Some([n_a, n_a, n_mid, n_mid]),
+            );
+
+            // Quad arc midpoint → B-side (normals sweep from n_mid to n_b).
+            Self::quad(
+                verts, inds, idx,
+                [mid0, mid1, pb1, pb0],
+                [c_mid0, c_mid1, colors_b[b1], colors_b[b0]],
+                texture_id, block_id, block_visual_id, a as u32,
+                voxel_pos, variation_seed, false,
+                Some([n_mid, n_mid, n_b, n_b]),
             );
         };
 
@@ -304,35 +320,40 @@ impl MeshGen {
                 return;
             }
 
-            let normal = (face_normals[faces[0]] + face_normals[faces[1]] + face_normals[faces[2]])
-                .normalize();
-
             let texture_id = face_style[faces[0]].0;
 
-            let colors = [
-                face_style[points[0].0].1[points[0].1],
-                face_style[points[1].0].1[points[1].1],
-                face_style[points[2].0].1[points[2].1],
-            ];
+            let p0 = face_pos[points[0].0][points[0].1];
+            let p1 = face_pos[points[1].0][points[1].1];
+            let p2 = face_pos[points[2].0][points[2].1];
 
-            Self::tri(
-                verts,
-                inds,
-                idx,
-                [
-                    face_pos[points[0].0][points[0].1],
-                    face_pos[points[1].0][points[1].1],
-                    face_pos[points[2].0][points[2].1],
-                ],
-                colors,
-                texture_id,
-                block_id,
-                block_visual_id,
-                faces[0] as u32,
-                voxel_pos,
-                variation_seed,
-                normal,
-            );
+            let n0 = face_normals[faces[0]];
+            let n1 = face_normals[faces[1]];
+            let n2 = face_normals[faces[2]];
+            let n_center = (n0 + n1 + n2).normalize();
+
+            // Push the center outward to form a smooth spherical cap. The push
+            // amount (~18% of average edge length) keeps continuity with the
+            // adjacent round-edge arcs without over-inflating the corner.
+            let avg_edge = ((p0 - p1).length() + (p1 - p2).length() + (p2 - p0).length()) / 3.0;
+            let p_center = (p0 + p1 + p2) / 3.0 + n_center * (avg_edge * 0.18);
+
+            let c0 = face_style[points[0].0].1[points[0].1];
+            let c1 = face_style[points[1].0].1[points[1].1];
+            let c2 = face_style[points[2].0].1[points[2].1];
+            let c_center = Self::mix_color(Self::mix_color(c0, c1, 0.5), c2, 0.333);
+
+            // 3 sub-triangles with per-vertex normals sweep toward n_center.
+            Self::tri(verts, inds, idx, [p0, p1, p_center], [c0, c1, c_center],
+                texture_id, block_id, block_visual_id, faces[0] as u32,
+                voxel_pos, variation_seed, Some([n0, n1, n_center]));
+
+            Self::tri(verts, inds, idx, [p1, p2, p_center], [c1, c2, c_center],
+                texture_id, block_id, block_visual_id, faces[1] as u32,
+                voxel_pos, variation_seed, Some([n1, n2, n_center]));
+
+            Self::tri(verts, inds, idx, [p2, p0, p_center], [c2, c0, c_center],
+                texture_id, block_id, block_visual_id, faces[2] as u32,
+                voxel_pos, variation_seed, Some([n2, n0, n_center]));
         };
 
         corner([TOP, FRONT, LEFT], [(TOP, 0), (FRONT, 3), (LEFT, 2)]);
