@@ -1,6 +1,6 @@
 use crate::{shape::VoxelCorners, MeshGen, Vertex};
 
-use super::{sample_soft_cube, world, SoftCubeFace, SoftCubeParams};
+use super::{sample_soft_cube, world, SoftCubeEdgeMask, SoftCubeFace, SoftCubeParams};
 
 impl MeshGen {
     #[allow(clippy::too_many_arguments)]
@@ -11,6 +11,7 @@ impl MeshGen {
         corners: VoxelCorners,
         face: SoftCubeFace,
         params: SoftCubeParams,
+        edge_mask: SoftCubeEdgeMask,
         corner_colors: [[f32; 3]; 4],
         texture_id: i32,
         block_id: i32,
@@ -20,15 +21,14 @@ impl MeshGen {
     ) {
         let params = params.sanitized();
         let frame = world::SoftCubeWorldFrame::from_corners(corners);
-
         let segments = params.segments;
 
         for y in 0..segments {
             for x in 0..segments {
-                let p00 = sample_soft_cube(face, x, y, params);
-                let p10 = sample_soft_cube(face, x + 1, y, params);
-                let p11 = sample_soft_cube(face, x + 1, y + 1, params);
-                let p01 = sample_soft_cube(face, x, y + 1, params);
+                let p00 = sample_soft_cube(face, x, y, params, edge_mask);
+                let p10 = sample_soft_cube(face, x + 1, y, params, edge_mask);
+                let p11 = sample_soft_cube(face, x + 1, y + 1, params, edge_mask);
+                let p01 = sample_soft_cube(face, x, y + 1, params, edge_mask);
 
                 let t00 = uv_to_color_t(p00.uv);
                 let t10 = uv_to_color_t(p10.uv);
