@@ -102,8 +102,7 @@ impl super::ContentCompiler {
         let r = rgba[0];
         let g = rgba[1];
         let b = rgba[2];
-        let is_emissive =
-            render.lighting.emits_light > 0 || render.lighting.emission.is_some();
+        let is_emissive = render.lighting.emits_light > 0 || render.lighting.emission.is_some();
 
         // Pure white (or near-white) base on a non-emissive block usually means
         // the author forgot to author the hue and is relying on tint or palette

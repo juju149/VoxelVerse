@@ -40,6 +40,32 @@ impl MeshGen {
         let params = params.sanitized();
         let config = PatternedMeshConfig::from_runtime(program);
 
+        // PATTERNED_ORGANIC_SHADER_ONLY_GUARD
+        // Organic Patterned programs are shader-only.
+        // They must not emit rectangular panel geometry over the soft-cube face.
+        if config.kind == vv_registry::RUNTIME_PATTERN_NATURAL_CELLS
+            || config.kind == vv_registry::RUNTIME_PATTERN_CRACKED_CELLS
+            || config.gap_width <= 0.0001
+            || config.gap_depth <= 0.0001
+        {
+            Self::add_soft_cube_face(
+                verts,
+                inds,
+                idx,
+                corners,
+                face,
+                params,
+                edge_mask,
+                corner_colors,
+                texture_id,
+                block_id,
+                block_visual_id,
+                voxel_pos,
+                variation_seed,
+            );
+            return;
+        }
+
         // Shader-only patterns (e.g. rings) leave the mesh as a clean soft cube
         // and rely on the fragment shader for visual structure.
         if !pattern_has_geometry(config.kind) {
