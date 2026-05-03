@@ -1,5 +1,3 @@
-use glam::Vec3;
-
 use super::{SoftCubeEdgeMask, SoftCubeFace, SoftCubePoint};
 
 /// Seals hidden edges so connected voxels remain perfectly closed.
@@ -10,6 +8,10 @@ use super::{SoftCubeEdgeMask, SoftCubeFace, SoftCubePoint};
 /// - exact face normal
 ///
 /// Without this, rounded cubes create tiny visual seams between neighboring blocks.
+///
+/// Only the in-plane coordinates are clamped here. The face-normal coordinate and
+/// surface normal are left as computed by rounded_box_project, which already handles
+/// mixed corners (one edge sealed, one exposed) correctly via the exposure flags.
 pub(crate) fn seal_hidden_edges(
     face: SoftCubeFace,
     point: &mut SoftCubePoint,
@@ -43,28 +45,17 @@ fn seal_top(
     on_min_v: bool,
     on_max_v: bool,
 ) {
-    let mut sealed = false;
-
     if on_min_u && !edge.min_u {
         point.position.x = -0.5;
-        sealed = true;
     }
     if on_max_u && !edge.max_u {
         point.position.x = 0.5;
-        sealed = true;
     }
     if on_min_v && !edge.min_v {
         point.position.z = -0.5;
-        sealed = true;
     }
     if on_max_v && !edge.max_v {
         point.position.z = 0.5;
-        sealed = true;
-    }
-
-    if sealed {
-        point.position.y = 0.5;
-        point.normal = Vec3::Y;
     }
 }
 
@@ -76,28 +67,17 @@ fn seal_bottom(
     on_min_v: bool,
     on_max_v: bool,
 ) {
-    let mut sealed = false;
-
     if on_min_u && !edge.min_u {
         point.position.x = -0.5;
-        sealed = true;
     }
     if on_max_u && !edge.max_u {
         point.position.x = 0.5;
-        sealed = true;
     }
     if on_min_v && !edge.min_v {
         point.position.z = 0.5;
-        sealed = true;
     }
     if on_max_v && !edge.max_v {
         point.position.z = -0.5;
-        sealed = true;
-    }
-
-    if sealed {
-        point.position.y = -0.5;
-        point.normal = -Vec3::Y;
     }
 }
 
@@ -109,28 +89,17 @@ fn seal_front(
     on_min_v: bool,
     on_max_v: bool,
 ) {
-    let mut sealed = false;
-
     if on_min_u && !edge.min_u {
         point.position.x = -0.5;
-        sealed = true;
     }
     if on_max_u && !edge.max_u {
         point.position.x = 0.5;
-        sealed = true;
     }
     if on_min_v && !edge.min_v {
         point.position.y = -0.5;
-        sealed = true;
     }
     if on_max_v && !edge.max_v {
         point.position.y = 0.5;
-        sealed = true;
-    }
-
-    if sealed {
-        point.position.z = -0.5;
-        point.normal = -Vec3::Z;
     }
 }
 
@@ -142,28 +111,17 @@ fn seal_back(
     on_min_v: bool,
     on_max_v: bool,
 ) {
-    let mut sealed = false;
-
     if on_min_u && !edge.min_u {
         point.position.x = 0.5;
-        sealed = true;
     }
     if on_max_u && !edge.max_u {
         point.position.x = -0.5;
-        sealed = true;
     }
     if on_min_v && !edge.min_v {
         point.position.y = -0.5;
-        sealed = true;
     }
     if on_max_v && !edge.max_v {
         point.position.y = 0.5;
-        sealed = true;
-    }
-
-    if sealed {
-        point.position.z = 0.5;
-        point.normal = Vec3::Z;
     }
 }
 
@@ -175,28 +133,17 @@ fn seal_left(
     on_min_v: bool,
     on_max_v: bool,
 ) {
-    let mut sealed = false;
-
     if on_min_u && !edge.min_u {
         point.position.z = 0.5;
-        sealed = true;
     }
     if on_max_u && !edge.max_u {
         point.position.z = -0.5;
-        sealed = true;
     }
     if on_min_v && !edge.min_v {
         point.position.y = -0.5;
-        sealed = true;
     }
     if on_max_v && !edge.max_v {
         point.position.y = 0.5;
-        sealed = true;
-    }
-
-    if sealed {
-        point.position.x = -0.5;
-        point.normal = -Vec3::X;
     }
 }
 
@@ -208,27 +155,16 @@ fn seal_right(
     on_min_v: bool,
     on_max_v: bool,
 ) {
-    let mut sealed = false;
-
     if on_min_u && !edge.min_u {
         point.position.z = -0.5;
-        sealed = true;
     }
     if on_max_u && !edge.max_u {
         point.position.z = 0.5;
-        sealed = true;
     }
     if on_min_v && !edge.min_v {
         point.position.y = -0.5;
-        sealed = true;
     }
     if on_max_v && !edge.max_v {
         point.position.y = 0.5;
-        sealed = true;
-    }
-
-    if sealed {
-        point.position.x = 0.5;
-        point.normal = Vec3::X;
     }
 }
