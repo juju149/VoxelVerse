@@ -124,6 +124,7 @@ pub(super) fn compiled_pattern_kind(kind: BlockPatternKind) -> u32 {
         BlockPatternKind::Rings => RUNTIME_PATTERN_RINGS,
         BlockPatternKind::NaturalCells => RUNTIME_PATTERN_NATURAL_CELLS,
         BlockPatternKind::CrackedCells => RUNTIME_PATTERN_CRACKED_CELLS,
+        BlockPatternKind::LayeredSurface => RUNTIME_PATTERN_LAYERED_SURFACE,
     }
 }
 

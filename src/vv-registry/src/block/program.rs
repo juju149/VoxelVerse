@@ -9,6 +9,7 @@ pub const RUNTIME_PATTERN_RUNNING_BOND: u32 = 2;
 pub const RUNTIME_PATTERN_RINGS: u32 = 3;
 pub const RUNTIME_PATTERN_NATURAL_CELLS: u32 = 4;
 pub const RUNTIME_PATTERN_CRACKED_CELLS: u32 = 5;
+pub const RUNTIME_PATTERN_LAYERED_SURFACE: u32 = 6;
 
 pub const RUNTIME_PATTERN_ORIENTATION_AUTO: u32 = 0;
 pub const RUNTIME_PATTERN_ORIENTATION_HORIZONTAL: u32 = 1;
@@ -26,7 +27,10 @@ pub const RUNTIME_PATTERN_ORIENTATION_MASK: u32 = 0xFF << RUNTIME_PATTERN_ORIENT
 /// Shader patterns (rings/wood-like organic surfaces) leave the mesh as a clean
 /// soft cube and rely entirely on the fragment shader for visual structure.
 pub fn pattern_has_geometry(kind: u32) -> bool {
-    !matches!(kind, RUNTIME_PATTERN_RINGS)
+    !matches!(
+        kind,
+        RUNTIME_PATTERN_RINGS | RUNTIME_PATTERN_LAYERED_SURFACE,
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

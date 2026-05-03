@@ -6,6 +6,7 @@ const PATTERN_RUNNING_BOND: u32 = 2u;
 const PATTERN_RINGS: u32 = 3u;
 const PATTERN_NATURAL_CELLS: u32 = 4u;
 const PATTERN_CRACKED_CELLS: u32 = 5u;
+const PATTERN_LAYERED_SURFACE: u32 = 6u;
 
 const PATTERN_FLAG_STAGGER: u32 = 1u;
 
@@ -443,6 +444,61 @@ fn vv_rings_axial_color(
     return max(color, vec3<f32>(0.0));
 }
 
+// Generic two-zone surface pattern.
+//
+// Top face (face_id == 0): authored top color with horizontal fiber/blade
+//   stripes for relief. Density = visual.patterned.rows.
+// Side faces (face_id >= 2): the top color (read from face 0's bias) bleeds
+//   down from the top edge as a fringe. Fringe height comes from
+//   visual.patterned.gap_width (treated as a fraction in [0, 0.5] of UV.y).
+//   The fringe boundary is irregularised by value noise driven by
+//   visual.patterned.height_variation.
+// Bottom face (face_id == 1): unmodified — uses the authored bottom color.
+//
+// This pattern is purely shader-driven; the mesh stays a clean soft cube.
+// It supersedes the legacy "grass" hardcoded program and can drive grass,
+// snow caps, moss, etc. solely from the .ron.
+fn vv_layered_surface_color(
+    visual: BlockVisual,
+    base: vec3<f32>,
+    uv: vec2<f32>,
+    face_id: u32,
+    seed: vec3<f32>,
+) -> vec3<f32> {
+    var color = base;
+
+    if (face_id == 0u) {
+        let fiber_density = max(f32(visual.patterned.rows), 6.0);
+        let jitter = hash13(seed + vec3<f32>(43.0, 7.0, 19.0));
+        let fiber_wave = abs(fract((uv.x + jitter * 0.31) * fiber_density * 0.55) - 0.5);
+        let fiber_mask = 1.0 - smoothstep(0.10, 0.32, fiber_wave);
+
+        let patch = hash13(vec3<f32>(floor(uv.x * 3.0), floor(uv.y * 3.0), seed.z));
+        color *= 1.0 + (patch - 0.5) * saturate(visual.patterned.color_variation) * 0.50;
+        color = mix(color, color * vec3<f32>(1.10, 1.20, 0.86), fiber_mask * 0.20);
+        return max(color, vec3<f32>(0.0));
+    }
+
+    if (face_id == 1u) {
+        return color;
+    }
+
+    // Side face — bleed the top color down as an irregular fringe.
+    let top_color = vv_face_bias(visual, 0u);
+    let has_top_bias = length(top_color - vec3<f32>(1.0)) > 0.015;
+    let target = select(color * vec3<f32>(0.62, 1.10, 0.55), top_color, has_top_bias);
+
+    let fringe_h = clamp(visual.patterned.gap_width, 0.05, 0.50);
+    let irregularity = saturate(visual.patterned.height_variation) * 0.08;
+    let v_from_top = 1.0 - uv.y;
+
+    let noise = vv_value_noise_3d(vec3<f32>(uv.x * 14.0, seed.x * 0.05, seed.y * 0.03));
+    let fringe_edge = fringe_h + (noise - 0.5) * irregularity * 2.0;
+    let fringe = 1.0 - smoothstep(fringe_edge - 0.03, fringe_edge + 0.04, v_from_top);
+
+    return max(mix(color, target, fringe), vec3<f32>(0.0));
+}
+
 fn patterned_block_albedo(
     visual: BlockVisual,
     world_pos: vec3<f32>,
@@ -494,6 +550,8 @@ fn patterned_block_albedo(
                 variation_seed,
             );
         }
+    } else if (visual.patterned.kind == PATTERN_LAYERED_SURFACE) {
+        patterned = vv_layered_surface_color(visual, base, uv, face_id, seed);
     } else if (
         visual.patterned.kind == PATTERN_NATURAL_CELLS ||
         visual.patterned.kind == PATTERN_CRACKED_CELLS
