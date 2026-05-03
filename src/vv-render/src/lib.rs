@@ -8,6 +8,7 @@ pub mod lod_animator;
 pub mod renderer;
 pub mod shader_source;
 pub mod sky_state;
+pub mod ui;
 
 pub use chunk_mesh::ChunkMesh;
 pub use frustum::Frustum;

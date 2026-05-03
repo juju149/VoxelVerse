@@ -6,7 +6,10 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\voxelverse\" -Recurse -File)",
       "Bash(Sort-Object)",
-      "Bash(cargo build *)"
+      "Bash(cargo build *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\VoxelVerse\" -Recurse -Directory -Name)",
+      "Bash(Select-Object -First 20)",
+      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\VoxelVerse\\\\src\\\\vv-mesh\\\\src\\\\\" -Recurse -Filter \"*.rs\" | Select-Object -First 20)"
     ]
   }
 }
