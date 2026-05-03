@@ -18,7 +18,7 @@ impl SoftCubeParams {
         Self {
             radius: 0.08,
             pillow: 0.0,
-            segments: 6,
+            segments: 3,
         }
     }
 

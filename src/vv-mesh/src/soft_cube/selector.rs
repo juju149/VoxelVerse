@@ -24,7 +24,10 @@ impl MeshGen {
         Some(SoftCubeParams {
             radius,
             pillow: 0.0,
-            segments: 6,
+            // 3 segments per face = 9 quads. Anything higher made the subdivision
+            // grid faintly visible across the face once lighting + directional
+            // material tint sampled the per-vertex curved normals.
+            segments: 3,
         })
     }
 }
