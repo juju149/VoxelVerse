@@ -1,0 +1,15 @@
+(
+    family: "wood",
+    preset: "wood_rings",
+    name: "oak_log_bp",
+    display_key: "block.voxelverse.oak_log_bp",
+    base: "#A76835",
+    top: "#C98A4A",
+    side: "#8F552B",
+    bottom: "#9B6032",
+    tool: "axe",
+    sound: "wood",
+    hardness: 2,
+    density: 0.75,
+    seed: 6401,
+)

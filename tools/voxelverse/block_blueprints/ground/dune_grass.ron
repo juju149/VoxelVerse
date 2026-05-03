@@ -1,0 +1,15 @@
+(
+    family: "ground",
+    preset: "leafy_soil",
+    name: "dune_grass_bp",
+    display_key: "block.voxelverse.dune_grass_bp",
+    base: "#9C9A55",
+    top: "#C2BE6D",
+    side: "#8A613A",
+    bottom: "#4D2E1C",
+    tool: "shovel",
+    sound: "grass",
+    hardness: 0.55,
+    density: 1.14,
+    seed: 6202,
+)

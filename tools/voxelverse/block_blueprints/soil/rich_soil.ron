@@ -1,0 +1,15 @@
+(
+    family: "soil",
+    preset: "natural_soil",
+    name: "rich_soil_bp",
+    display_key: "block.voxelverse.rich_soil_bp",
+    base: "#6F3F24",
+    top: "#8B5630",
+    side: "#64371F",
+    bottom: "#3F2112",
+    tool: "shovel",
+    sound: "dirt",
+    hardness: 0.55,
+    density: 1.35,
+    seed: 6102,
+)

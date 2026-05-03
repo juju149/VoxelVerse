@@ -1,0 +1,15 @@
+(
+    family: "stone",
+    preset: "stone_cells",
+    name: "limestone_bp",
+    display_key: "block.voxelverse.limestone_bp",
+    base: "#8A8778",
+    top: "#96927F",
+    side: "#7A776B",
+    bottom: "#5B584E",
+    tool: "pickaxe",
+    sound: "stone",
+    hardness: 1.2,
+    density: 2.3,
+    seed: 6301,
+)

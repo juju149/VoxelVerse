@@ -1,0 +1,15 @@
+(
+    family: "stone",
+    preset: "stone_cells",
+    name: "basalt_bp",
+    display_key: "block.voxelverse.basalt_bp",
+    base: "#3F4142",
+    top: "#4E5050",
+    side: "#363839",
+    bottom: "#262728",
+    tool: "pickaxe",
+    sound: "stone",
+    hardness: 1.9,
+    density: 2.95,
+    seed: 6302,
+)

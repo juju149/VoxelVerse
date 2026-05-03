@@ -1,0 +1,15 @@
+(
+    family: "ground",
+    preset: "mossy_soil",
+    name: "deep_moss_bp",
+    display_key: "block.voxelverse.deep_moss_bp",
+    base: "#406F3C",
+    top: "#5D914A",
+    side: "#4C3A24",
+    bottom: "#261D14",
+    tool: "shovel",
+    sound: "grass",
+    hardness: 0.65,
+    density: 1.18,
+    seed: 6203,
+)
