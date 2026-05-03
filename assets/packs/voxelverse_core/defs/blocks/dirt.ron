@@ -31,7 +31,7 @@
         ),
         program: (
             type: "patterned",
-            pattern: natural_cells,
+            pattern: "natural_cells",
             rows: 3,
             columns: 3,
             stagger: false,

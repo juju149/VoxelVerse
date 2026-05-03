@@ -32,7 +32,7 @@
         ),
         program: (
             type: "patterned",
-            pattern: rings,
+            pattern: "rings",
             rows: 5,
             columns: 5,
             stagger: false,
@@ -43,7 +43,7 @@
             cell_pillow: 0.018,
             height_variation: 0.015,
             color_variation: 0.16,
-            orientation: radial,
+            orientation: "radial",
         ),
         variation: (
             per_voxel_tint: 0.0,

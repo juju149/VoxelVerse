@@ -33,7 +33,7 @@
         ),
         program: (
             type: "patterned",
-            pattern: running_bond,
+            pattern: "running_bond",
             rows: 4,
             columns: 3,
             stagger: true,
