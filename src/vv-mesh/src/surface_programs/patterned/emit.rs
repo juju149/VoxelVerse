@@ -1,5 +1,5 @@
 use glam::Vec3;
-use vv_registry::{RuntimePatternedProgram, RUNTIME_PATTERN_RINGS};
+use vv_registry::{pattern_has_geometry, RuntimePatternedProgram};
 
 use crate::{
     shape::VoxelCorners,
@@ -40,10 +40,9 @@ impl MeshGen {
         let params = params.sanitized();
         let config = PatternedMeshConfig::from_runtime(program);
 
-        // Rings are shader-only organic patterns.
-        // A wood cut face must be one radial surface, not a tiled panel grid.
-        // The bark/cut color is handled in the shader, while the mesh stays a clean soft cube.
-        if config.kind == RUNTIME_PATTERN_RINGS {
+        // Shader-only patterns (e.g. rings) leave the mesh as a clean soft cube
+        // and rely on the fragment shader for visual structure.
+        if !pattern_has_geometry(config.kind) {
             Self::add_soft_cube_face(
                 verts,
                 inds,

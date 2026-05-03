@@ -29,6 +29,7 @@ pub use block::{
     RUNTIME_PATTERN_ORIENTATION_VERTICAL, RUNTIME_PATTERN_RINGS, RUNTIME_PATTERN_RUNNING_BOND,
     RUNTIME_PATTERN_STRIPS, RUNTIME_SURFACE_PROGRAM_FLAT, RUNTIME_SURFACE_PROGRAM_PATTERNED,
 };
+pub use block::pattern_has_geometry;
 pub use content_key::{ContentKey, ContentKeyParseError};
 pub use entity::{CompiledEntity, EntityRegistry};
 pub use ids::{

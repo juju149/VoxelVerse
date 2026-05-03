@@ -354,7 +354,9 @@ fn vv_natural_cell_color(
     return max(color, vec3<f32>(0.0));
 }
 
-fn vv_wood_cut_color(
+// Radial cross-section pattern for the rings shader pattern.
+// Used on faces perpendicular to the rings axis (top/bottom of a log).
+fn vv_rings_radial_color(
     visual: BlockVisual,
     base: vec3<f32>,
     uv: vec2<f32>,
@@ -400,7 +402,9 @@ fn vv_wood_cut_color(
     return max(color, vec3<f32>(0.0));
 }
 
-fn vv_wood_bark_color(
+// Vertical streak pattern for the rings shader pattern.
+// Used on faces parallel to the rings axis (sides of a log).
+fn vv_rings_axial_color(
     visual: BlockVisual,
     base: vec3<f32>,
     world_pos: vec3<f32>,
@@ -467,7 +471,7 @@ fn patterned_block_albedo(
 
     if (visual.patterned.kind == PATTERN_RINGS) {
         if (face_id == 0u || face_id == 1u) {
-            patterned = vv_wood_cut_color(
+            patterned = vv_rings_radial_color(
                 visual,
                 base,
                 uv,
@@ -478,7 +482,7 @@ fn patterned_block_albedo(
                 variation_seed,
             );
         } else {
-            patterned = vv_wood_bark_color(
+            patterned = vv_rings_axial_color(
                 visual,
                 base,
                 world_pos,

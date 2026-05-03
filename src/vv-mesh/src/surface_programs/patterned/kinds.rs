@@ -1,6 +1,6 @@
 use vv_registry::{
-    RUNTIME_PATTERN_CRACKED_CELLS, RUNTIME_PATTERN_NATURAL_CELLS, RUNTIME_PATTERN_RINGS,
-    RUNTIME_PATTERN_RUNNING_BOND, RUNTIME_PATTERN_STRIPS,
+    RUNTIME_PATTERN_CRACKED_CELLS, RUNTIME_PATTERN_NATURAL_CELLS, RUNTIME_PATTERN_RUNNING_BOND,
+    RUNTIME_PATTERN_STRIPS,
 };
 
 use super::{config::PatternedMeshConfig, noise, PatternedCell};
@@ -9,7 +9,6 @@ pub(crate) fn build_cells(config: PatternedMeshConfig, face_seed: u32) -> Vec<Pa
     match config.kind {
         RUNTIME_PATTERN_STRIPS => strips(config, face_seed),
         RUNTIME_PATTERN_RUNNING_BOND => running_bond(config, face_seed),
-        RUNTIME_PATTERN_RINGS => rings(config, face_seed),
         RUNTIME_PATTERN_NATURAL_CELLS | RUNTIME_PATTERN_CRACKED_CELLS => {
             natural_cells(config, face_seed)
         }
@@ -57,10 +56,6 @@ fn strips(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCell> {
     }
 
     cells
-}
-
-fn rings(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCell> {
-    vec![cell(config, face_seed, 0, 0, [0.0, 0.0], [1.0, 1.0])]
 }
 
 fn natural_cells(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCell> {
