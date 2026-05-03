@@ -10,14 +10,6 @@ const PATTERN_LAYERED_SURFACE: u32 = 6u;
 
 const PATTERN_FLAG_STAGGER: u32 = 1u;
 
-const DETAIL_PEBBLE: u32 = 1u;
-const DETAIL_ROOT: u32 = 2u;
-const DETAIL_LEAF_LOBE: u32 = 3u;
-const DETAIL_GRAIN: u32 = 4u;
-const DETAIL_SPECKLE: u32 = 5u;
-const DETAIL_STAIN: u32 = 6u;
-const DETAIL_CRACK: u32 = 7u;
-
 fn vv_value_noise_3d(p: vec3<f32>) -> f32 {
     let i = floor(p);
     let f = fract(p);
@@ -516,151 +508,6 @@ fn vv_layered_surface_color(
     return max(mix(color, bleed_color, fringe), vec3<f32>(0.0));
 }
 
-fn vv_detail_face_enabled(detail: BlockDetail, face_id: u32) -> bool {
-    let mask = detail.kind_data.y;
-    let face_bit = 1u << min(face_id, 5u);
-    return mask == 0u || (mask & face_bit) != 0u;
-}
-
-fn vv_detail_shape_mask(
-    detail: BlockDetail,
-    uv: vec2<f32>,
-    world_pos: vec3<f32>,
-    normal: vec3<f32>,
-    up: vec3<f32>,
-    voxel_pos: vec3<i32>,
-    block_id: i32,
-    block_visual_id: u32,
-    face_id: u32,
-    variation_seed: u32,
-    index: u32,
-) -> f32 {
-    let kind = detail.kind_data.x;
-    let density = saturate(detail.params.x);
-    let min_size = clamp(detail.params.y, 0.001, 0.50);
-    let max_size = clamp(max(detail.params.z, min_size), 0.001, 0.75);
-    let slope_bias = saturate(detail.params.w);
-
-    let average_size = clamp((min_size + max_size) * 0.5, 0.005, 0.60);
-    let cell_scale = clamp(1.0 / average_size, 2.0, 42.0);
-
-    let p = uv * cell_scale;
-    let cell = floor(p);
-    let local = fract(p);
-
-    let seed = vv_program_seed(
-        voxel_pos,
-        block_id,
-        block_visual_id,
-        face_id,
-        variation_seed,
-        cell,
-        f32(detail.kind_data.z & 65535u) + f32(index) * 41.0,
-    );
-
-    let spawn_hash = hash13(seed + vec3<f32>(3.0, 7.0, 11.0));
-    let size_hash = hash13(seed + vec3<f32>(13.0, 17.0, 19.0));
-    let angle_hash = hash13(seed + vec3<f32>(23.0, 29.0, 31.0));
-
-    let spawned = select(0.0, 1.0, spawn_hash < density);
-    let radius = mix(min_size, max_size, size_hash) * cell_scale;
-
-    let center = vec2<f32>(
-        hash13(seed + vec3<f32>(37.0, 41.0, 43.0)),
-        hash13(seed + vec3<f32>(47.0, 53.0, 59.0)),
-    );
-
-    let centered = local - center;
-    let angle = angle_hash * 6.28318;
-    let ca = cos(angle);
-    let sa = sin(angle);
-    let rotated = vec2<f32>(
-        ca * centered.x - sa * centered.y,
-        sa * centered.x + ca * centered.y,
-    );
-
-    var mask = 0.0;
-
-    if (kind == DETAIL_PEBBLE) {
-        let q = rotated / vec2<f32>(max(radius * 0.92, 0.001), max(radius * 0.58, 0.001));
-        mask = 1.0 - smoothstep(0.72, 1.05, dot(q, q));
-    } else if (kind == DETAIL_ROOT) {
-        let wobble = vv_value_noise_3d(vec3<f32>(uv * 18.0, seed.z * 0.03)) - 0.5;
-        let line = abs(rotated.y + wobble * 0.045);
-        let along = 1.0 - smoothstep(0.12, 0.48, abs(rotated.x));
-        mask = (1.0 - smoothstep(0.010, 0.038, line)) * along;
-    } else if (kind == DETAIL_LEAF_LOBE) {
-        let q = rotated / vec2<f32>(max(radius * 1.15, 0.001), max(radius * 0.46, 0.001));
-        let lobe = 1.0 - smoothstep(0.58, 1.0, dot(q, q));
-        let vein = (1.0 - smoothstep(0.010, 0.038, abs(rotated.y))) *
-            (1.0 - smoothstep(0.18, 0.48, abs(rotated.x))) * lobe;
-        mask = saturate(lobe * 0.85 + vein * 0.25);
-    } else if (kind == DETAIL_GRAIN) {
-        let stripe = abs(fract((uv.x + angle_hash * 0.37) * cell_scale * 0.72) - 0.5);
-        mask = 1.0 - smoothstep(0.060, 0.19, stripe);
-    } else if (kind == DETAIL_SPECKLE) {
-        let d = length(centered);
-        mask = 1.0 - smoothstep(radius * 0.20, radius * 0.52, d);
-    } else if (kind == DETAIL_STAIN) {
-        let n = vv_value_noise_3d(world_pos * (0.85 + size_hash * 0.55) + seed * 0.017);
-        mask = smoothstep(0.46, 0.78, n) * (1.0 - smoothstep(0.42, 0.78, length(centered)));
-    } else if (kind == DETAIL_CRACK) {
-        let wobble = vv_value_noise_3d(vec3<f32>(uv * 22.0, seed.z * 0.05)) - 0.5;
-        let crack_line = abs(rotated.y + wobble * 0.055);
-        let crack_length = 1.0 - smoothstep(0.16, 0.50, abs(rotated.x));
-        mask = (1.0 - smoothstep(0.006, 0.026, crack_line)) * crack_length;
-    }
-
-    let topness = saturate(dot(normal, up));
-    let bottomness = saturate(dot(-normal, up));
-    let sideness = saturate(1.0 - topness - bottomness);
-    let slope_weight = mix(1.0, saturate(topness + sideness * 0.65 + bottomness * 0.25), slope_bias);
-
-    return saturate(mask * spawned * slope_weight * detail.color.a);
-}
-
-fn vv_apply_runtime_details(
-    visual: BlockVisual,
-    color: vec3<f32>,
-    world_pos: vec3<f32>,
-    normal: vec3<f32>,
-    uv: vec2<f32>,
-    block_id: i32,
-    block_visual_id: u32,
-    face_id: u32,
-    voxel_pos: vec3<i32>,
-    variation_seed: u32,
-    up: vec3<f32>,
-) -> vec3<f32> {
-    var detailed = color;
-    let detail_count = min(visual.procedural.z, 8u);
-
-    for (var i: u32 = 0u; i < detail_count; i = i + 1u) {
-        let detail = detail_for(visual, i);
-
-        if (!vv_detail_face_enabled(detail, face_id)) {
-            continue;
-        }
-
-        let strength = vv_detail_shape_mask(
-            detail,
-            uv,
-            world_pos,
-            normal,
-            up,
-            voxel_pos,
-            block_id,
-            block_visual_id,
-            face_id,
-            variation_seed,
-            i,
-        );
-
-        detailed = mix(detailed, detail.color.rgb, strength);
-    }
-
-    return max(detailed, vec3<f32>(0.0));
-}
 fn patterned_block_albedo(
     visual: BlockVisual,
     world_pos: vec3<f32>,
@@ -743,22 +590,8 @@ fn patterned_block_albedo(
         );
     }
 
-    let detailed = vv_apply_runtime_details(
-        visual,
-        patterned,
-        world_pos,
-        normal,
-        uv,
-        block_id,
-        block_visual_id,
-        face_id,
-        voxel_pos,
-        variation_seed,
-        up,
-    );
-
     return vv_apply_variation_pipeline(
-        detailed,
+        patterned,
         visual,
         world_pos,
         normal,

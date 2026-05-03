@@ -1,4 +1,3 @@
-pub mod details;
 pub mod faces;
 pub mod material;
 pub mod meshing;
@@ -7,7 +6,6 @@ pub mod program;
 pub mod shape;
 pub mod variation;
 
-pub use details::*;
 pub use faces::*;
 pub use material::*;
 pub use meshing::*;
@@ -28,7 +26,6 @@ pub struct BlockRenderDef {
     pub variation: BlockVariationDef,
     pub environment: BlockEnvironmentDef,
     pub faces: BlockFaceOverrides,
-    pub details: Vec<BlockDetailDef>,
     pub meshing: BlockMeshingDef,
 }
 
@@ -44,7 +41,6 @@ impl Default for BlockRenderDef {
             variation: BlockVariationDef::default(),
             environment: BlockEnvironmentDef::default(),
             faces: BlockFaceOverrides::default(),
-            details: Vec::new(),
             meshing: BlockMeshingDef::default(),
         }
     }
