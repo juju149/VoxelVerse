@@ -1,6 +1,6 @@
 use crate::{
-    UiColor, UiFrame, UiIconId, UiImageId, UiInput, UiInteraction, UiLayer, UiRect, UiSlotStyle,
-    UiTextAlign, UiWidgetId,
+    UiColor, UiFrame, UiIconId, UiImageId, UiInput, UiLayer, UiRect, UiResponse, UiSlotStyle,
+    UiSurface, UiWidgetId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,12 +60,12 @@ impl UiSlot {
         frame: &mut UiFrame,
         input: &UiInput,
         active: Option<UiWidgetId>,
-    ) -> UiInteraction {
-        let interaction = UiInteraction::from_input(self.id, self.rect, input, active);
+    ) -> UiResponse {
+        let response = UiResponse::from_input(self.id, self.rect, input, active, false);
 
         let background = if self.selected {
             self.style.background_selected
-        } else if interaction.hovered {
+        } else if response.hovered {
             self.style.background_hover
         } else {
             self.style.background
@@ -77,13 +77,12 @@ impl UiSlot {
             self.style.border
         };
 
-        frame.rounded_rect(
+        frame.surface(
             self.layer,
             self.rect,
-            background,
-            self.style.radius,
-            border,
-            crate::UiShadow::NONE,
+            UiSurface::new(background)
+                .border(border.color, border.width)
+                .radius(self.style.radius),
         );
 
         let content_rect = self
@@ -120,16 +119,15 @@ impl UiSlot {
                 self.rect.height * 0.32,
             );
 
-            frame.text_aligned(
+            frame.text_right_centered(
                 self.layer,
                 text_rect,
                 count.to_string(),
                 (self.rect.height * 0.22).clamp(10.0, 16.0),
                 UiColor::WHITE,
-                UiTextAlign::Right,
             );
         }
 
-        interaction
+        response
     }
 }

@@ -4,7 +4,10 @@ pub mod frame;
 pub mod geom;
 pub mod input;
 pub mod layout;
+pub mod response;
 pub mod style;
+pub mod surface;
+pub mod text;
 pub mod theme;
 pub mod widgets;
 
@@ -19,8 +22,11 @@ pub use input::{
     UiInput, UiInteraction, UiKeyboardEvent, UiMouseButton, UiPointerEvent, UiPointerPhase,
     UiWidgetId,
 };
+pub use response::UiResponse;
 pub use style::{
     UiButtonStyle, UiCardStyle, UiDropdownStyle, UiPanelStyle, UiProgressStyle, UiSearchStyle,
     UiSliderStyle, UiSlotStyle, UiStyle, UiTabsStyle, UiToggleStyle,
 };
+pub use surface::UiSurface;
+pub use text::{vertical_text_rect, UiTextLayout, UiTextVAlign};
 pub use theme::{UiRadiusScale, UiSpacingScale, UiTheme, UiTypographyScale};

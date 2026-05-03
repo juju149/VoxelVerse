@@ -1,4 +1,4 @@
-use crate::{UiCardStyle, UiFrame, UiInput, UiInteraction, UiLayer, UiRect, UiWidgetId};
+use crate::{UiCardStyle, UiFrame, UiInput, UiLayer, UiRect, UiResponse, UiSurface, UiWidgetId};
 
 #[derive(Debug, Clone, Copy)]
 pub struct UiCard {
@@ -23,31 +23,24 @@ impl UiCard {
         self
     }
 
-    pub fn draw(self, frame: &mut UiFrame, input: &UiInput) -> bool {
-        let hovered = input
-            .pointer_position
-            .map(|point| self.rect.contains(point))
-            .unwrap_or(false);
+    pub fn draw(self, frame: &mut UiFrame, input: &UiInput) -> UiResponse {
+        let response = UiResponse::from_input(self.id, self.rect, input, None, false);
 
-        let background = if hovered {
+        let background = if response.hovered {
             self.style.background_hover
         } else {
             self.style.background
         };
 
-        frame.rounded_rect(
+        frame.surface(
             self.layer,
             self.rect,
-            background,
-            self.style.radius,
-            self.style.border,
-            self.style.shadow,
+            UiSurface::new(background)
+                .border(self.style.border.color, self.style.border.width)
+                .radius(self.style.radius)
+                .shadow(self.style.shadow),
         );
 
-        hovered
-    }
-
-    pub fn interaction(self, input: &UiInput, active: Option<UiWidgetId>) -> UiInteraction {
-        UiInteraction::from_input(self.id, self.rect, input, active)
+        response
     }
 }

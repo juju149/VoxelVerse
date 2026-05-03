@@ -1,6 +1,4 @@
-use crate::{
-    UiFrame, UiInput, UiLayer, UiMouseButton, UiRect, UiTabsStyle, UiTextAlign, UiWidgetId,
-};
+use crate::{UiFrame, UiInput, UiLayer, UiRect, UiResponse, UiSurface, UiTabsStyle, UiWidgetId};
 
 #[derive(Debug, Clone)]
 pub struct UiTab {
@@ -56,28 +54,24 @@ impl UiTabs {
                 self.rect.height,
             );
 
-            let hovered = input
-                .pointer_position
-                .map(|point| rect.contains(point))
-                .unwrap_or(false);
-
+            let response = UiResponse::from_input(tab.id, rect, input, None, false);
             let is_active = tab.id == self.active;
+
             let background = if is_active {
                 self.style.active_background
             } else {
                 self.style.background
             };
 
-            frame.rounded_rect(
+            frame.surface(
                 self.layer,
                 rect,
-                background,
-                self.style.radius,
-                self.style.border,
-                crate::UiShadow::NONE,
+                UiSurface::new(background)
+                    .border(self.style.border.color, self.style.border.width)
+                    .radius(self.style.radius),
             );
 
-            frame.text_aligned(
+            frame.text_centered(
                 self.layer,
                 rect,
                 tab.label.clone(),
@@ -87,10 +81,9 @@ impl UiTabs {
                 } else {
                     self.style.text
                 },
-                UiTextAlign::Center,
             );
 
-            if hovered && input.pointer_released(UiMouseButton::Primary) {
+            if response.clicked {
                 clicked = Some(tab.id);
             }
         }

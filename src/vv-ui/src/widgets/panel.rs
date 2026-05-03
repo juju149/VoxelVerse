@@ -1,4 +1,4 @@
-use crate::{UiFrame, UiLayer, UiPanelStyle, UiRect};
+use crate::{UiFrame, UiLayer, UiPanelStyle, UiRect, UiSurface};
 
 #[derive(Debug, Clone, Copy)]
 pub struct UiPanel {
@@ -22,13 +22,13 @@ impl UiPanel {
     }
 
     pub fn draw(self, frame: &mut UiFrame) {
-        frame.rounded_rect(
+        frame.surface(
             self.layer,
             self.rect,
-            self.style.background,
-            self.style.radius,
-            self.style.border,
-            self.style.shadow,
+            UiSurface::new(self.style.background)
+                .border(self.style.border.color, self.style.border.width)
+                .radius(self.style.radius)
+                .shadow(self.style.shadow),
         );
     }
 }

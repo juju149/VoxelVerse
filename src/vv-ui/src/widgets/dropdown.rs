@@ -1,6 +1,5 @@
 use crate::{
-    UiDropdownStyle, UiFrame, UiInput, UiInteraction, UiLayer, UiMouseButton, UiRect, UiTextAlign,
-    UiWidgetId,
+    UiColor, UiDropdownStyle, UiFrame, UiInput, UiLayer, UiRect, UiResponse, UiSurface, UiWidgetId,
 };
 
 #[derive(Debug, Clone)]
@@ -30,33 +29,37 @@ impl UiDropdown {
         }
     }
 
-    pub fn draw(self, frame: &mut UiFrame, input: &UiInput, active: Option<UiWidgetId>) -> bool {
-        let interaction = UiInteraction::from_input(self.id, self.rect, input, active);
-        let hovered = interaction.hovered && !self.disabled;
+    pub fn disabled(mut self, disabled: bool) -> Self {
+        self.disabled = disabled;
+        self
+    }
 
-        frame.rounded_rect(
+    pub fn draw(self, frame: &mut UiFrame, input: &UiInput, active: Option<UiWidgetId>) -> bool {
+        let response = UiResponse::from_input(self.id, self.rect, input, active, self.disabled);
+
+        let background = if response.hovered {
+            self.style.background_hover
+        } else {
+            self.style.background
+        };
+
+        frame.surface(
             self.layer,
             self.rect,
-            if hovered {
-                self.style.background_hover
-            } else {
-                self.style.background
-            },
-            self.style.radius,
-            self.style.border,
-            crate::UiShadow::NONE,
+            UiSurface::new(background)
+                .border(self.style.border.color, self.style.border.width)
+                .radius(self.style.radius),
         );
 
-        frame.text_aligned(
+        frame.text_left_centered(
             self.layer,
             self.rect.inset(crate::UiEdgeInsets::symmetric(12.0, 0.0)),
             self.label,
             (self.rect.height * 0.34).clamp(12.0, 18.0),
-            crate::UiColor::WHITE,
-            UiTextAlign::Left,
+            UiColor::WHITE,
         );
 
-        frame.text_aligned(
+        frame.text_centered(
             self.layer,
             UiRect::new(
                 self.rect.right() - 32.0,
@@ -66,10 +69,9 @@ impl UiDropdown {
             ),
             "⌄",
             (self.rect.height * 0.38).clamp(12.0, 20.0),
-            crate::UiColor::WHITE,
-            UiTextAlign::Center,
+            UiColor::WHITE,
         );
 
-        hovered && input.pointer_released(UiMouseButton::Primary)
+        response.clicked
     }
 }

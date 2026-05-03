@@ -1,4 +1,4 @@
-use crate::{UiFrame, UiInput, UiLayer, UiRect, UiSearchStyle, UiTextAlign, UiWidgetId};
+use crate::{UiFrame, UiInput, UiLayer, UiRect, UiSearchStyle, UiSurface, UiWidgetId};
 
 #[derive(Debug, Clone)]
 pub struct UiSearchField {
@@ -31,22 +31,18 @@ impl UiSearchField {
     pub fn draw(self, frame: &mut UiFrame, _input: &UiInput, focused: bool) {
         let value_empty = self.value.is_empty();
 
-        let border = if focused {
-            crate::UiBorder::new(
-                self.style.border.width,
-                self.style.border.color.lighten(0.22),
-            )
+        let border_color = if focused {
+            self.style.border.color.lighten(0.22)
         } else {
-            self.style.border
+            self.style.border.color
         };
 
-        frame.rounded_rect(
+        frame.surface(
             self.layer,
             self.rect,
-            self.style.background,
-            self.style.radius,
-            border,
-            crate::UiShadow::NONE,
+            UiSurface::new(self.style.background)
+                .border(border_color, self.style.border.width)
+                .radius(self.style.radius),
         );
 
         let text = if value_empty {
@@ -61,13 +57,12 @@ impl UiSearchField {
             self.style.text
         };
 
-        frame.text_aligned(
+        frame.text_left_centered(
             self.layer,
             self.rect.inset(crate::UiEdgeInsets::symmetric(12.0, 0.0)),
             text,
             (self.rect.height * 0.34).clamp(12.0, 18.0),
             color,
-            UiTextAlign::Left,
         );
     }
 }

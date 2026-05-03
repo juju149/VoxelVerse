@@ -1,14 +1,8 @@
 use crate::{
-    UiButtonStyle, UiFrame, UiIconId, UiInput, UiInteraction, UiLayer, UiMouseButton, UiRect,
-    UiTextAlign, UiWidgetId,
+    UiButtonStyle, UiFrame, UiIconId, UiInput, UiLayer, UiRect, UiResponse, UiSurface, UiWidgetId,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct UiButtonResponse {
-    pub hovered: bool,
-    pub pressed: bool,
-    pub clicked: bool,
-}
+pub type UiButtonResponse = UiResponse;
 
 #[derive(Debug, Clone)]
 pub struct UiButton {
@@ -60,28 +54,29 @@ impl UiButton {
         input: &UiInput,
         active: Option<UiWidgetId>,
     ) -> UiButtonResponse {
-        let interaction = UiInteraction::from_input(self.id, self.rect, input, active);
+        let response = UiResponse::from_input(self.id, self.rect, input, active, self.disabled);
 
         let background = if self.disabled {
             self.style.background.darken(0.35)
-        } else if interaction.pressed {
+        } else if response.pressed {
             self.style.background_pressed
-        } else if interaction.hovered {
+        } else if response.hovered {
             self.style.background_hover
         } else {
             self.style.background
         };
 
-        frame.rounded_rect(
+        frame.surface(
             self.layer,
             self.rect,
-            background,
-            self.style.radius,
-            self.style.border,
-            self.style.shadow,
+            UiSurface::new(background)
+                .border(self.style.border.color, self.style.border.width)
+                .radius(self.style.radius)
+                .shadow(self.style.shadow),
         );
 
         let mut text_rect = self.rect;
+
         if let Some(icon) = self.icon {
             let icon_size = (self.rect.height * 0.46).min(28.0);
             let icon_rect = UiRect::new(
@@ -90,7 +85,9 @@ impl UiButton {
                 icon_size,
                 icon_size,
             );
+
             frame.icon(self.layer, icon_rect, icon, self.style.text);
+
             text_rect.x += icon_size + 24.0;
             text_rect.width -= icon_size + 24.0;
         }
@@ -101,21 +98,14 @@ impl UiButton {
             self.style.text
         };
 
-        frame.text_aligned(
+        frame.text_centered(
             self.layer,
             text_rect,
             self.label,
             (self.rect.height * 0.32).clamp(13.0, 22.0),
             color,
-            UiTextAlign::Center,
         );
 
-        UiButtonResponse {
-            hovered: interaction.hovered,
-            pressed: interaction.pressed,
-            clicked: !self.disabled
-                && interaction.hovered
-                && input.pointer_released(UiMouseButton::Primary),
-        }
+        response
     }
 }

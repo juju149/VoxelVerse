@@ -1,4 +1,4 @@
-use crate::{UiFrame, UiLayer, UiProgressStyle, UiRect};
+use crate::{UiFrame, UiLayer, UiProgressStyle, UiRect, UiSurface};
 
 #[derive(Debug, Clone, Copy)]
 pub struct UiProgressBar {
@@ -24,16 +24,16 @@ impl UiProgressBar {
     }
 
     pub fn draw(self, frame: &mut UiFrame) {
-        frame.rounded_rect(
+        frame.surface(
             self.layer,
             self.rect,
-            self.style.background,
-            self.style.radius,
-            self.style.border,
-            crate::UiShadow::NONE,
+            UiSurface::new(self.style.background)
+                .border(self.style.border.color, self.style.border.width)
+                .radius(self.style.radius),
         );
 
         let fill_width = self.rect.width * self.value.clamp(0.0, 1.0);
+
         if fill_width > 0.0 {
             frame.rounded_rect(
                 self.layer,

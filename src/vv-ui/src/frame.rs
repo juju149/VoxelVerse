@@ -1,3 +1,5 @@
+use crate::surface::UiSurface;
+use crate::text::{vertical_text_rect, UiTextVAlign};
 use crate::{
     UiBorder, UiColor, UiCommand, UiGradient, UiIconId, UiImageId, UiLayer, UiRect, UiShadow,
     UiTextAlign, UiTextCommand, UiTextOverflow, UiTextStyleId,
@@ -65,6 +67,25 @@ impl UiFrame {
             border,
             shadow,
         });
+    }
+
+    pub fn bordered_rounded_rect(
+        &mut self,
+        layer: UiLayer,
+        rect: UiRect,
+        fill: UiColor,
+        border: UiColor,
+        border_width: f32,
+        radius: f32,
+    ) {
+        UiSurface::new(fill)
+            .border(border, border_width)
+            .radius(radius)
+            .draw(self, layer, rect);
+    }
+
+    pub fn surface(&mut self, layer: UiLayer, rect: UiRect, surface: UiSurface) {
+        surface.draw(self, layer, rect);
     }
 
     pub fn gradient_rect(
@@ -155,6 +176,83 @@ impl UiFrame {
                 style_id: None,
             },
         });
+    }
+
+    pub fn text_in_rect(
+        &mut self,
+        layer: UiLayer,
+        rect: UiRect,
+        text: impl Into<String>,
+        size: f32,
+        color: UiColor,
+        align: UiTextAlign,
+        vertical_align: UiTextVAlign,
+    ) {
+        self.text_aligned(
+            layer,
+            vertical_text_rect(rect, size, vertical_align),
+            text,
+            size,
+            color,
+            align,
+        );
+    }
+
+    pub fn text_centered(
+        &mut self,
+        layer: UiLayer,
+        rect: UiRect,
+        text: impl Into<String>,
+        size: f32,
+        color: UiColor,
+    ) {
+        self.text_in_rect(
+            layer,
+            rect,
+            text,
+            size,
+            color,
+            UiTextAlign::Center,
+            UiTextVAlign::Center,
+        );
+    }
+
+    pub fn text_left_centered(
+        &mut self,
+        layer: UiLayer,
+        rect: UiRect,
+        text: impl Into<String>,
+        size: f32,
+        color: UiColor,
+    ) {
+        self.text_in_rect(
+            layer,
+            rect,
+            text,
+            size,
+            color,
+            UiTextAlign::Left,
+            UiTextVAlign::Center,
+        );
+    }
+
+    pub fn text_right_centered(
+        &mut self,
+        layer: UiLayer,
+        rect: UiRect,
+        text: impl Into<String>,
+        size: f32,
+        color: UiColor,
+    ) {
+        self.text_in_rect(
+            layer,
+            rect,
+            text,
+            size,
+            color,
+            UiTextAlign::Right,
+            UiTextVAlign::Center,
+        );
     }
 
     pub fn styled_text(

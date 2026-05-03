@@ -1,5 +1,6 @@
 use crate::{
-    UiFrame, UiInput, UiInteraction, UiLayer, UiMouseButton, UiRect, UiToggleStyle, UiWidgetId,
+    UiBorder, UiFrame, UiInput, UiLayer, UiMouseButton, UiRect, UiSurface, UiToggleStyle,
+    UiWidgetId,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -33,26 +34,29 @@ impl UiToggle {
         self,
         frame: &mut UiFrame,
         input: &UiInput,
-        active: Option<UiWidgetId>,
+        _active: Option<UiWidgetId>,
     ) -> (bool, bool) {
-        let interaction = UiInteraction::from_input(self.id, self.rect, input, active);
-        let clicked =
-            !self.disabled && interaction.hovered && input.pointer_released(UiMouseButton::Primary);
+        let hovered = !self.disabled
+            && input
+                .pointer_position
+                .map(|point| self.rect.contains(point))
+                .unwrap_or(false);
 
+        let clicked = hovered && input.pointer_released(UiMouseButton::Primary);
         let value = if clicked { !self.value } else { self.value };
+
         let track = if value {
             self.style.track_on
         } else {
             self.style.track_off
         };
 
-        frame.rounded_rect(
+        frame.surface(
             self.layer,
             self.rect,
-            track,
-            self.style.radius,
-            self.style.border,
-            crate::UiShadow::NONE,
+            UiSurface::new(track)
+                .border(self.style.border.color, self.style.border.width)
+                .radius(self.style.radius),
         );
 
         let pad = 3.0;
@@ -68,7 +72,7 @@ impl UiToggle {
             UiRect::new(thumb_x, self.rect.y + pad, thumb_size, thumb_size),
             self.style.thumb,
             self.style.radius,
-            crate::UiBorder::NONE,
+            UiBorder::NONE,
             crate::UiShadow::NONE,
         );
 
