@@ -65,7 +65,8 @@ pub(super) fn geometry_profile_id(profile: &BlockGeometryProfile) -> u32 {
 
 pub(super) fn surface_program_id(program: &BlockSurfaceProgramDef) -> u32 {
     match program {
-        BlockSurfaceProgramDef::Flat => 0,
+        BlockSurfaceProgramDef::Flat => RUNTIME_SURFACE_PROGRAM_FLAT,
+        BlockSurfaceProgramDef::Patterned(_) => RUNTIME_SURFACE_PROGRAM_PATTERNED,
     }
 }
 

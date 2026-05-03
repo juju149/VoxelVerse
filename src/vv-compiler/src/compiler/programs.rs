@@ -1,4 +1,5 @@
 use super::prelude::*;
+use super::ContentCompiler;
 
 impl ContentCompiler {
     pub(super) fn compile_surface_program(
