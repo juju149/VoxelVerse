@@ -141,8 +141,7 @@ impl super::ContentCompiler {
         );
 
         let faces = self.runtime_faces(doc, &compiled);
-        let details = self.runtime_details(doc, &compiled);
-        let detail_count = compiled.details.len().min(BLOCK_VISUAL_DETAIL_COUNT) as u32;
+        let details = [RuntimeBlockDetail::default(); BLOCK_VISUAL_DETAIL_COUNT];
 
         let runtime = RuntimeBlockVisual {
             base_color: compiled.base_color,
@@ -190,7 +189,7 @@ impl super::ContentCompiler {
             // y = face_blend legacy
             // z = detail_count
             // w = surface_program_id
-            procedural: [10, 0, detail_count, surface_program.runtime_id()],
+            procedural: [10, 0, 0, surface_program.runtime_id()],
             patterned: patterned_program,
 
             faces,
@@ -320,7 +319,7 @@ impl super::ContentCompiler {
                 ),
             },
 
-            details: self.compile_details(doc, &render.details),
+            details: SmallVec::new(),
         }
     }
 
@@ -420,125 +419,17 @@ impl super::ContentCompiler {
         })
     }
 
-    pub(super) fn compile_details(
-        &mut self,
-        doc: &RawDocument<BlockDef>,
-        details: &[BlockDetailDef],
-    ) -> SmallVec<[CompiledBlockDetail; 8]> {
-        let mut compiled = SmallVec::<[CompiledBlockDetail; 8]>::new();
-
-        for (index, detail) in details.iter().enumerate() {
-            if index >= BLOCK_VISUAL_DETAIL_COUNT {
-                self.warn_value(
-                    doc,
-                    "render.details",
-                    &details.len().to_string(),
-                    "too many block details, only the first 8 are compiled",
-                );
-                break;
-            }
-
-            let min_size = self.clamp_range(
-                doc,
-                &format!("render.details[{index}].min_size"),
-                detail.min_size,
-                0.001,
-                0.50,
-            );
-
-            let max_size = self.clamp_range(
-                doc,
-                &format!("render.details[{index}].max_size"),
-                detail.max_size,
-                min_size,
-                0.75,
-            );
-
-            compiled.push(CompiledBlockDetail {
-                kind: Self::compiled_detail_kind(detail.kind),
-                density: self.clamp_unit(
-                    doc,
-                    &format!("render.details[{index}].density"),
-                    detail.density,
-                ),
-                color: self.parse_hex_color(
-                    doc,
-                    &format!("render.details[{index}].color"),
-                    &detail.color,
-                ),
-                min_size,
-                max_size,
-                slope_bias: self.clamp_unit(
-                    doc,
-                    &format!("render.details[{index}].slope_bias"),
-                    detail.slope_bias,
-                ),
-                face_mask: Self::compiled_detail_face_mask(&detail.faces),
-                seed: detail.seed,
-            });
-        }
-
-        compiled
-    }
-
-    pub(super) fn runtime_details(
-        &mut self,
-        _doc: &RawDocument<BlockDef>,
-        compiled: &CompiledBlockVisual,
-    ) -> [RuntimeBlockDetail; BLOCK_VISUAL_DETAIL_COUNT] {
-        let mut runtime = [RuntimeBlockDetail::default(); BLOCK_VISUAL_DETAIL_COUNT];
-
-        for (index, detail) in compiled
-            .details
-            .iter()
-            .take(BLOCK_VISUAL_DETAIL_COUNT)
-            .enumerate()
-        {
-            runtime[index] = RuntimeBlockDetail {
-                color: detail.color,
-                params: [
-                    detail.density,
-                    detail.min_size,
-                    detail.max_size,
-                    detail.slope_bias,
-                ],
-                meta: [detail.kind, detail.face_mask, detail.seed, 0],
-            };
-        }
-
-        runtime
-    }
-
-    fn compiled_detail_kind(kind: BlockDetailKind) -> u32 {
-        match kind {
-            BlockDetailKind::Pebble => RUNTIME_BLOCK_DETAIL_PEBBLE,
-            BlockDetailKind::Root => RUNTIME_BLOCK_DETAIL_ROOT,
-            BlockDetailKind::LeafLobe => RUNTIME_BLOCK_DETAIL_LEAF_LOBE,
-            BlockDetailKind::Grain => RUNTIME_BLOCK_DETAIL_GRAIN,
-            BlockDetailKind::Speckle => RUNTIME_BLOCK_DETAIL_SPECKLE,
-            BlockDetailKind::Stain => RUNTIME_BLOCK_DETAIL_STAIN,
-            BlockDetailKind::Crack => RUNTIME_BLOCK_DETAIL_CRACK,
+    pub(super) fn compile_detail(&mut self, _doc: &RawDocument<BlockDef>) -> CompiledBlockDetail {
+        CompiledBlockDetail {
+            kind: String::new(),
+            density: 0.0,
+            color: [1.0, 1.0, 1.0, 1.0],
+            min_size: 0.0,
+            max_size: 0.0,
+            slope_bias: 0.0,
         }
     }
 
-    fn compiled_detail_face_mask(faces: &[BlockDetailFace]) -> u32 {
-        if faces.is_empty() {
-            return RUNTIME_BLOCK_DETAIL_FACE_ALL;
-        }
-
-        faces.iter().fold(0, |mask, face| {
-            mask | match face {
-                BlockDetailFace::Top => RUNTIME_BLOCK_DETAIL_FACE_TOP,
-                BlockDetailFace::Bottom => RUNTIME_BLOCK_DETAIL_FACE_BOTTOM,
-                BlockDetailFace::Side => RUNTIME_BLOCK_DETAIL_FACE_SIDE,
-                BlockDetailFace::North => RUNTIME_BLOCK_DETAIL_FACE_NORTH,
-                BlockDetailFace::South => RUNTIME_BLOCK_DETAIL_FACE_SOUTH,
-                BlockDetailFace::East => RUNTIME_BLOCK_DETAIL_FACE_EAST,
-                BlockDetailFace::West => RUNTIME_BLOCK_DETAIL_FACE_WEST,
-                BlockDetailFace::All => RUNTIME_BLOCK_DETAIL_FACE_ALL,
-            }
-        })
-    }
     pub(super) fn runtime_faces(
         &mut self,
         _doc: &RawDocument<BlockDef>,

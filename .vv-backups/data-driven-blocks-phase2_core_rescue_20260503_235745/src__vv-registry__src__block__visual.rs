@@ -69,12 +69,10 @@ pub struct CompiledBlockFaceVisual {
 
 #[derive(Debug, Clone)]
 pub struct CompiledBlockDetail {
-    pub kind: u32,
+    pub kind: String,
     pub density: f32,
     pub color: [f32; 4],
     pub min_size: f32,
     pub max_size: f32,
     pub slope_bias: f32,
-    pub face_mask: u32,
-    pub seed: u32,
 }
