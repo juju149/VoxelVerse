@@ -4,6 +4,7 @@ use vv_core::BlockId;
 use vv_diagnostics::{emit, LogDomain, LogLevel};
 use vv_gameplay::PlayerGameplayState;
 use vv_registry::{CompiledContent, RecipeId};
+use vv_ui::UiPoint;
 use vv_world_runtime::PlanetData;
 
 use crate::block_feedback::{selection_outline_mesh, SelectionOutlineStyle};
@@ -53,13 +54,13 @@ impl<'a> Renderer<'a> {
         gameplay: &PlayerGameplayState,
         mouse_pos: Vec2,
     ) -> Option<usize> {
-        crate::gameplay_ui::GameplayUiLayout::new(
+        vv_interface::InventoryUiLayout::new(
             self.config.width as f32,
             self.config.height as f32,
             &gameplay.inventory,
             gameplay.inventory_open,
         )
-        .inventory_slot_at(mouse_pos)
+        .inventory_slot_at(UiPoint::new(mouse_pos.x, mouse_pos.y))
     }
 
     pub fn inventory_recipe_at(
@@ -68,7 +69,7 @@ impl<'a> Renderer<'a> {
         content: &CompiledContent,
         mouse_pos: Vec2,
     ) -> Option<RecipeId> {
-        let mut layout = crate::gameplay_ui::GameplayUiLayout::new(
+        let mut layout = vv_interface::InventoryUiLayout::new(
             self.config.width as f32,
             self.config.height as f32,
             &gameplay.inventory,
@@ -76,7 +77,7 @@ impl<'a> Renderer<'a> {
         );
 
         layout.add_hand_recipes(content.recipes.recipes_for_station(None));
-        layout.recipe_at(mouse_pos)
+        layout.recipe_at(UiPoint::new(mouse_pos.x, mouse_pos.y))
     }
 
     pub fn force_reload_all(&mut self, planet: &PlanetData, player_pos: Vec3) {

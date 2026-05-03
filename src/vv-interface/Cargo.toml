@@ -1,0 +1,9 @@
+[package]
+name = "vv-interface"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vv-ui       = { path = "../vv-ui" }
+vv-gameplay = { path = "../vv-gameplay" }
+vv-registry = { path = "../vv-registry" }

@@ -10,6 +10,7 @@ vv-planet        = { path = "../vv-planet" }
 vv-world-runtime = { path = "../vv-world-runtime" }
 vv-input         = { path = "../vv-input" }
 vv-ui            = { path = "../vv-ui" }
+vv-interface     = { path = "../vv-interface" }
 vv-gameplay      = { path = "../vv-gameplay" }
 vv-physics       = { path = "../vv-physics" }
 vv-config        = { path = "../vv-config" }

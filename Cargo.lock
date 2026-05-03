@@ -2468,6 +2468,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vv-interface"
+version = "0.1.0"
+dependencies = [
+ "vv-gameplay",
+ "vv-registry",
+ "vv-ui",
+]
+
+[[package]]
 name = "vv-mesh"
 version = "0.1.0"
 dependencies = [
@@ -2531,6 +2540,7 @@ dependencies = [
  "vv-diagnostics",
  "vv-gameplay",
  "vv-input",
+ "vv-interface",
  "vv-mesh",
  "vv-physics",
  "vv-planet",

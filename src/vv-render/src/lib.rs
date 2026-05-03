@@ -3,7 +3,6 @@ pub mod block_feedback;
 pub mod celestial;
 pub mod chunk_mesh;
 pub mod frustum;
-pub mod gameplay_ui;
 pub mod lod_animator;
 pub mod renderer;
 pub mod shader_source;
