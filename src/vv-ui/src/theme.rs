@@ -92,15 +92,15 @@ pub struct UiTheme {
 impl Default for UiTheme {
     fn default() -> Self {
         Self {
-            background_dim: UiColor::rgba(0.002, 0.008, 0.012, 0.68),
+            background_dim: UiColor::rgba(0.0, 0.0, 0.0, 0.36),
 
-            panel: UiColor::rgba(0.006, 0.018, 0.024, 0.92),
-            panel_hover: UiColor::rgba(0.018, 0.038, 0.046, 0.96),
-            panel_active: UiColor::rgba(0.66, 0.43, 0.14, 0.96),
-            panel_subtle: UiColor::rgba(0.002, 0.012, 0.016, 0.92),
+            panel: UiColor::rgba(0.023529, 0.086275, 0.133333, 1.0),
+            panel_hover: UiColor::rgba(0.034, 0.116, 0.172, 1.0),
+            panel_active: UiColor::rgba(0.62, 0.39, 0.11, 0.96),
+            panel_subtle: UiColor::rgba(0.018, 0.064, 0.096, 0.96),
 
-            border: UiColor::rgba(0.88, 0.56, 0.22, 0.78),
-            border_soft: UiColor::rgba(0.88, 0.56, 0.22, 0.36),
+            border: UiColor::rgba(0.74, 0.49, 0.18, 0.92),
+            border_soft: UiColor::rgba(0.60, 0.38, 0.14, 0.80),
 
             text_primary: UiColor::rgba(0.94, 0.90, 0.82, 1.0),
             text_muted: UiColor::rgba(0.68, 0.70, 0.72, 1.0),

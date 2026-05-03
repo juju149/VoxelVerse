@@ -7,8 +7,8 @@ pub mod screens;
 
 pub use context::GameplayUiContext;
 pub use design::{
-    VvInventoryColorTokens, VvInventoryControlTokens, VvInventoryLayoutTokens,
-    VvInventoryPanelTokens, VvInventoryTextTokens, VvInventoryUiTokens,
+    InventoryColorTokens, InventoryLayoutTokens, InventoryRadiusTokens, InventoryStrokeTokens,
+    InventoryTextTokens, InventoryUiTokens,
 };
 pub use gameplay_frame::build_gameplay_ui_frame;
 pub use item_visual::{ingredient_visuals, item_label, item_visual, IngredientVisual, ItemVisual};

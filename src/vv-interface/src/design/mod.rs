@@ -1,6 +1,6 @@
 pub mod tokens;
 
 pub use tokens::{
-    VvInventoryColorTokens, VvInventoryControlTokens, VvInventoryLayoutTokens,
-    VvInventoryPanelTokens, VvInventoryTextTokens, VvInventoryUiTokens,
+    InventoryColorTokens, InventoryLayoutTokens, InventoryRadiusTokens, InventoryStrokeTokens,
+    InventoryTextTokens, InventoryUiTokens,
 };
