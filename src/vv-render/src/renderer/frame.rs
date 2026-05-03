@@ -103,7 +103,12 @@ impl<'a> Renderer<'a> {
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
             atmosphere,
             inv_view_proj: mvp.inverse().to_cols_array(),
-            planet: [planet.geometry.radius_m, atmosphere_height_m, 0.0, 0.0],
+            planet: [
+                planet.geometry.radius_m,
+                atmosphere_height_m,
+                self.render_cfg.shadow_mode.as_shader_id(),
+                0.0,
+            ],
         };
 
         self.queue

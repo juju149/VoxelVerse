@@ -62,11 +62,48 @@ pub struct PlayerConfig {
     pub reach_distance: f32,
 }
 
+/// Shadow rendering mode.
+///
+/// `Off` disables shadow sampling entirely (everything lit, fastest).
+/// `Stable` uses a small fixed kernel with stronger biasing — minimises acne
+/// and flickering on beveled edges at the cost of softness.
+/// `High` uses the full PCF kernel for crisp contact shadows; can be noisy
+/// on grazing voxel bevels.
+///
+/// Override at runtime with `VV_SHADOWS=off|stable|high`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShadowMode {
+    Off,
+    Stable,
+    High,
+}
+
+impl ShadowMode {
+    pub fn as_shader_id(self) -> f32 {
+        match self {
+            Self::Off => 0.0,
+            Self::Stable => 1.0,
+            Self::High => 2.0,
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "off" | "0" | "none" | "disabled" => Some(Self::Off),
+            "stable" | "1" | "low" | "medium" => Some(Self::Stable),
+            "high" | "2" | "full" => Some(Self::High),
+            _ => None,
+        }
+    }
+}
+
 /// Rendering quality and visual parameters.
 #[derive(Clone, Debug)]
 pub struct RenderConfig {
     /// Shadow map texture dimension (power-of-two recommended).
     pub shadow_map_size: u32,
+    /// Shadow filter quality. See [`ShadowMode`].
+    pub shadow_mode: ShadowMode,
     /// Vertical field of view in first-person mode, in degrees.
     pub fov_first_person_deg: f32,
     /// Vertical field of view in orbit mode, in degrees.
@@ -209,6 +246,7 @@ impl Default for RenderConfig {
     fn default() -> Self {
         Self {
             shadow_map_size: 4096,
+            shadow_mode: ShadowMode::Stable,
             fov_first_person_deg: 80.0,
             fov_orbit_deg: 45.0,
             near_plane: 0.1,

@@ -15,6 +15,7 @@ pub enum DebugMode {
     MacroNoise = 9,
     MicroNoise = 10,
     RuntimeIds = 11,
+    Normals = 12,
 }
 
 impl Default for DebugMode {
@@ -37,6 +38,7 @@ impl DebugMode {
         Self::EdgesOnly,
         Self::Noise,
         Self::RuntimeIds,
+        Self::Normals,
     ];
 
     pub fn label(self) -> &'static str {
@@ -53,6 +55,7 @@ impl DebugMode {
             Self::MacroNoise => "Macro Noise",
             Self::MicroNoise => "Micro Noise",
             Self::RuntimeIds => "Runtime IDs",
+            Self::Normals => "Normals",
         }
     }
 
@@ -73,6 +76,7 @@ impl DebugMode {
             9 => Self::MacroNoise,
             10 => Self::MicroNoise,
             11 => Self::RuntimeIds,
+            12 => Self::Normals,
             _ => Self::Beauty,
         }
     }

@@ -12,7 +12,7 @@ use winit::keyboard::{Key, KeyCode, PhysicalKey};
 use winit::window::{Fullscreen, WindowBuilder};
 
 use vv_compiler::compile_assets_root;
-use vv_config::EngineConfig;
+use vv_config::{EngineConfig, ShadowMode};
 use vv_diagnostics::{EngineDiagnostics, LogDomain, LogLevel, PerfPhase, PhaseTimer};
 use vv_gameplay::{
     Console, InteractionTarget, InventoryPointerIntent, Player, PlayerGameplayState, PlayerIntent,
@@ -51,6 +51,17 @@ fn main() {
                 LogDomain::Config,
                 format!("ignoring invalid VV_SEED={seed:?}; expected u32"),
             );
+        }
+    }
+
+    if let Ok(value) = env::var("VV_SHADOWS") {
+        match ShadowMode::parse(&value) {
+            Some(mode) => config.render.shadow_mode = mode,
+            None => diagnostics.log(
+                LogLevel::Warn,
+                LogDomain::Config,
+                format!("ignoring invalid VV_SHADOWS={value:?}; expected off|stable|high"),
+            ),
         }
     }
     diagnostics.log(
