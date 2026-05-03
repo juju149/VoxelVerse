@@ -1,3 +1,7 @@
+pub mod intent;
+
+pub use intent::*;
+
 use glam::{Mat4, Vec2, Vec3};
 use vv_config::PlayerConfig;
 use vv_core::BlockId;
