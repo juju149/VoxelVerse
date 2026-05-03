@@ -37,27 +37,6 @@ impl MeshGen {
         variation_seed: u32,
         program: RuntimePatternedProgram,
     ) {
-        // WOOD_RINGS_SHADER_ONLY_GUARD
-        // Rings must never be emitted as tiled panels.
-        // A log top is one continuous cut face, and bark sides are shader-colored.
-        if program.kind == vv_registry::RUNTIME_PATTERN_RINGS {
-            Self::add_soft_cube_face(
-                verts,
-                inds,
-                idx,
-                corners,
-                face,
-                params,
-                edge_mask,
-                corner_colors,
-                texture_id,
-                block_id,
-                block_visual_id,
-                voxel_pos,
-                variation_seed,
-            );
-            return;
-        }
         let params = params.sanitized();
         let config = PatternedMeshConfig::from_runtime(program);
 
@@ -83,27 +62,6 @@ impl MeshGen {
             return;
         }
 
-        // Rings are organic/cut-surface patterns.
-        // They should not create brick-like geometric panels on every face.
-        // The mesh stays a clean soft cube; the shader draws top rings and side bark.
-        if config.kind == RUNTIME_PATTERN_RINGS {
-            Self::add_soft_cube_face(
-                verts,
-                inds,
-                idx,
-                corners,
-                face,
-                params,
-                edge_mask,
-                corner_colors,
-                texture_id,
-                block_id,
-                block_visual_id,
-                voxel_pos,
-                variation_seed,
-            );
-            return;
-        }
         let frame = SoftCubeWorldFrame::from_corners(corners);
         let base_depth = config.gap_depth.clamp(0.0, 0.20);
 
