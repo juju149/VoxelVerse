@@ -8,6 +8,7 @@ pub struct VvInventoryUiTokens {
     pub scale_max: f32,
     pub layout: VvInventoryLayoutTokens,
     pub panel: VvInventoryPanelTokens,
+    pub controls: VvInventoryControlTokens,
     pub colors: VvInventoryColorTokens,
     pub text: VvInventoryTextTokens,
 }
@@ -27,6 +28,7 @@ impl Default for VvInventoryUiTokens {
             scale_max: 1.35,
             layout: VvInventoryLayoutTokens::default(),
             panel: VvInventoryPanelTokens::default(),
+            controls: VvInventoryControlTokens::default(),
             colors: VvInventoryColorTokens::default(),
             text: VvInventoryTextTokens::default(),
         }
@@ -76,6 +78,31 @@ impl Default for VvInventoryPanelTokens {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VvInventoryControlTokens {
+    pub search_top: f32,
+    pub control_height: f32,
+    pub control_radius: f32,
+    pub control_border_width: f32,
+    pub search_padding_x: f32,
+    pub search_sort_gap: f32,
+    pub sort_button_width: f32,
+}
+
+impl Default for VvInventoryControlTokens {
+    fn default() -> Self {
+        Self {
+            search_top: 76.0,
+            control_height: 46.0,
+            control_radius: 8.0,
+            control_border_width: 1.25,
+            search_padding_x: 16.0,
+            search_sort_gap: 16.0,
+            sort_button_width: 138.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VvInventoryColorTokens {
     pub screen_dim: UiColor,
     pub panel_fill: UiColor,
@@ -83,6 +110,12 @@ pub struct VvInventoryColorTokens {
     pub panel_title: UiColor,
     pub text_primary: UiColor,
     pub text_muted: UiColor,
+
+    pub control_fill: UiColor,
+    pub control_fill_hoverless: UiColor,
+    pub control_border: UiColor,
+    pub control_text: UiColor,
+    pub control_placeholder: UiColor,
 }
 
 impl Default for VvInventoryColorTokens {
@@ -91,19 +124,26 @@ impl Default for VvInventoryColorTokens {
             screen_dim: UiColor::rgba(0.001, 0.006, 0.010, 0.52),
 
             // #061622
-            panel_fill: UiColor::rgb(0.023529412, 0.08627451, 0.13333334),
+            panel_fill: UiColor::rgb(0.02, 0.09, 0.13),
 
-            // #A66A18, avec alpha pour éviter le jaune fluo.
-            panel_border: UiColor::rgba(0.6509804, 0.41568628, 0.09411765, 0.82),
+            // #A66A18
+            panel_border: UiColor::rgba(0.65, 0.42, 0.09, 0.82),
 
             // #F2A51F
-            panel_title: UiColor::rgb(0.9490196, 0.64705884, 0.12156863),
+            panel_title: UiColor::rgb(0.95, 0.65, 0.12),
 
             // #F4E6CF
-            text_primary: UiColor::rgb(0.95686275, 0.9019608, 0.8117647),
+            text_primary: UiColor::rgb(0.96, 0.90, 0.81),
 
             // #BFAE93
-            text_muted: UiColor::rgb(0.7490196, 0.68235296, 0.5764706),
+            text_muted: UiColor::rgb(0.75, 0.68, 0.58),
+
+            // Très sombre, proche de la référence.
+            control_fill: UiColor::rgba(0.01, 0.04, 0.05, 0.92),
+            control_fill_hoverless: UiColor::rgba(0.02, 0.05, 0.06, 0.86),
+            control_border: UiColor::rgba(0.6509804, 0.41568628, 0.09411765, 0.62),
+            control_text: UiColor::rgb(0.95686275, 0.9019608, 0.8117647),
+            control_placeholder: UiColor::rgb(0.7490196, 0.68235296, 0.5764706),
         }
     }
 }
@@ -111,12 +151,14 @@ impl Default for VvInventoryColorTokens {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VvInventoryTextTokens {
     pub panel_title_size: f32,
+    pub control_text_size: f32,
 }
 
 impl Default for VvInventoryTextTokens {
     fn default() -> Self {
         Self {
             panel_title_size: 20.0,
+            control_text_size: 15.0,
         }
     }
 }

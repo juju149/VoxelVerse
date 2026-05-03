@@ -7,6 +7,7 @@ use vv_input::Controller;
 use vv_mesh::MeshGen;
 use vv_physics::Physics;
 use vv_registry::CompiledContent;
+use vv_ui::{UiTextAlign, UiTextCommand};
 use vv_world_runtime::PlanetData;
 
 use crate::{atmosphere::AtmosphereUniform, AnyKey, Frustum};
@@ -383,93 +384,7 @@ impl<'a> Renderer<'a> {
             self.last_fps_time = now2;
         }
 
-        {
-            let mut text_buffers = Vec::new();
-
-            for item in self.ui_renderer.text_items() {
-                let cmd = &item.command;
-
-                if cmd.text.is_empty() || cmd.color.a <= 0.001 {
-                    continue;
-                }
-
-                let mut buf = Buffer::new(
-                    &mut self.font_system,
-                    Metrics::new(cmd.size, cmd.size + 4.0),
-                );
-
-                buf.set_size(
-                    &mut self.font_system,
-                    cmd.rect.width.max(1.0),
-                    cmd.rect.height.max(cmd.size + 4.0),
-                );
-
-                buf.set_text(
-                    &mut self.font_system,
-                    &cmd.text,
-                    Attrs::new()
-                        .family(Family::Monospace)
-                        .color(glyphon::Color::rgb(
-                            color_channel(cmd.color.r),
-                            color_channel(cmd.color.g),
-                            color_channel(cmd.color.b),
-                        )),
-                    Shaping::Advanced,
-                );
-
-                text_buffers.push((buf, cmd.rect.x, cmd.rect.y));
-            }
-
-            if !text_buffers.is_empty() {
-                let mut text_areas = Vec::with_capacity(text_buffers.len());
-
-                for (buf, x, y) in &text_buffers {
-                    text_areas.push(TextArea {
-                        buffer: buf,
-                        left: *x,
-                        top: *y,
-                        scale: 1.0,
-                        bounds: TextBounds {
-                            left: 0,
-                            top: 0,
-                            right: w as i32,
-                            bottom: h as i32,
-                        },
-                        default_color: glyphon::Color::rgb(255, 255, 255),
-                    });
-                }
-
-                let _ = self.text_renderer.prepare(
-                    &self.device,
-                    &self.queue,
-                    &mut self.font_system,
-                    &mut self.text_atlas,
-                    Resolution {
-                        width: self.config.width,
-                        height: self.config.height,
-                    },
-                    text_areas,
-                    &mut self.swash_cache,
-                );
-
-                let mut text_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("VoxelVerse UI Text"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    timestamp_writes: None,
-                    occlusion_query_set: None,
-                });
-
-                let _ = self.text_renderer.render(&self.text_atlas, &mut text_pass);
-            }
-        }
+        self.render_ui_text(&mut enc, &view, w, h);
 
         self.queue.submit(std::iter::once(enc.finish()));
         out.present();
@@ -493,6 +408,134 @@ impl<'a> Renderer<'a> {
         self.frame_telemetry.gpu.visible_lods = main_visible_lods;
         self.frame_telemetry.gpu.active_buffers =
             (self.chunks.len() + self.lod_chunks.len() + self.animator.dying_chunks.len()) * 3;
+    }
+
+    fn render_ui_text(
+        &mut self,
+        enc: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        screen_w: f32,
+        screen_h: f32,
+    ) {
+        let mut text_buffers = Vec::new();
+
+        for item in self.ui_renderer.text_items() {
+            let cmd = &item.command;
+
+            if cmd.text.is_empty() || cmd.color.a <= 0.001 {
+                continue;
+            }
+
+            let mut buf = Buffer::new(
+                &mut self.font_system,
+                Metrics::new(cmd.size, cmd.size + 4.0),
+            );
+
+            buf.set_size(
+                &mut self.font_system,
+                cmd.rect.width.max(1.0),
+                cmd.rect.height.max(cmd.size + 4.0),
+            );
+
+            buf.set_text(
+                &mut self.font_system,
+                &cmd.text,
+                Attrs::new()
+                    .family(Family::Monospace)
+                    .color(glyphon::Color::rgb(
+                        color_channel(cmd.color.r),
+                        color_channel(cmd.color.g),
+                        color_channel(cmd.color.b),
+                    )),
+                Shaping::Advanced,
+            );
+
+            let aligned_x = aligned_text_x(cmd);
+
+            text_buffers.push((buf, aligned_x, cmd.rect.y));
+        }
+
+        if text_buffers.is_empty() {
+            return;
+        }
+
+        let mut text_areas = Vec::with_capacity(text_buffers.len());
+
+        for (buf, x, y) in &text_buffers {
+            text_areas.push(TextArea {
+                buffer: buf,
+                left: *x,
+                top: *y,
+                scale: 1.0,
+                bounds: TextBounds {
+                    left: 0,
+                    top: 0,
+                    right: screen_w as i32,
+                    bottom: screen_h as i32,
+                },
+                default_color: glyphon::Color::rgb(255, 255, 255),
+            });
+        }
+
+        let _ = self.text_renderer.prepare(
+            &self.device,
+            &self.queue,
+            &mut self.font_system,
+            &mut self.text_atlas,
+            Resolution {
+                width: self.config.width,
+                height: self.config.height,
+            },
+            text_areas,
+            &mut self.swash_cache,
+        );
+
+        let mut text_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("VoxelVerse UI Text"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        let _ = self.text_renderer.render(&self.text_atlas, &mut text_pass);
+    }
+}
+
+fn aligned_text_x(cmd: &UiTextCommand) -> f32 {
+    match cmd.align {
+        UiTextAlign::Left => cmd.rect.x,
+        UiTextAlign::Center => {
+            let estimated = estimate_text_width(&cmd.text, cmd.size);
+            cmd.rect.x + ((cmd.rect.width - estimated) * 0.5).max(0.0)
+        }
+        UiTextAlign::Right => {
+            let estimated = estimate_text_width(&cmd.text, cmd.size);
+            cmd.rect.right() - estimated.min(cmd.rect.width)
+        }
+    }
+}
+
+fn estimate_text_width(text: &str, size: f32) -> f32 {
+    text.chars().map(|ch| glyph_width(ch, size)).sum()
+}
+
+fn glyph_width(ch: char, size: f32) -> f32 {
+    match ch {
+        ' ' => size * 0.35,
+        'i' | 'l' | 'I' | '!' | '|' | '.' | ',' | ':' | ';' => size * 0.36,
+        'm' | 'w' | 'M' | 'W' => size * 0.82,
+        '×' | '+' | '−' | '-' | '↕' | '⌕' | '▣' => size * 0.72,
+        c if c.is_ascii_digit() => size * 0.56,
+        c if c.is_ascii_uppercase() => size * 0.68,
+        _ => size * 0.58,
     }
 }
 
