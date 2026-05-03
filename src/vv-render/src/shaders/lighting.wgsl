@@ -48,8 +48,8 @@ fn apply_planetary_lighting(
 
     let hemi = dot(N, up) * 0.5 + 0.5;
 
-    let day_sky = vv_saturate_color(global.atmosphere.sky_color.xyz, 1.18) * 0.92;
-    let day_ground = vv_saturate_color(global.atmosphere.ground_ambient_color.xyz, 1.08) * 1.05;
+    let day_sky = vv_saturate_color(global.atmosphere.sky_color.xyz, 1.08) * 0.68;
+    let day_ground = vv_saturate_color(global.atmosphere.ground_ambient_color.xyz, 1.02) * 0.72;
 
     let night_sky = vec3<f32>(0.012, 0.020, 0.075) + global.atmosphere.moon_color.xyz * 0.15;
     let night_ground = vec3<f32>(0.006, 0.009, 0.030) + global.atmosphere.moon_color.xyz * 0.045;
@@ -58,12 +58,12 @@ fn apply_planetary_lighting(
     let ground_ambient = mix(night_ground, day_ground, day_amount);
 
     var ambient = mix(ground_ambient, sky_ambient, hemi);
-    ambient = ambient * (0.72 + surface_response * 0.20) * ao_ambient;
+    ambient = ambient * (0.58 + surface_response * 0.16) * ao_ambient;
 
     let twilight_color = vv_saturate_color(global.atmosphere.horizon_glow_color.xyz, 1.25);
-    ambient = ambient + twilight_color * twilight_amount * 0.24 * ao_ambient;
+    ambient = ambient + twilight_color * twilight_amount * 0.16 * ao_ambient;
 
-    let sun_wrap = mix(0.46, 0.24, day_amount);
+    let sun_wrap = mix(0.34, 0.16, day_amount);
     let soft_sun = vv_wrapped_lambert(n_dot_l, sun_wrap);
 
     let sun_gate = smoothstep(-0.08, 0.10, sun_height);
@@ -85,7 +85,7 @@ fn apply_planetary_lighting(
         * (1.0 - shadow)
         * day_amount
         * sun_gate
-        * (0.22 + n_dot_l * 0.32);
+        * (0.14 + n_dot_l * 0.24);
 
     let twilight_fill = twilight_color
         * twilight_amount
@@ -140,7 +140,10 @@ fn apply_planetary_fog(color: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
     let fog_density = max(global.atmosphere.fog_color_density.w, 0.0);
 
     let fog_range = max(dist - fog_start, 0.0);
-    var fog_factor = 1.0 - exp(-(fog_range * fog_density) * (fog_range * fog_density * 0.45));
+    let fog_curve = fog_range * fog_density;
+
+    var fog_factor = 1.0 - exp(-(fog_curve * fog_curve * 0.30));
+    fog_factor = fog_factor * smoothstep(fog_start, fog_start + 260.0, dist);
 
     let camera_air = camera_atmosphere_amount();
     let pixel_altitude = max(distance(world_pos, planet_center()) - planet_radius_m(), 0.0);
@@ -153,15 +156,16 @@ fn apply_planetary_fog(color: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
     let twilight_amount = local_twilight_amount(up);
 
     fog_factor = fog_factor * air_amount;
-    fog_factor = fog_factor * mix(0.70, 1.28, twilight_amount);
+    fog_factor = fog_factor * mix(0.55, 1.05, twilight_amount);
+    fog_factor = min(fog_factor, mix(0.54, 0.72, twilight_amount));
 
-    let day_fog = global.atmosphere.fog_color_density.xyz;
-    let night_fog = vec3<f32>(0.010, 0.014, 0.050);
-    let twilight_fog = global.atmosphere.horizon_glow_color.xyz;
+    let day_fog = vv_saturate_color(global.atmosphere.fog_color_density.xyz, 0.86);
+    let night_fog = vec3<f32>(0.006, 0.010, 0.038);
+    let twilight_fog = vv_saturate_color(global.atmosphere.horizon_glow_color.xyz, 0.92);
 
     var fog_color = mix(night_fog, day_fog, day_amount);
-    fog_color = mix(fog_color, twilight_fog, twilight_amount * 0.42);
-    fog_color = fog_color + global.atmosphere.moon_color.xyz * night_amount * 0.035;
+    fog_color = mix(fog_color, twilight_fog, twilight_amount * 0.34);
+    fog_color = fog_color + global.atmosphere.moon_color.xyz * night_amount * 0.026;
 
     return mix(color, fog_color, saturate(fog_factor));
 }

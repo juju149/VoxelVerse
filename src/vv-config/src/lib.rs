@@ -222,26 +222,26 @@ impl Default for RenderConfig {
 impl Default for AtmosphereConfig {
     fn default() -> Self {
         Self {
-            sun_direction: [0.65, 0.50, 0.40],
-            sun_color: [2.10, 1.82, 1.24],
-            sky_color: [0.18, 0.50, 1.18],
-            ground_ambient_color: [0.09, 0.095, 0.125],
-            shadow_tint_color: [0.052, 0.105, 0.285],
-            fog_color: [0.56, 0.76, 1.02],
-            fog_density: 0.00090,
-            clear_color: [0.028, 0.04, 0.08, 1.0],
+            sun_direction: [0.58, 0.56, 0.36],
+            sun_color: [2.35, 1.62, 0.86],
+            sky_color: [0.105, 0.305, 0.760],
+            ground_ambient_color: [0.042, 0.050, 0.070],
+            shadow_tint_color: [0.030, 0.060, 0.190],
+            fog_color: [0.380, 0.520, 0.760],
+            fog_density: 0.00030,
+            clear_color: [0.016, 0.028, 0.065, 1.0],
 
-            zenith_color: [0.050, 0.205, 0.900],
-            horizon_glow_color: [0.760, 0.910, 1.120],
-            moon_direction: [-0.65, -0.50, -0.40],
-            moon_color: [0.34, 0.42, 0.72],
+            zenith_color: [0.030, 0.125, 0.520],
+            horizon_glow_color: [1.050, 0.610, 0.310],
+            moon_direction: [-0.58, -0.56, -0.36],
+            moon_color: [0.240, 0.315, 0.610],
 
-            exposure: 1.04,
-            saturation: 1.26,
-            contrast: 1.16,
+            exposure: 0.88,
+            saturation: 1.18,
+            contrast: 1.34,
 
-            fog_start_m: 56.0,
-            sky_horizon_power: 0.72,
+            fog_start_m: 140.0,
+            sky_horizon_power: 0.78,
             star_strength: 0.0,
             night_amount: 0.0,
 
@@ -249,7 +249,7 @@ impl Default for AtmosphereConfig {
             atmosphere_height_m: 90_000.0,
             atmosphere_fade_start_m: 55_000.0,
             atmosphere_fade_end_m: 120_000.0,
-            terminator_softness: 0.095,
+            terminator_softness: 0.085,
         }
     }
 }
@@ -270,7 +270,7 @@ impl Default for DayCycleConfig {
         Self {
             day_duration_secs: 1200.0, // 20 real-world minutes per full day
             time_scale: 1.0,
-            initial_time: 0.7,
+            initial_time: 0.665,
             freeze_time: false,
         }
     }
