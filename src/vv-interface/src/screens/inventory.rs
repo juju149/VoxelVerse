@@ -28,7 +28,7 @@ impl InventoryScreen {
             ctx.theme.background_dim,
         );
 
-        draw_title(frame, ctx);
+        draw_title(frame, ctx, &layout);
         draw_panel(frame, layout.equipment_panel, ctx);
         draw_panel(frame, layout.backpack_panel, ctx);
         draw_panel(frame, layout.crafting_panel, ctx);
@@ -37,18 +37,18 @@ impl InventoryScreen {
         draw_backpack_panel(frame, ctx, &layout);
         draw_crafting_panel(frame, ctx, &layout);
         draw_bottom_hotbar(frame, ctx, &layout);
-        draw_footer_hint(frame, ctx);
+        draw_footer_hint(frame, ctx, &layout);
     }
 }
 
-fn draw_title(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>) {
-    let s = (ctx.screen_height.min(ctx.screen_width) / 1080.0).clamp(0.72, 1.10);
-    let x = 32.0 * s;
-    let y = 26.0 * s;
+fn draw_title(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &InventoryUiLayout) {
+    let s = layout.scale;
+    let title = layout.title_bar;
+    let icon = UiRect::new(title.x, title.y + 4.0 * s, 62.0 * s, 62.0 * s);
 
     frame.rounded_rect(
         UiLayer::Menu,
-        UiRect::new(x, y, 70.0 * s, 70.0 * s),
+        icon,
         ctx.theme.panel_subtle,
         10.0 * s,
         UiBorder::new(1.0, ctx.theme.border),
@@ -57,33 +57,50 @@ fn draw_title(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>) {
 
     frame.text_aligned(
         UiLayer::Menu,
-        UiRect::new(x, y + 6.0 * s, 70.0 * s, 32.0 * s),
+        icon,
         "▣",
-        24.0 * s,
+        26.0 * s,
         ctx.theme.accent,
         UiTextAlign::Center,
     );
 
     frame.text(
         UiLayer::Menu,
-        UiRect::new(x + 88.0 * s, y + 2.0 * s, 420.0 * s, 42.0 * s),
+        UiRect::new(
+            icon.right() + 24.0 * s,
+            title.y + 2.0 * s,
+            420.0 * s,
+            42.0 * s,
+        ),
         "INVENTAIRE",
-        34.0 * s,
+        32.0 * s,
         ctx.theme.text_primary,
     );
 
     frame.text(
         UiLayer::Menu,
-        UiRect::new(x + 88.0 * s, y + 44.0 * s, 520.0 * s, 26.0 * s),
+        UiRect::new(
+            icon.right() + 24.0 * s,
+            title.y + 44.0 * s,
+            520.0 * s,
+            26.0 * s,
+        ),
         "Sac, équipement et ressources",
-        16.0 * s,
+        15.0 * s,
         ctx.theme.text_muted,
     );
 
-    let close_size = 58.0 * s;
+    let close_size = 54.0 * s;
+    let close = UiRect::new(
+        title.right() - close_size,
+        title.y + 4.0 * s,
+        close_size,
+        close_size,
+    );
+
     frame.rounded_rect(
         UiLayer::Menu,
-        UiRect::new(ctx.screen_width - x - close_size, y, close_size, close_size),
+        close,
         ctx.theme.panel_subtle,
         10.0 * s,
         UiBorder::new(1.0, ctx.theme.border),
@@ -92,14 +109,9 @@ fn draw_title(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>) {
 
     frame.text_aligned(
         UiLayer::Menu,
-        UiRect::new(
-            ctx.screen_width - x - close_size,
-            y + 2.0 * s,
-            close_size,
-            close_size,
-        ),
+        close,
         "×",
-        34.0 * s,
+        32.0 * s,
         ctx.theme.accent,
         UiTextAlign::Center,
     );
@@ -134,11 +146,12 @@ fn draw_equipment_panel(
         UiTextAlign::Center,
     );
 
+    let avatar_h = (rect.height * 0.48).min(420.0 * s);
     let avatar = UiRect::new(
-        rect.x + rect.width * 0.30,
-        rect.y + 88.0 * s,
-        rect.width * 0.40,
-        rect.height * 0.47,
+        rect.x + rect.width * 0.31,
+        rect.y + 86.0 * s,
+        rect.width * 0.38,
+        avatar_h,
     );
 
     frame.gradient_rect(
@@ -157,16 +170,17 @@ fn draw_equipment_panel(
         UiLayer::Menu,
         avatar,
         "PLAYER",
-        22.0 * s,
+        20.0 * s,
         ctx.theme.text_primary,
         UiTextAlign::Center,
     );
 
-    let small = (66.0 * s).clamp(42.0, 70.0);
+    let small = (58.0 * s).clamp(38.0, 72.0);
     let left_x = rect.x + pad;
     let right_x = rect.right() - pad - small;
-    let y0 = rect.y + 58.0 * s;
-    let step = small + 22.0 * s;
+    let y0 = rect.y + 72.0 * s;
+    let available_h = (rect.height - 260.0 * s).max(small * 5.0);
+    let step = ((available_h - small) / 4.0).clamp(small + 10.0 * s, small + 34.0 * s);
 
     for (i, label) in ["Casque", "Plastron", "Gants", "Pantalon", "Bottes"]
         .iter()
@@ -183,19 +197,25 @@ fn draw_equipment_panel(
 
     frame.text_aligned(
         UiLayer::Menu,
-        UiRect::new(rect.x, rect.bottom() - 122.0 * s, rect.width, 24.0 * s),
+        UiRect::new(rect.x, rect.bottom() - 128.0 * s, rect.width, 24.0 * s),
         "OUTILS RAPIDES",
-        17.0 * s,
+        16.0 * s,
         ctx.theme.accent,
         UiTextAlign::Center,
     );
 
+    let quick_slot = (58.0 * s).clamp(38.0, 68.0);
+    let quick_gap = 28.0 * s;
+    let total_quick_w = quick_slot * 3.0 + quick_gap * 2.0;
+    let quick_x = rect.x + (rect.width - total_quick_w) * 0.5;
+    let quick_y = rect.bottom() - 88.0 * s;
+
     for i in 0..3 {
         let tool_slot = UiRect::new(
-            rect.x + rect.width * 0.20 + i as f32 * (small + 40.0 * s),
-            rect.bottom() - 82.0 * s,
-            small,
-            small,
+            quick_x + i as f32 * (quick_slot + quick_gap),
+            quick_y,
+            quick_slot,
+            quick_slot,
         );
 
         let stack = ctx
@@ -229,12 +249,12 @@ fn draw_empty_equipment_slot(
         UiLayer::Menu,
         UiRect::new(
             rect.x - 8.0 * scale,
-            rect.y - 20.0 * scale,
+            rect.y - 19.0 * scale,
             rect.width + 16.0 * scale,
             18.0 * scale,
         ),
         label,
-        11.0 * scale,
+        10.0 * scale,
         ctx.theme.text_muted,
         UiTextAlign::Center,
     );
@@ -262,7 +282,7 @@ fn draw_backpack_panel(
         UiLayer::Menu,
         UiRect::new(rect.x + pad, rect.y + 20.0 * s, 260.0 * s, 30.0 * s),
         "SAC À DOS",
-        19.0 * s,
+        18.0 * s,
         ctx.theme.accent,
     );
 
@@ -286,7 +306,7 @@ fn draw_backpack_panel(
         UiLayer::Menu,
         search.inset(UiEdgeInsets::symmetric(14.0 * s, 0.0)),
         "Rechercher un objet...",
-        16.0 * s,
+        15.0 * s,
         ctx.theme.text_muted,
     );
 
@@ -323,18 +343,26 @@ fn draw_category_tabs(
     let tab_y = layout.backpack_panel.y + 114.0 * s;
     let tab_h = 42.0 * s;
     let mut x = layout.backpack_panel.x + 24.0 * s;
+    let max_right = layout.backpack_panel.right() - 24.0 * s;
 
     for (i, label) in ["Tout", "Ressources", "Outils", "Nourriture", "Divers"]
         .iter()
         .enumerate()
     {
-        let w = match i {
+        let preferred_w = match i {
             0 => 84.0 * s,
-            1 => 134.0 * s,
-            2 => 104.0 * s,
-            3 => 136.0 * s,
-            _ => 100.0 * s,
+            1 => 132.0 * s,
+            2 => 102.0 * s,
+            3 => 132.0 * s,
+            _ => 96.0 * s,
         };
+
+        let remaining = max_right - x;
+        if remaining < 58.0 * s {
+            break;
+        }
+
+        let w = preferred_w.min(remaining);
 
         frame.rounded_rect(
             UiLayer::Menu,
@@ -353,7 +381,7 @@ fn draw_category_tabs(
             UiLayer::Menu,
             UiRect::new(x, tab_y, w, tab_h),
             *label,
-            13.0 * s,
+            12.0 * s,
             if i == 0 {
                 ctx.theme.text_primary
             } else {
@@ -379,7 +407,7 @@ fn draw_weight_and_sort(
         UiLayer::Menu,
         UiRect::new(rect.x + 48.0 * s, y, 180.0 * s, 24.0 * s),
         "46,2 / 120 kg",
-        17.0 * s,
+        15.0 * s,
         ctx.theme.text_primary,
     );
 
@@ -402,6 +430,7 @@ fn draw_weight_and_sort(
     );
 
     let sort = UiRect::new(rect.right() - 138.0 * s, y - 2.0 * s, 114.0 * s, 48.0 * s);
+
     frame.rounded_rect(
         UiLayer::Menu,
         sort,
@@ -410,11 +439,12 @@ fn draw_weight_and_sort(
         UiBorder::new(1.0, ctx.theme.border_soft),
         UiShadow::NONE,
     );
+
     frame.text_aligned(
         UiLayer::Menu,
         sort,
         "↕ Trier",
-        14.0 * s,
+        13.0 * s,
         ctx.theme.text_primary,
         UiTextAlign::Center,
     );
@@ -433,7 +463,7 @@ fn draw_crafting_panel(
         UiLayer::Menu,
         UiRect::new(rect.x + pad, rect.y + 20.0 * s, 320.0 * s, 28.0 * s),
         "ARTISANAT RAPIDE",
-        20.0 * s,
+        18.0 * s,
         ctx.theme.text_primary,
     );
 
@@ -441,7 +471,7 @@ fn draw_crafting_panel(
         UiLayer::Menu,
         UiRect::new(rect.x + pad, rect.y + 48.0 * s, 360.0 * s, 24.0 * s),
         "Fabrication à la main uniquement",
-        13.0 * s,
+        12.0 * s,
         ctx.theme.text_muted,
     );
 
@@ -496,10 +526,10 @@ fn draw_recipe_row(
     );
 
     let icon = UiRect::new(
-        rect.x + 16.0 * layout.scale,
-        rect.y + rect.height * 0.23,
-        rect.height * 0.54,
-        rect.height * 0.54,
+        rect.x + 14.0 * layout.scale,
+        rect.y + rect.height * 0.24,
+        rect.height * 0.52,
+        rect.height * 0.52,
     );
 
     frame.gradient_rect(
@@ -514,13 +544,13 @@ fn draw_recipe_row(
     frame.text(
         UiLayer::Menu,
         UiRect::new(
-            icon.right() + 16.0 * layout.scale,
+            icon.right() + 14.0 * layout.scale,
             rect.y + rect.height * 0.30,
-            rect.width - icon.width - 34.0 * layout.scale,
+            rect.width - icon.width - 32.0 * layout.scale,
             rect.height * 0.40,
         ),
         visual.label,
-        15.0 * layout.scale,
+        13.0 * layout.scale,
         if enabled {
             ctx.theme.text_primary
         } else {
@@ -551,23 +581,24 @@ fn draw_recipe_detail(
         UiLayer::Menu,
         UiRect::new(detail.x, detail.y + 8.0 * s, detail.width, 34.0 * s),
         visual.label.to_uppercase(),
-        21.0 * s,
+        19.0 * s,
         ctx.theme.accent,
     );
 
     frame.text(
         UiLayer::Menu,
-        UiRect::new(detail.x, detail.y + 42.0 * s, detail.width, 24.0 * s),
+        UiRect::new(detail.x, detail.y + 40.0 * s, detail.width, 24.0 * s),
         "Utilitaire",
-        13.0 * s,
+        12.0 * s,
         ctx.theme.text_muted,
     );
 
+    let preview_size = (detail.width * 0.34).clamp(54.0 * s, 140.0 * s);
     let preview = UiRect::new(
-        detail.x + detail.width * 0.55,
+        detail.right() - preview_size - 10.0 * s,
         detail.y + 76.0 * s,
-        detail.width * 0.34,
-        detail.width * 0.34,
+        preview_size,
+        preview_size,
     );
 
     frame.gradient_rect(
@@ -595,11 +626,11 @@ fn draw_recipe_detail(
         .take(4)
         .enumerate()
     {
-        let y = ingredients_panel.y + 16.0 * s + i as f32 * 38.0 * s;
+        let y = ingredients_panel.y + 16.0 * s + i as f32 * 34.0 * s;
 
         frame.gradient_rect(
             UiLayer::Menu,
-            UiRect::new(ingredients_panel.x + 16.0 * s, y, 24.0 * s, 24.0 * s),
+            UiRect::new(ingredients_panel.x + 16.0 * s, y, 22.0 * s, 22.0 * s),
             UiGradient::vertical(
                 ingredient.color.lighten(0.16),
                 ingredient.color.darken(0.16),
@@ -611,18 +642,19 @@ fn draw_recipe_detail(
 
         frame.text(
             UiLayer::Menu,
-            UiRect::new(ingredients_panel.x + 54.0 * s, y, 160.0 * s, 24.0 * s),
+            UiRect::new(ingredients_panel.x + 52.0 * s, y, 150.0 * s, 24.0 * s),
             &ingredient.label,
-            13.0 * s,
+            12.0 * s,
             ctx.theme.text_primary,
         );
 
         let ok = ingredient.available >= ingredient.required;
+
         frame.text_aligned(
             UiLayer::Menu,
             UiRect::new(ingredients_panel.right() - 86.0 * s, y, 64.0 * s, 24.0 * s),
             format!("{} / {}", ingredient.available, ingredient.required),
-            13.0 * s,
+            12.0 * s,
             if ok {
                 ctx.theme.success
             } else {
@@ -632,27 +664,24 @@ fn draw_recipe_detail(
         );
     }
 
-    let quantity = UiRect::new(
-        detail.x,
-        ingredients_panel.bottom() + 28.0 * s,
-        detail.width,
-        48.0 * s,
-    );
+    let quantity_y = ingredients_panel.bottom() + 24.0 * s;
+
     frame.text(
         UiLayer::Menu,
-        UiRect::new(quantity.x, quantity.y - 28.0 * s, 160.0 * s, 24.0 * s),
+        UiRect::new(detail.x, quantity_y - 26.0 * s, 160.0 * s, 22.0 * s),
         "QUANTITÉ",
-        14.0 * s,
+        13.0 * s,
         ctx.theme.accent,
     );
 
+    let mut x = detail.x;
+
     for (i, label) in ["−", "1", "+", "Max"].iter().enumerate() {
-        let w = if i == 3 { 82.0 * s } else { 50.0 * s };
-        let x = quantity.x + i as f32 * 58.0 * s + if i == 3 { 18.0 * s } else { 0.0 };
+        let w = if i == 3 { 78.0 * s } else { 48.0 * s };
 
         frame.rounded_rect(
             UiLayer::Menu,
-            UiRect::new(x, quantity.y, w, quantity.height),
+            UiRect::new(x, quantity_y, w, 44.0 * s),
             ctx.theme.panel_subtle,
             7.0 * s,
             UiBorder::new(1.0, ctx.theme.border_soft),
@@ -661,20 +690,18 @@ fn draw_recipe_detail(
 
         frame.text_aligned(
             UiLayer::Menu,
-            UiRect::new(x, quantity.y, w, quantity.height),
+            UiRect::new(x, quantity_y, w, 44.0 * s),
             *label,
-            15.0 * s,
+            14.0 * s,
             ctx.theme.text_primary,
             UiTextAlign::Center,
         );
+
+        x += w + 8.0 * s;
     }
 
-    let craft = UiRect::new(
-        detail.x,
-        quantity.bottom() + 26.0 * s,
-        detail.width,
-        64.0 * s,
-    );
+    let craft = UiRect::new(detail.x, quantity_y + 66.0 * s, detail.width, 58.0 * s);
+
     let can_craft = can_craft_hand_recipe(&ctx.gameplay.inventory, recipe, ctx.content);
 
     frame.rounded_rect(
@@ -702,7 +729,7 @@ fn draw_recipe_detail(
         UiLayer::Menu,
         craft,
         "FABRIQUER",
-        19.0 * s,
+        17.0 * s,
         if can_craft {
             ctx.theme.text_primary
         } else {
@@ -735,19 +762,19 @@ fn draw_bottom_hotbar(
             UiLayer::Menu,
             UiRect::new(slot.rect.x + 6.0, slot.rect.y + 4.0, 22.0, 18.0),
             (slot.index + 1).to_string(),
-            13.0,
+            12.0 * layout.scale,
             ctx.theme.text_primary,
         );
     }
 }
 
-fn draw_footer_hint(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>) {
-    let s = (ctx.screen_width.min(ctx.screen_height) / 1080.0).clamp(0.72, 1.10);
+fn draw_footer_hint(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &InventoryUiLayout) {
+    let s = layout.scale;
     let rect = UiRect::new(
-        ctx.screen_width - 208.0 * s,
-        ctx.screen_height - 78.0 * s,
+        layout.title_bar.right() - 180.0 * s,
+        ctx.screen_height - 66.0 * s,
         180.0 * s,
-        44.0 * s,
+        40.0 * s,
     );
 
     frame.rounded_rect(
@@ -763,7 +790,7 @@ fn draw_footer_hint(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>) {
         UiLayer::Menu,
         rect,
         "ÉCHAP    Fermer",
-        13.0 * s,
+        12.0 * s,
         ctx.theme.text_primary,
         UiTextAlign::Center,
     );

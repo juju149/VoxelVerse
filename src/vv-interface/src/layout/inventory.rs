@@ -2,6 +2,11 @@ use vv_gameplay::Inventory;
 use vv_registry::RecipeId;
 use vv_ui::{UiPoint, UiRect};
 
+const DESIGN_W: f32 = 1920.0;
+const DESIGN_H: f32 = 1080.0;
+const DESIGN_CONTENT_W: f32 = 1868.0;
+const DESIGN_PANEL_H: f32 = 780.0;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct InventorySlotRect {
     pub index: usize,
@@ -42,29 +47,26 @@ impl InventoryUiLayout {
     }
 
     pub fn hotbar_only(screen_w: f32, screen_h: f32, inventory: &Inventory) -> Self {
-        let min_dim = screen_w.min(screen_h).max(1.0);
-        let base_slot = 58.0;
-        let base_gap = 8.0;
-        let base_hotbar_w = inventory.hotbar_len() as f32 * base_slot
-            + inventory.hotbar_len().saturating_sub(1) as f32 * base_gap;
-
-        let fit_scale = ((screen_w - 32.0).max(1.0) / base_hotbar_w.max(1.0)).min(1.25);
-        let scale = (min_dim / 1080.0)
-            .clamp(0.72, 1.12)
-            .min(fit_scale)
-            .max(0.58);
-        let slot = base_slot * scale;
-        let gap = base_gap * scale;
+        let scale = responsive_scale(screen_w, screen_h);
+        let safe = 24.0 * scale;
+        let slot = (72.0 * scale).clamp(48.0, 92.0);
+        let gap = (11.0 * scale).clamp(7.0, 15.0);
 
         let hotbar_w = inventory.hotbar_len() as f32 * slot
             + inventory.hotbar_len().saturating_sub(1) as f32 * gap;
-        let hotbar_x = (screen_w - hotbar_w) * 0.5;
-        let hotbar_y = screen_h - slot - (24.0 * scale).max(12.0);
+
+        let hotbar_x = ((screen_w - hotbar_w) * 0.5).round();
+        let hotbar_y = (screen_h - safe - slot).round();
 
         let hotbar_slots = (0..inventory.hotbar_len())
             .map(|index| InventorySlotRect {
                 index,
-                rect: UiRect::new(hotbar_x + index as f32 * (slot + gap), hotbar_y, slot, slot),
+                rect: UiRect::new(
+                    (hotbar_x + index as f32 * (slot + gap)).round(),
+                    hotbar_y,
+                    slot.round(),
+                    slot.round(),
+                ),
             })
             .collect();
 
@@ -87,64 +89,106 @@ impl InventoryUiLayout {
     }
 
     pub fn inventory(screen_w: f32, screen_h: f32, inventory: &Inventory) -> Self {
-        let min_dim = screen_w.min(screen_h).max(1.0);
-        let scale = (min_dim / 1080.0).clamp(0.70, 1.10);
-        let outer = 28.0 * scale;
-        let gap = 18.0 * scale;
-        let title_h = 72.0 * scale;
-        let bottom_hotbar_h = 82.0 * scale;
+        let scale = responsive_scale(screen_w, screen_h);
+        let safe = 24.0 * scale;
+        let panel_gap = 18.0 * scale;
 
-        let content_y = outer + title_h;
-        let content_h = (screen_h - content_y - bottom_hotbar_h - outer).max(360.0 * scale);
-        let total_w = screen_w - outer * 2.0;
+        let content_w = (DESIGN_CONTENT_W * scale).min((screen_w - safe * 2.0).max(320.0));
+        let content_x = ((screen_w - content_w) * 0.5).round();
 
-        let equipment_w = (500.0 * scale).clamp(310.0, total_w * 0.30);
-        let crafting_w = (640.0 * scale).clamp(340.0, total_w * 0.34);
-        let backpack_w = (total_w - equipment_w - crafting_w - gap * 2.0).max(390.0);
+        let title_h = 76.0 * scale;
+        let title_y = safe.round();
+        let title_bar = UiRect::new(content_x, title_y, content_w.round(), title_h.round());
 
-        let equipment_panel = UiRect::new(outer, content_y, equipment_w, content_h);
+        let hotbar_slot = (70.0 * scale).clamp(48.0, 76.0);
+        let hotbar_gap = (10.0 * scale).clamp(6.0, 13.0);
+        let hotbar_w = inventory.hotbar_len() as f32 * hotbar_slot
+            + inventory.hotbar_len().saturating_sub(1) as f32 * hotbar_gap;
+
+        let hotbar_x = ((screen_w - hotbar_w) * 0.5).round();
+        let hotbar_y = (screen_h - safe - hotbar_slot).round();
+
+        let panel_y_min = title_bar.bottom() + 18.0 * scale;
+        let available_panel_h = hotbar_y - panel_y_min - 22.0 * scale;
+        let panel_h = available_panel_h
+            .min(DESIGN_PANEL_H * scale)
+            .max(430.0 * scale)
+            .round();
+
+        let panel_y = if available_panel_h > panel_h {
+            panel_y_min + (available_panel_h - panel_h) * 0.44
+        } else {
+            panel_y_min
+        }
+        .round();
+
+        let equipment_w = (500.0 * scale).round();
+        let crafting_w = (620.0 * scale).round();
+        let backpack_w = (content_w - equipment_w - crafting_w - panel_gap * 2.0)
+            .max(500.0 * scale)
+            .round();
+
+        let equipment_panel = UiRect::new(content_x, panel_y, equipment_w, panel_h);
         let backpack_panel = UiRect::new(
-            equipment_panel.right() + gap,
-            content_y,
+            (equipment_panel.right() + panel_gap).round(),
+            panel_y,
             backpack_w,
-            content_h,
+            panel_h,
         );
         let crafting_panel = UiRect::new(
-            backpack_panel.right() + gap,
-            content_y,
-            screen_w - outer - (backpack_panel.right() + gap),
-            content_h,
+            (backpack_panel.right() + panel_gap).round(),
+            panel_y,
+            (content_x + content_w - backpack_panel.right() - panel_gap).round(),
+            panel_h,
         );
 
-        let slot = (58.0 * scale).clamp(38.0, 64.0);
-        let slot_gap = (10.0 * scale).clamp(5.0, 12.0);
+        let hotbar_slots = (0..inventory.hotbar_len())
+            .map(|index| InventorySlotRect {
+                index,
+                rect: UiRect::new(
+                    (hotbar_x + index as f32 * (hotbar_slot + hotbar_gap)).round(),
+                    hotbar_y,
+                    hotbar_slot.round(),
+                    hotbar_slot.round(),
+                ),
+            })
+            .collect::<Vec<_>>();
+
+        let pad = 24.0 * scale;
         let columns = Inventory::DEFAULT_MAIN_COLUMNS;
         let main_count = inventory
             .slot_count()
             .saturating_sub(inventory.hotbar_len());
-        let rows = main_count
-            .div_ceil(columns)
-            .max(Inventory::DEFAULT_MAIN_ROWS);
+        let rows = ceil_div(main_count, columns).max(Inventory::DEFAULT_MAIN_ROWS);
 
-        let search_h = 44.0 * scale;
-        let tabs_h = 42.0 * scale;
-        let pad = 24.0 * scale;
+        let grid_gap = (10.0 * scale).clamp(6.0, 14.0);
+        let available_grid_w = backpack_panel.width - pad * 2.0;
+        let slot_from_width =
+            (available_grid_w - grid_gap * columns.saturating_sub(1) as f32) / columns as f32;
 
-        let backpack_grid_w = columns as f32 * slot + columns.saturating_sub(1) as f32 * slot_gap;
-        let backpack_grid_h = rows as f32 * slot + rows.saturating_sub(1) as f32 * slot_gap;
-        let backpack_grid_x = backpack_panel.x + (backpack_panel.width - backpack_grid_w) * 0.5;
-        let backpack_grid_y =
-            backpack_panel.y + pad + 34.0 * scale + search_h + tabs_h + 16.0 * scale;
+        let available_grid_h = backpack_panel.height - (200.0 * scale);
+        let slot_from_height =
+            (available_grid_h - grid_gap * rows.saturating_sub(1) as f32) / rows as f32;
+
+        let slot = slot_from_width
+            .min(slot_from_height)
+            .min(64.0 * scale)
+            .clamp(34.0, 84.0)
+            .round();
+
+        let backpack_grid_w = columns as f32 * slot + columns.saturating_sub(1) as f32 * grid_gap;
+        let backpack_grid_h = rows as f32 * slot + rows.saturating_sub(1) as f32 * grid_gap;
+
         let backpack_grid = UiRect::new(
-            backpack_grid_x,
-            backpack_grid_y,
-            backpack_grid_w,
-            backpack_grid_h,
+            (backpack_panel.x + (backpack_panel.width - backpack_grid_w) * 0.5).round(),
+            (backpack_panel.y + 174.0 * scale).round(),
+            backpack_grid_w.round(),
+            backpack_grid_h.round(),
         );
 
         let mut inventory_slots = Vec::new();
-
         let main_start = inventory.main_start();
+
         for main_index in 0..main_count {
             let index = main_start + main_index;
             let row = main_index / columns;
@@ -153,56 +197,41 @@ impl InventoryUiLayout {
             inventory_slots.push(InventorySlotRect {
                 index,
                 rect: UiRect::new(
-                    backpack_grid.x + col as f32 * (slot + slot_gap),
-                    backpack_grid.y + row as f32 * (slot + slot_gap),
+                    (backpack_grid.x + col as f32 * (slot + grid_gap)).round(),
+                    (backpack_grid.y + row as f32 * (slot + grid_gap)).round(),
                     slot,
                     slot,
                 ),
             });
         }
 
-        let hotbar_slot = (60.0 * scale).clamp(42.0, 66.0);
-        let hotbar_gap = (9.0 * scale).clamp(5.0, 11.0);
-        let hotbar_w = inventory.hotbar_len() as f32 * hotbar_slot
-            + inventory.hotbar_len().saturating_sub(1) as f32 * hotbar_gap;
-        let hotbar_x = (screen_w - hotbar_w) * 0.5;
-        let hotbar_y = screen_h - outer - hotbar_slot;
-
-        let hotbar_slots = (0..inventory.hotbar_len())
-            .map(|index| InventorySlotRect {
-                index,
-                rect: UiRect::new(
-                    hotbar_x + index as f32 * (hotbar_slot + hotbar_gap),
-                    hotbar_y,
-                    hotbar_slot,
-                    hotbar_slot,
-                ),
-            })
-            .collect::<Vec<_>>();
-
         for slot_rect in &hotbar_slots {
             inventory_slots.push(*slot_rect);
         }
 
+        let recipe_list_w = (crafting_panel.width * 0.38).clamp(150.0 * scale, 250.0 * scale);
         let recipe_list = UiRect::new(
-            crafting_panel.x + pad,
-            crafting_panel.y + 92.0 * scale,
-            crafting_panel.width * 0.38,
-            crafting_panel.height - 168.0 * scale,
+            (crafting_panel.x + pad).round(),
+            (crafting_panel.y + 102.0 * scale).round(),
+            recipe_list_w.round(),
+            (crafting_panel.height - 180.0 * scale).max(260.0).round(),
         );
 
+        let recipe_detail_x = recipe_list.right() + 26.0 * scale;
         let recipe_detail = UiRect::new(
-            recipe_list.right() + 26.0 * scale,
+            recipe_detail_x.round(),
             recipe_list.y,
-            crafting_panel.right() - recipe_list.right() - 50.0 * scale,
+            (crafting_panel.right() - recipe_detail_x - pad)
+                .max(160.0)
+                .round(),
             recipe_list.height,
         );
 
         Self {
             scale,
             slot,
-            gap: slot_gap,
-            title_bar: UiRect::new(outer, outer, screen_w - outer * 2.0, title_h),
+            gap: grid_gap,
+            title_bar,
             equipment_panel,
             backpack_panel,
             crafting_panel,
@@ -233,23 +262,38 @@ impl InventoryUiLayout {
     pub fn add_hand_recipes(&mut self, recipes: impl Iterator<Item = RecipeId>) {
         self.recipe_slots.clear();
 
-        if self.crafting_panel.width <= 0.0 {
+        if self.recipe_list.width <= 0.0 || self.recipe_list.height <= 0.0 {
             return;
         }
 
-        let row_h = (64.0 * self.scale).clamp(44.0, 70.0);
-        let row_gap = (10.0 * self.scale).clamp(6.0, 12.0);
+        let row_h = (64.0 * self.scale).clamp(44.0, 78.0).round();
+        let row_gap = (10.0 * self.scale).clamp(6.0, 14.0).round();
 
         for (index, recipe) in recipes.take(8).enumerate() {
             let y = self.recipe_list.y + index as f32 * (row_h + row_gap);
+
             if y + row_h > self.recipe_list.bottom() {
                 break;
             }
 
             self.recipe_slots.push(RecipeSlotRect {
                 recipe,
-                rect: UiRect::new(self.recipe_list.x, y, self.recipe_list.width, row_h),
+                rect: UiRect::new(self.recipe_list.x, y.round(), self.recipe_list.width, row_h),
             });
         }
     }
+}
+
+fn responsive_scale(screen_w: f32, screen_h: f32) -> f32 {
+    let sx = screen_w.max(1.0) / DESIGN_W;
+    let sy = screen_h.max(1.0) / DESIGN_H;
+    sx.min(sy).clamp(0.62, 1.42)
+}
+
+fn ceil_div(value: usize, divisor: usize) -> usize {
+    if divisor == 0 {
+        return 0;
+    }
+
+    (value + divisor - 1) / divisor
 }
