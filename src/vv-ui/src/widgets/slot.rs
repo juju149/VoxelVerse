@@ -87,7 +87,7 @@ impl UiSlot {
 
         let content_rect = self
             .rect
-            .inset(crate::UiEdgeInsets::all(self.rect.width * 0.18));
+            .inset(crate::UiEdgeInsets::all(self.rect.width * 0.15));
 
         match self.content {
             UiSlotContent::Empty => {}
@@ -112,22 +112,34 @@ impl UiSlot {
         }
 
         if let Some(count) = self.count.filter(|count| *count > 1) {
-            let text_rect = UiRect::new(
-                self.rect.x + self.rect.width * 0.42,
-                self.rect.y + self.rect.height * 0.62,
-                self.rect.width * 0.52,
-                self.rect.height * 0.32,
-            );
+            let text = count.to_string();
+            let size = (self.rect.height * 0.24).clamp(10.0, 18.0);
+            let text_w = estimate_text_width(&text, size);
+            let x = self.rect.right() - self.rect.width * 0.10 - text_w;
+            let y = self.rect.y + self.rect.height * 0.63;
 
-            frame.text_right_centered(
+            frame.text_left_centered(
                 self.layer,
-                text_rect,
-                count.to_string(),
-                (self.rect.height * 0.22).clamp(10.0, 16.0),
+                UiRect::new(x.round(), y, text_w.ceil() + 1.0, self.rect.height * 0.28),
+                text,
+                size,
                 UiColor::WHITE,
             );
         }
 
         response
+    }
+}
+
+fn estimate_text_width(text: &str, size: f32) -> f32 {
+    text.chars().map(|ch| glyph_width(ch, size)).sum()
+}
+
+fn glyph_width(ch: char, size: f32) -> f32 {
+    match ch {
+        ' ' => size * 0.35,
+        '1' => size * 0.42,
+        c if c.is_ascii_digit() => size * 0.56,
+        _ => size * 0.58,
     }
 }

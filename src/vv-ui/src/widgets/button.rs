@@ -190,7 +190,7 @@ impl UiButton {
 
         let text_size = self
             .text_size
-            .unwrap_or_else(|| (self.rect.height * 0.32).clamp(13.0, 22.0));
+            .unwrap_or_else(|| (self.rect.height * 0.34).clamp(13.0, 22.0));
 
         let padding_x = self
             .padding_x
@@ -209,7 +209,15 @@ impl UiButton {
         };
 
         if !has_icon {
-            self.draw_text(frame, content_rect, label, text_size, content_color);
+            draw_text_manual(
+                frame,
+                self.layer,
+                content_rect,
+                label,
+                text_size,
+                content_color,
+                self.content_align,
+            );
             return;
         }
 
@@ -260,7 +268,7 @@ impl UiButton {
                 );
 
                 frame.icon(self.layer, icon_rect, icon, content_color);
-                frame.text_centered(self.layer, text_rect, label, text_size, content_color);
+                frame.text_left_centered(self.layer, text_rect, label, text_size, content_color);
             }
             UiButtonIconPlacement::Trailing => {
                 let text_rect =
@@ -273,29 +281,8 @@ impl UiButton {
                     icon_size,
                 );
 
-                frame.text_centered(self.layer, text_rect, label, text_size, content_color);
+                frame.text_left_centered(self.layer, text_rect, label, text_size, content_color);
                 frame.icon(self.layer, icon_rect, icon, content_color);
-            }
-        }
-    }
-
-    fn draw_text(
-        &self,
-        frame: &mut UiFrame,
-        rect: UiRect,
-        label: &str,
-        size: f32,
-        color: crate::UiColor,
-    ) {
-        match self.content_align {
-            UiButtonContentAlign::Left => {
-                frame.text_left_centered(self.layer, rect, label, size, color)
-            }
-            UiButtonContentAlign::Center => {
-                frame.text_centered(self.layer, rect, label, size, color)
-            }
-            UiButtonContentAlign::Right => {
-                frame.text_right_centered(self.layer, rect, label, size, color)
             }
         }
     }
@@ -328,6 +315,22 @@ fn draw_gradient_surface(
     } else {
         frame.gradient_rect(layer, rect, gradient, radius, UiBorder::NONE, shadow);
     }
+}
+
+fn draw_text_manual(
+    frame: &mut UiFrame,
+    layer: UiLayer,
+    bounds: UiRect,
+    label: &str,
+    size: f32,
+    color: crate::UiColor,
+    align: UiButtonContentAlign,
+) {
+    let text_width = estimate_text_width(label, size).min(bounds.width.max(0.0));
+    let x = aligned_x(bounds, text_width, align);
+    let rect = UiRect::new(x.round(), bounds.y, text_width.ceil() + 1.0, bounds.height);
+
+    frame.text_left_centered(layer, rect, label, size, color);
 }
 
 fn center_rect(bounds: UiRect, width: f32, height: f32) -> UiRect {

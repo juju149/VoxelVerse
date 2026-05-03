@@ -7,6 +7,9 @@ const DESIGN_H: f32 = 1080.0;
 const DESIGN_CONTENT_W: f32 = 1868.0;
 const DESIGN_PANEL_H: f32 = 780.0;
 
+const BACKPACK_COLUMNS: usize = 8;
+const BACKPACK_MIN_ROWS: usize = 6;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct InventorySlotRect {
     pub index: usize,
@@ -24,15 +27,22 @@ pub struct InventoryUiLayout {
     pub scale: f32,
     pub slot: f32,
     pub gap: f32,
+
     pub title_bar: UiRect,
     pub equipment_panel: UiRect,
     pub backpack_panel: UiRect,
     pub crafting_panel: UiRect,
     pub hotbar_panel: UiRect,
+
     pub hotbar_slots: Vec<InventorySlotRect>,
     pub inventory_slots: Vec<InventorySlotRect>,
     pub recipe_slots: Vec<RecipeSlotRect>,
+
     pub backpack_grid: UiRect,
+    pub backpack_cells: Vec<UiRect>,
+    pub backpack_columns: usize,
+    pub backpack_rows: usize,
+
     pub recipe_list: UiRect,
     pub recipe_detail: UiRect,
 }
@@ -56,15 +66,22 @@ impl InventoryUiLayout {
             scale,
             slot: hotbar_panel.height,
             gap: hotbar_gap,
+
             title_bar: UiRect::ZERO,
             equipment_panel: UiRect::ZERO,
             backpack_panel: UiRect::ZERO,
             crafting_panel: UiRect::ZERO,
             hotbar_panel,
+
             hotbar_slots,
             inventory_slots: Vec::new(),
             recipe_slots: Vec::new(),
+
             backpack_grid: UiRect::ZERO,
+            backpack_cells: Vec::new(),
+            backpack_columns: 0,
+            backpack_rows: 0,
+
             recipe_list: UiRect::ZERO,
             recipe_detail: UiRect::ZERO,
         }
@@ -121,26 +138,29 @@ impl InventoryUiLayout {
             panel_h,
         );
 
-        let pad = 24.0 * scale;
-        let columns = Inventory::DEFAULT_MAIN_COLUMNS;
+        let pad = 44.0 * scale;
+        let columns = BACKPACK_COLUMNS;
         let main_count = inventory
             .slot_count()
             .saturating_sub(inventory.hotbar_len());
-        let rows = ceil_div(main_count, columns).max(Inventory::DEFAULT_MAIN_ROWS);
 
-        let grid_gap = (10.0 * scale).clamp(6.0, 14.0);
+        let rows = ceil_div(main_count, columns).max(BACKPACK_MIN_ROWS);
+
+        let grid_gap = (14.0 * scale).clamp(9.0, 17.0);
         let available_grid_w = backpack_panel.width - pad * 2.0;
         let slot_from_width =
             (available_grid_w - grid_gap * columns.saturating_sub(1) as f32) / columns as f32;
 
-        let available_grid_h = backpack_panel.height - (200.0 * scale);
+        let grid_top = backpack_panel.y + 226.0 * scale;
+        let footer_top = backpack_panel.bottom() - 170.0 * scale;
+        let available_grid_h = (footer_top - grid_top).max(180.0 * scale);
         let slot_from_height =
             (available_grid_h - grid_gap * rows.saturating_sub(1) as f32) / rows as f32;
 
         let slot = slot_from_width
             .min(slot_from_height)
-            .min(64.0 * scale)
-            .clamp(34.0, 84.0)
+            .min(86.0 * scale)
+            .clamp(42.0, 94.0)
             .round();
 
         let backpack_grid_w = columns as f32 * slot + columns.saturating_sub(1) as f32 * grid_gap;
@@ -148,28 +168,35 @@ impl InventoryUiLayout {
 
         let backpack_grid = UiRect::new(
             (backpack_panel.x + (backpack_panel.width - backpack_grid_w) * 0.5).round(),
-            (backpack_panel.y + 174.0 * scale).round(),
+            grid_top.round(),
             backpack_grid_w.round(),
             backpack_grid_h.round(),
         );
+
+        let mut backpack_cells = Vec::with_capacity(columns * rows);
+
+        for cell in 0..columns * rows {
+            let row = cell / columns;
+            let col = cell % columns;
+
+            backpack_cells.push(UiRect::new(
+                (backpack_grid.x + col as f32 * (slot + grid_gap)).round(),
+                (backpack_grid.y + row as f32 * (slot + grid_gap)).round(),
+                slot,
+                slot,
+            ));
+        }
 
         let mut inventory_slots = Vec::new();
         let main_start = inventory.main_start();
 
         for main_index in 0..main_count {
-            let index = main_start + main_index;
-            let row = main_index / columns;
-            let col = main_index % columns;
-
-            inventory_slots.push(InventorySlotRect {
-                index,
-                rect: UiRect::new(
-                    (backpack_grid.x + col as f32 * (slot + grid_gap)).round(),
-                    (backpack_grid.y + row as f32 * (slot + grid_gap)).round(),
-                    slot,
-                    slot,
-                ),
-            });
+            if let Some(rect) = backpack_cells.get(main_index).copied() {
+                inventory_slots.push(InventorySlotRect {
+                    index: main_start + main_index,
+                    rect,
+                });
+            }
         }
 
         inventory_slots.extend(hotbar_slots.iter().copied());
@@ -177,7 +204,7 @@ impl InventoryUiLayout {
         let recipe_list_w = (crafting_panel.width * 0.38).clamp(150.0 * scale, 250.0 * scale);
 
         let recipe_list = UiRect::new(
-            (crafting_panel.x + pad).round(),
+            (crafting_panel.x + 24.0 * scale).round(),
             (crafting_panel.y + 102.0 * scale).round(),
             recipe_list_w.round(),
             (crafting_panel.height - 180.0 * scale).max(260.0).round(),
@@ -188,7 +215,7 @@ impl InventoryUiLayout {
         let recipe_detail = UiRect::new(
             recipe_detail_x.round(),
             recipe_list.y,
-            (crafting_panel.right() - recipe_detail_x - pad)
+            (crafting_panel.right() - recipe_detail_x - 24.0 * scale)
                 .max(160.0)
                 .round(),
             recipe_list.height,
@@ -198,15 +225,22 @@ impl InventoryUiLayout {
             scale,
             slot,
             gap: grid_gap,
+
             title_bar,
             equipment_panel,
             backpack_panel,
             crafting_panel,
             hotbar_panel,
+
             hotbar_slots,
             inventory_slots,
             recipe_slots: Vec::new(),
+
             backpack_grid,
+            backpack_cells,
+            backpack_columns: columns,
+            backpack_rows: rows,
+
             recipe_list,
             recipe_detail,
         }
