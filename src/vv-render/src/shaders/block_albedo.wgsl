@@ -473,8 +473,8 @@ fn vv_layered_surface_color(
         let fiber_wave = abs(fract((uv.x + jitter * 0.31) * fiber_density * 0.55) - 0.5);
         let fiber_mask = 1.0 - smoothstep(0.10, 0.32, fiber_wave);
 
-        let patch = hash13(vec3<f32>(floor(uv.x * 3.0), floor(uv.y * 3.0), seed.z));
-        color *= 1.0 + (patch - 0.5) * saturate(visual.patterned.color_variation) * 0.50;
+        let patch_h = hash13(vec3<f32>(floor(uv.x * 3.0), floor(uv.y * 3.0), seed.z));
+        color *= 1.0 + (patch_h - 0.5) * saturate(visual.patterned.color_variation) * 0.50;
         color = mix(color, color * vec3<f32>(1.10, 1.20, 0.86), fiber_mask * 0.20);
         return max(color, vec3<f32>(0.0));
     }
