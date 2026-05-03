@@ -236,13 +236,13 @@ pub struct InventoryGridTokens {
 impl Default for InventoryGridTokens {
     fn default() -> Self {
         Self {
-            columns: 8,
+            columns: 9,
             rows: 6,
             top: 226.0,
             gap: 11.0,
-            bottom_reserved: 124.0,
+            bottom_reserved: 96.0,
             slot_min: 42.0,
-            slot_max: 78.0,
+            slot_max: 160.0,
         }
     }
 }

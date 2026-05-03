@@ -177,16 +177,23 @@ impl InventoryUiLayout {
         let slot_from_h =
             (available_grid_h - grid_gap * rows.saturating_sub(1) as f32) / rows as f32;
 
+        // Width-first grid sizing:
+        // The backpack grid should occupy the available content width.
+        // Height still protects the layout, so the grid never overlaps the footer.
         let slot = slot_from_w
             .min(slot_from_h)
-            .clamp(tokens.grid.slot_min * scale, tokens.grid.slot_max * scale)
+            .max(tokens.grid.slot_min * scale)
+            .min(tokens.grid.slot_max * scale)
             .round();
 
         let grid_w = columns as f32 * slot + columns.saturating_sub(1) as f32 * grid_gap;
         let grid_h = rows as f32 * slot + rows.saturating_sub(1) as f32 * grid_gap;
 
+        // The backpack grid must align with the panel content column:
+        // title, search field, tabs and grid all start at the same x.
+        // Do not center the grid inside wide panels, otherwise it visually floats.
         let backpack_grid = UiRect::new(
-            (backpack_panel.x + (backpack_panel.width - grid_w) * 0.5).round(),
+            (backpack_panel.x + pad).round(),
             grid_top.round(),
             grid_w.round(),
             grid_h.round(),
