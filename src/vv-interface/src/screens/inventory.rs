@@ -44,25 +44,10 @@ impl InventoryScreen {
 fn draw_title(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &InventoryUiLayout) {
     let s = layout.scale;
     let title = layout.title_bar;
+
     let icon = UiRect::new(title.x, title.y + 4.0 * s, 62.0 * s, 62.0 * s);
 
-    frame.rounded_rect(
-        UiLayer::Menu,
-        icon,
-        ctx.theme.panel_subtle,
-        10.0 * s,
-        UiBorder::new(1.0, ctx.theme.border),
-        UiShadow::NONE,
-    );
-
-    frame.text_aligned(
-        UiLayer::Menu,
-        icon,
-        "▣",
-        26.0 * s,
-        ctx.theme.accent,
-        UiTextAlign::Center,
-    );
+    draw_square_button(frame, icon, "▣", false, ctx, s);
 
     frame.text(
         UiLayer::Menu,
@@ -98,23 +83,7 @@ fn draw_title(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &Invento
         close_size,
     );
 
-    frame.rounded_rect(
-        UiLayer::Menu,
-        close,
-        ctx.theme.panel_subtle,
-        10.0 * s,
-        UiBorder::new(1.0, ctx.theme.border),
-        UiShadow::NONE,
-    );
-
-    frame.text_aligned(
-        UiLayer::Menu,
-        close,
-        "×",
-        32.0 * s,
-        ctx.theme.accent,
-        UiTextAlign::Center,
-    );
+    draw_square_button(frame, close, "×", false, ctx, s);
 }
 
 fn draw_panel(frame: &mut UiFrame, rect: UiRect, ctx: &GameplayUiContext<'_>) {
@@ -166,14 +135,7 @@ fn draw_equipment_panel(
         UiShadow::new(0.0, 12.0, 24.0, 0.0, UiColor::rgba(0.0, 0.0, 0.0, 0.25)),
     );
 
-    frame.text_aligned(
-        UiLayer::Menu,
-        avatar,
-        "PLAYER",
-        20.0 * s,
-        ctx.theme.text_primary,
-        UiTextAlign::Center,
-    );
+    draw_centered_text(frame, avatar, "PLAYER", 20.0 * s, ctx.theme.text_primary);
 
     let small = (58.0 * s).clamp(38.0, 72.0);
     let left_x = rect.x + pad;
@@ -293,23 +255,7 @@ fn draw_backpack_panel(
         44.0 * s,
     );
 
-    frame.rounded_rect(
-        UiLayer::Menu,
-        search,
-        ctx.theme.panel_subtle,
-        7.0 * s,
-        UiBorder::new(1.0, ctx.theme.border_soft),
-        UiShadow::NONE,
-    );
-
-    frame.text(
-        UiLayer::Menu,
-        search.inset(UiEdgeInsets::symmetric(14.0 * s, 0.0)),
-        "Rechercher un objet...",
-        15.0 * s,
-        ctx.theme.text_muted,
-    );
-
+    draw_search_field(frame, search, "Rechercher un objet...", ctx, s);
     draw_category_tabs(frame, ctx, layout);
 
     for slot in &layout.inventory_slots {
@@ -363,32 +309,9 @@ fn draw_category_tabs(
         }
 
         let w = preferred_w.min(remaining);
+        let rect = UiRect::new(x, tab_y, w, tab_h);
 
-        frame.rounded_rect(
-            UiLayer::Menu,
-            UiRect::new(x, tab_y, w, tab_h),
-            if i == 0 {
-                ctx.theme.panel_active
-            } else {
-                ctx.theme.panel_subtle
-            },
-            8.0 * s,
-            UiBorder::new(1.0, ctx.theme.border_soft),
-            UiShadow::NONE,
-        );
-
-        frame.text_aligned(
-            UiLayer::Menu,
-            UiRect::new(x, tab_y, w, tab_h),
-            *label,
-            12.0 * s,
-            if i == 0 {
-                ctx.theme.text_primary
-            } else {
-                ctx.theme.text_muted
-            },
-            UiTextAlign::Center,
-        );
+        draw_pill_button(frame, rect, label, i == 0, ctx, s);
 
         x += w + 8.0 * s;
     }
@@ -430,24 +353,7 @@ fn draw_weight_and_sort(
     );
 
     let sort = UiRect::new(rect.right() - 138.0 * s, y - 2.0 * s, 114.0 * s, 48.0 * s);
-
-    frame.rounded_rect(
-        UiLayer::Menu,
-        sort,
-        ctx.theme.panel_subtle,
-        8.0 * s,
-        UiBorder::new(1.0, ctx.theme.border_soft),
-        UiShadow::NONE,
-    );
-
-    frame.text_aligned(
-        UiLayer::Menu,
-        sort,
-        "↕ Trier",
-        13.0 * s,
-        ctx.theme.text_primary,
-        UiTextAlign::Center,
-    );
+    draw_pill_button(frame, sort, "↕ Trier", false, ctx, s);
 }
 
 fn draw_crafting_panel(
@@ -512,18 +418,7 @@ fn draw_recipe_row(
         recipe_data.result_count,
     );
 
-    frame.rounded_rect(
-        UiLayer::Menu,
-        rect,
-        if selected {
-            ctx.theme.panel_active
-        } else {
-            ctx.theme.panel_subtle
-        },
-        8.0 * layout.scale,
-        UiBorder::new(1.0, ctx.theme.border_soft),
-        UiShadow::NONE,
-    );
+    draw_pill_surface(frame, rect, selected, ctx, layout.scale);
 
     let icon = UiRect::new(
         rect.x + 14.0 * layout.scale,
@@ -541,13 +436,13 @@ fn draw_recipe_row(
         UiShadow::NONE,
     );
 
-    frame.text(
-        UiLayer::Menu,
+    draw_left_centered_text(
+        frame,
         UiRect::new(
             icon.right() + 14.0 * layout.scale,
-            rect.y + rect.height * 0.30,
+            rect.y,
             rect.width - icon.width - 32.0 * layout.scale,
-            rect.height * 0.40,
+            rect.height,
         ),
         visual.label,
         13.0 * layout.scale,
@@ -640,8 +535,8 @@ fn draw_recipe_detail(
             UiShadow::NONE,
         );
 
-        frame.text(
-            UiLayer::Menu,
+        draw_left_centered_text(
+            frame,
             UiRect::new(ingredients_panel.x + 52.0 * s, y, 150.0 * s, 24.0 * s),
             &ingredient.label,
             12.0 * s,
@@ -650,8 +545,8 @@ fn draw_recipe_detail(
 
         let ok = ingredient.available >= ingredient.required;
 
-        frame.text_aligned(
-            UiLayer::Menu,
+        draw_right_centered_text(
+            frame,
             UiRect::new(ingredients_panel.right() - 86.0 * s, y, 64.0 * s, 24.0 * s),
             format!("{} / {}", ingredient.available, ingredient.required),
             12.0 * s,
@@ -660,7 +555,6 @@ fn draw_recipe_detail(
             } else {
                 ctx.theme.danger
             },
-            UiTextAlign::Right,
         );
     }
 
@@ -678,24 +572,9 @@ fn draw_recipe_detail(
 
     for (i, label) in ["−", "1", "+", "Max"].iter().enumerate() {
         let w = if i == 3 { 78.0 * s } else { 48.0 * s };
+        let rect = UiRect::new(x, quantity_y, w, 44.0 * s);
 
-        frame.rounded_rect(
-            UiLayer::Menu,
-            UiRect::new(x, quantity_y, w, 44.0 * s),
-            ctx.theme.panel_subtle,
-            7.0 * s,
-            UiBorder::new(1.0, ctx.theme.border_soft),
-            UiShadow::NONE,
-        );
-
-        frame.text_aligned(
-            UiLayer::Menu,
-            UiRect::new(x, quantity_y, w, 44.0 * s),
-            *label,
-            14.0 * s,
-            ctx.theme.text_primary,
-            UiTextAlign::Center,
-        );
+        draw_pill_button(frame, rect, label, false, ctx, s);
 
         x += w + 8.0 * s;
     }
@@ -704,39 +583,7 @@ fn draw_recipe_detail(
 
     let can_craft = can_craft_hand_recipe(&ctx.gameplay.inventory, recipe, ctx.content);
 
-    frame.rounded_rect(
-        UiLayer::Menu,
-        craft,
-        if can_craft {
-            ctx.theme.panel_active
-        } else {
-            ctx.theme.panel_subtle
-        },
-        9.0 * s,
-        UiBorder::new(1.0, ctx.theme.border),
-        UiShadow::new(
-            0.0,
-            0.0,
-            18.0,
-            0.0,
-            ctx.theme
-                .accent
-                .multiply_alpha(if can_craft { 0.25 } else { 0.0 }),
-        ),
-    );
-
-    frame.text_aligned(
-        UiLayer::Menu,
-        craft,
-        "FABRIQUER",
-        17.0 * s,
-        if can_craft {
-            ctx.theme.text_primary
-        } else {
-            ctx.theme.text_disabled
-        },
-        UiTextAlign::Center,
-    );
+    draw_action_button(frame, craft, "FABRIQUER", can_craft, ctx, s);
 }
 
 fn draw_bottom_hotbar(
@@ -770,28 +617,300 @@ fn draw_bottom_hotbar(
 
 fn draw_footer_hint(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &InventoryUiLayout) {
     let s = layout.scale;
-    let rect = UiRect::new(
-        layout.title_bar.right() - 180.0 * s,
-        ctx.screen_height - 66.0 * s,
-        180.0 * s,
-        40.0 * s,
+    let key_w = 70.0 * s;
+    let label_w = 84.0 * s;
+    let h = 38.0 * s;
+    let gap = 8.0 * s;
+    let total_w = key_w + label_w + gap;
+
+    let x = layout.title_bar.right() - total_w;
+    let y = ctx.screen_height - 64.0 * s;
+
+    draw_pill_surface(frame, UiRect::new(x, y, key_w, h), false, ctx, s);
+    draw_centered_text(
+        frame,
+        UiRect::new(x, y, key_w, h),
+        "ÉCHAP",
+        12.0 * s,
+        ctx.theme.text_primary,
     );
+
+    draw_pill_surface(
+        frame,
+        UiRect::new(x + key_w + gap, y, label_w, h),
+        false,
+        ctx,
+        s,
+    );
+    draw_centered_text(
+        frame,
+        UiRect::new(x + key_w + gap, y, label_w, h),
+        "Fermer",
+        12.0 * s,
+        ctx.theme.text_muted,
+    );
+}
+
+fn draw_search_field(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    placeholder: &str,
+    ctx: &GameplayUiContext<'_>,
+    scale: f32,
+) {
+    let radius = 8.0 * scale;
+    let border = UiColor::rgba(0.58, 0.36, 0.16, 0.62);
+    let fill = UiColor::rgba(0.010, 0.030, 0.036, 0.82);
 
     frame.rounded_rect(
         UiLayer::Menu,
         rect,
-        ctx.theme.panel_subtle,
-        8.0 * s,
-        UiBorder::new(1.0, ctx.theme.border_soft),
+        border,
+        radius,
+        UiBorder::NONE,
         UiShadow::NONE,
     );
 
-    frame.text_aligned(
+    frame.rounded_rect(
+        UiLayer::Menu,
+        rect.inset(UiEdgeInsets::all(1.5 * scale)),
+        fill,
+        (radius - 1.5 * scale).max(4.0),
+        UiBorder::NONE,
+        UiShadow::NONE,
+    );
+
+    draw_left_centered_text(
+        frame,
+        rect.inset(UiEdgeInsets::symmetric(16.0 * scale, 0.0)),
+        placeholder,
+        15.0 * scale,
+        ctx.theme.text_muted,
+    );
+
+    draw_centered_text(
+        frame,
+        UiRect::new(
+            rect.right() - 44.0 * scale,
+            rect.y,
+            34.0 * scale,
+            rect.height,
+        ),
+        "⌕",
+        20.0 * scale,
+        ctx.theme.accent,
+    );
+}
+
+fn draw_square_button(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    label: &str,
+    active: bool,
+    ctx: &GameplayUiContext<'_>,
+    scale: f32,
+) {
+    draw_pill_surface(frame, rect, active, ctx, scale);
+    draw_centered_text(
+        frame,
+        rect,
+        label,
+        if label == "×" {
+            32.0 * scale
+        } else {
+            24.0 * scale
+        },
+        ctx.theme.accent,
+    );
+}
+
+fn draw_pill_button(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    label: &str,
+    active: bool,
+    ctx: &GameplayUiContext<'_>,
+    scale: f32,
+) {
+    draw_pill_surface(frame, rect, active, ctx, scale);
+    draw_centered_text(
+        frame,
+        rect,
+        label,
+        13.0 * scale,
+        if active {
+            ctx.theme.text_primary
+        } else {
+            ctx.theme.text_muted
+        },
+    );
+}
+
+fn draw_action_button(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    label: &str,
+    active: bool,
+    ctx: &GameplayUiContext<'_>,
+    scale: f32,
+) {
+    let radius = 9.0 * scale;
+    let border = if active {
+        ctx.theme.border.with_alpha(0.95)
+    } else {
+        ctx.theme.border_soft.with_alpha(0.52)
+    };
+
+    let top = if active {
+        UiColor::rgba(0.78, 0.50, 0.15, 0.94)
+    } else {
+        UiColor::rgba(0.020, 0.043, 0.050, 0.90)
+    };
+
+    let bottom = if active {
+        UiColor::rgba(0.42, 0.25, 0.07, 0.96)
+    } else {
+        UiColor::rgba(0.006, 0.020, 0.025, 0.94)
+    };
+
+    frame.rounded_rect(
         UiLayer::Menu,
         rect,
-        "ÉCHAP    Fermer",
-        12.0 * s,
-        ctx.theme.text_primary,
+        border,
+        radius,
+        UiBorder::NONE,
+        UiShadow::NONE,
+    );
+
+    frame.gradient_rect(
+        UiLayer::Menu,
+        rect.inset(UiEdgeInsets::all(1.5 * scale)),
+        UiGradient::vertical(top, bottom),
+        (radius - 1.5 * scale).max(4.0),
+        UiBorder::NONE,
+        UiShadow::NONE,
+    );
+
+    draw_centered_text(
+        frame,
+        rect,
+        label,
+        17.0 * scale,
+        if active {
+            ctx.theme.text_primary
+        } else {
+            ctx.theme.text_disabled
+        },
+    );
+}
+
+fn draw_pill_surface(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    active: bool,
+    ctx: &GameplayUiContext<'_>,
+    scale: f32,
+) {
+    let radius = (rect.height * 0.22).clamp(6.0 * scale, 11.0 * scale);
+    let border = if active {
+        ctx.theme.border.with_alpha(0.90)
+    } else {
+        UiColor::rgba(0.45, 0.28, 0.12, 0.66)
+    };
+
+    let top = if active {
+        UiColor::rgba(0.73, 0.48, 0.16, 0.92)
+    } else {
+        UiColor::rgba(0.018, 0.043, 0.050, 0.88)
+    };
+
+    let bottom = if active {
+        UiColor::rgba(0.42, 0.26, 0.08, 0.94)
+    } else {
+        UiColor::rgba(0.006, 0.020, 0.024, 0.90)
+    };
+
+    frame.rounded_rect(
+        UiLayer::Menu,
+        rect,
+        border,
+        radius,
+        UiBorder::NONE,
+        UiShadow::NONE,
+    );
+
+    frame.gradient_rect(
+        UiLayer::Menu,
+        rect.inset(UiEdgeInsets::all(1.4 * scale)),
+        UiGradient::vertical(top, bottom),
+        (radius - 1.4 * scale).max(4.0),
+        UiBorder::NONE,
+        UiShadow::NONE,
+    );
+}
+
+fn draw_centered_text(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    text: impl Into<String>,
+    size: f32,
+    color: UiColor,
+) {
+    let text_rect = vertically_centered_text_rect(rect, size);
+
+    frame.text_aligned(
+        UiLayer::Menu,
+        text_rect,
+        text,
+        size,
+        color,
         UiTextAlign::Center,
     );
+}
+
+fn draw_left_centered_text(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    text: impl Into<String>,
+    size: f32,
+    color: UiColor,
+) {
+    let text_rect = vertically_centered_text_rect(rect, size);
+
+    frame.text_aligned(
+        UiLayer::Menu,
+        text_rect,
+        text,
+        size,
+        color,
+        UiTextAlign::Left,
+    );
+}
+
+fn draw_right_centered_text(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    text: impl Into<String>,
+    size: f32,
+    color: UiColor,
+) {
+    let text_rect = vertically_centered_text_rect(rect, size);
+
+    frame.text_aligned(
+        UiLayer::Menu,
+        text_rect,
+        text,
+        size,
+        color,
+        UiTextAlign::Right,
+    );
+}
+
+fn vertically_centered_text_rect(rect: UiRect, size: f32) -> UiRect {
+    // glyphon places the visible glyph mass slightly above the theoretical text box.
+    // This compensates visually so labels sit in the optical center of buttons.
+    let line_h = (size * 1.18).max(size + 2.0);
+    let optical_y = rect.y + (rect.height - line_h) * 0.5 + size * 0.20;
+
+    UiRect::new(rect.x, optical_y, rect.width, line_h)
 }
