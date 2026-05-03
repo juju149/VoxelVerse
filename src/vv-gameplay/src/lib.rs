@@ -6,6 +6,7 @@ pub mod pickup;
 pub mod placement;
 pub mod player;
 pub mod player_state;
+mod recipe_matching;
 
 pub use console::Console;
 pub use crafting::{can_craft_hand_recipe, craft_hand_recipe, CraftError};
@@ -16,3 +17,4 @@ pub use player::Player;
 pub use player_state::{
     GameFrameEvents, InventoryPointerIntent, PlayerGameplayState, PlayerIntent,
 };
+pub use recipe_matching::{has_ingredient, has_recipe_ingredients};

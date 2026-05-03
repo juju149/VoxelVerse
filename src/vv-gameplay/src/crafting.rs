@@ -1,6 +1,6 @@
 use vv_registry::{CompiledContent, CompiledIngredient, CompiledRecipe, RecipeId};
 
-use crate::{Inventory, ItemStack};
+use crate::{has_recipe_ingredients, Inventory, ItemStack};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CraftError {
@@ -18,7 +18,7 @@ pub fn can_craft_hand_recipe(
     let Some(recipe) = content.recipes.get(recipe_id) else {
         return false;
     };
-    recipe.station.is_none() && has_ingredients(inventory, recipe)
+    recipe.station.is_none() && has_recipe_ingredients(inventory, recipe, content)
 }
 
 pub fn craft_hand_recipe(
@@ -33,7 +33,7 @@ pub fn craft_hand_recipe(
     if recipe.station.is_some() {
         return Err(CraftError::StationRecipe);
     }
-    if !has_ingredients(inventory, recipe) {
+    if !has_recipe_ingredients(inventory, recipe, content) {
         return Err(CraftError::MissingIngredients);
     }
     let result = ItemStack::new(recipe.result_item, recipe.result_count);
