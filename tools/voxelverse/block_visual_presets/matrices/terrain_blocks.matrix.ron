@@ -1,0 +1,33 @@
+[
+    // soil
+    (family: "soil", preset: "natural_soil", name: "dry_soil", display_key: "block.voxelverse.dry_soil", base: "#86502E", top: "#A3653A", side: "#7A4528", bottom: "#4A2714", tool: "shovel", sound: "dirt", hardness: 0.45, density: 1.25, seed: 5101),
+    (family: "soil", preset: "natural_soil", name: "rich_soil", display_key: "block.voxelverse.rich_soil", base: "#6F3F24", top: "#8B5630", side: "#64371F", bottom: "#3F2112", tool: "shovel", sound: "dirt", hardness: 0.55, density: 1.35, seed: 5102),
+    (family: "soil", preset: "natural_soil", name: "red_clay", display_key: "block.voxelverse.red_clay", base: "#9B4E35", top: "#B76042", side: "#8A432E", bottom: "#5C2B1E", tool: "shovel", sound: "dirt", hardness: 0.70, density: 1.55, seed: 5103),
+    (family: "soil", preset: "natural_soil", name: "dark_mud", display_key: "block.voxelverse.dark_mud", base: "#4B2B1B", top: "#65402B", side: "#3D2417", bottom: "#26160F", tool: "shovel", sound: "dirt", hardness: 0.35, density: 1.45, seed: 5104),
+    (family: "soil", preset: "natural_soil", name: "ash_soil", display_key: "block.voxelverse.ash_soil", base: "#5E5A50", top: "#767063", side: "#4D493F", bottom: "#2E2B26", tool: "shovel", sound: "dirt", hardness: 0.42, density: 1.10, seed: 5105),
+    (family: "soil", preset: "natural_soil", name: "golden_sand", display_key: "block.voxelverse.golden_sand", base: "#C49A55", top: "#D9B46B", side: "#B48645", bottom: "#7E5B2E", tool: "shovel", sound: "dirt", hardness: 0.30, density: 1.50, seed: 5106),
+
+    // layered ground
+    (family: "ground", preset: "leafy_soil", name: "rich_grass", display_key: "block.voxelverse.rich_grass", base: "#8CAD52", top: "#9BC554", side: "#80502E", bottom: "#4E2C19", tool: "shovel", sound: "grass", hardness: 0.60, density: 1.20, seed: 5201),
+    (family: "ground", preset: "leafy_soil", name: "dry_grass", display_key: "block.voxelverse.dry_grass", base: "#9A9B54", top: "#B1B560", side: "#7E5635", bottom: "#4B2D1C", tool: "shovel", sound: "grass", hardness: 0.58, density: 1.18, seed: 5202),
+    (family: "ground", preset: "mossy_soil", name: "mossy_dirt", display_key: "block.voxelverse.mossy_dirt", base: "#6F8E48", top: "#86AA55", side: "#62452D", bottom: "#3B281A", tool: "shovel", sound: "grass", hardness: 0.62, density: 1.20, seed: 5203),
+    (family: "ground", preset: "mossy_soil", name: "pale_moss", display_key: "block.voxelverse.pale_moss", base: "#8FA66A", top: "#A8BF76", side: "#6A5B3D", bottom: "#403424", tool: "shovel", sound: "grass", hardness: 0.60, density: 1.15, seed: 5204),
+    (family: "ground", preset: "leafy_soil", name: "blue_grass", display_key: "block.voxelverse.blue_grass", base: "#5D8F7C", top: "#6EB49B", side: "#5D4930", bottom: "#33271B", tool: "shovel", sound: "grass", hardness: 0.60, density: 1.16, seed: 5205),
+    (family: "ground", preset: "mossy_soil", name: "deep_moss", display_key: "block.voxelverse.deep_moss", base: "#406F3C", top: "#5D914A", side: "#4C3A24", bottom: "#261D14", tool: "shovel", sound: "grass", hardness: 0.65, density: 1.18, seed: 5206),
+
+    // stone
+    (family: "stone", preset: "stone_cells", name: "soft_limestone", display_key: "block.voxelverse.soft_limestone", base: "#8A8778", top: "#96927F", side: "#7A776B", bottom: "#5B584E", tool: "pickaxe", sound: "stone", hardness: 1.20, density: 2.30, seed: 5301),
+    (family: "stone", preset: "stone_cells", name: "blue_grey_stone", display_key: "block.voxelverse.blue_grey_stone", base: "#6F7680", top: "#7F8790", side: "#626973", bottom: "#474D55", tool: "pickaxe", sound: "stone", hardness: 1.55, density: 2.70, seed: 5302),
+    (family: "stone", preset: "stone_cells", name: "warm_granite", display_key: "block.voxelverse.warm_granite", base: "#8D7567", top: "#9D8576", side: "#7A6256", bottom: "#57453D", tool: "pickaxe", sound: "stone", hardness: 1.70, density: 2.80, seed: 5303),
+    (family: "stone", preset: "stone_cells", name: "dark_basalt", display_key: "block.voxelverse.dark_basalt", base: "#3F4142", top: "#4E5050", side: "#363839", bottom: "#262728", tool: "pickaxe", sound: "stone", hardness: 1.90, density: 2.95, seed: 5304),
+    (family: "stone", preset: "stone_cells", name: "rose_stone", display_key: "block.voxelverse.rose_stone", base: "#8A6265", top: "#9A7174", side: "#775255", bottom: "#54393C", tool: "pickaxe", sound: "stone", hardness: 1.45, density: 2.65, seed: 5305),
+    (family: "stone", preset: "stone_cells", name: "green_slate", display_key: "block.voxelverse.green_slate", base: "#586B5E", top: "#687B6E", side: "#4C5D52", bottom: "#354139", tool: "pickaxe", sound: "stone", hardness: 1.65, density: 2.75, seed: 5306),
+
+    // wood
+    (family: "wood", preset: "wood_rings", name: "oak_log", display_key: "block.voxelverse.oak_log", base: "#A76835", top: "#C98A4A", side: "#8F552B", bottom: "#9B6032", tool: "axe", sound: "wood", hardness: 2.00, density: 0.75, seed: 5401),
+    (family: "wood", preset: "wood_rings", name: "pine_log", display_key: "block.voxelverse.pine_log", base: "#9A6A3D", top: "#C49258", side: "#76512F", bottom: "#825934", tool: "axe", sound: "wood", hardness: 1.85, density: 0.65, seed: 5402),
+    (family: "wood", preset: "wood_rings", name: "dead_log", display_key: "block.voxelverse.dead_log", base: "#6F6255", top: "#91806E", side: "#5A5046", bottom: "#4B4138", tool: "axe", sound: "wood", hardness: 1.60, density: 0.55, seed: 5403),
+    (family: "wood", preset: "wood_rings", name: "redwood_log", display_key: "block.voxelverse.redwood_log", base: "#9B4F2E", top: "#C06F42", side: "#7D3E25", bottom: "#8A472A", tool: "axe", sound: "wood", hardness: 2.20, density: 0.80, seed: 5404),
+    (family: "wood", preset: "wood_rings", name: "birch_log", display_key: "block.voxelverse.birch_log", base: "#C7B58F", top: "#D8C69E", side: "#9E8C6D", bottom: "#A99777", tool: "axe", sound: "wood", hardness: 1.75, density: 0.62, seed: 5405),
+    (family: "wood", preset: "wood_rings", name: "dark_oak_log", display_key: "block.voxelverse.dark_oak_log", base: "#5A351E", top: "#7A4B2B", side: "#422615", bottom: "#4D2C19", tool: "axe", sound: "wood", hardness: 2.10, density: 0.85, seed: 5406),
+]
