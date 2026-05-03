@@ -23,6 +23,7 @@ fn vs_main(in: VertexIn) -> VertexOut {
     out.variation_seed = in.variation_seed;
     out.ao = in.ao;
 
+    // Small normal offset avoids self-shadow acne on soft cubes / bevels.
     let pos_light = global.light_view_proj * vec4<f32>(
         out.world_pos + out.world_normal * 0.055,
         1.0,
@@ -37,12 +38,30 @@ fn vs_main(in: VertexIn) -> VertexOut {
     return out;
 }
 
-fn vv_clean_mesh_ao(vertex_ao: f32, visual: BlockVisual) -> f32 {
-    let receives_ao = select(0.0, 1.0, (visual.palette.w & 16u) != 0u);
-    let authored_ao = clamp(visual.variation_b.w, 0.45, 1.0);
-    let ao_strength = receives_ao * authored_ao * 0.78;
+fn vv_face_edge_contact(uv: vec2<f32>, edge_darkening: f32) -> f32 {
+    let edge_distance = min(
+        min(uv.x, 1.0 - uv.x),
+        min(uv.y, 1.0 - uv.y),
+    );
 
-    return mix(1.0, saturate(vertex_ao), ao_strength);
+    let edge_mask = 1.0 - smoothstep(0.018, 0.155, edge_distance);
+    let strength = mix(0.08, 0.26, saturate(edge_darkening));
+
+    return 1.0 - edge_mask * strength;
+}
+
+fn vv_ao_for_visual(vertex_ao: f32, visual: BlockVisual, uv: vec2<f32>) -> f32 {
+    let ao_influence = visual.variation_b.w;
+    let edge_darkening = visual.variation_b.z;
+
+    // Old meshes or overlays may carry 1.0. Keep them clean.
+    let mesh_ao = mix(1.0, saturate(vertex_ao), mix(0.72, 1.0, saturate(ao_influence)));
+
+    // Tiny contact darkening around block borders. This creates depth without
+    // geometry queries or screen-space passes.
+    let edge_contact = vv_face_edge_contact(uv, edge_darkening);
+
+    return saturate(mesh_ao * edge_contact);
 }
 
 @fragment
@@ -83,22 +102,27 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         up,
     );
 
-    let roughness = clamp(visual.surface.x, 0.08, 1.0);
+    let roughness = clamp(visual.surface.x, 0.04, 1.0);
     let metallic = saturate(visual.surface.y);
-    let ao = vv_clean_mesh_ao(in.ao, visual);
+    let ao = vv_ao_for_visual(in.ao, visual, in.uv);
 
-    let surface_response = mix(0.06, 0.18, 1.0 - roughness);
-    let specular_strength = (1.0 - metallic) * mix(0.010, 0.055, 1.0 - roughness);
+    let ao_strength = mix(0.70, 1.0, saturate(visual.variation_b.w));
+
+    // Material response is intentionally simple for now:
+    // - non-metallic voxels stay soft and readable
+    // - lower roughness gets a small sun highlight
+    let surface_response = mix(0.10, 0.28, 1.0 - roughness);
+    let specular_strength = (1.0 - metallic) * mix(0.025, 0.115, 1.0 - roughness);
 
     var lit = apply_planetary_lighting(
-        albedo * 0.82,
+        albedo,
         visual.emission.xyz,
         in.world_pos,
         N,
         V,
         in.shadow_pos,
         ao,
-        0.82,
+        ao_strength,
         roughness,
         surface_response,
         specular_strength,

@@ -1,5 +1,5 @@
 fn shadow_visibility(shadow_pos: vec3<f32>, n_dot_l: f32) -> f32 {
-    if (n_dot_l <= 0.012) {
+    if (n_dot_l <= 0.015) {
         return 1.0;
     }
 
@@ -15,25 +15,19 @@ fn shadow_visibility(shadow_pos: vec3<f32>, n_dot_l: f32) -> f32 {
     let texel = 1.0 / dim;
 
     let grazing = saturate(1.0 - n_dot_l);
-
-    // Slightly stronger slope bias than before. This avoids yellow/firefly acne
-    // on beveled voxel edges while keeping contact shadows readable.
-    let bias = max(0.00012, 0.00036 + 0.00088 * grazing);
+    let bias = max(0.00010, 0.00042 + 0.00075 * grazing);
     let depth = shadow_pos.z - bias;
 
-    // Soft near-contact PCF. Still cheap enough: 25 depth compares.
-    let radius = mix(0.95, 2.65, grazing);
+    let radius = mix(0.85, 2.35, grazing);
 
     var sum = 0.0;
     var weight_sum = 0.0;
 
-    for (var ix: i32 = -2; ix <= 2; ix = ix + 1) {
-        for (var iy: i32 = -2; iy <= 2; iy = iy + 1) {
+    for (var ix: i32 = -1; ix <= 1; ix = ix + 1) {
+        for (var iy: i32 = -1; iy <= 1; iy = iy + 1) {
             let o = vec2<f32>(f32(ix), f32(iy));
             let dist2 = dot(o, o);
-
-            // Gaussian-ish kernel. Center is crisp, borders are soft.
-            let w = exp(-dist2 * 0.42);
+            let w = exp(-dist2 * 0.78);
             let sample_uv = shadow_pos.xy + o * texel * radius;
             let sample_value = textureSampleCompare(t_shadow, s_shadow, sample_uv, depth);
 
@@ -42,10 +36,7 @@ fn shadow_visibility(shadow_pos: vec3<f32>, n_dot_l: f32) -> f32 {
         }
     }
 
-    var visibility = sum / max(weight_sum, 1e-5);
+    let visibility = sum / max(weight_sum, 1e-5);
 
-    // Avoid pitch-black crawl on grazing faces.
-    visibility = mix(visibility, 1.0, grazing * 0.08);
-
-    return saturate(visibility);
+    return mix(visibility, 1.0, grazing * 0.12);
 }

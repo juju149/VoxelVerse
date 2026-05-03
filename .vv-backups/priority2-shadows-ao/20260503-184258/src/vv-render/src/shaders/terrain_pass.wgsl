@@ -24,7 +24,7 @@ fn vs_main(in: VertexIn) -> VertexOut {
     out.ao = in.ao;
 
     let pos_light = global.light_view_proj * vec4<f32>(
-        out.world_pos + out.world_normal * 0.055,
+        out.world_pos + out.world_normal * 0.05,
         1.0,
     );
 
@@ -35,14 +35,6 @@ fn vs_main(in: VertexIn) -> VertexOut {
     );
 
     return out;
-}
-
-fn vv_clean_mesh_ao(vertex_ao: f32, visual: BlockVisual) -> f32 {
-    let receives_ao = select(0.0, 1.0, (visual.palette.w & 16u) != 0u);
-    let authored_ao = clamp(visual.variation_b.w, 0.45, 1.0);
-    let ao_strength = receives_ao * authored_ao * 0.78;
-
-    return mix(1.0, saturate(vertex_ao), ao_strength);
 }
 
 @fragment
@@ -83,29 +75,6 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         up,
     );
 
-    let roughness = clamp(visual.surface.x, 0.08, 1.0);
-    let metallic = saturate(visual.surface.y);
-    let ao = vv_clean_mesh_ao(in.ao, visual);
-
-    let surface_response = mix(0.06, 0.18, 1.0 - roughness);
-    let specular_strength = (1.0 - metallic) * mix(0.010, 0.055, 1.0 - roughness);
-
-    var lit = apply_planetary_lighting(
-        albedo * 0.82,
-        visual.emission.xyz,
-        in.world_pos,
-        N,
-        V,
-        in.shadow_pos,
-        ao,
-        0.82,
-        roughness,
-        surface_response,
-        specular_strength,
-    );
-
-    lit = apply_planetary_fog(lit, in.world_pos);
-
-    let encoded = encode_final_color(lit);
-    return vec4<f32>(encoded, alpha * local.params.x);
+    let encoded = pow(max(albedo, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+    return vec4<f32>(encoded, alpha);
 }

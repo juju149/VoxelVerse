@@ -63,8 +63,8 @@ impl<'a> Renderer<'a> {
         let atmosphere = AtmosphereUniform::from_config(&self.sky_state.to_atmosphere())
             .with_planet_geometry(planet.geometry);
         let sun_dir = atmosphere.sun_direction_vec3();
-        let shadow_dist = 240.0f32;
-        let proj_size = 72.0f32;
+        let shadow_dist = 200.0f32;
+        let proj_size = 60.0f32;
         let center = player.position;
         let mut sun_view = glam::Mat4::look_at_rh(center + sun_dir * shadow_dist, center, Vec3::Y);
 
@@ -76,7 +76,7 @@ impl<'a> Renderer<'a> {
         sun_view = glam::Mat4::from_translation(Vec3::new(snap_x, snap_y, 0.0)) * sun_view;
 
         let sun_proj = glam::Mat4::orthographic_rh(
-            -proj_size, proj_size, -proj_size, proj_size, -280.0, 640.0,
+            -proj_size, proj_size, -proj_size, proj_size, -200.0, 500.0,
         );
         let light_vp = sun_proj * sun_view;
 
