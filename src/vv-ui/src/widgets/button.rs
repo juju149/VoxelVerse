@@ -1,6 +1,6 @@
 use crate::{
-    UiButtonStyle, UiEdgeInsets, UiFrame, UiIconId, UiInput, UiLayer, UiRect, UiResponse,
-    UiSurface, UiWidgetId,
+    UiBorder, UiButtonStyle, UiEdgeInsets, UiFrame, UiGradient, UiIconId, UiInput, UiLayer, UiRect,
+    UiResponse, UiShadow, UiSurface, UiWidgetId,
 };
 
 pub type UiButtonResponse = UiResponse;
@@ -135,7 +135,7 @@ impl UiButton {
     }
 
     fn draw_surface(&self, frame: &mut UiFrame, response: &UiResponse) {
-        let background = if self.disabled {
+        let fill = if self.disabled {
             self.style.background.darken(0.35)
         } else if response.pressed {
             self.style.background_pressed
@@ -145,14 +145,38 @@ impl UiButton {
             self.style.background
         };
 
-        frame.surface(
-            self.layer,
-            self.rect,
-            UiSurface::new(background)
-                .border(self.style.border.color, self.style.border.width)
-                .radius(self.style.radius)
-                .shadow(self.style.shadow),
-        );
+        let gradient = if self.disabled {
+            self.style.background_gradient.map(|gradient| {
+                UiGradient::vertical(gradient.top.darken(0.35), gradient.bottom.darken(0.35))
+            })
+        } else if response.pressed {
+            self.style.background_pressed_gradient
+        } else if response.hovered {
+            self.style.background_hover_gradient
+        } else {
+            self.style.background_gradient
+        };
+
+        if let Some(gradient) = gradient {
+            draw_gradient_surface(
+                frame,
+                self.layer,
+                self.rect,
+                gradient,
+                self.style.border,
+                self.style.radius,
+                self.style.shadow,
+            );
+        } else {
+            frame.surface(
+                self.layer,
+                self.rect,
+                UiSurface::new(fill)
+                    .border(self.style.border.color, self.style.border.width)
+                    .radius(self.style.radius)
+                    .shadow(self.style.shadow),
+            );
+        }
     }
 
     fn draw_content(&self, frame: &mut UiFrame) {
@@ -274,6 +298,35 @@ impl UiButton {
                 frame.text_right_centered(self.layer, rect, label, size, color)
             }
         }
+    }
+}
+
+fn draw_gradient_surface(
+    frame: &mut UiFrame,
+    layer: UiLayer,
+    rect: UiRect,
+    gradient: UiGradient,
+    border: UiBorder,
+    radius: f32,
+    shadow: UiShadow,
+) {
+    if border.width > 0.0 && border.color.a > 0.001 {
+        frame.rounded_rect(layer, rect, border.color, radius, UiBorder::NONE, shadow);
+
+        let inner = rect.inset(UiEdgeInsets::all(border.width));
+
+        if inner.width > 0.0 && inner.height > 0.0 {
+            frame.gradient_rect(
+                layer,
+                inner,
+                gradient,
+                (radius - border.width).max(0.0),
+                UiBorder::NONE,
+                UiShadow::NONE,
+            );
+        }
+    } else {
+        frame.gradient_rect(layer, rect, gradient, radius, UiBorder::NONE, shadow);
     }
 }
 

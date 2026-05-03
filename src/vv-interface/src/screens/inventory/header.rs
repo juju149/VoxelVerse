@@ -1,20 +1,21 @@
-use vv_ui::{UiFrame, UiRect};
+use vv_ui::{UiButton, UiFrame, UiInput, UiLayer, UiRect, UiStyle, UiWidgetId};
 
-use crate::{
-    components::{button, text},
-    GameplayUiContext, InventoryUiLayout,
-};
+use crate::{GameplayUiContext, InventoryUiLayout};
 
 pub fn draw(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &InventoryUiLayout) {
     let s = layout.scale;
     let title = layout.title_bar;
+    let styles = UiStyle::from_theme(ctx.theme);
+    let input = UiInput::default();
 
     let icon = UiRect::new(title.x, title.y + 4.0 * s, 62.0 * s, 62.0 * s);
-    button::square_icon(frame, icon, "▣", ctx, s);
 
-    text::left_centered(
-        frame,
-        vv_ui::UiLayer::Menu,
+    UiButton::new(UiWidgetId::new(100), icon, "▣", styles.button)
+        .text_size(24.0 * s)
+        .draw(frame, &input, None);
+
+    frame.text_left_centered(
+        UiLayer::Menu,
         UiRect::new(
             icon.right() + 24.0 * s,
             title.y + 2.0 * s,
@@ -26,16 +27,15 @@ pub fn draw(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &Inventory
         ctx.theme.text_primary,
     );
 
-    text::left_centered(
-        frame,
-        vv_ui::UiLayer::Menu,
+    frame.text_left_centered(
+        UiLayer::Menu,
         UiRect::new(
             icon.right() + 24.0 * s,
             title.y + 44.0 * s,
             520.0 * s,
             26.0 * s,
         ),
-        "Sac, équipement et ressources",
+        "Sac, équipement et artisanat",
         15.0 * s,
         ctx.theme.text_muted,
     );
@@ -48,5 +48,7 @@ pub fn draw(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &Inventory
         close_size,
     );
 
-    button::square_icon(frame, close, "×", ctx, s);
+    UiButton::new(UiWidgetId::new(101), close, "×", styles.button)
+        .text_size(32.0 * s)
+        .draw(frame, &input, None);
 }

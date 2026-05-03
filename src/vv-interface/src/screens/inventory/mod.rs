@@ -3,7 +3,6 @@ mod crafting_panel;
 mod equipment_panel;
 mod footer;
 mod header;
-mod hotbar_strip;
 
 use vv_ui::{UiFrame, UiLayer, UiRect};
 
@@ -32,7 +31,6 @@ impl InventoryScreen {
         equipment_panel::draw(frame, ctx, &layout);
         backpack_panel::draw(frame, ctx, &layout);
         crafting_panel::draw(frame, ctx, &layout);
-        hotbar_strip::draw(frame, ctx, &layout);
         footer::draw(frame, ctx, &layout);
     }
 }

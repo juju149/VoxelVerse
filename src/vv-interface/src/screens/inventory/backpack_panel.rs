@@ -1,26 +1,18 @@
-use vv_ui::{UiBorder, UiFrame, UiLayer, UiRect, UiShadow};
-
-use crate::{
-    components::{button, panel, search_field, slot, tabs},
-    design::VvDesignTokens,
-    item_visual, GameplayUiContext, InventoryUiLayout,
+use vv_ui::{
+    UiButton, UiFrame, UiInput, UiLayer, UiProgressBar, UiRect, UiSearchField, UiSlot,
+    UiSlotContent, UiStyle, UiTab, UiTabs, UiWidgetId,
 };
 
-const INVENTORY_TABS: &[tabs::VvTabSpec<'static>] = &[
-    tabs::VvTabSpec::text("Tout"),
-    tabs::VvTabSpec::text("Ressources"),
-    tabs::VvTabSpec::text("Outils"),
-    tabs::VvTabSpec::text("Nourriture"),
-    tabs::VvTabSpec::text("Matériaux"),
-    tabs::VvTabSpec::text("Divers"),
-];
+use crate::{item_visual, GameplayUiContext, InventoryUiLayout};
 
 pub fn draw(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &InventoryUiLayout) {
     let rect = layout.backpack_panel;
     let s = layout.scale;
     let pad = 24.0 * s;
+    let styles = UiStyle::from_theme(ctx.theme);
+    let input = UiInput::default();
 
-    panel::glass(frame, rect, ctx);
+    vv_ui::UiPanel::new(rect, styles.glass_panel).draw(frame);
 
     frame.text(
         UiLayer::Menu,
@@ -30,52 +22,77 @@ pub fn draw(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &Inventory
         ctx.theme.accent,
     );
 
-    search_field::draw(
-        frame,
-        UiRect::new(
-            rect.x + pad,
-            rect.y + 58.0 * s,
-            rect.width - pad * 2.0,
-            44.0 * s,
-        ),
-        "Rechercher un objet...",
-        ctx,
-        s,
+    let search_rect = UiRect::new(
+        rect.x + pad,
+        rect.y + 58.0 * s,
+        rect.width - pad * 2.0 - 138.0 * s,
+        44.0 * s,
     );
 
-    draw_category_tabs(frame, ctx, layout);
-    draw_inventory_grid(frame, ctx, layout);
-    draw_weight_and_sort(frame, ctx, layout);
+    UiSearchField::new(
+        UiWidgetId::new(2_000),
+        search_rect,
+        "",
+        "Rechercher un objet...",
+        styles.search,
+    )
+    .draw(frame, &input, false);
+
+    UiButton::new(
+        UiWidgetId::new(2_001),
+        UiRect::new(
+            rect.right() - 138.0 * s - pad,
+            rect.y + 58.0 * s,
+            138.0 * s,
+            44.0 * s,
+        ),
+        "Trier",
+        styles.button,
+    )
+    .text_size(13.0 * s)
+    .draw(frame, &input, None);
+
+    draw_category_tabs(frame, &input, &styles, layout, s);
+    draw_inventory_grid(frame, ctx, layout, &styles, &input);
+    draw_weight(frame, ctx, layout, &styles);
 }
 
 fn draw_category_tabs(
     frame: &mut UiFrame,
-    ctx: &GameplayUiContext<'_>,
+    input: &UiInput,
+    styles: &UiStyle,
     layout: &InventoryUiLayout,
+    scale: f32,
 ) {
-    let tokens = VvDesignTokens::current();
-    let s = layout.scale;
-    let pad = 24.0 * s;
+    let tabs = vec![
+        UiTab::new(UiWidgetId::new(2_100), "Tout"),
+        UiTab::new(UiWidgetId::new(2_101), "Ressources"),
+        UiTab::new(UiWidgetId::new(2_102), "Outils"),
+        UiTab::new(UiWidgetId::new(2_103), "Nourriture"),
+        UiTab::new(UiWidgetId::new(2_104), "Matériaux"),
+        UiTab::new(UiWidgetId::new(2_105), "Divers"),
+    ];
 
-    tabs::segmented(
-        frame,
+    UiTabs::new(
         UiRect::new(
-            layout.backpack_panel.x + pad,
-            layout.backpack_panel.y + 114.0 * s,
-            layout.backpack_panel.width - pad * 2.0,
-            tokens.inventory_tabs.height * s,
+            layout.backpack_panel.x + 24.0 * scale,
+            layout.backpack_panel.y + 114.0 * scale,
+            layout.backpack_panel.width - 48.0 * scale,
+            42.0 * scale,
         ),
-        INVENTORY_TABS,
-        0,
-        ctx,
-        s,
-    );
+        tabs,
+        UiWidgetId::new(2_100),
+        styles.tabs,
+    )
+    .draw(frame, input);
 }
 
 fn draw_inventory_grid(
     frame: &mut UiFrame,
     ctx: &GameplayUiContext<'_>,
     layout: &InventoryUiLayout,
+    styles: &UiStyle,
+    input: &UiInput,
 ) {
     for inventory_slot in &layout.inventory_slots {
         if inventory_slot.index < ctx.gameplay.inventory.hotbar_len() {
@@ -84,23 +101,29 @@ fn draw_inventory_grid(
 
         let stack = ctx.gameplay.inventory.slots()[inventory_slot.index].stack;
         let visual = stack.map(|stack| item_visual(ctx.content, stack.item, stack.count));
+        let hidden = ctx.gameplay.inventory_drag.source_slot == Some(inventory_slot.index);
 
-        slot::item_slot(
-            frame,
+        let mut slot = UiSlot::new(
+            UiWidgetId::new(2_500 + inventory_slot.index as u64),
             inventory_slot.rect,
-            false,
-            visual.as_ref(),
-            ctx.gameplay.inventory_drag.source_slot == Some(inventory_slot.index),
-            ctx.theme,
-            UiLayer::Menu,
+            styles.slot,
         );
+
+        if let Some(visual) = visual.as_ref().filter(|_| !hidden) {
+            slot = slot
+                .content(UiSlotContent::Color(visual.color))
+                .count(Some(visual.count));
+        }
+
+        slot.draw(frame, input, None);
     }
 }
 
-fn draw_weight_and_sort(
+fn draw_weight(
     frame: &mut UiFrame,
     ctx: &GameplayUiContext<'_>,
     layout: &InventoryUiLayout,
+    styles: &UiStyle,
 ) {
     let s = layout.scale;
     let rect = layout.backpack_panel;
@@ -114,30 +137,10 @@ fn draw_weight_and_sort(
         ctx.theme.text_primary,
     );
 
-    frame.rounded_rect(
-        UiLayer::Menu,
+    UiProgressBar::new(
         UiRect::new(rect.x + 24.0 * s, y + 34.0 * s, 180.0 * s, 10.0 * s),
-        ctx.theme.panel_subtle,
-        999.0,
-        UiBorder::new(1.0, ctx.theme.border_soft),
-        UiShadow::NONE,
-    );
-
-    frame.rounded_rect(
-        UiLayer::Menu,
-        UiRect::new(rect.x + 24.0 * s, y + 34.0 * s, 74.0 * s, 10.0 * s),
-        ctx.theme.accent,
-        999.0,
-        UiBorder::NONE,
-        UiShadow::NONE,
-    );
-
-    button::pill(
-        frame,
-        UiRect::new(rect.right() - 138.0 * s, y - 2.0 * s, 114.0 * s, 48.0 * s),
-        "Trier",
-        button::VvButtonVariant::Default,
-        ctx,
-        s,
-    );
+        0.385,
+        styles.progress,
+    )
+    .draw(frame);
 }

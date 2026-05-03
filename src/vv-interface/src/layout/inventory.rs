@@ -49,36 +49,18 @@ impl InventoryUiLayout {
     pub fn hotbar_only(screen_w: f32, screen_h: f32, inventory: &Inventory) -> Self {
         let scale = responsive_scale(screen_w, screen_h);
         let safe = 24.0 * scale;
-        let slot = (72.0 * scale).clamp(48.0, 92.0);
-        let gap = (11.0 * scale).clamp(7.0, 15.0);
-
-        let hotbar_w = inventory.hotbar_len() as f32 * slot
-            + inventory.hotbar_len().saturating_sub(1) as f32 * gap;
-
-        let hotbar_x = ((screen_w - hotbar_w) * 0.5).round();
-        let hotbar_y = (screen_h - safe - slot).round();
-
-        let hotbar_slots = (0..inventory.hotbar_len())
-            .map(|index| InventorySlotRect {
-                index,
-                rect: UiRect::new(
-                    (hotbar_x + index as f32 * (slot + gap)).round(),
-                    hotbar_y,
-                    slot.round(),
-                    slot.round(),
-                ),
-            })
-            .collect();
+        let (hotbar_panel, hotbar_slots, hotbar_gap) =
+            build_hotbar_layout(screen_w, screen_h, inventory, scale, safe);
 
         Self {
             scale,
-            slot,
-            gap,
+            slot: hotbar_panel.height,
+            gap: hotbar_gap,
             title_bar: UiRect::ZERO,
             equipment_panel: UiRect::ZERO,
             backpack_panel: UiRect::ZERO,
             crafting_panel: UiRect::ZERO,
-            hotbar_panel: UiRect::new(hotbar_x, hotbar_y, hotbar_w, slot),
+            hotbar_panel,
             hotbar_slots,
             inventory_slots: Vec::new(),
             recipe_slots: Vec::new(),
@@ -93,6 +75,9 @@ impl InventoryUiLayout {
         let safe = 24.0 * scale;
         let panel_gap = 18.0 * scale;
 
+        let (hotbar_panel, hotbar_slots, _hotbar_gap) =
+            build_hotbar_layout(screen_w, screen_h, inventory, scale, safe);
+
         let content_w = (DESIGN_CONTENT_W * scale).min((screen_w - safe * 2.0).max(320.0));
         let content_x = ((screen_w - content_w) * 0.5).round();
 
@@ -100,16 +85,8 @@ impl InventoryUiLayout {
         let title_y = safe.round();
         let title_bar = UiRect::new(content_x, title_y, content_w.round(), title_h.round());
 
-        let hotbar_slot = (70.0 * scale).clamp(48.0, 76.0);
-        let hotbar_gap = (10.0 * scale).clamp(6.0, 13.0);
-        let hotbar_w = inventory.hotbar_len() as f32 * hotbar_slot
-            + inventory.hotbar_len().saturating_sub(1) as f32 * hotbar_gap;
-
-        let hotbar_x = ((screen_w - hotbar_w) * 0.5).round();
-        let hotbar_y = (screen_h - safe - hotbar_slot).round();
-
         let panel_y_min = title_bar.bottom() + 18.0 * scale;
-        let available_panel_h = hotbar_y - panel_y_min - 22.0 * scale;
+        let available_panel_h = hotbar_panel.y - panel_y_min - 22.0 * scale;
         let panel_h = available_panel_h
             .min(DESIGN_PANEL_H * scale)
             .max(430.0 * scale)
@@ -129,30 +106,20 @@ impl InventoryUiLayout {
             .round();
 
         let equipment_panel = UiRect::new(content_x, panel_y, equipment_w, panel_h);
+
         let backpack_panel = UiRect::new(
             (equipment_panel.right() + panel_gap).round(),
             panel_y,
             backpack_w,
             panel_h,
         );
+
         let crafting_panel = UiRect::new(
             (backpack_panel.right() + panel_gap).round(),
             panel_y,
             (content_x + content_w - backpack_panel.right() - panel_gap).round(),
             panel_h,
         );
-
-        let hotbar_slots = (0..inventory.hotbar_len())
-            .map(|index| InventorySlotRect {
-                index,
-                rect: UiRect::new(
-                    (hotbar_x + index as f32 * (hotbar_slot + hotbar_gap)).round(),
-                    hotbar_y,
-                    hotbar_slot.round(),
-                    hotbar_slot.round(),
-                ),
-            })
-            .collect::<Vec<_>>();
 
         let pad = 24.0 * scale;
         let columns = Inventory::DEFAULT_MAIN_COLUMNS;
@@ -205,11 +172,10 @@ impl InventoryUiLayout {
             });
         }
 
-        for slot_rect in &hotbar_slots {
-            inventory_slots.push(*slot_rect);
-        }
+        inventory_slots.extend(hotbar_slots.iter().copied());
 
         let recipe_list_w = (crafting_panel.width * 0.38).clamp(150.0 * scale, 250.0 * scale);
+
         let recipe_list = UiRect::new(
             (crafting_panel.x + pad).round(),
             (crafting_panel.y + 102.0 * scale).round(),
@@ -218,6 +184,7 @@ impl InventoryUiLayout {
         );
 
         let recipe_detail_x = recipe_list.right() + 26.0 * scale;
+
         let recipe_detail = UiRect::new(
             recipe_detail_x.round(),
             recipe_list.y,
@@ -235,7 +202,7 @@ impl InventoryUiLayout {
             equipment_panel,
             backpack_panel,
             crafting_panel,
-            hotbar_panel: UiRect::new(hotbar_x, hotbar_y, hotbar_w, hotbar_slot),
+            hotbar_panel,
             hotbar_slots,
             inventory_slots,
             recipe_slots: Vec::new(),
@@ -282,6 +249,44 @@ impl InventoryUiLayout {
             });
         }
     }
+}
+
+fn build_hotbar_layout(
+    screen_w: f32,
+    screen_h: f32,
+    inventory: &Inventory,
+    scale: f32,
+    safe: f32,
+) -> (UiRect, Vec<InventorySlotRect>, f32) {
+    let slot = hotbar_slot_size(scale);
+    let gap = hotbar_gap_size(scale);
+    let len = inventory.hotbar_len();
+
+    let width = len as f32 * slot + len.saturating_sub(1) as f32 * gap;
+    let x = ((screen_w - width) * 0.5).round();
+    let y = (screen_h - safe - slot).round();
+
+    let slots = (0..len)
+        .map(|index| InventorySlotRect {
+            index,
+            rect: UiRect::new(
+                (x + index as f32 * (slot + gap)).round(),
+                y,
+                slot.round(),
+                slot.round(),
+            ),
+        })
+        .collect();
+
+    (UiRect::new(x, y, width.round(), slot.round()), slots, gap)
+}
+
+fn hotbar_slot_size(scale: f32) -> f32 {
+    (70.0 * scale).clamp(48.0, 76.0)
+}
+
+fn hotbar_gap_size(scale: f32) -> f32 {
+    (10.0 * scale).clamp(6.0, 13.0)
 }
 
 fn responsive_scale(screen_w: f32, screen_h: f32) -> f32 {

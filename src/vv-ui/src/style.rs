@@ -1,4 +1,4 @@
-use crate::{UiBorder, UiColor, UiShadow, UiTheme};
+use crate::{UiBorder, UiColor, UiGradient, UiShadow, UiTheme};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct UiPanelStyle {
@@ -13,6 +13,9 @@ pub struct UiButtonStyle {
     pub background: UiColor,
     pub background_hover: UiColor,
     pub background_pressed: UiColor,
+    pub background_gradient: Option<UiGradient>,
+    pub background_hover_gradient: Option<UiGradient>,
+    pub background_pressed_gradient: Option<UiGradient>,
     pub text: UiColor,
     pub text_disabled: UiColor,
     pub border: UiBorder,
@@ -112,26 +115,42 @@ impl UiStyle {
     pub fn from_theme(theme: &UiTheme) -> Self {
         let soft_shadow = UiShadow::new(0.0, 12.0, 24.0, 0.0, UiColor::rgba(0.0, 0.0, 0.0, 0.35));
 
+        let panel_border = UiBorder::new(1.0, theme.border_soft);
+        let button_border = UiBorder::new(1.15, theme.border_soft);
+        let active_border = UiBorder::new(1.45, theme.border);
+
         Self {
             panel: UiPanelStyle {
                 background: theme.panel,
-                border: UiBorder::new(1.0, theme.border_soft),
+                border: panel_border,
                 radius: theme.radius.lg,
                 shadow: soft_shadow,
             },
             glass_panel: UiPanelStyle {
-                background: theme.panel.multiply_alpha(0.82),
-                border: UiBorder::new(1.0, theme.border_soft),
+                background: theme.panel.multiply_alpha(0.86),
+                border: panel_border,
                 radius: theme.radius.lg,
                 shadow: soft_shadow,
             },
             button: UiButtonStyle {
-                background: theme.panel,
+                background: theme.panel_subtle,
                 background_hover: theme.panel_hover,
-                background_pressed: theme.panel_active.darken(0.12),
-                text: theme.text_primary,
+                background_pressed: theme.panel_active.multiply_alpha(0.42),
+                background_gradient: Some(UiGradient::vertical(
+                    theme.panel_hover.multiply_alpha(0.72),
+                    theme.panel_subtle.multiply_alpha(0.94),
+                )),
+                background_hover_gradient: Some(UiGradient::vertical(
+                    theme.panel_hover,
+                    theme.panel_subtle,
+                )),
+                background_pressed_gradient: Some(UiGradient::vertical(
+                    theme.panel_active.multiply_alpha(0.55),
+                    theme.panel_subtle,
+                )),
+                text: theme.text_muted,
                 text_disabled: theme.text_disabled,
-                border: UiBorder::new(1.0, theme.border_soft),
+                border: button_border,
                 radius: theme.radius.md,
                 shadow: UiShadow::NONE,
             },
@@ -139,32 +158,44 @@ impl UiStyle {
                 background: theme.panel_active,
                 background_hover: theme.accent_hover.with_alpha(0.92),
                 background_pressed: theme.accent.darken(0.18),
+                background_gradient: Some(UiGradient::vertical(
+                    theme.accent_hover.with_alpha(0.82),
+                    theme.panel_active.darken(0.18),
+                )),
+                background_hover_gradient: Some(UiGradient::vertical(
+                    theme.accent_hover.with_alpha(0.96),
+                    theme.panel_active,
+                )),
+                background_pressed_gradient: Some(UiGradient::vertical(
+                    theme.accent.darken(0.08),
+                    theme.panel_active.darken(0.28),
+                )),
                 text: theme.text_primary,
                 text_disabled: theme.text_disabled,
-                border: UiBorder::new(1.0, theme.border),
+                border: active_border,
                 radius: theme.radius.md,
-                shadow: UiShadow::new(0.0, 0.0, 18.0, 0.0, theme.accent.multiply_alpha(0.32)),
+                shadow: UiShadow::new(0.0, 0.0, 18.0, 0.0, theme.accent.multiply_alpha(0.26)),
             },
             card: UiCardStyle {
                 background: theme.panel_subtle,
                 background_hover: theme.panel_hover,
-                border: UiBorder::new(1.0, theme.border_soft),
+                border: panel_border,
                 radius: theme.radius.md,
                 shadow: UiShadow::NONE,
             },
             slot: UiSlotStyle {
-                background: theme.panel_subtle,
-                background_hover: theme.panel_hover,
-                background_selected: theme.panel_active.multiply_alpha(0.45),
-                border: UiBorder::new(1.0, theme.border_soft),
-                selected_border: UiBorder::new(2.0, theme.accent),
-                radius: theme.radius.sm,
+                background: UiColor::rgba(0.008, 0.025, 0.030, 0.98),
+                background_hover: UiColor::rgba(0.018, 0.043, 0.050, 0.98),
+                background_selected: UiColor::rgba(0.018, 0.044, 0.050, 0.98),
+                border: UiBorder::new(2.0, UiColor::rgba(0.48, 0.29, 0.12, 0.78)),
+                selected_border: UiBorder::new(2.5, theme.accent.with_alpha(0.90)),
+                radius: theme.radius.md,
             },
             toggle: UiToggleStyle {
                 track_off: UiColor::rgba(0.16, 0.17, 0.18, 0.95),
                 track_on: theme.success,
                 thumb: theme.text_primary,
-                border: UiBorder::new(1.0, theme.border_soft),
+                border: panel_border,
                 radius: theme.radius.pill,
             },
             slider: UiSliderStyle {
@@ -177,7 +208,7 @@ impl UiStyle {
             dropdown: UiDropdownStyle {
                 background: theme.panel_subtle,
                 background_hover: theme.panel_hover,
-                border: UiBorder::new(1.0, theme.border_soft),
+                border: button_border,
                 radius: theme.radius.sm,
             },
             tabs: UiTabsStyle {
@@ -185,20 +216,20 @@ impl UiStyle {
                 active_background: theme.panel_active,
                 text: theme.text_muted,
                 active_text: theme.text_primary,
-                border: UiBorder::new(1.0, theme.border_soft),
+                border: button_border,
                 radius: theme.radius.md,
             },
             search: UiSearchStyle {
-                background: theme.panel_subtle,
-                border: UiBorder::new(1.0, theme.border_soft),
-                radius: theme.radius.sm,
+                background: UiColor::rgba(0.010, 0.030, 0.036, 0.82),
+                border: UiBorder::new(1.2, theme.border_soft.with_alpha(0.75)),
+                radius: theme.radius.md,
                 text: theme.text_primary,
                 placeholder: theme.text_muted,
             },
             progress: UiProgressStyle {
                 background: theme.panel_subtle,
                 fill: theme.accent,
-                border: UiBorder::new(1.0, theme.border_soft),
+                border: panel_border,
                 radius: theme.radius.pill,
             },
         }
