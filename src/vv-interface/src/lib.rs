@@ -1,3 +1,4 @@
+pub mod components;
 pub mod context;
 pub mod gameplay_frame;
 pub mod item_visual;
