@@ -124,7 +124,7 @@ impl Default for VvInventoryColorTokens {
             screen_dim: UiColor::rgba(0.001, 0.006, 0.010, 0.52),
 
             // #061622
-            panel_fill: UiColor::rgb(0.02, 0.09, 0.13),
+            panel_fill: UiColor::rgba(0.01, 0.04, 0.05, 0.98),
 
             // #A66A18
             panel_border: UiColor::rgba(0.65, 0.42, 0.09, 0.82),
