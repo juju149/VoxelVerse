@@ -26,8 +26,9 @@ mod pipelines;
 mod public_api;
 mod streaming;
 mod types;
-mod ui_mesh;
+mod ui_frame;
 mod visual_content;
+mod world_overlay;
 
 pub struct Renderer<'a> {
     pub window: &'a Window,
@@ -57,13 +58,7 @@ pub struct Renderer<'a> {
     shadow_global_bind: wgpu::BindGroup,
 
     // UI
-    pipeline_ui: wgpu::RenderPipeline,
-    console_v_buf: wgpu::Buffer,
-    console_i_buf: wgpu::Buffer,
-    console_inds: u32,
-    ui_v_buf: wgpu::Buffer,
-    ui_i_buf: wgpu::Buffer,
-    ui_inds: u32,
+    ui_renderer: crate::ui::UiRenderer,
 
     // Core
     animator: LodAnimator,

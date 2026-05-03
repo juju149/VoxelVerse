@@ -26,8 +26,7 @@ impl<'a> Renderer<'a> {
         content: &CompiledContent,
     ) {
         let prep_start = Instant::now();
-        self.update_console_mesh(console.height_fraction);
-        self.update_gameplay_ui_mesh(controller, gameplay, content);
+
         self.update_block_break_feedback(planet, gameplay);
         self.update_dropped_item_mesh(gameplay, content);
 
@@ -46,12 +45,18 @@ impl<'a> Renderer<'a> {
             Ok(o) => o,
             _ => return,
         };
+
         let view = out
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         let w = self.config.width as f32;
         let h = self.config.height as f32;
+
+        let ui_frame = self.build_renderer_ui_frame(controller, console, gameplay, content);
+        self.ui_renderer
+            .update(&self.device, &self.queue, &ui_frame);
+
         let mvp = controller.get_matrix(player, physics, w, h, &self.render_cfg);
 
         let atmosphere = AtmosphereUniform::from_config(&self.sky_state.to_atmosphere())
@@ -99,8 +104,10 @@ impl<'a> Renderer<'a> {
             inv_view_proj: mvp.inverse().to_cols_array(),
             planet: [planet.geometry.radius_m, atmosphere_height_m, 0.0, 0.0],
         };
+
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
+
         self.queue.write_buffer(
             &self.shadow_global_buf,
             0,
@@ -116,6 +123,7 @@ impl<'a> Renderer<'a> {
             0,
             bytemuck::cast_slice(model_mat.as_ref()),
         );
+
         let r = planet.resolution as f32 / 2.0;
         self.queue.write_buffer(
             &self.local_buf_guide,
@@ -125,6 +133,7 @@ impl<'a> Renderer<'a> {
 
         let now = std::time::Instant::now();
         let dying = self.animator.update_dying(now);
+
         for (key, alpha) in dying {
             if let Some(state) = self.animator.dying_chunks.get(&key) {
                 let d = LocalUniform {
@@ -138,6 +147,7 @@ impl<'a> Renderer<'a> {
 
         let queue = &self.queue;
         let animator = &mut self.animator;
+
         for (key, mesh) in &self.lod_chunks {
             let alpha = animator.get_opacity(AnyKey::Lod(*key), now);
             if alpha < 1.0 || animator.spawning_chunks.contains_key(&AnyKey::Lod(*key)) {
@@ -151,6 +161,7 @@ impl<'a> Renderer<'a> {
                 }
             }
         }
+
         for (key, mesh) in &self.chunks {
             let alpha = animator.get_opacity(AnyKey::Voxel(*key), now);
             if alpha < 1.0 || animator.spawning_chunks.contains_key(&AnyKey::Voxel(*key)) {
@@ -164,6 +175,7 @@ impl<'a> Renderer<'a> {
                 }
             }
         }
+
         self.frame_telemetry.render_prep_time += prep_start.elapsed();
 
         let mut enc = self
@@ -197,7 +209,6 @@ impl<'a> Renderer<'a> {
             .filter(|state| frustum.intersects_sphere(state.mesh.center, state.mesh.radius))
             .count();
 
-        // Shadow pass
         {
             let mut sp = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Shadow"),
@@ -213,8 +224,10 @@ impl<'a> Renderer<'a> {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
+
             sp.set_pipeline(&self.pipeline_shadow);
             sp.set_bind_group(0, &self.shadow_global_bind, &[]);
+
             for mesh in self.chunks.values() {
                 if frustum.intersects_sphere(mesh.center, mesh.radius) {
                     sp.set_bind_group(1, &mesh.bind_group, &[]);
@@ -223,6 +236,7 @@ impl<'a> Renderer<'a> {
                     sp.draw_indexed(0..mesh.num_inds, 0, 0..1);
                 }
             }
+
             for mesh in self.lod_chunks.values() {
                 if frustum.intersects_sphere(mesh.center, mesh.radius) {
                     sp.set_bind_group(1, &mesh.bind_group, &[]);
@@ -233,10 +247,9 @@ impl<'a> Renderer<'a> {
             }
         }
 
-        // Main pass
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
+                label: Some("Main"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
@@ -263,8 +276,6 @@ impl<'a> Renderer<'a> {
                 &self.pipeline_fill
             };
 
-            // Sky: draw first (behind all terrain). Uses depth_write_enabled=false +
-            // depth_compare=Always so terrain always occludes it in subsequent draws.
             pass.set_pipeline(&self.pipeline_sky);
             pass.set_bind_group(0, &self.global_bind, &[]);
             pass.set_bind_group(1, &self.local_bind_identity, &[]);
@@ -281,6 +292,7 @@ impl<'a> Renderer<'a> {
                     pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
                 }
             }
+
             for mesh in self.chunks.values() {
                 if cull_frustum.intersects_sphere(mesh.center, mesh.radius) {
                     pass.set_bind_group(1, &mesh.bind_group, &[]);
@@ -289,6 +301,7 @@ impl<'a> Renderer<'a> {
                     pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
                 }
             }
+
             for state in self.animator.dying_chunks.values() {
                 if frustum.intersects_sphere(state.mesh.center, state.mesh.radius) {
                     pass.set_bind_group(1, &state.mesh.bind_group, &[]);
@@ -305,6 +318,7 @@ impl<'a> Renderer<'a> {
                 pass.set_index_buffer(self.player_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.player_inds, 0, 0..1);
             }
+
             if self.collision_inds > 0 {
                 pass.set_pipeline(&self.pipeline_line);
                 pass.set_bind_group(0, &self.global_bind, &[]);
@@ -313,6 +327,7 @@ impl<'a> Renderer<'a> {
                 pass.set_index_buffer(self.collision_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.collision_inds, 0, 0..1);
             }
+
             if self.cursor_inds > 0 {
                 pass.set_pipeline(&self.pipeline_feedback);
                 pass.set_bind_group(0, &self.global_bind, &[]);
@@ -321,6 +336,7 @@ impl<'a> Renderer<'a> {
                 pass.set_index_buffer(self.cursor_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.cursor_inds, 0, 0..1);
             }
+
             if self.break_inds > 0 {
                 pass.set_pipeline(&self.pipeline_feedback);
                 pass.set_bind_group(0, &self.global_bind, &[]);
@@ -329,6 +345,7 @@ impl<'a> Renderer<'a> {
                 pass.set_index_buffer(self.break_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.break_inds, 0, 0..1);
             }
+
             if self.drop_inds > 0 {
                 pass.set_pipeline(&self.pipeline_fill);
                 pass.set_bind_group(0, &self.global_bind, &[]);
@@ -337,22 +354,25 @@ impl<'a> Renderer<'a> {
                 pass.set_index_buffer(self.drop_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.drop_inds, 0, 0..1);
             }
-            if self.console_inds > 0 {
-                pass.set_pipeline(&self.pipeline_ui);
-                pass.set_bind_group(0, &self.global_bind_identity, &[]);
-                pass.set_bind_group(1, &self.local_bind_identity, &[]);
-                pass.set_vertex_buffer(0, self.console_v_buf.slice(..));
-                pass.set_index_buffer(self.console_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..self.console_inds, 0, 0..1);
-            }
-            if self.ui_inds > 0 {
-                pass.set_pipeline(&self.pipeline_ui);
-                pass.set_bind_group(0, &self.global_bind_identity, &[]);
-                pass.set_bind_group(1, &self.local_bind_identity, &[]);
-                pass.set_vertex_buffer(0, self.ui_v_buf.slice(..));
-                pass.set_index_buffer(self.ui_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..self.ui_inds, 0, 0..1);
-            }
+        }
+
+        {
+            let mut ui_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("VoxelVerse UI"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            self.ui_renderer.draw(&mut ui_pass);
         }
 
         self.frame_count += 1;
@@ -363,86 +383,62 @@ impl<'a> Renderer<'a> {
             self.last_fps_time = now2;
         }
 
-        // Text pass
         {
-            let mut text_areas: Vec<TextArea> = Vec::new();
             let mut text_buffers = Vec::new();
 
-            if console.height_fraction > 0.0 {
-                let console_h = (self.config.height as f32 / 2.0) * console.height_fraction;
-                let start_y = console_h - 40.0;
-                let line_h = 20.0;
-                for (i, (line, color)) in console.history.iter().rev().enumerate() {
-                    let y = start_y - i as f32 * line_h;
-                    if y < 0.0 {
-                        break;
-                    }
-                    let mut buf = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
-                    buf.set_size(&mut self.font_system, w, h);
-                    buf.set_text(
-                        &mut self.font_system,
-                        line,
-                        Attrs::new()
-                            .family(Family::Monospace)
-                            .color(glyphon::Color::rgb(
-                                (color[0] * 255.0) as u8,
-                                (color[1] * 255.0) as u8,
-                                (color[2] * 255.0) as u8,
-                            )),
-                        Shaping::Advanced,
-                    );
-                    text_buffers.push((buf, 10.0, y));
+            for item in self.ui_renderer.text_items() {
+                let cmd = &item.command;
+
+                if cmd.text.is_empty() || cmd.color.a <= 0.001 {
+                    continue;
                 }
-                let ms = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis();
-                let cur = if (ms / 500) % 2 == 0 { "_" } else { " " };
-                let mut ibuf = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
-                ibuf.set_size(&mut self.font_system, w, h);
-                ibuf.set_text(
+
+                let mut buf = Buffer::new(
                     &mut self.font_system,
-                    &format!("> {}{}", console.input_buffer, cur),
+                    Metrics::new(cmd.size, cmd.size + 4.0),
+                );
+
+                buf.set_size(
+                    &mut self.font_system,
+                    cmd.rect.width.max(1.0),
+                    cmd.rect.height.max(cmd.size + 4.0),
+                );
+
+                buf.set_text(
+                    &mut self.font_system,
+                    &cmd.text,
                     Attrs::new()
                         .family(Family::Monospace)
-                        .color(glyphon::Color::rgb(255, 255, 0)),
+                        .color(glyphon::Color::rgb(
+                            color_channel(cmd.color.r),
+                            color_channel(cmd.color.g),
+                            color_channel(cmd.color.b),
+                        )),
                     Shaping::Advanced,
                 );
-                text_buffers.push((ibuf, 10.0, console_h - 20.0));
+
+                text_buffers.push((buf, cmd.rect.x, cmd.rect.y));
             }
 
-            let fps_text = format!("FPS: {}", self.current_fps);
-            let mut fps_buf = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
-            fps_buf.set_size(&mut self.font_system, w, h);
-            fps_buf.set_text(
-                &mut self.font_system,
-                &fps_text,
-                Attrs::new()
-                    .family(Family::Monospace)
-                    .color(glyphon::Color::rgb(255, 255, 255)),
-                Shaping::Advanced,
-            );
-            text_buffers.push((fps_buf, 10.0, 5.0));
+            if !text_buffers.is_empty() {
+                let mut text_areas = Vec::with_capacity(text_buffers.len());
 
-            self.push_gameplay_text(controller, gameplay, &mut text_buffers);
+                for (buf, x, y) in &text_buffers {
+                    text_areas.push(TextArea {
+                        buffer: buf,
+                        left: *x,
+                        top: *y,
+                        scale: 1.0,
+                        bounds: TextBounds {
+                            left: 0,
+                            top: 0,
+                            right: w as i32,
+                            bottom: h as i32,
+                        },
+                        default_color: glyphon::Color::rgb(255, 255, 255),
+                    });
+                }
 
-            for (buf, x, y) in &text_buffers {
-                text_areas.push(TextArea {
-                    buffer: buf,
-                    left: *x,
-                    top: *y,
-                    scale: 1.0,
-                    bounds: TextBounds {
-                        left: 0,
-                        top: 0,
-                        right: w as i32,
-                        bottom: h as i32,
-                    },
-                    default_color: glyphon::Color::rgb(255, 255, 255),
-                });
-            }
-
-            if !text_areas.is_empty() {
                 let _ = self.text_renderer.prepare(
                     &self.device,
                     &self.queue,
@@ -455,8 +451,9 @@ impl<'a> Renderer<'a> {
                     text_areas,
                     &mut self.swash_cache,
                 );
+
                 let mut text_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Text"),
+                    label: Some("VoxelVerse UI Text"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view: &view,
                         resolve_target: None,
@@ -469,6 +466,7 @@ impl<'a> Renderer<'a> {
                     timestamp_writes: None,
                     occlusion_query_set: None,
                 });
+
                 let _ = self.text_renderer.render(&self.text_atlas, &mut text_pass);
             }
         }
@@ -476,22 +474,28 @@ impl<'a> Renderer<'a> {
         self.queue.submit(std::iter::once(enc.finish()));
         out.present();
         self.text_atlas.trim();
+
         let overlay_draws = (!controller.first_person) as u32
             + (self.collision_inds > 0) as u32
             + (self.cursor_inds > 0) as u32
             + (self.break_inds > 0) as u32
             + (self.drop_inds > 0) as u32
-            + (self.console_inds > 0) as u32
-            + (self.ui_inds > 0) as u32;
+            + (self.ui_renderer.index_count() > 0) as u32;
+
         self.frame_telemetry.gpu.draw_calls = (shadow_visible_chunks
             + shadow_visible_lods
             + main_visible_chunks
             + main_visible_lods
             + dying_visible) as u32
             + overlay_draws;
+
         self.frame_telemetry.gpu.visible_chunks = main_visible_chunks;
         self.frame_telemetry.gpu.visible_lods = main_visible_lods;
         self.frame_telemetry.gpu.active_buffers =
             (self.chunks.len() + self.lod_chunks.len() + self.animator.dying_chunks.len()) * 3;
     }
+}
+
+fn color_channel(value: f32) -> u8 {
+    (value.clamp(0.0, 1.0) * 255.0).round() as u8
 }

@@ -390,33 +390,7 @@ impl<'a> Renderer<'a> {
         });
         let depth = Self::mk_depth(&device, &surf_cfg);
 
-        let pipeline_ui = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("UI Pipeline"),
-            layout: Some(&layout),
-            vertex: Self::vertex_state(&shader),
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: surf_cfg.format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: false,
-                depth_compare: wgpu::CompareFunction::Always,
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample: Default::default(),
-            multiview: None,
-        });
+        let ui_renderer = crate::ui::UiRenderer::new(&device, surf_cfg.format);
 
         let font_system = FontSystem::new();
         let swash_cache = SwashCache::new();
@@ -472,10 +446,6 @@ impl<'a> Renderer<'a> {
         let break_i_buf = mk_dyn_ibuf("Block Break I", 65536);
         let collision_v_buf = mk_dyn_vbuf("Collision V", 65536);
         let collision_i_buf = mk_dyn_ibuf("Collision I", 65536);
-        let console_v_buf = mk_dyn_vbuf("Console V", 1024);
-        let console_i_buf = mk_dyn_ibuf("Console I", 1024);
-        let ui_v_buf = mk_dyn_vbuf("Gameplay UI V", 1_048_576);
-        let ui_i_buf = mk_dyn_ibuf("Gameplay UI I", 1_048_576);
         let drop_v_buf = mk_dyn_vbuf("Dropped Items V", 1_048_576);
         let drop_i_buf = mk_dyn_ibuf("Dropped Items I", 1_048_576);
 
@@ -542,13 +512,7 @@ impl<'a> Renderer<'a> {
             pipeline_shadow,
             shadow_global_buf,
             shadow_global_bind,
-            pipeline_ui,
-            console_v_buf,
-            console_i_buf,
-            console_inds: 0,
-            ui_v_buf,
-            ui_i_buf,
-            ui_inds: 0,
+            ui_renderer,
             animator: LodAnimator::new(cfg.render.lod_fade_duration),
             local_layout,
             pipeline_fill,
