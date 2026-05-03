@@ -2,8 +2,7 @@ use vv_gameplay::Inventory;
 use vv_registry::RecipeId;
 use vv_ui::{UiPoint, UiRect};
 
-const DESIGN_W: f32 = 2048.0;
-const DESIGN_H: f32 = 1152.0;
+use crate::design::VvInventoryUiTokens;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct InventorySlotRect {
@@ -55,25 +54,28 @@ impl InventoryUiLayout {
     }
 
     pub fn inventory(screen_w: f32, screen_h: f32, inventory: &Inventory) -> Self {
-        let scale = responsive_scale(screen_w, screen_h);
+        let tokens = VvInventoryUiTokens::current();
+        let scale = responsive_scale(screen_w, screen_h, &tokens);
         let screen = UiRect::new(0.0, 0.0, screen_w.max(0.0), screen_h.max(0.0));
 
-        let outer_margin = (30.0 * scale).round();
-        let panel_gap = (24.0 * scale).round();
+        let outer_margin = (tokens.layout.outer_margin * scale).round();
+        let panel_gap = (tokens.layout.panel_gap * scale).round();
 
         let content_x = outer_margin;
         let content_w = (screen_w - outer_margin * 2.0).max(320.0);
-
         let panel_total_w = (content_w - panel_gap * 2.0).max(320.0);
 
-        let equipment_w = (panel_total_w * 0.30).round();
-        let backpack_w = (panel_total_w * 0.40).round();
-        let crafting_w = (panel_total_w - equipment_w - backpack_w).round();
+        let equipment_w = (panel_total_w * tokens.layout.equipment_width_ratio).round();
+        let backpack_w = (panel_total_w * tokens.layout.backpack_width_ratio).round();
+        let crafting_w = (panel_total_w * tokens.layout.crafting_width_ratio).round();
 
-        let panel_h = (screen_h * 0.70).round();
+        let used_w = equipment_w + backpack_w + crafting_w + panel_gap * 2.0;
+        let corrected_content_x = ((screen_w - used_w) * 0.5).round();
+
+        let panel_h = (screen_h * tokens.layout.panel_height_ratio).round();
         let panel_y = ((screen_h - panel_h) * 0.5).round();
 
-        let equipment_panel = UiRect::new(content_x.round(), panel_y, equipment_w, panel_h);
+        let equipment_panel = UiRect::new(corrected_content_x, panel_y, equipment_w, panel_h);
 
         let backpack_panel = UiRect::new(
             (equipment_panel.right() + panel_gap).round(),
@@ -128,7 +130,8 @@ impl InventoryUiLayout {
     }
 
     pub fn hotbar_only(screen_w: f32, screen_h: f32, inventory: &Inventory) -> Self {
-        let scale = responsive_scale(screen_w, screen_h);
+        let tokens = VvInventoryUiTokens::current();
+        let scale = responsive_scale(screen_w, screen_h, &tokens);
         let screen = UiRect::new(0.0, 0.0, screen_w.max(0.0), screen_h.max(0.0));
 
         let (hotbar_panel, hotbar_slots, hotbar_gap) =
@@ -206,8 +209,8 @@ fn build_hotbar_layout(
     (UiRect::new(x, y, width.round(), slot), slots, gap)
 }
 
-fn responsive_scale(screen_w: f32, screen_h: f32) -> f32 {
-    let sx = screen_w.max(1.0) / DESIGN_W;
-    let sy = screen_h.max(1.0) / DESIGN_H;
-    sx.min(sy).clamp(0.72, 1.35)
+fn responsive_scale(screen_w: f32, screen_h: f32, tokens: &VvInventoryUiTokens) -> f32 {
+    let sx = screen_w.max(1.0) / tokens.design_width;
+    let sy = screen_h.max(1.0) / tokens.design_height;
+    sx.min(sy).clamp(tokens.scale_min, tokens.scale_max)
 }
