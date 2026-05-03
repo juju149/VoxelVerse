@@ -14,7 +14,7 @@
     render: (
         material: (
             kind: wood,
-            base_color: "#FFFFFF",
+            base_color: "#A76835",
             palette: ["#C98946", "#A76835", "#7D4825", "#4D2A15", "#E0A862"],
             roughness: 0.82,
             metallic: 0.0,

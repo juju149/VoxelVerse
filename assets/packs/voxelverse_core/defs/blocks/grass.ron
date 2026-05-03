@@ -13,8 +13,8 @@
     render: (
         material: (
             kind: grass,
-            base_color: "#FFFFFF",
-            palette: ["#78A83A", "#8FC447", "#6F4A2B", "#573018", "#3E2718"],
+            base_color: "#7FA84A",
+            palette: ["#78A83A", "#84B645", "#6F4A2B", "#573018", "#3E2718"],
             roughness: 0.88,
             metallic: 0.0,
             alpha: 1.0,
