@@ -2422,6 +2422,7 @@ dependencies = [
  "vv-planet",
  "vv-registry",
  "vv-schema",
+ "vv-voxel",
  "vv-world-gen",
  "vv-world-runtime",
 ]
@@ -2480,6 +2481,7 @@ dependencies = [
  "vv-gameplay",
  "vv-registry",
  "vv-ui",
+ "vv-voxel",
 ]
 
 [[package]]
@@ -2505,6 +2507,7 @@ dependencies = [
  "ron",
  "serde",
  "vv-schema",
+ "vv-voxel",
 ]
 
 [[package]]
@@ -2515,6 +2518,7 @@ dependencies = [
  "vv-config",
  "vv-core",
  "vv-planet",
+ "vv-voxel",
  "vv-world-runtime",
 ]
 
@@ -2524,6 +2528,7 @@ version = "0.1.0"
 dependencies = [
  "glam",
  "vv-core",
+ "vv-voxel",
 ]
 
 [[package]]
@@ -2532,6 +2537,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "smallvec",
+ "vv-voxel",
 ]
 
 [[package]]
@@ -2565,11 +2571,15 @@ version = "0.1.0"
 dependencies = [
  "ron",
  "serde",
+ "vv-voxel",
 ]
 
 [[package]]
 name = "vv-ui"
 version = "0.1.0"
+dependencies = [
+ "vv-voxel",
+]
 
 [[package]]
 name = "vv-viewer"
@@ -2585,6 +2595,7 @@ dependencies = [
  "vv-compiler",
  "vv-mesh",
  "vv-registry",
+ "vv-voxel",
  "wgpu",
  "winit",
 ]
@@ -2603,6 +2614,7 @@ dependencies = [
  "vv-core",
  "vv-planet",
  "vv-registry",
+ "vv-voxel",
 ]
 
 [[package]]

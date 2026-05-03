@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
+vv-voxel        = { path = "../vv-voxel" }
 ron = { workspace = true }
 serde = { workspace = true }
 vv-schema = { path = "../vv-schema" }
