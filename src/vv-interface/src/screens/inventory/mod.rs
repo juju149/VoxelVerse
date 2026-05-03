@@ -2,7 +2,9 @@ mod backpack_panel;
 
 use vv_ui::{UiFrame, UiLayer, UiRect};
 
-use crate::{design::InventoryUiTokens, GameplayUiContext, InventoryUiLayout};
+use crate::{
+    design::InventoryUiTokens, screens::hotbar::draw_hotbar, GameplayUiContext, InventoryUiLayout,
+};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct InventoryScreen;
@@ -32,6 +34,8 @@ impl InventoryScreen {
         );
         backpack_panel::draw(frame, ctx, &layout, tokens);
         draw_empty_panel(frame, layout.crafting_panel, "CRAFT", tokens, layout.scale);
+
+        draw_hotbar(frame, ctx, &layout, UiLayer::Menu);
     }
 }
 

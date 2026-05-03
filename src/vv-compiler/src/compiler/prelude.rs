@@ -7,7 +7,8 @@ pub(super) use vv_registry::*;
 
 pub(super) use vv_schema::{
     block::{
-        BlockDef, BlockGeometryProfile, BlockMaterialKind, BlockShape, BlockSurfaceProgramDef,
+        BlockDef, BlockGeometryProfile, BlockMaterialKind, BlockPatternKind,
+        BlockPatternOrientation, BlockPatternedProgramDef, BlockShape, BlockSurfaceProgramDef,
         MaterialPhase, RawBlockEnvironmentResponseDef, RawBlockFaceVisual, RawBlockVisualVariation,
         RenderMode, TintMode,
     },

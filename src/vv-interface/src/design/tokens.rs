@@ -7,6 +7,7 @@ pub struct InventoryUiTokens {
     pub stroke: InventoryStrokeTokens,
     pub layout: InventoryLayoutTokens,
     pub grid: InventoryGridTokens,
+    pub hotbar: InventoryHotbarTokens,
     pub text: InventoryTextTokens,
 }
 
@@ -50,6 +51,21 @@ impl InventoryUiTokens {
             .border(self.colors.slot_border, self.stroke.slot)
             .radius(self.radius.slot)
     }
+
+    pub fn hotbar_slot_surface(self) -> UiSurface {
+        UiSurface::new(self.colors.hotbar_slot_fill)
+            .border(self.colors.hotbar_slot_border, self.stroke.hotbar_slot)
+            .radius(self.radius.hotbar_slot)
+    }
+
+    pub fn hotbar_selected_surface(self) -> UiSurface {
+        UiSurface::new(self.colors.hotbar_selected_fill)
+            .border(
+                self.colors.hotbar_selected_border,
+                self.stroke.hotbar_selected,
+            )
+            .radius(self.radius.hotbar_slot)
+    }
 }
 
 impl Default for InventoryUiTokens {
@@ -60,6 +76,7 @@ impl Default for InventoryUiTokens {
             stroke: InventoryStrokeTokens::default(),
             layout: InventoryLayoutTokens::default(),
             grid: InventoryGridTokens::default(),
+            hotbar: InventoryHotbarTokens::default(),
             text: InventoryTextTokens::default(),
         }
     }
@@ -85,6 +102,13 @@ pub struct InventoryColorTokens {
 
     pub slot_fill: UiColor,
     pub slot_border: UiColor,
+
+    pub hotbar_slot_fill: UiColor,
+    pub hotbar_slot_border: UiColor,
+    pub hotbar_selected_fill: UiColor,
+    pub hotbar_selected_border: UiColor,
+    pub hotbar_item_fill: UiColor,
+    pub hotbar_durability_fill: UiColor,
 
     pub title: UiColor,
     pub text_primary: UiColor,
@@ -115,6 +139,13 @@ impl Default for InventoryColorTokens {
             slot_fill: UiColor::rgba(0.010, 0.036, 0.052, 0.98),
             slot_border: UiColor::rgba(0.54, 0.34, 0.12, 0.82),
 
+            hotbar_slot_fill: UiColor::rgba(0.010, 0.036, 0.052, 0.96),
+            hotbar_slot_border: UiColor::rgba(0.54, 0.34, 0.12, 0.82),
+            hotbar_selected_fill: UiColor::rgba(0.62, 0.39, 0.11, 0.22),
+            hotbar_selected_border: UiColor::rgba(0.95, 0.62, 0.16, 1.0),
+            hotbar_item_fill: UiColor::rgba(0.94, 0.62, 0.18, 1.0),
+            hotbar_durability_fill: UiColor::rgba(0.95, 0.62, 0.16, 1.0),
+
             title: UiColor::rgba(0.95, 0.62, 0.16, 1.0),
             text_primary: UiColor::rgba(0.94, 0.88, 0.76, 1.0),
             text_secondary: UiColor::rgba(0.70, 0.68, 0.62, 1.0),
@@ -130,6 +161,7 @@ pub struct InventoryRadiusTokens {
     pub control: f32,
     pub tab: f32,
     pub slot: f32,
+    pub hotbar_slot: f32,
 }
 
 impl Default for InventoryRadiusTokens {
@@ -140,6 +172,7 @@ impl Default for InventoryRadiusTokens {
             control: 7.0,
             tab: 7.0,
             slot: 7.0,
+            hotbar_slot: 7.0,
         }
     }
 }
@@ -150,6 +183,8 @@ pub struct InventoryStrokeTokens {
     pub control: f32,
     pub control_active: f32,
     pub slot: f32,
+    pub hotbar_slot: f32,
+    pub hotbar_selected: f32,
 }
 
 impl Default for InventoryStrokeTokens {
@@ -159,6 +194,8 @@ impl Default for InventoryStrokeTokens {
             control: 1.25,
             control_active: 1.5,
             slot: 1.25,
+            hotbar_slot: 1.25,
+            hotbar_selected: 2.4,
         }
     }
 }
@@ -243,6 +280,35 @@ impl Default for InventoryGridTokens {
             bottom_reserved: 96.0,
             slot_min: 42.0,
             slot_max: 160.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct InventoryHotbarTokens {
+    pub slot: f32,
+    pub gap: f32,
+    pub bottom: f32,
+    pub selected_expand: f32,
+    pub item_inset: f32,
+    pub number_size: f32,
+    pub count_size: f32,
+    pub durability_height: f32,
+    pub durability_margin: f32,
+}
+
+impl Default for InventoryHotbarTokens {
+    fn default() -> Self {
+        Self {
+            slot: 84.0,
+            gap: 10.0,
+            bottom: 28.0,
+            selected_expand: 4.0,
+            item_inset: 18.0,
+            number_size: 12.0,
+            count_size: 15.0,
+            durability_height: 5.0,
+            durability_margin: 9.0,
         }
     }
 }

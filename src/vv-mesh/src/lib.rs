@@ -5,6 +5,7 @@ mod overlay;
 mod primitive_mesh;
 mod primitives;
 mod shape;
+mod surface_programs;
 mod vertex;
 mod visual;
 mod voxel;

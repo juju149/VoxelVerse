@@ -58,14 +58,14 @@ impl InventoryUiLayout {
         let tokens = InventoryUiTokens::current();
         let scale = responsive_scale(screen_w, screen_h, &tokens);
 
-        let slot = (78.0 * scale).clamp(54.0, 92.0).round();
-        let gap = (10.0 * scale).clamp(7.0, 14.0).round();
+        let slot = (tokens.hotbar.slot * scale).round();
+        let gap = (tokens.hotbar.gap * scale).round();
 
         let hotbar_w = inventory.hotbar_len() as f32 * slot
             + inventory.hotbar_len().saturating_sub(1) as f32 * gap;
 
         let hotbar_x = ((screen_w - hotbar_w) * 0.5).round();
-        let hotbar_y = (screen_h - 28.0 * scale - slot).round();
+        let hotbar_y = (screen_h - tokens.hotbar.bottom * scale - slot).round();
 
         let hotbar_slots = (0..inventory.hotbar_len())
             .map(|index| InventorySlotRect {

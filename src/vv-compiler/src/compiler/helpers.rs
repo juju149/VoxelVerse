@@ -138,9 +138,3 @@ pub(super) fn stable_hash32(value: &str) -> u32 {
 
     hash
 }
-
-pub(super) fn compiled_surface_program(program: &BlockSurfaceProgramDef) -> CompiledSurfaceProgram {
-    match program {
-        BlockSurfaceProgramDef::Flat => CompiledSurfaceProgram::flat(),
-    }
-}

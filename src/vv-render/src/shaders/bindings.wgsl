@@ -53,6 +53,28 @@ struct BlockDetail {
     kind_data: vec4<u32>,
 }
 
+
+struct BlockPatternedProgram {
+    kind: u32,
+    rows: u32,
+    columns: u32,
+    flags: u32,
+
+    gap_width: f32,
+    gap_depth: f32,
+    cell_bevel: f32,
+    cell_roundness: f32,
+
+    cell_pillow: f32,
+    height_variation: f32,
+    color_variation: f32,
+    crack_density: f32,
+
+    crack_depth: f32,
+    seed: u32,
+    _pad0: u32,
+    _pad1: u32,
+}
 struct BlockVisual {
     base_color: vec4<f32>,
     emission: vec4<f32>,

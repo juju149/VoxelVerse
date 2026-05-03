@@ -11,6 +11,54 @@ pub struct BlockProceduralConfig {
     pub _padding: [u32; 2],
 }
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Pod, Zeroable)]
+pub struct RuntimePatternedProgram {
+    pub kind: u32,
+    pub rows: u32,
+    pub columns: u32,
+    pub flags: u32,
+
+    pub gap_width: f32,
+    pub gap_depth: f32,
+    pub cell_bevel: f32,
+    pub cell_roundness: f32,
+
+    pub cell_pillow: f32,
+    pub height_variation: f32,
+    pub color_variation: f32,
+    pub crack_density: f32,
+
+    pub crack_depth: f32,
+    pub seed: u32,
+    pub _padding: [u32; 2],
+}
+
+impl RuntimePatternedProgram {
+    pub fn disabled() -> Self {
+        Self {
+            kind: 0,
+            rows: 1,
+            columns: 1,
+            flags: 0,
+
+            gap_width: 0.0,
+            gap_depth: 0.0,
+            cell_bevel: 0.0,
+            cell_roundness: 0.0,
+
+            cell_pillow: 0.0,
+            height_variation: 0.0,
+            color_variation: 0.0,
+            crack_density: 0.0,
+
+            crack_depth: 0.0,
+            seed: 0,
+            _padding: [0; 2],
+        }
+    }
+}
+
 impl BlockProceduralConfig {
     pub fn new(grid_size: u32, face_blend: bool) -> Self {
         Self {
@@ -110,6 +158,7 @@ pub struct RuntimeBlockVisual {
     // z = detail_count
     // w = surface_program_id
     pub procedural: [u32; 4],
+    pub patterned: RuntimePatternedProgram,
 
     pub faces: [RuntimeBlockFaceVisual; BLOCK_VISUAL_FACE_COUNT],
     pub details: [RuntimeBlockDetail; BLOCK_VISUAL_DETAIL_COUNT],
@@ -127,6 +176,7 @@ impl RuntimeBlockVisual {
             response: [0.0; 4],
             palette: [0, 1, 0, 0],
             procedural: [10, 0, 0, 0],
+            patterned: RuntimePatternedProgram::disabled(),
             faces: [RuntimeBlockFaceVisual::default(); BLOCK_VISUAL_FACE_COUNT],
             details: [RuntimeBlockDetail::default(); BLOCK_VISUAL_DETAIL_COUNT],
         }

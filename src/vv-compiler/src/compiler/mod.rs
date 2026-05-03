@@ -5,6 +5,7 @@ mod content;
 mod driver;
 mod helpers;
 mod loot;
+mod programs;
 mod recipes;
 mod refs;
 mod tags;
