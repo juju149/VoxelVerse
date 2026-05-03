@@ -19,12 +19,11 @@ impl MeshGen {
             return None;
         }
 
-        let radius = authored_radius.max(0.10).clamp(0.04, 0.22);
-        let pillow = (radius * 0.28).clamp(0.018, 0.055);
+        let radius = authored_radius.clamp(0.0, 0.18);
 
         Some(SoftCubeParams {
             radius,
-            pillow,
+            pillow: 0.0,
             segments: 6,
         })
     }
