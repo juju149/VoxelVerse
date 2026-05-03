@@ -488,8 +488,12 @@ fn vv_layered_surface_color(
     let has_top_bias = length(top_color - vec3<f32>(1.0)) > 0.015;
     let target = select(color * vec3<f32>(0.62, 1.10, 0.55), top_color, has_top_bias);
 
-    let fringe_h = clamp(visual.patterned.gap_width, 0.05, 0.50);
-    let irregularity = saturate(visual.patterned.height_variation) * 0.08;
+    // gap_width is .ron-clamped to [0, 0.2]; treat that range as the full
+    // [0, 0.5] fringe-height span so layered_surface can author tall fringes.
+    let fringe_h = clamp(visual.patterned.gap_width * 2.5, 0.05, 0.50);
+    // height_variation is .ron-clamped to [0, 0.15]; map it to [0, 0.6] so
+    // small authored values produce visibly irregular fringe edges.
+    let irregularity = saturate(visual.patterned.height_variation * 4.0) * 0.10;
     let v_from_top = 1.0 - uv.y;
 
     let noise = vv_value_noise_3d(vec3<f32>(uv.x * 14.0, seed.x * 0.05, seed.y * 0.03));
