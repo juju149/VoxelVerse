@@ -23,21 +23,39 @@ impl InventoryScreen {
             tokens.colors.screen_dim,
         );
 
-        draw_empty_panel(frame, layout.equipment_panel, "PERSONNAGE", tokens);
+        draw_empty_panel(
+            frame,
+            layout.equipment_panel,
+            "PERSONNAGE",
+            tokens,
+            layout.scale,
+        );
         backpack_panel::draw(frame, ctx, &layout, tokens);
-        draw_empty_panel(frame, layout.crafting_panel, "CRAFT", tokens);
+        draw_empty_panel(frame, layout.crafting_panel, "CRAFT", tokens, layout.scale);
     }
 }
 
-fn draw_empty_panel(frame: &mut UiFrame, rect: UiRect, title: &str, tokens: InventoryUiTokens) {
+fn draw_empty_panel(
+    frame: &mut UiFrame,
+    rect: UiRect,
+    title: &str,
+    tokens: InventoryUiTokens,
+    scale: f32,
+) {
     tokens.panel_surface().draw(frame, UiLayer::Menu, rect);
 
-    let pad = tokens.layout.panel_padding * 0.75;
+    let pad = tokens.layout.panel_padding * scale;
+
     frame.text_left_centered(
         UiLayer::Menu,
-        UiRect::new(rect.x + pad, rect.y + 22.0, rect.width - pad * 2.0, 34.0),
+        UiRect::new(
+            rect.x + pad,
+            rect.y + tokens.layout.title_top * scale,
+            rect.width - pad * 2.0,
+            34.0 * scale,
+        ),
         title,
-        20.0,
+        tokens.text.panel_title * scale,
         tokens.colors.title,
     );
 }
