@@ -1,5 +1,6 @@
 pub mod components;
 pub mod context;
+pub mod design;
 pub mod gameplay_frame;
 pub mod item_visual;
 pub mod layout;

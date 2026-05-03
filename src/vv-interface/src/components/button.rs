@@ -1,7 +1,8 @@
-use vv_ui::{UiColor, UiFrame, UiGradient, UiLayer, UiRect};
+use vv_ui::{UiFrame, UiGradient, UiLayer, UiRect};
 
 use crate::{
     components::{surface, text},
+    design::VvDesignTokens,
     GameplayUiContext,
 };
 
@@ -21,52 +22,58 @@ pub fn pill(
     ctx: &GameplayUiContext<'_>,
     scale: f32,
 ) {
-    let radius = (rect.height * 0.22).clamp(6.0 * scale, 11.0 * scale);
+    let tokens = VvDesignTokens::current();
     let active = matches!(variant, VvButtonVariant::Active | VvButtonVariant::Action);
     let disabled = matches!(variant, VvButtonVariant::Disabled);
 
+    let radius = scaled_radius(
+        rect.height,
+        scale,
+        tokens.button.radius_factor,
+        tokens.button.radius_min,
+        tokens.button.radius_max,
+    );
+
     let border = if active {
-        ctx.theme.border.with_alpha(0.90)
+        tokens.colors.button_border_active
     } else {
-        UiColor::rgba(0.45, 0.28, 0.12, 0.66)
+        tokens.colors.button_border
     };
 
-    let top = if active {
-        UiColor::rgba(0.73, 0.48, 0.16, 0.92)
+    let border_width = if active {
+        tokens.button.active_border_width
     } else {
-        UiColor::rgba(0.018, 0.043, 0.050, 0.88)
-    };
-
-    let bottom = if active {
-        UiColor::rgba(0.42, 0.26, 0.08, 0.94)
-    } else {
-        UiColor::rgba(0.006, 0.020, 0.024, 0.90)
-    };
+        tokens.button.border_width
+    } * scale;
 
     surface::gradient(
         frame,
         UiLayer::Menu,
         rect,
-        UiGradient::vertical(top, bottom),
+        button_gradient(variant, &tokens),
         border,
-        1.4 * scale,
+        border_width,
         radius,
     );
 
-    text::centered(
-        frame,
-        UiLayer::Menu,
-        rect,
-        label,
-        13.0 * scale,
-        if disabled {
-            ctx.theme.text_disabled
-        } else if active {
-            ctx.theme.text_primary
-        } else {
-            ctx.theme.text_muted
-        },
-    );
+    let label = label.to_string();
+
+    if !label.is_empty() {
+        text::centered(
+            frame,
+            UiLayer::Menu,
+            rect,
+            label,
+            tokens.text.button_size * scale,
+            if disabled {
+                ctx.theme.text_disabled
+            } else if active {
+                ctx.theme.text_primary
+            } else {
+                ctx.theme.text_muted
+            },
+        );
+    }
 }
 
 pub fn square_icon(
@@ -78,11 +85,12 @@ pub fn square_icon(
 ) {
     pill(frame, rect, "", VvButtonVariant::Default, ctx, scale);
 
+    let tokens = VvDesignTokens::current();
     let label = label.to_string();
     let size = if label == "×" {
-        32.0 * scale
+        tokens.text.button_size_large * 1.9 * scale
     } else {
-        24.0 * scale
+        tokens.text.button_size_large * 1.4 * scale
     };
 
     text::centered(frame, UiLayer::Menu, rect, label, size, ctx.theme.accent);
@@ -96,32 +104,34 @@ pub fn action(
     ctx: &GameplayUiContext<'_>,
     scale: f32,
 ) {
-    let radius = 9.0 * scale;
+    let tokens = VvDesignTokens::current();
+    let variant = if enabled {
+        VvButtonVariant::Action
+    } else {
+        VvButtonVariant::Disabled
+    };
+
+    let radius = scaled_radius(
+        rect.height,
+        scale,
+        tokens.button.radius_factor,
+        tokens.button.radius_min,
+        tokens.button.radius_max,
+    );
+
     let border = if enabled {
-        ctx.theme.border.with_alpha(0.95)
+        tokens.colors.button_border_active
     } else {
-        ctx.theme.border_soft.with_alpha(0.52)
-    };
-
-    let top = if enabled {
-        UiColor::rgba(0.78, 0.50, 0.15, 0.94)
-    } else {
-        UiColor::rgba(0.020, 0.043, 0.050, 0.90)
-    };
-
-    let bottom = if enabled {
-        UiColor::rgba(0.42, 0.25, 0.07, 0.96)
-    } else {
-        UiColor::rgba(0.006, 0.020, 0.025, 0.94)
+        tokens.colors.button_border
     };
 
     surface::gradient(
         frame,
         UiLayer::Menu,
         rect,
-        UiGradient::vertical(top, bottom),
+        button_gradient(variant, &tokens),
         border,
-        1.5 * scale,
+        tokens.button.active_border_width * scale,
         radius,
     );
 
@@ -130,11 +140,31 @@ pub fn action(
         UiLayer::Menu,
         rect,
         label,
-        17.0 * scale,
+        tokens.text.button_size_large * scale,
         if enabled {
             ctx.theme.text_primary
         } else {
             ctx.theme.text_disabled
         },
     );
+}
+
+fn button_gradient(variant: VvButtonVariant, tokens: &VvDesignTokens) -> UiGradient {
+    match variant {
+        VvButtonVariant::Default => {
+            UiGradient::vertical(tokens.colors.button_top, tokens.colors.button_bottom)
+        }
+        VvButtonVariant::Active | VvButtonVariant::Action => UiGradient::vertical(
+            tokens.colors.button_active_top,
+            tokens.colors.button_active_bottom,
+        ),
+        VvButtonVariant::Disabled => UiGradient::vertical(
+            tokens.colors.button_disabled_top,
+            tokens.colors.button_disabled_bottom,
+        ),
+    }
+}
+
+fn scaled_radius(height: f32, scale: f32, factor: f32, min_radius: f32, max_radius: f32) -> f32 {
+    (height * factor).clamp(min_radius * scale, max_radius * scale)
 }

@@ -1,9 +1,19 @@
-use vv_ui::{UiBorder, UiFrame, UiLayer, UiRect, UiShadow, UiTextAlign};
+use vv_ui::{UiBorder, UiFrame, UiLayer, UiRect, UiShadow};
 
 use crate::{
-    components::{button, panel, search_field, slot},
+    components::{button, panel, search_field, slot, tabs},
+    design::VvDesignTokens,
     item_visual, GameplayUiContext, InventoryUiLayout,
 };
+
+const INVENTORY_TABS: &[tabs::VvTabSpec<'static>] = &[
+    tabs::VvTabSpec::text("Tout"),
+    tabs::VvTabSpec::text("Ressources"),
+    tabs::VvTabSpec::text("Outils"),
+    tabs::VvTabSpec::text("Nourriture"),
+    tabs::VvTabSpec::text("Matériaux"),
+    tabs::VvTabSpec::text("Divers"),
+];
 
 pub fn draw(frame: &mut UiFrame, ctx: &GameplayUiContext<'_>, layout: &InventoryUiLayout) {
     let rect = layout.backpack_panel;
@@ -43,46 +53,23 @@ fn draw_category_tabs(
     ctx: &GameplayUiContext<'_>,
     layout: &InventoryUiLayout,
 ) {
+    let tokens = VvDesignTokens::current();
     let s = layout.scale;
-    let tab_y = layout.backpack_panel.y + 114.0 * s;
-    let tab_h = 42.0 * s;
-    let mut x = layout.backpack_panel.x + 24.0 * s;
-    let max_right = layout.backpack_panel.right() - 24.0 * s;
+    let pad = 24.0 * s;
 
-    for (i, label) in ["Tout", "Ressources", "Outils", "Nourriture", "Divers"]
-        .iter()
-        .enumerate()
-    {
-        let preferred_w = match i {
-            0 => 84.0 * s,
-            1 => 132.0 * s,
-            2 => 102.0 * s,
-            3 => 132.0 * s,
-            _ => 96.0 * s,
-        };
-
-        let remaining = max_right - x;
-        if remaining < 58.0 * s {
-            break;
-        }
-
-        let w = preferred_w.min(remaining);
-
-        button::pill(
-            frame,
-            UiRect::new(x, tab_y, w, tab_h),
-            label,
-            if i == 0 {
-                button::VvButtonVariant::Active
-            } else {
-                button::VvButtonVariant::Default
-            },
-            ctx,
-            s,
-        );
-
-        x += w + 8.0 * s;
-    }
+    tabs::segmented(
+        frame,
+        UiRect::new(
+            layout.backpack_panel.x + pad,
+            layout.backpack_panel.y + 114.0 * s,
+            layout.backpack_panel.width - pad * 2.0,
+            tokens.inventory_tabs.height * s,
+        ),
+        INVENTORY_TABS,
+        0,
+        ctx,
+        s,
+    );
 }
 
 fn draw_inventory_grid(
@@ -148,7 +135,7 @@ fn draw_weight_and_sort(
     button::pill(
         frame,
         UiRect::new(rect.right() - 138.0 * s, y - 2.0 * s, 114.0 * s, 48.0 * s),
-        "↕ Trier",
+        "Trier",
         button::VvButtonVariant::Default,
         ctx,
         s,
