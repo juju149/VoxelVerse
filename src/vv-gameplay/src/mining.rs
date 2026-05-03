@@ -1,4 +1,4 @@
-use vv_core::BlockId;
+use vv_voxel::BlockId;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct InteractionTarget {

@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 vv-core = { path = "../vv-core" }
+vv-voxel = { path = "../vv-voxel" }
 glam = "0.25"

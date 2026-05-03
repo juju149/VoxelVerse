@@ -6,26 +6,32 @@ use wgpu::PresentMode;
 use winit::window::Window;
 
 use vv_config::{LodConfig, RenderConfig};
-use vv_core::{ChunkKey, LodKey};
 use vv_diagnostics::DiagnosticConfig;
 use vv_gameplay::PlayerGameplayState;
 use vv_input::Controller;
 use vv_mesh::Vertex;
 use vv_registry::{BlockContent, RuntimeBlockVisual};
+use vv_voxel::{ChunkKey, LodKey};
 use vv_world_runtime::PlanetData;
 
 use crate::{sky_state::SkyState, AnyKey, ChunkMesh, Frustum, LodAnimator};
 
 use self::types::{MeshJobResult, RendererFrameTelemetry};
 
+mod debug_overlay;
 mod diagnostics;
 mod frame;
+mod gpu_context;
 mod init;
 mod mesh_upload;
 mod pipelines;
 mod public_api;
+mod shadow_pass;
+mod sky_pass;
 mod streaming;
+mod terrain_pass;
 mod types;
+mod ui_bridge;
 mod ui_frame;
 mod visual_content;
 mod world_overlay;

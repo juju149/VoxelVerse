@@ -99,7 +99,7 @@ impl MeshGen {
                     bilinear_color(corner_colors, t01[0], t01[1]),
                 ];
 
-                Self::quad(
+                Self::quad_with_uvs(
                     verts,
                     inds,
                     idx,
@@ -110,6 +110,7 @@ impl MeshGen {
                         local_to_world(corners, p01.position),
                     ],
                     colors,
+                    [p00.uv, p10.uv, p11.uv, p01.uv],
                     texture_id,
                     block_id,
                     block_visual_id,

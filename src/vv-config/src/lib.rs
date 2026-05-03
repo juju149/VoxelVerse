@@ -62,11 +62,48 @@ pub struct PlayerConfig {
     pub reach_distance: f32,
 }
 
+/// Shadow rendering mode.
+///
+/// `Off` disables shadow sampling entirely (everything lit, fastest).
+/// `Stable` uses a small fixed kernel with stronger biasing — minimises acne
+/// and flickering on beveled edges at the cost of softness.
+/// `High` uses the full PCF kernel for crisp contact shadows; can be noisy
+/// on grazing voxel bevels.
+///
+/// Override at runtime with `VV_SHADOWS=off|stable|high`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShadowMode {
+    Off,
+    Stable,
+    High,
+}
+
+impl ShadowMode {
+    pub fn as_shader_id(self) -> f32 {
+        match self {
+            Self::Off => 0.0,
+            Self::Stable => 1.0,
+            Self::High => 2.0,
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "off" | "0" | "none" | "disabled" => Some(Self::Off),
+            "stable" | "1" | "low" | "medium" => Some(Self::Stable),
+            "high" | "2" | "full" => Some(Self::High),
+            _ => None,
+        }
+    }
+}
+
 /// Rendering quality and visual parameters.
 #[derive(Clone, Debug)]
 pub struct RenderConfig {
     /// Shadow map texture dimension (power-of-two recommended).
     pub shadow_map_size: u32,
+    /// Shadow filter quality. See [`ShadowMode`].
+    pub shadow_mode: ShadowMode,
     /// Vertical field of view in first-person mode, in degrees.
     pub fov_first_person_deg: f32,
     /// Vertical field of view in orbit mode, in degrees.
@@ -209,6 +246,7 @@ impl Default for RenderConfig {
     fn default() -> Self {
         Self {
             shadow_map_size: 4096,
+            shadow_mode: ShadowMode::Stable,
             fov_first_person_deg: 80.0,
             fov_orbit_deg: 45.0,
             near_plane: 0.1,
@@ -221,6 +259,48 @@ impl Default for RenderConfig {
 
 impl Default for AtmosphereConfig {
     fn default() -> Self {
+        Self::neutral()
+    }
+}
+
+impl AtmosphereConfig {
+    /// Neutral, slightly warm rendering preset. Desaturated palette so per-block
+    /// materials carry the color rather than the atmosphere.
+    pub fn neutral() -> Self {
+        Self {
+            sun_direction: [0.58, 0.56, 0.36],
+            sun_color: [1.55, 1.42, 1.18],
+            sky_color: [0.190, 0.330, 0.560],
+            ground_ambient_color: [0.075, 0.082, 0.090],
+            shadow_tint_color: [0.060, 0.085, 0.140],
+            fog_color: [0.520, 0.580, 0.660],
+            fog_density: 0.00030,
+            clear_color: [0.030, 0.045, 0.080, 1.0],
+
+            zenith_color: [0.090, 0.190, 0.420],
+            horizon_glow_color: [0.880, 0.640, 0.460],
+            moon_direction: [-0.58, -0.56, -0.36],
+            moon_color: [0.220, 0.270, 0.420],
+
+            exposure: 1.00,
+            saturation: 1.00,
+            contrast: 1.10,
+
+            fog_start_m: 140.0,
+            sky_horizon_power: 0.78,
+            star_strength: 0.0,
+            night_amount: 0.0,
+
+            planet_center: [0.0, 0.0, 0.0],
+            atmosphere_height_m: 90_000.0,
+            atmosphere_fade_start_m: 55_000.0,
+            atmosphere_fade_end_m: 120_000.0,
+            terminator_softness: 0.085,
+        }
+    }
+
+    /// Legacy dramatic-sunset preset (warm-orange, high saturation).
+    pub fn dramatic_sunset() -> Self {
         Self {
             sun_direction: [0.58, 0.56, 0.36],
             sun_color: [2.35, 1.62, 0.86],

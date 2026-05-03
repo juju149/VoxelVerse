@@ -19,13 +19,15 @@ impl MeshGen {
             return None;
         }
 
-        let radius = authored_radius.max(0.10).clamp(0.04, 0.22);
-        let pillow = (radius * 0.28).clamp(0.018, 0.055);
+        let radius = authored_radius.clamp(0.0, 0.18);
 
         Some(SoftCubeParams {
             radius,
-            pillow,
-            segments: 6,
+            pillow: 0.0,
+            // 3 segments per face = 9 quads. Anything higher made the subdivision
+            // grid faintly visible across the face once lighting + directional
+            // material tint sampled the per-vertex curved normals.
+            segments: 3,
         })
     }
 }

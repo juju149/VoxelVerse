@@ -1,7 +1,7 @@
 use crate::ChunkMesh;
 use std::collections::HashMap;
 use std::time::Instant;
-use vv_core::{ChunkKey, LodKey};
+use vv_voxel::{ChunkKey, LodKey};
 
 /// Discriminated key used by `LodAnimator` to track either a voxel chunk
 /// or an LOD tile.

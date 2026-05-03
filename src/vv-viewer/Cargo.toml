@@ -7,6 +7,7 @@ edition = "2021"
 name = "vv-viewer"
 
 [dependencies]
+vv-voxel        = { path = "../vv-voxel" }
 vv-compiler  = { path = "../vv-compiler" }
 vv-registry  = { path = "../vv-registry" }
 vv-mesh      = { path = "../vv-mesh" }

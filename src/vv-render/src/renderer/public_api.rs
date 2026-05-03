@@ -1,10 +1,10 @@
 use glam::{Vec2, Vec3};
 
-use vv_core::BlockId;
 use vv_diagnostics::{emit, LogDomain, LogLevel};
 use vv_gameplay::PlayerGameplayState;
 use vv_registry::{CompiledContent, RecipeId};
 use vv_ui::UiPoint;
+use vv_voxel::BlockId;
 use vv_world_runtime::PlanetData;
 
 use crate::block_feedback::{selection_outline_mesh, SelectionOutlineStyle};

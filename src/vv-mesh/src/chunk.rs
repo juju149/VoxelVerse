@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use vv_core::{BlockId, ChunkKey, CHUNK_SIZE};
 use vv_registry::{BlockId as ContentBlockId, BlockRenderSource};
+use vv_voxel::{BlockId, ChunkKey, CHUNK_SIZE};
 use vv_world_runtime::{ChunkMods, PlanetData};
 
 use crate::{overlay::FeatureOverlay, MeshGen, Vertex};

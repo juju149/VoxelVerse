@@ -78,6 +78,10 @@ pub enum BlockPatternKind {
     Rings,
     NaturalCells,
     CrackedCells,
+    /// Two-zone surface: top fibers + a transition band that bleeds the top
+    /// color down into the side. Generic enough to author grass, snow caps,
+    /// moss layers, etc. without per-block shader code.
+    LayeredSurface,
 }
 
 impl Default for BlockPatternKind {

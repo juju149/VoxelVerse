@@ -19,27 +19,13 @@ fn apply_color_grading(color: vec3<f32>) -> vec3<f32> {
 
     var graded = max(color * exposure, vec3<f32>(0.0));
 
-    let luma_before = luminance(graded);
-    let chroma = graded - vec3<f32>(luma_before);
-    let vibrance_mask = saturate(1.0 - length(chroma) * 0.62);
-    let final_saturation = saturation * mix(1.0, 1.10, vibrance_mask);
-
-    graded = mix(vec3<f32>(luma_before), graded, final_saturation);
+    let luma = luminance(graded);
+    graded = mix(vec3<f32>(luma), graded, saturation);
 
     let pivot = vec3<f32>(0.20);
     graded = max((graded - pivot) * contrast + pivot, vec3<f32>(0.0));
 
-    let luma_after = luminance(graded);
-    let shadow_mask = 1.0 - smoothstep(0.045, 0.320, luma_after);
-    let highlight_mask = smoothstep(0.420, 1.650, luma_after);
-
-    let shadow_tone = vec3<f32>(0.94, 0.98, 1.08);
-    let highlight_tone = vec3<f32>(1.055, 1.020, 0.955);
-
-    graded = mix(graded, graded * shadow_tone, shadow_mask * 0.10);
-    graded = mix(graded, graded * highlight_tone, highlight_mask * 0.06);
-
-    return max(graded, vec3<f32>(0.0));
+    return graded;
 }
 
 fn encode_final_color(linear_color: vec3<f32>) -> vec3<f32> {

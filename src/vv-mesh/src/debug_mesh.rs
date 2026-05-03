@@ -1,7 +1,7 @@
 use glam::Vec3;
 
-use vv_core::BlockId;
 use vv_planet::CoordSystem;
+use vv_voxel::BlockId;
 use vv_world_runtime::PlanetData;
 
 use crate::{MeshGen, Vertex};

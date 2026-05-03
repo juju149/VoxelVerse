@@ -1,5 +1,5 @@
 use glam::Vec3;
-use vv_registry::{RuntimePatternedProgram, RUNTIME_PATTERN_RINGS};
+use vv_registry::{pattern_has_geometry, RuntimePatternedProgram};
 
 use crate::{
     shape::VoxelCorners,
@@ -37,34 +37,17 @@ impl MeshGen {
         variation_seed: u32,
         program: RuntimePatternedProgram,
     ) {
-        // WOOD_RINGS_SHADER_ONLY_GUARD
-        // Rings must never be emitted as tiled panels.
-        // A log top is one continuous cut face, and bark sides are shader-colored.
-        if program.kind == vv_registry::RUNTIME_PATTERN_RINGS {
-            Self::add_soft_cube_face(
-                verts,
-                inds,
-                idx,
-                corners,
-                face,
-                params,
-                edge_mask,
-                corner_colors,
-                texture_id,
-                block_id,
-                block_visual_id,
-                voxel_pos,
-                variation_seed,
-            );
-            return;
-        }
         let params = params.sanitized();
         let config = PatternedMeshConfig::from_runtime(program);
 
-        // Rings are shader-only organic patterns.
-        // A wood cut face must be one radial surface, not a tiled panel grid.
-        // The bark/cut color is handled in the shader, while the mesh stays a clean soft cube.
-        if config.kind == RUNTIME_PATTERN_RINGS {
+        // PATTERNED_ORGANIC_SHADER_ONLY_GUARD
+        // Organic Patterned programs are shader-only.
+        // They must not emit rectangular panel geometry over the soft-cube face.
+        if config.kind == vv_registry::RUNTIME_PATTERN_NATURAL_CELLS
+            || config.kind == vv_registry::RUNTIME_PATTERN_CRACKED_CELLS
+            || config.gap_width <= 0.0001
+            || config.gap_depth <= 0.0001
+        {
             Self::add_soft_cube_face(
                 verts,
                 inds,
@@ -83,10 +66,9 @@ impl MeshGen {
             return;
         }
 
-        // Rings are organic/cut-surface patterns.
-        // They should not create brick-like geometric panels on every face.
-        // The mesh stays a clean soft cube; the shader draws top rings and side bark.
-        if config.kind == RUNTIME_PATTERN_RINGS {
+        // Shader-only patterns (e.g. rings) leave the mesh as a clean soft cube
+        // and rely on the fragment shader for visual structure.
+        if !pattern_has_geometry(config.kind) {
             Self::add_soft_cube_face(
                 verts,
                 inds,
@@ -104,6 +86,7 @@ impl MeshGen {
             );
             return;
         }
+
         let frame = SoftCubeWorldFrame::from_corners(corners);
         let base_depth = config.gap_depth.clamp(0.0, 0.20);
 

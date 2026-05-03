@@ -19,7 +19,7 @@ mod tests {
     use super::*;
     use vv_compiler::compile_assets_root;
     use vv_config::WorldGenConfig;
-    use vv_core::ChunkKey;
+    use vv_voxel::ChunkKey;
     use vv_world_gen::PlanetTerrain;
     use vv_world_runtime::PlanetData;
 

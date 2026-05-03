@@ -1,5 +1,5 @@
 use glam::Vec3;
-use vv_core::BlockId;
+use vv_voxel::BlockId;
 
 /// Canonical physical geometry for a voxelized round planet.
 ///

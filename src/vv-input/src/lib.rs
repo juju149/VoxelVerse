@@ -4,11 +4,11 @@ pub use intent::*;
 
 use glam::{Mat4, Vec2, Vec3};
 use vv_config::PlayerConfig;
-use vv_core::BlockId;
 use vv_diagnostics::{emit_from_env, LogDomain, LogLevel};
 use vv_gameplay::{Player, PlayerIntent};
 use vv_physics::Physics;
 use vv_planet::CoordSystem;
+use vv_voxel::BlockId;
 use vv_world_runtime::PlanetData;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};

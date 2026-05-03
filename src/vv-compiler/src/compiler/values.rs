@@ -105,4 +105,19 @@ impl ContentCompiler {
             reason: reason.to_owned(),
         });
     }
+
+    /// Non-fatal authoring warning. Goes to stderr without polluting the
+    /// fail-on-error diagnostic stream.
+    pub(super) fn warn_value<T>(
+        &self,
+        doc: &RawDocument<T>,
+        field: &str,
+        value: &str,
+        reason: &str,
+    ) {
+        eprintln!(
+            "[vv-compiler] warning: `{}` field `{field}` value `{value}`: {reason}",
+            doc.source_path.display()
+        );
+    }
 }
