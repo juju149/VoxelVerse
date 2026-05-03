@@ -9,7 +9,7 @@ pub mod slot;
 pub mod tabs;
 pub mod toggle;
 
-pub use button::{UiButton, UiButtonResponse};
+pub use button::{UiButton, UiButtonContentAlign, UiButtonIconPlacement, UiButtonResponse};
 pub use card::UiCard;
 pub use dropdown::UiDropdown;
 pub use panel::UiPanel;

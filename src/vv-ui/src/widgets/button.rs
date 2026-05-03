@@ -1,8 +1,34 @@
 use crate::{
-    UiButtonStyle, UiFrame, UiIconId, UiInput, UiLayer, UiRect, UiResponse, UiSurface, UiWidgetId,
+    UiButtonStyle, UiEdgeInsets, UiFrame, UiIconId, UiInput, UiLayer, UiRect, UiResponse,
+    UiSurface, UiWidgetId,
 };
 
 pub type UiButtonResponse = UiResponse;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiButtonIconPlacement {
+    Leading,
+    Trailing,
+}
+
+impl Default for UiButtonIconPlacement {
+    fn default() -> Self {
+        Self::Leading
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiButtonContentAlign {
+    Left,
+    Center,
+    Right,
+}
+
+impl Default for UiButtonContentAlign {
+    fn default() -> Self {
+        Self::Center
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct UiButton {
@@ -10,9 +36,15 @@ pub struct UiButton {
     pub rect: UiRect,
     pub label: String,
     pub icon: Option<UiIconId>,
+    pub icon_placement: UiButtonIconPlacement,
+    pub content_align: UiButtonContentAlign,
     pub style: UiButtonStyle,
     pub layer: UiLayer,
     pub disabled: bool,
+    pub text_size: Option<f32>,
+    pub icon_size: Option<f32>,
+    pub icon_gap: Option<f32>,
+    pub padding_x: Option<f32>,
 }
 
 impl UiButton {
@@ -27,14 +59,30 @@ impl UiButton {
             rect,
             label: label.into(),
             icon: None,
+            icon_placement: UiButtonIconPlacement::Leading,
+            content_align: UiButtonContentAlign::Center,
             style,
             layer: UiLayer::Menu,
             disabled: false,
+            text_size: None,
+            icon_size: None,
+            icon_gap: None,
+            padding_x: None,
         }
     }
 
     pub fn icon(mut self, icon: UiIconId) -> Self {
         self.icon = Some(icon);
+        self
+    }
+
+    pub fn icon_placement(mut self, placement: UiButtonIconPlacement) -> Self {
+        self.icon_placement = placement;
+        self
+    }
+
+    pub fn content_align(mut self, align: UiButtonContentAlign) -> Self {
+        self.content_align = align;
         self
     }
 
@@ -48,6 +96,26 @@ impl UiButton {
         self
     }
 
+    pub fn text_size(mut self, size: f32) -> Self {
+        self.text_size = Some(size.max(1.0));
+        self
+    }
+
+    pub fn icon_size(mut self, size: f32) -> Self {
+        self.icon_size = Some(size.max(1.0));
+        self
+    }
+
+    pub fn icon_gap(mut self, gap: f32) -> Self {
+        self.icon_gap = Some(gap.max(0.0));
+        self
+    }
+
+    pub fn padding_x(mut self, padding: f32) -> Self {
+        self.padding_x = Some(padding.max(0.0));
+        self
+    }
+
     pub fn draw(
         self,
         frame: &mut UiFrame,
@@ -56,6 +124,17 @@ impl UiButton {
     ) -> UiButtonResponse {
         let response = UiResponse::from_input(self.id, self.rect, input, active, self.disabled);
 
+        if self.rect.width <= 0.0 || self.rect.height <= 0.0 {
+            return response;
+        }
+
+        self.draw_surface(frame, &response);
+        self.draw_content(frame);
+
+        response
+    }
+
+    fn draw_surface(&self, frame: &mut UiFrame, response: &UiResponse) {
         let background = if self.disabled {
             self.style.background.darken(0.35)
         } else if response.pressed {
@@ -74,38 +153,159 @@ impl UiButton {
                 .radius(self.style.radius)
                 .shadow(self.style.shadow),
         );
+    }
 
-        let mut text_rect = self.rect;
+    fn draw_content(&self, frame: &mut UiFrame) {
+        let label = self.label.trim();
+        let has_text = !label.is_empty();
+        let has_icon = self.icon.is_some();
 
-        if let Some(icon) = self.icon {
-            let icon_size = (self.rect.height * 0.46).min(28.0);
-            let icon_rect = UiRect::new(
-                self.rect.x + 18.0,
-                self.rect.y + (self.rect.height - icon_size) * 0.5,
-                icon_size,
-                icon_size,
-            );
-
-            frame.icon(self.layer, icon_rect, icon, self.style.text);
-
-            text_rect.x += icon_size + 24.0;
-            text_rect.width -= icon_size + 24.0;
+        if !has_text && !has_icon {
+            return;
         }
 
-        let color = if self.disabled {
+        let text_size = self
+            .text_size
+            .unwrap_or_else(|| (self.rect.height * 0.32).clamp(13.0, 22.0));
+
+        let padding_x = self
+            .padding_x
+            .unwrap_or_else(|| (self.rect.height * 0.34).clamp(10.0, 22.0));
+
+        let content_rect = self.rect.inset(UiEdgeInsets::symmetric(padding_x, 0.0));
+
+        if content_rect.width <= 0.0 || content_rect.height <= 0.0 {
+            return;
+        }
+
+        let content_color = if self.disabled {
             self.style.text_disabled
         } else {
             self.style.text
         };
 
-        frame.text_centered(
-            self.layer,
-            text_rect,
-            self.label,
-            (self.rect.height * 0.32).clamp(13.0, 22.0),
-            color,
-        );
+        if !has_icon {
+            self.draw_text(frame, content_rect, label, text_size, content_color);
+            return;
+        }
 
-        response
+        let icon = self.icon.expect("has_icon checked above");
+        let icon_size = self
+            .icon_size
+            .unwrap_or_else(|| (self.rect.height * 0.46).clamp(12.0, 28.0))
+            .min(content_rect.height * 0.72)
+            .min(content_rect.width);
+
+        if !has_text {
+            let icon_rect = center_rect(content_rect, icon_size, icon_size);
+            frame.icon(self.layer, icon_rect, icon, content_color);
+            return;
+        }
+
+        let gap = self
+            .icon_gap
+            .unwrap_or_else(|| (self.rect.height * 0.16).clamp(6.0, 12.0));
+
+        let available_text_width = (content_rect.width - icon_size - gap).max(0.0);
+
+        if available_text_width <= 0.0 {
+            let icon_rect = center_rect(content_rect, icon_size, icon_size);
+            frame.icon(self.layer, icon_rect, icon, content_color);
+            return;
+        }
+
+        let desired_text_width = estimate_text_width(label, text_size);
+        let text_width = desired_text_width.min(available_text_width);
+        let group_width = icon_size + gap + text_width;
+        let group_x = aligned_x(content_rect, group_width, self.content_align);
+
+        match self.icon_placement {
+            UiButtonIconPlacement::Leading => {
+                let icon_rect = UiRect::new(
+                    group_x,
+                    content_rect.y + (content_rect.height - icon_size) * 0.5,
+                    icon_size,
+                    icon_size,
+                );
+
+                let text_rect = UiRect::new(
+                    icon_rect.right() + gap,
+                    content_rect.y,
+                    text_width,
+                    content_rect.height,
+                );
+
+                frame.icon(self.layer, icon_rect, icon, content_color);
+                frame.text_centered(self.layer, text_rect, label, text_size, content_color);
+            }
+            UiButtonIconPlacement::Trailing => {
+                let text_rect =
+                    UiRect::new(group_x, content_rect.y, text_width, content_rect.height);
+
+                let icon_rect = UiRect::new(
+                    text_rect.right() + gap,
+                    content_rect.y + (content_rect.height - icon_size) * 0.5,
+                    icon_size,
+                    icon_size,
+                );
+
+                frame.text_centered(self.layer, text_rect, label, text_size, content_color);
+                frame.icon(self.layer, icon_rect, icon, content_color);
+            }
+        }
+    }
+
+    fn draw_text(
+        &self,
+        frame: &mut UiFrame,
+        rect: UiRect,
+        label: &str,
+        size: f32,
+        color: crate::UiColor,
+    ) {
+        match self.content_align {
+            UiButtonContentAlign::Left => {
+                frame.text_left_centered(self.layer, rect, label, size, color)
+            }
+            UiButtonContentAlign::Center => {
+                frame.text_centered(self.layer, rect, label, size, color)
+            }
+            UiButtonContentAlign::Right => {
+                frame.text_right_centered(self.layer, rect, label, size, color)
+            }
+        }
+    }
+}
+
+fn center_rect(bounds: UiRect, width: f32, height: f32) -> UiRect {
+    UiRect::new(
+        bounds.x + (bounds.width - width) * 0.5,
+        bounds.y + (bounds.height - height) * 0.5,
+        width,
+        height,
+    )
+}
+
+fn aligned_x(bounds: UiRect, content_width: f32, align: UiButtonContentAlign) -> f32 {
+    match align {
+        UiButtonContentAlign::Left => bounds.x,
+        UiButtonContentAlign::Center => bounds.x + (bounds.width - content_width) * 0.5,
+        UiButtonContentAlign::Right => bounds.right() - content_width,
+    }
+}
+
+fn estimate_text_width(text: &str, size: f32) -> f32 {
+    text.chars().map(|ch| glyph_width(ch, size)).sum()
+}
+
+fn glyph_width(ch: char, size: f32) -> f32 {
+    match ch {
+        ' ' => size * 0.35,
+        'i' | 'l' | 'I' | '!' | '|' | '.' | ',' | ':' | ';' => size * 0.36,
+        'm' | 'w' | 'M' | 'W' => size * 0.82,
+        '×' | '+' | '−' | '-' | '↕' | '⌕' | '▣' => size * 0.72,
+        c if c.is_ascii_digit() => size * 0.56,
+        c if c.is_ascii_uppercase() => size * 0.68,
+        _ => size * 0.58,
     }
 }
