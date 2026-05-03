@@ -1,0 +1,6 @@
+(
+    kind: block,
+    values: [
+        "voxelverse:sand",
+    ],
+)

@@ -1,27 +1,21 @@
 (
     display_key: Some("biome.voxelverse.forest"),
-    weight: 0.8,
-    required_tags: ["voxelverse:temperate"],
-    forbidden_tags: [],
-    preferred_tags: ["voxelverse:balanced_humidity"],
-    provided_tags: ["voxelverse:forest", "voxelverse:surface_biome"],
-
+    weight: 1.65,
+    provided_tags: [],
     climate: (
-        temperature: (min: -0.5, ideal_min: -0.1, ideal_max: 0.7, max: 1.0),
-        humidity: (min: -0.1, ideal_min: 0.25, ideal_max: 1.0, max: 1.0),
-        altitude: (min: -1.0, ideal_min: -0.2, ideal_max: 0.45, max: 0.9),
+        temperature: (min: 0.18, ideal_min: 0.35, ideal_max: 0.70, max: 0.88),
+        humidity: (min: 0.48, ideal_min: 0.62, ideal_max: 0.95, max: 1.00),
+        altitude: (min: 0.00, ideal_min: 0.05, ideal_max: 0.55, max: 0.82),
     ),
-
     relief: (
-        base_height_m: 2.0,
-        height_variance_m: 12.0,
-        roughness: 0.35,
+        base_height_m: 0.8,
+        height_variance_m: 7.0,
+        roughness: 1.05,
+        river_probability: 0.0,
     ),
-
     surface: [
-        (block: "voxelverse:grass", depth_m: Some(0.7)),
-        (block: "voxelverse:dirt", depth_m: Some(2.8)),
-        (block: "voxelverse:stone", depth_m: Some(999.0)),
+        (block: "voxelverse:grass", depth_m: Some(0.50)),
+        (block: "voxelverse:dirt", depth_m: Some(1.90)),
+        (block: "voxelverse:stone", depth_m: None),
     ],
 )
-

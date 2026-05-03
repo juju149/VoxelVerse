@@ -85,6 +85,8 @@ struct BlockVisual {
     response: vec4<f32>,
     palette: vec4<u32>,
     procedural: vec4<u32>,
+    
+    patterned: BlockPatternedProgram,
     faces: array<BlockFaceVisual, 6>,
     details: array<BlockDetail, 8>,
 }

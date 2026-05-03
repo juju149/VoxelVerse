@@ -60,16 +60,7 @@ fn strips(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCell> {
 }
 
 fn rings(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCell> {
-    // Mesh v1 keeps rings as concentric square-ish cells.
-    // The shader/emit step will round them visually in script 002.
-    grid(
-        PatternedMeshConfig {
-            rows: config.rows.max(config.columns).max(4),
-            columns: config.rows.max(config.columns).max(4),
-            ..config
-        },
-        face_seed,
-    )
+    vec![cell(config, face_seed, 0, 0, [0.0, 0.0], [1.0, 1.0])]
 }
 
 fn natural_cells(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCell> {

@@ -1,8 +1,65 @@
+use vv_registry::CompiledSurfaceProgram;
+
 use crate::{shape::VoxelCorners, MeshGen, Vertex};
 
-use super::{sample_soft_cube, world, SoftCubeEdgeMask, SoftCubeFace, SoftCubeParams};
+use super::{
+    local_to_world, sample_soft_cube, SoftCubeEdgeMask, SoftCubeFace, SoftCubeParams,
+    SoftCubeWorldFrame,
+};
 
 impl MeshGen {
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn add_surface_programmed_soft_cube_face(
+        verts: &mut Vec<Vertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        corners: VoxelCorners,
+        face: SoftCubeFace,
+        params: SoftCubeParams,
+        edge_mask: SoftCubeEdgeMask,
+        corner_colors: [[f32; 3]; 4],
+        texture_id: i32,
+        block_id: i32,
+        block_visual_id: u32,
+        voxel_pos: [i32; 3],
+        variation_seed: u32,
+        surface_program: CompiledSurfaceProgram,
+    ) {
+        match surface_program {
+            CompiledSurfaceProgram::Patterned(program) => Self::add_patterned_soft_cube_face(
+                verts,
+                inds,
+                idx,
+                corners,
+                face,
+                params,
+                edge_mask,
+                corner_colors,
+                texture_id,
+                block_id,
+                block_visual_id,
+                voxel_pos,
+                variation_seed,
+                program,
+            ),
+            CompiledSurfaceProgram::Flat => Self::add_soft_cube_face(
+                verts,
+                inds,
+                idx,
+                corners,
+                face,
+                params,
+                edge_mask,
+                corner_colors,
+                texture_id,
+                block_id,
+                block_visual_id,
+                voxel_pos,
+                variation_seed,
+            ),
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn add_soft_cube_face(
         verts: &mut Vec<Vertex>,
@@ -20,7 +77,7 @@ impl MeshGen {
         variation_seed: u32,
     ) {
         let params = params.sanitized();
-        let frame = world::SoftCubeWorldFrame::from_corners(corners);
+        let frame = SoftCubeWorldFrame::from_corners(corners);
         let segments = params.segments;
 
         for y in 0..segments {
@@ -47,10 +104,10 @@ impl MeshGen {
                     inds,
                     idx,
                     [
-                        world::local_to_world(corners, p00.position),
-                        world::local_to_world(corners, p10.position),
-                        world::local_to_world(corners, p11.position),
-                        world::local_to_world(corners, p01.position),
+                        local_to_world(corners, p00.position),
+                        local_to_world(corners, p10.position),
+                        local_to_world(corners, p11.position),
+                        local_to_world(corners, p01.position),
                     ],
                     colors,
                     texture_id,

@@ -187,7 +187,7 @@ impl MeshGen {
 
         if let Some(soft_params) = Self::soft_cube_params(render) {
             if top_visible {
-                Self::add_soft_cube_face(
+                Self::add_surface_programmed_soft_cube_face(
                     verts,
                     inds,
                     idx,
@@ -201,11 +201,12 @@ impl MeshGen {
                     block_visual_id,
                     voxel_pos,
                     Self::stable_variation_seed(id, block_id, 0, planet_seed),
+                    render.material.surface_program,
                 );
             }
 
             if bottom_visible {
-                Self::add_soft_cube_face(
+                Self::add_surface_programmed_soft_cube_face(
                     verts,
                     inds,
                     idx,
@@ -219,11 +220,12 @@ impl MeshGen {
                     block_visual_id,
                     voxel_pos,
                     Self::stable_variation_seed(id, block_id, 1, planet_seed),
+                    render.material.surface_program,
                 );
             }
 
             if front_visible {
-                Self::add_soft_cube_face(
+                Self::add_surface_programmed_soft_cube_face(
                     verts,
                     inds,
                     idx,
@@ -237,11 +239,12 @@ impl MeshGen {
                     block_visual_id,
                     voxel_pos,
                     Self::stable_variation_seed(id, block_id, 2, planet_seed),
+                    render.material.surface_program,
                 );
             }
 
             if back_visible {
-                Self::add_soft_cube_face(
+                Self::add_surface_programmed_soft_cube_face(
                     verts,
                     inds,
                     idx,
@@ -255,11 +258,12 @@ impl MeshGen {
                     block_visual_id,
                     voxel_pos,
                     Self::stable_variation_seed(id, block_id, 3, planet_seed),
+                    render.material.surface_program,
                 );
             }
 
             if left_visible {
-                Self::add_soft_cube_face(
+                Self::add_surface_programmed_soft_cube_face(
                     verts,
                     inds,
                     idx,
@@ -273,11 +277,12 @@ impl MeshGen {
                     block_visual_id,
                     voxel_pos,
                     Self::stable_variation_seed(id, block_id, 4, planet_seed),
+                    render.material.surface_program,
                 );
             }
 
             if right_visible {
-                Self::add_soft_cube_face(
+                Self::add_surface_programmed_soft_cube_face(
                     verts,
                     inds,
                     idx,
@@ -291,6 +296,7 @@ impl MeshGen {
                     block_visual_id,
                     voxel_pos,
                     Self::stable_variation_seed(id, block_id, 5, planet_seed),
+                    render.material.surface_program,
                 );
             }
 

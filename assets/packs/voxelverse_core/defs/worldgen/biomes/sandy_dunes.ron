@@ -1,0 +1,20 @@
+(
+    display_key: Some("biome.voxelverse.sandy_dunes"),
+    weight: 2.10,
+    provided_tags: [],
+    climate: (
+        temperature: (min: 0.55, ideal_min: 0.68, ideal_max: 1.00, max: 1.00),
+        humidity: (min: 0.00, ideal_min: 0.00, ideal_max: 0.34, max: 0.54),
+        altitude: (min: 0.00, ideal_min: 0.00, ideal_max: 0.50, max: 0.78),
+    ),
+    relief: (
+        base_height_m: -0.6,
+        height_variance_m: 4.2,
+        roughness: 0.72,
+        river_probability: 0.0,
+    ),
+    surface: [
+        (block: "voxelverse:sand", depth_m: Some(2.20)),
+        (block: "voxelverse:stone", depth_m: None),
+    ],
+)

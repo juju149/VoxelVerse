@@ -13,9 +13,9 @@
     render: (
         material: (
             kind: grass,
-            base_color: "#6F4A2B",
-            palette: ["#78A83A", "#6F4A2B", "#4D321F"],
-            roughness: 0.85,
+            base_color: "#FFFFFF",
+            palette: ["#78A83A", "#8FC447", "#6F4A2B", "#573018", "#3E2718"],
+            roughness: 0.88,
             metallic: 0.0,
             alpha: 1.0,
             tint: grass_color,
@@ -24,29 +24,29 @@
         shape: (
             kind: cube,
             profile: soft_cube,
-            bevel: 0.055,
-            roundness: 0.65,
+            bevel: 0.045,
+            roundness: 0.62,
             face_depth: 0.0,
-            normal_strength: 0.70,
+            normal_strength: 0.60,
         ),
         program: (type: "flat"),
         variation: (
-            per_voxel_tint: 0.0,
-            per_face_tint: 0.0,
-            macro_noise_scale: 1.0,
-            macro_noise_strength: 0.0,
-            micro_noise_scale: 1.0,
-            micro_noise_strength: 0.0,
-            edge_darkening: 0.0,
+            per_voxel_tint: 0.08,
+            per_face_tint: 0.04,
+            macro_noise_scale: 1.4,
+            macro_noise_strength: 0.08,
+            micro_noise_scale: 7.0,
+            micro_noise_strength: 0.03,
+            edge_darkening: 0.12,
             ao_influence: 1.0,
         ),
         environment: (
-            biome_tint_strength: 0.25,
+            biome_tint_strength: 0.30,
         ),
         faces: (
-            top: Some((color_bias: Some("#78A83A"))),
-            side: Some((color_bias: Some("#6F4A2B"))),
-            bottom: Some((color_bias: Some("#573018"))),
+            top: Some((color_bias: Some("#7FBA3F"))),
+            side: Some((color_bias: Some("#735033"))),
+            bottom: Some((color_bias: Some("#4A2E1C"))),
         ),
         meshing: (
             render_mode: opaque,
@@ -63,5 +63,3 @@
     ),
     drops: none,
 )
-
-

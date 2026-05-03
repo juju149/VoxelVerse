@@ -1,0 +1,21 @@
+(
+    display_key: Some("biome.voxelverse.rocky_highlands"),
+    weight: 2.35,
+    provided_tags: [],
+    climate: (
+        temperature: (min: 0.00, ideal_min: 0.12, ideal_max: 0.60, max: 0.88),
+        humidity: (min: 0.00, ideal_min: 0.05, ideal_max: 0.58, max: 0.95),
+        altitude: (min: 0.38, ideal_min: 0.56, ideal_max: 1.00, max: 1.00),
+    ),
+    relief: (
+        base_height_m: 2.8,
+        height_variance_m: 11.5,
+        roughness: 1.35,
+        river_probability: 0.0,
+    ),
+    surface: [
+        (block: "voxelverse:stone", depth_m: Some(1.40)),
+        (block: "voxelverse:dirt", depth_m: Some(0.80)),
+        (block: "voxelverse:stone", depth_m: None),
+    ],
+)

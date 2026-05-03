@@ -44,6 +44,34 @@ pub(crate) fn sample_soft_cube(
     point
 }
 
+pub(crate) fn sample_soft_cube_uv(
+    face: SoftCubeFace,
+    u: f32,
+    v: f32,
+    params: SoftCubeParams,
+    edge_mask: SoftCubeEdgeMask,
+) -> SoftCubePoint {
+    let params = params.sanitized();
+
+    let u = u.clamp(0.0, 1.0);
+    let v = v.clamp(0.0, 1.0);
+
+    let local_u = grid::local_axis(u) * 0.5;
+    let local_v = grid::local_axis(v) * 0.5;
+
+    let hard = face_point(face, local_u, local_v);
+    let face_normal = face_normal(face);
+    let exposure = AxisExposure::from_face(face, edge_mask);
+
+    let rounded = rounded_box_project(hard, params.radius, exposure);
+    let pillow = pillow_amount(local_u, local_v, params.pillow);
+
+    SoftCubePoint {
+        position: rounded.position + face_normal * pillow,
+        normal: rounded.normal,
+        uv: [u, 1.0 - v],
+    }
+}
 fn face_point(face: SoftCubeFace, x: f32, y: f32) -> Vec3 {
     match face {
         SoftCubeFace::Top => Vec3::new(x, 0.5, y),

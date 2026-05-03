@@ -1,0 +1,21 @@
+(
+    display_key: Some("biome.voxelverse.plains"),
+    weight: 1.25,
+    provided_tags: [],
+    climate: (
+        temperature: (min: 0.25, ideal_min: 0.38, ideal_max: 0.72, max: 0.88),
+        humidity: (min: 0.22, ideal_min: 0.35, ideal_max: 0.72, max: 0.92),
+        altitude: (min: 0.00, ideal_min: 0.00, ideal_max: 0.42, max: 0.72),
+    ),
+    relief: (
+        base_height_m: 0.0,
+        height_variance_m: 5.5,
+        roughness: 0.95,
+        river_probability: 0.0,
+    ),
+    surface: [
+        (block: "voxelverse:grass", depth_m: Some(0.55)),
+        (block: "voxelverse:dirt", depth_m: Some(1.70)),
+        (block: "voxelverse:stone", depth_m: None),
+    ],
+)

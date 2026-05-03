@@ -6,6 +6,8 @@ use vv_world_runtime::{ChunkMods, PlanetData};
 
 use crate::{overlay::FeatureOverlay, MeshGen, Vertex};
 
+const TERRAIN_VISIBLE_SHELL_LAYERS: u32 = 1;
+
 impl MeshGen {
     pub fn build_chunk(
         key: ChunkKey,
@@ -41,12 +43,16 @@ impl MeshGen {
                     continue;
                 }
 
-                candidates.insert(BlockId {
-                    face: key.face,
-                    layer: h,
-                    u,
-                    v,
-                });
+                let shell_bottom = h.saturating_sub(TERRAIN_VISIBLE_SHELL_LAYERS);
+
+                for layer in shell_bottom..=h {
+                    candidates.insert(BlockId {
+                        face: key.face,
+                        layer,
+                        u,
+                        v,
+                    });
+                }
 
                 let mut min_h = h;
 
