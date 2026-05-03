@@ -486,7 +486,7 @@ fn vv_layered_surface_color(
     // Side face — bleed the top color down as an irregular fringe.
     let top_color = vv_face_bias(visual, 0u);
     let has_top_bias = length(top_color - vec3<f32>(1.0)) > 0.015;
-    let target = select(color * vec3<f32>(0.62, 1.10, 0.55), top_color, has_top_bias);
+    let bleed_color = select(color * vec3<f32>(0.62, 1.10, 0.55), top_color, has_top_bias);
 
     // gap_width is .ron-clamped to [0, 0.2]; treat that range as the full
     // [0, 0.5] fringe-height span so layered_surface can author tall fringes.
@@ -500,7 +500,7 @@ fn vv_layered_surface_color(
     let fringe_edge = fringe_h + (noise - 0.5) * irregularity * 2.0;
     let fringe = 1.0 - smoothstep(fringe_edge - 0.03, fringe_edge + 0.04, v_from_top);
 
-    return max(mix(color, target, fringe), vec3<f32>(0.0));
+    return max(mix(color, bleed_color, fringe), vec3<f32>(0.0));
 }
 
 fn patterned_block_albedo(
