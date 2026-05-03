@@ -468,14 +468,16 @@ fn vv_layered_surface_color(
     var color = base;
 
     if (face_id == 0u) {
+        // Top face: continuous patchy color via value noise (no discrete grid),
+        // and one set of horizontal blade fibers for relief.
         let fiber_density = max(f32(visual.patterned.rows), 6.0);
         let jitter = hash13(seed + vec3<f32>(43.0, 7.0, 19.0));
         let fiber_wave = abs(fract((uv.x + jitter * 0.31) * fiber_density * 0.55) - 0.5);
         let fiber_mask = 1.0 - smoothstep(0.10, 0.32, fiber_wave);
 
-        let patch_h = hash13(vec3<f32>(floor(uv.x * 3.0), floor(uv.y * 3.0), seed.z));
-        color *= 1.0 + (patch_h - 0.5) * saturate(visual.patterned.color_variation) * 0.50;
-        color = mix(color, color * vec3<f32>(1.10, 1.20, 0.86), fiber_mask * 0.20);
+        let patch_noise = vv_value_noise_3d(vec3<f32>(uv.x * 4.5, uv.y * 4.5, seed.z * 0.07));
+        color *= 1.0 + (patch_noise - 0.5) * saturate(visual.patterned.color_variation) * 0.45;
+        color = mix(color, color * vec3<f32>(1.06, 1.14, 0.88), fiber_mask * 0.22);
         return max(color, vec3<f32>(0.0));
     }
 
@@ -483,7 +485,8 @@ fn vv_layered_surface_color(
         return color;
     }
 
-    // Side face — bleed the top color down as an irregular fringe.
+    // Side face: bleed the top-face authored color down from the top edge
+    // as an irregular fringe.
     let top_color = vv_face_bias(visual, 0u);
     let has_top_bias = length(top_color - vec3<f32>(1.0)) > 0.015;
     let bleed_color = select(color * vec3<f32>(0.62, 1.10, 0.55), top_color, has_top_bias);
@@ -493,12 +496,14 @@ fn vv_layered_surface_color(
     let fringe_h = clamp(visual.patterned.gap_width * 2.5, 0.05, 0.50);
     // height_variation is .ron-clamped to [0, 0.15]; map it to [0, 0.6] so
     // small authored values produce visibly irregular fringe edges.
-    let irregularity = saturate(visual.patterned.height_variation * 4.0) * 0.10;
+    let irregularity = saturate(visual.patterned.height_variation * 4.0) * 0.12;
     let v_from_top = 1.0 - uv.y;
 
-    let noise = vv_value_noise_3d(vec3<f32>(uv.x * 14.0, seed.x * 0.05, seed.y * 0.03));
+    // Low-frequency value noise (~3 cycles/face) gives a soft scalloped fringe
+    // edge. Higher frequencies produced obvious vertical streaks.
+    let noise = vv_value_noise_3d(vec3<f32>(uv.x * 3.5, seed.x * 0.05, seed.y * 0.03));
     let fringe_edge = fringe_h + (noise - 0.5) * irregularity * 2.0;
-    let fringe = 1.0 - smoothstep(fringe_edge - 0.03, fringe_edge + 0.04, v_from_top);
+    let fringe = 1.0 - smoothstep(fringe_edge - 0.04, fringe_edge + 0.05, v_from_top);
 
     return max(mix(color, bleed_color, fringe), vec3<f32>(0.0));
 }
