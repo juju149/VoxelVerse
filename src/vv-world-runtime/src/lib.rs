@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use vv_core::{BlockId as VoxelId, ChunkKey, CHUNK_SIZE};
 use vv_planet::PlanetGeometry;
 use vv_registry::BlockId as ContentBlockId;
+use vv_voxel::{BlockId as VoxelId, ChunkKey, CHUNK_SIZE};
 use vv_world_gen::PlanetTerrain;
 
 /// Tracks player modifications (mined / placed blocks) for a single chunk.

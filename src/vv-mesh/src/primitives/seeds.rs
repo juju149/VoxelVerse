@@ -1,5 +1,5 @@
-use vv_core::BlockId;
 use vv_registry::BlockId as ContentBlockId;
+use vv_voxel::BlockId;
 
 use crate::MeshGen;
 

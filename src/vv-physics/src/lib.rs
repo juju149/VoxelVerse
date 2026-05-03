@@ -1,7 +1,7 @@
 use glam::{Quat, Vec3};
 use vv_config::PhysicsConfig;
-use vv_core::BlockId;
 use vv_planet::CoordSystem;
+use vv_voxel::BlockId;
 use vv_world_runtime::PlanetData;
 
 /// Physics solver for round-planet movement and collision.

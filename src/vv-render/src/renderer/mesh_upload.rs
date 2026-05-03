@@ -2,8 +2,8 @@ use glam::Vec3;
 use std::time::{Duration, Instant};
 use wgpu::util::DeviceExt;
 
-use vv_core::{ChunkKey, LodKey};
 use vv_mesh::{MeshGen, Vertex};
+use vv_voxel::{ChunkKey, LodKey};
 use vv_world_runtime::PlanetData;
 
 use crate::ChunkMesh;

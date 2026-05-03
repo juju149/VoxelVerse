@@ -1,5 +1,5 @@
-use vv_core::BlockId;
 use vv_registry::{BlockId as ContentBlockId, BlockRenderSource, CompiledBlockFace};
+use vv_voxel::BlockId;
 use vv_world_runtime::PlanetData;
 
 use crate::{overlay::FeatureOverlay, shape::VoxelOcclusion, MeshGen, Vertex};

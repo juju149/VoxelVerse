@@ -1,8 +1,8 @@
 use glam::Vec3;
 
-use vv_core::LodKey;
 use vv_planet::CoordSystem;
 use vv_registry::{BlockRenderSource, CompiledBlockFace, CompiledRenderMode};
+use vv_voxel::LodKey;
 
 use crate::{MeshGen, Vertex};
 

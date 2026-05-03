@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+vv-voxel        = { path = "../vv-voxel" }
 vv-core          = { path = "../vv-core" }
 vv-planet        = { path = "../vv-planet" }
 vv-world-runtime = { path = "../vv-world-runtime" }

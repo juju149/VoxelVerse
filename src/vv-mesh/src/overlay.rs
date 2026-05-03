@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use vv_core::{BlockId, ChunkKey, CHUNK_SIZE};
 use vv_registry::BlockId as ContentBlockId;
+use vv_voxel::{BlockId, ChunkKey, CHUNK_SIZE};
 use vv_world_runtime::PlanetData;
 
 pub(crate) struct FeatureOverlay {
