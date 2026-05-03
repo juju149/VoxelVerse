@@ -12,10 +12,9 @@ pub fn build_gameplay_ui_frame(ctx: GameplayUiContext<'_>) -> UiFrame {
 
     if ctx.gameplay.inventory_open {
         InventoryScreen::draw(&mut frame, &ctx);
-    } else {
-        HotbarScreen::draw(&mut frame, &ctx);
     }
 
+    HotbarScreen::draw(&mut frame, &ctx);
     ConsoleScreen::draw(&mut frame, &ctx);
 
     frame

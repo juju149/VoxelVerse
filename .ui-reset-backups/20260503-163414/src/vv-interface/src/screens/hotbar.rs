@@ -1,5 +1,4 @@
-use vv_ui::widgets::{UiSlot, UiSlotContent};
-use vv_ui::{UiFrame, UiInput, UiLayer, UiRect, UiStyle, UiWidgetId};
+use vv_ui::{UiFrame, UiInput, UiLayer, UiRect, UiSlot, UiSlotContent, UiStyle, UiWidgetId};
 
 use crate::{item_visual, GameplayUiContext, InventoryUiLayout};
 
@@ -14,8 +13,25 @@ impl HotbarScreen {
             &ctx.gameplay.inventory,
         );
 
+        Self::draw_from_layout(frame, ctx, &layout);
+    }
+
+    fn draw_from_layout(
+        frame: &mut UiFrame,
+        ctx: &GameplayUiContext<'_>,
+        layout: &InventoryUiLayout,
+    ) {
+        if layout.hotbar_slots.is_empty() {
+            return;
+        }
+
         let styles = UiStyle::from_theme(ctx.theme);
         let input = UiInput::default();
+        let layer = if ctx.gameplay.inventory_open {
+            UiLayer::Menu
+        } else {
+            UiLayer::Hud
+        };
 
         for hotbar_slot in &layout.hotbar_slots {
             let stack = ctx.gameplay.inventory.slots()[hotbar_slot.index].stack;
@@ -23,12 +39,12 @@ impl HotbarScreen {
             let hidden = ctx.gameplay.inventory_drag.source_slot == Some(hotbar_slot.index);
 
             let mut slot = UiSlot::new(
-                UiWidgetId::new(30_000 + hotbar_slot.index as u64),
+                hotbar_widget_id(layer, hotbar_slot.index),
                 hotbar_slot.rect,
                 styles.slot,
             )
             .selected(hotbar_slot.index == ctx.gameplay.selected_hotbar_slot)
-            .layer(UiLayer::Hud);
+            .layer(layer);
 
             if let Some(visual) = visual.as_ref().filter(|_| !hidden) {
                 slot = slot
@@ -44,6 +60,7 @@ impl HotbarScreen {
                 hotbar_slot.index,
                 layout.scale,
                 ctx,
+                layer,
             );
         }
     }
@@ -55,9 +72,10 @@ fn draw_slot_number(
     index: usize,
     scale: f32,
     ctx: &GameplayUiContext<'_>,
+    layer: UiLayer,
 ) {
     frame.text(
-        UiLayer::Hud,
+        layer,
         UiRect::new(
             rect.x + 6.0 * scale,
             rect.y + 4.0 * scale,
@@ -68,4 +86,18 @@ fn draw_slot_number(
         12.0 * scale,
         ctx.theme.text_primary,
     );
+}
+
+fn hotbar_widget_id(layer: UiLayer, index: usize) -> UiWidgetId {
+    let layer_offset = match layer {
+        UiLayer::Background => 10_000,
+        UiLayer::SceneOverlay => 20_000,
+        UiLayer::Hud => 30_000,
+        UiLayer::Menu => 40_000,
+        UiLayer::Popup => 50_000,
+        UiLayer::Tooltip => 60_000,
+        UiLayer::Cursor => 70_000,
+    };
+
+    UiWidgetId::new(layer_offset + index as u64)
 }
