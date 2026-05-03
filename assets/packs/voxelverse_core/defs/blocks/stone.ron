@@ -32,7 +32,7 @@
             normal_strength: 0.70,
         ),
         program: (
-            type: patterned,
+            type: "patterned",
             pattern: running_bond,
             rows: 4,
             columns: 3,

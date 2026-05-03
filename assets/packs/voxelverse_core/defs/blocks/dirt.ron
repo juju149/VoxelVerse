@@ -30,7 +30,7 @@
             normal_strength: 0.0,
         ),
         program: (
-            type: patterned,
+            type: "patterned",
             pattern: natural_cells,
             rows: 3,
             columns: 3,

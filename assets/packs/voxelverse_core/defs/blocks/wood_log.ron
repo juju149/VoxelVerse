@@ -31,7 +31,7 @@
             normal_strength: 0.0,
         ),
         program: (
-            type: patterned,
+            type: "patterned",
             pattern: rings,
             rows: 5,
             columns: 5,
