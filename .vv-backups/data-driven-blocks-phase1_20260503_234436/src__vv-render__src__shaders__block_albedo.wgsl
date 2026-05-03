@@ -79,11 +79,11 @@ fn vv_authored_base_color(
     let has_face_bias = length(bias - vec3<f32>(1.0)) > 0.015;
 
     if (has_face_bias) {
-        // Face colors are material targets, not multiplicative filters.
-        // Multiplying green grass by brown dirt destroys hue and creates black bands.
-        // This remains generic for grass, snow caps, moss, clay, mud and layered blocks.
-        let bias_strength = select(0.90, 0.72, base_is_white);
-        base = mix(base, bias, bias_strength);
+        if (base_is_white) {
+            base = mix(base, bias, 0.72);
+        } else {
+            base = base * bias;
+        }
     }
 
     return max(base, vec3<f32>(0.0));
