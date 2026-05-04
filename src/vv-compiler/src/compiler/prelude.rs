@@ -6,13 +6,7 @@ pub(super) use vv_pack::{load_packs_from_assets, PackLoadOrder, RawDocument};
 pub(super) use vv_registry::*;
 
 pub(super) use vv_schema::{
-    block::{
-        BlockDef, BlockDetailDef, BlockDetailFace, BlockDetailKind, BlockGeometryProfile,
-        BlockMaterialKind, BlockPatternKind,
-        BlockPatternOrientation, BlockPatternedProgramDef, BlockShape, BlockSurfaceProgramDef,
-        MaterialPhase, RawBlockEnvironmentResponseDef, RawBlockFaceVisual, RawBlockVisualVariation,
-        RenderMode, TintMode,
-    },
+    block::*,
     common::tool::ToolKind,
     common::{
         BlockRef, EntityRef, HexColor, ItemRef, LootTableRef, PlaceableRef, ResourceRef, TagRef,

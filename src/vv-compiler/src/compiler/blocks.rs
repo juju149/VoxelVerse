@@ -125,7 +125,7 @@ impl super::ContentCompiler {
         );
 
         let geometry_profile_id = geometry_profile_id(&doc.value.render.shape.profile) as f32;
-        let surface_program = self.compile_surface_program(doc, &doc.value.render.program);
+        let surface_program = self.compile_render_surface_program(doc, &doc.value.render);
         let patterned_program = surface_program.patterned_runtime();
 
         let face_depth = self.clamp_unit(
@@ -282,7 +282,7 @@ impl super::ContentCompiler {
 
             variation,
 
-            surface_program: self.compile_surface_program(doc, &render.program),
+            surface_program: self.compile_render_surface_program(doc, render),
 
             procedural: BlockProceduralConfig::new(10, false),
 
@@ -320,7 +320,7 @@ impl super::ContentCompiler {
                 ),
             },
 
-            details: self.compile_details(doc, &render.details),
+            details: self.compile_render_details(doc, render),
         }
     }
 
