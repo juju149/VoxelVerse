@@ -181,8 +181,7 @@ fn vv_cells_color(
     var c = base;
     c *= 1.0 + (cell_hash - 0.5) * 2.0 * saturate(visual.patterned.color_variation);
 
-    let pillow = 1.0 - smoothstep(0.05, 0.62, closest);
-    c *= 1.0 + pillow * visual.patterned.cell_pillow * 1.4;
+    // Flat cartoon faces: no cell pillow highlight.
 
     let crack_amount = max(
         visual.patterned.crack_density,
@@ -239,9 +238,7 @@ fn vv_rect_color(
     var c = base;
     c *= 1.0 + (h - 0.5) * 2.0 * saturate(visual.patterned.color_variation);
 
-    let center_distance = length(local - vec2<f32>(0.5));
-    let center_highlight = 1.0 - smoothstep(0.10, 0.72, center_distance);
-    c *= 1.0 + center_highlight * visual.patterned.cell_pillow * 1.65;
+    // Flat cartoon faces: no center pillow highlight.
 
     let gap = clamp(visual.patterned.gap_width, 0.0, 0.20);
     let warped = clamp(local + vec2<f32>(h - 0.5, h2 - 0.5) * 0.035, vec2<f32>(0.0), vec2<f32>(1.0));
@@ -513,6 +510,55 @@ fn vv_apply_details(
     return max(c, vec3<f32>(0.0));
 }
 
+
+fn vv_cartoon_fake_bevel(
+    color: vec3<f32>,
+    uv: vec2<f32>,
+    normal: vec3<f32>,
+    up: vec3<f32>,
+    visual: BlockVisual,
+) -> vec3<f32> {
+    // Shader-only rounded voxel look.
+    // No vertex displacement, no holes, no extra mesh cost.
+    let edge_x = min(uv.x, 1.0 - uv.x);
+    let edge_y = min(uv.y, 1.0 - uv.y);
+    let edge = min(edge_x, edge_y);
+
+    let corner_dist = min(
+        length(uv - vec2<f32>(0.0, 0.0)),
+        min(
+            length(uv - vec2<f32>(1.0, 0.0)),
+            min(
+                length(uv - vec2<f32>(0.0, 1.0)),
+                length(uv - vec2<f32>(1.0, 1.0))
+            )
+        )
+    );
+
+    let radius = 0.135;
+    let edge_band = 1.0 - smoothstep(0.010, radius, edge);
+    let corner_band = 1.0 - smoothstep(0.045, radius * 1.35, corner_dist);
+
+    let bevel = saturate(edge_band * 0.75 + corner_band * 0.55);
+
+    let topness = saturate(dot(normal, up));
+    let bottomness = saturate(dot(-normal, up));
+    let sideness = saturate(1.0 - topness - bottomness);
+
+    var c = color;
+
+    // Soft candy edge: darker on side/bottom edges, slightly creamy on top edges.
+    let dark_edge = vec3<f32>(0.72, 0.76, 0.82);
+    let warm_highlight = vec3<f32>(1.10, 1.08, 0.98);
+
+    c = mix(c, c * dark_edge, bevel * (0.22 + sideness * 0.18 + bottomness * 0.24));
+    c = mix(c, c * warm_highlight, bevel * topness * 0.13);
+
+    // Preserve readable material colors.
+    c = vv_saturate_color(c, 1.06);
+
+    return max(c, vec3<f32>(0.0));
+}
 fn procedural_block_albedo(
     world_pos: vec3<f32>,
     normal: vec3<f32>,
@@ -601,6 +647,8 @@ fn procedural_block_albedo(
         variation_seed,
         up,
     );
+
+    color = vv_cartoon_fake_bevel(color, uv, normal, up, visual);
 
     return clamp(color, vec3<f32>(0.0), vec3<f32>(1.25));
 }

@@ -98,7 +98,7 @@ impl super::ContentCompiler {
             program.rows = cells.clamp(1, 12);
             program.columns = program.rows;
             program.cell_roundness = (*roundness).clamp(0.0, 1.0);
-            program.cell_pillow = (*height * 0.55).clamp(0.0, 0.10);
+            program.cell_pillow = 0.0;
             program.color_variation = (0.10 + density.clamp(0.0, 1.0) * 0.18).clamp(0.0, 1.0);
         }
 
@@ -138,7 +138,7 @@ impl super::ContentCompiler {
                 program.cell_bevel = (*bevel).clamp(0.0, 0.15);
                 program.cell_roundness =
                     (0.45 + irregularity.clamp(0.0, 1.0) * 0.45).clamp(0.0, 1.0);
-                program.cell_pillow = (*height * 0.40).clamp(0.0, 0.10);
+                program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation =
                     (0.08 + irregularity.clamp(0.0, 1.0) * 0.22).clamp(0.0, 1.0);
@@ -161,7 +161,7 @@ impl super::ContentCompiler {
                 program.gap_width = (*mortar_width).clamp(0.0, 0.20);
                 program.gap_depth = (*mortar_depth).clamp(0.0, 0.20);
                 program.cell_bevel = (*bevel).clamp(0.0, 0.15);
-                program.cell_pillow = (*height * 0.20).clamp(0.0, 0.10);
+                program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation = 0.14;
             }
@@ -182,7 +182,7 @@ impl super::ContentCompiler {
                 program.gap_width = (*gap_width).clamp(0.0, 0.20);
                 program.gap_depth = (*gap_depth).clamp(0.0, 0.20);
                 program.cell_bevel = (*bevel).clamp(0.0, 0.15);
-                program.cell_pillow = (*height * 0.20).clamp(0.0, 0.10);
+                program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation = 0.10;
             }
@@ -200,7 +200,7 @@ impl super::ContentCompiler {
                 program.gap_width = 0.0;
                 program.gap_depth = 0.0;
                 program.cell_roundness = 0.85;
-                program.cell_pillow = (*height * 0.20).clamp(0.0, 0.10);
+                program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation = (0.12 + wobble.clamp(0.0, 1.0) * 0.22).clamp(0.0, 1.0);
                 program.orientation = BlockPatternOrientation::Radial;
@@ -296,7 +296,7 @@ impl super::ContentCompiler {
                 program.gap_width = 0.010;
                 program.gap_depth = (*height * 0.35).clamp(0.0, 0.20);
                 program.cell_roundness = (*roundness).clamp(0.0, 1.0);
-                program.cell_pillow = (*height * 0.55).clamp(0.0, 0.10);
+                program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation = 0.20;
             }
@@ -316,7 +316,7 @@ impl super::ContentCompiler {
                 program.gap_width = 0.004 + density.clamp(0.0, 1.0) * 0.012;
                 program.gap_depth = (*height * 0.25).clamp(0.0, 0.20);
                 program.cell_roundness = 0.85;
-                program.cell_pillow = (*height * 0.35).clamp(0.0, 0.10);
+                program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation = 0.16;
             }
@@ -334,7 +334,7 @@ impl super::ContentCompiler {
                 program.gap_width = 0.010 + density.clamp(0.0, 1.0) * 0.030;
                 program.gap_depth = (*height * 0.45).clamp(0.0, 0.20);
                 program.cell_roundness = 0.70;
-                program.cell_pillow = (*height * 0.40).clamp(0.0, 0.10);
+                program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation = 0.30;
             }
@@ -346,7 +346,7 @@ impl super::ContentCompiler {
                 program.gap_width = 0.060;
                 program.gap_depth = 0.060;
                 program.cell_roundness = 0.75;
-                program.cell_pillow = 0.025;
+                program.cell_pillow = 0.0;
                 program.height_variation = 0.055;
                 program.color_variation = (0.35 + pulse.clamp(0.0, 1.0) * 0.30).clamp(0.0, 1.0);
                 program.crack_density = 0.55;

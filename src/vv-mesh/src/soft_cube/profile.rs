@@ -24,10 +24,8 @@ pub(crate) fn sample_soft_cube(
     let exposure = AxisExposure::from_face(face, edge_mask);
 
     let rounded = rounded_box_project(hard, params.radius, exposure);
-    let pillow = pillow_amount(local_u, local_v, params.pillow);
-
     let mut point = SoftCubePoint {
-        position: rounded.position + face_normal * pillow,
+        position: rounded.position,
         normal: rounded.normal,
         uv: [u, 1.0 - v],
     };
@@ -64,10 +62,8 @@ pub(crate) fn sample_soft_cube_uv(
     let exposure = AxisExposure::from_face(face, edge_mask);
 
     let rounded = rounded_box_project(hard, params.radius, exposure);
-    let pillow = pillow_amount(local_u, local_v, params.pillow);
-
     SoftCubePoint {
-        position: rounded.position + face_normal * pillow,
+        position: rounded.position,
         normal: rounded.normal,
         uv: [u, 1.0 - v],
     }

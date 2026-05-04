@@ -197,7 +197,12 @@ impl<'a> Renderer<'a> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(atmosphere.clear_color()),
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.62,
+                            g: 0.80,
+                            b: 1.0,
+                            a: 1.0,
+                        }),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
