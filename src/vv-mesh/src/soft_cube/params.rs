@@ -9,16 +9,16 @@ impl SoftCubeParams {
     #[inline]
     pub(crate) fn polished_default() -> Self {
         Self {
-            radius: 0.0,
+            radius: 0.10,
             pillow: 0.0,
-            segments: 1,
+            segments: 3,
         }
     }
 
     #[inline]
     pub(crate) fn sanitized(self) -> Self {
         Self {
-            radius: self.radius.clamp(0.0, 0.12),
+            radius: self.radius.clamp(0.0, 0.16),
             pillow: 0.0,
             segments: self.segments.clamp(1, 3),
         }

@@ -55,7 +55,7 @@
                         count: 7,
                         amplitude: 0.36,
                         frequency: 1.25,
-                        height: 0.032,
+                        height: 0.012,
                     ),
                     blend: (),
                     seed: 2201,
@@ -72,7 +72,7 @@
                         density: 0.85,
                         min_size: 0.020,
                         max_size: 0.055,
-                        height: 0.032,
+                        height: 0.014,
                     ),
                     blend: (
                         mode: overlay,

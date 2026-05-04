@@ -23,7 +23,7 @@ fn grid(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCell> {
 
     for row in 0..rows {
         for column in 0..columns {
-            cells.push(cell_in_grid(config, face_seed, row, column, 0.0, 0.0, 0.0));
+            cells.push(cell_in_grid(config, face_seed, row, column, 0.0, 0.0));
         }
     }
 
@@ -38,9 +38,7 @@ fn running_bond(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCel
     for row in 0..rows {
         let stagger = if row % 2 == 0 { 0.0 } else { 0.5 };
         for column in 0..columns {
-            cells.push(cell_in_grid(
-                config, face_seed, row, column, stagger, 0.0, 0.0,
-            ));
+            cells.push(cell_in_grid(config, face_seed, row, column, stagger, 0.0));
         }
     }
 
@@ -67,18 +65,9 @@ fn natural_cells(config: PatternedMeshConfig, face_seed: u32) -> Vec<PatternedCe
 
     for row in 0..rows {
         for column in 0..columns {
-            let jx = (noise::hash01(face_seed, row, column, 11) - 0.5) * 0.10;
-            let jy = (noise::hash01(face_seed, row, column, 17) - 0.5) * 0.10;
-            let shrink = noise::hash01(face_seed, row, column, 23) * 0.020;
-            cells.push(cell_in_grid(
-                config,
-                face_seed,
-                row,
-                column,
-                0.0,
-                jx,
-                jy + shrink,
-            ));
+            let jx = (noise::hash01(face_seed, row, column, 11) - 0.5) * 0.12;
+            let jy = (noise::hash01(face_seed, row, column, 17) - 0.5) * 0.12;
+            cells.push(cell_in_grid(config, face_seed, row, column, 0.0, jx + jy));
         }
     }
 
@@ -91,8 +80,7 @@ fn cell_in_grid(
     row: u32,
     column: u32,
     stagger_x: f32,
-    jitter_x: f32,
-    jitter_y: f32,
+    jitter: f32,
 ) -> PatternedCell {
     let rows = config.rows.max(1);
     let columns = config.columns.max(1);
@@ -100,16 +88,16 @@ fn cell_in_grid(
     let cell_w = 1.0 / columns as f32;
     let cell_h = 1.0 / rows as f32;
 
-    let mut u0 = (column as f32 + stagger_x + jitter_x) * cell_w;
-    let mut u1 = u0 + cell_w * (1.0 - jitter_y.abs() * 0.22);
+    let mut u0 = (column as f32 + stagger_x) * cell_w;
+    let mut u1 = u0 + cell_w;
 
     if u0 >= 1.0 {
         u0 -= 1.0;
         u1 -= 1.0;
     }
 
-    let v0 = (row as f32 * cell_h + jitter_y * cell_h).clamp(0.0, 1.0);
-    let v1 = ((row + 1) as f32 * cell_h + jitter_y * cell_h).clamp(0.0, 1.0);
+    let v0 = (row as f32 * cell_h + jitter * cell_h).clamp(0.0, 1.0);
+    let v1 = ((row + 1) as f32 * cell_h + jitter * cell_h).clamp(0.0, 1.0);
 
     cell(
         config,

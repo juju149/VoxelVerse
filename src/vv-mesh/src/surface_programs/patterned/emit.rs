@@ -39,10 +39,15 @@ impl MeshGen {
     ) {
         let params = params.sanitized();
         let config = PatternedMeshConfig::from_runtime(program);
-        // Real surface relief:
-        // Any geometric patterned surface can emit panels + recessed mortar.
-        // If the author gives no gap/depth, fallback to a clean face.
-        if config.gap_width <= 0.0001 || config.gap_depth <= 0.0001 {
+
+        // PATTERNED_ORGANIC_SHADER_ONLY_GUARD
+        // Organic Patterned programs are shader-only.
+        // They must not emit rectangular panel geometry over the soft-cube face.
+        if config.kind == vv_registry::RUNTIME_PATTERN_NATURAL_CELLS
+            || config.kind == vv_registry::RUNTIME_PATTERN_CRACKED_CELLS
+            || config.gap_width <= 0.0001
+            || config.gap_depth <= 0.0001
+        {
             Self::add_soft_cube_face(
                 verts,
                 inds,
@@ -60,6 +65,7 @@ impl MeshGen {
             );
             return;
         }
+
         // Shader-only patterns (e.g. rings) leave the mesh as a clean soft cube
         // and rely on the fragment shader for visual structure.
         if !pattern_has_geometry(config.kind) {

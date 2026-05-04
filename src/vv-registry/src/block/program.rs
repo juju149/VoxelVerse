@@ -20,14 +20,17 @@ pub const RUNTIME_PATTERN_FLAG_STAGGER: u32 = 1 << 0;
 pub const RUNTIME_PATTERN_ORIENTATION_SHIFT: u32 = 8;
 pub const RUNTIME_PATTERN_ORIENTATION_MASK: u32 = 0xFF << RUNTIME_PATTERN_ORIENTATION_SHIFT;
 
-/// True when the pattern should generate real surface relief mesh.
+/// Whether a pattern kind generates per-cell geometry (recessed mortar, raised
+/// panels, bevels) or is purely a shader effect that paints a flat soft cube.
 ///
-/// Important:
-/// - This does NOT round/cut the sealed cube body.
-/// - This only adds/offsets geometry on visible faces.
-/// - Rings stay shader-only because wood rings are continuous material, not masonry.
+/// Geometry patterns (bricks/wall layouts) carve volume out of the face.
+/// Shader patterns (rings/wood-like organic surfaces) leave the mesh as a clean
+/// soft cube and rely entirely on the fragment shader for visual structure.
 pub fn pattern_has_geometry(kind: u32) -> bool {
-    !matches!(kind, RUNTIME_PATTERN_RINGS)
+    !matches!(
+        kind,
+        RUNTIME_PATTERN_RINGS | RUNTIME_PATTERN_LAYERED_SURFACE,
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

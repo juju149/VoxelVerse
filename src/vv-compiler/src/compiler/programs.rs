@@ -59,15 +59,15 @@ impl super::ContentCompiler {
 
         let mut program = BlockPatternedProgramDef {
             pattern: BlockPatternKind::LayeredSurface,
-            rows: 5,
-            columns: 5,
+            rows: 10,
+            columns: 10,
             stagger: true,
-            gap_width: 0.045,
-            gap_depth: 0.055,
-            cell_bevel: 0.030,
+            gap_width: 0.10,
+            gap_depth: 0.018,
+            cell_bevel: 0.008,
             cell_roundness: 0.88,
-            cell_pillow: 0.0,
-            height_variation: 0.030,
+            cell_pillow: 0.028,
+            height_variation: 0.08,
             color_variation: 0.18,
             crack_density: 0.0,
             crack_depth: 0.0,
@@ -133,10 +133,9 @@ impl super::ContentCompiler {
                 program.rows = cells;
                 program.columns = cells;
                 program.stagger = false;
-                program.gap_width =
-                    (0.018 + irregularity.clamp(0.0, 1.0) * 0.030).clamp(0.012, 0.075);
-                program.gap_depth = (*height * 2.40).clamp(0.025, 0.095);
-                program.cell_bevel = (*bevel * 2.20).clamp(0.012, 0.055);
+                program.gap_width = 0.008 + irregularity.clamp(0.0, 1.0) * 0.035;
+                program.gap_depth = (*height * 0.45).clamp(0.0, 0.20);
+                program.cell_bevel = (*bevel).clamp(0.0, 0.15);
                 program.cell_roundness =
                     (0.45 + irregularity.clamp(0.0, 1.0) * 0.45).clamp(0.0, 1.0);
                 program.cell_pillow = 0.0;
@@ -160,8 +159,8 @@ impl super::ContentCompiler {
                 program.columns = (*columns).clamp(1, 12);
                 program.stagger = *stagger;
                 program.gap_width = (*mortar_width).clamp(0.0, 0.20);
-                program.gap_depth = (*mortar_depth * 1.55).clamp(0.025, 0.110);
-                program.cell_bevel = (*bevel * 1.75).clamp(0.012, 0.060);
+                program.gap_depth = (*mortar_depth).clamp(0.0, 0.20);
+                program.cell_bevel = (*bevel).clamp(0.0, 0.15);
                 program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation = 0.14;
@@ -181,8 +180,8 @@ impl super::ContentCompiler {
                 program.columns = (*columns).clamp(1, 12);
                 program.stagger = false;
                 program.gap_width = (*gap_width).clamp(0.0, 0.20);
-                program.gap_depth = (*gap_depth * 1.55).clamp(0.020, 0.100);
-                program.cell_bevel = (*bevel * 1.65).clamp(0.010, 0.055);
+                program.gap_depth = (*gap_depth).clamp(0.0, 0.20);
+                program.cell_bevel = (*bevel).clamp(0.0, 0.15);
                 program.cell_pillow = 0.0;
                 program.height_variation = (*height).clamp(0.0, 0.15);
                 program.color_variation = 0.10;
@@ -402,14 +401,14 @@ impl super::ContentCompiler {
             "render.model.layers[].operator.rows",
             program.rows,
             1,
-            8,
+            12,
         ) as u32;
         let columns = self.clamp_u8_range(
             doc,
             "render.model.layers[].operator.columns",
             program.columns,
             1,
-            8,
+            12,
         ) as u32;
 
         RuntimePatternedProgram {

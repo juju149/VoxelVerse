@@ -287,7 +287,7 @@ fn vv_grass_top(
     world_pos: vec3<f32>,
     seed: vec3<f32>,
 ) -> vec3<f32> {
-    let surf_uv = uv;
+    let surf_uv = vv_world_top_uv(world_pos);
 
     var grass = vec3<f32>(0.27, 0.50, 0.115);
 
@@ -406,7 +406,7 @@ fn vv_grass_side(
     world_pos: vec3<f32>,
     seed: vec3<f32>,
 ) -> vec3<f32> {
-    let side_uv = uv;
+    let side_uv = vv_world_side_uv(world_pos);
 
     var soil = vec3<f32>(0.265, 0.128, 0.055);
 
@@ -802,7 +802,7 @@ fn procedural_block_albedo(
     // Global material seed: same block type = same invisible procedural atlas.
     // No voxel_pos here, otherwise every cube becomes its own tile.
     let seed = vv_global_surface_seed(visual, 7.0);
-    let material_uv = uv;
+    let material_uv = vv_world_projected_uv(world_pos, normal);
 
     var color = vv_base_color(visual, face_id, seed);
 
