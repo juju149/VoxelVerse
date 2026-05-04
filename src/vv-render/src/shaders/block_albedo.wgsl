@@ -249,86 +249,111 @@ fn vv_grass_top(
     world_pos: vec3<f32>,
     seed: vec3<f32>,
 ) -> vec3<f32> {
-    var grass = vec3<f32>(0.30, 0.55, 0.13);
+    var grass = vec3<f32>(0.27, 0.50, 0.115);
 
     let face_top = vv_face_bias(visual, 0u);
     if (vv_has_color(face_top)) {
         grass = face_top;
     }
 
-    let broad = vv_value_noise_3d(vec3<f32>(uv * 2.5, seed.z * 0.05));
-    let fine = vv_value_noise_3d(vec3<f32>(uv * 8.5, seed.x * 0.03));
+    let broad = vv_value_noise_3d(vec3<f32>(uv * 2.15, seed.z * 0.05));
+    let fine = vv_value_noise_3d(vec3<f32>(uv * 7.40, seed.x * 0.03));
 
-    grass *= 0.84 + broad * 0.15 + fine * 0.035;
+    grass *= 0.80 + broad * 0.15 + fine * 0.026;
 
-    let cells = vv_voronoi((uv + broad * 0.018) * 4.8, seed + vec3<f32>(3.0, 9.0, 17.0));
-    let mound = 1.0 - smoothstep(0.10, 0.60, cells.x);
-    let mound_shadow = smoothstep(0.20, 0.50, cells.x) * (1.0 - smoothstep(0.50, 0.78, cells.x));
+    // Large coussins organiques sous les feuilles.
+    let cushion_cells = vv_voronoi((uv + broad * 0.014) * 3.85, seed + vec3<f32>(3.0, 9.0, 17.0));
+    let cushion = 1.0 - smoothstep(0.11, 0.64, cushion_cells.x);
+    let valley = smoothstep(0.18, 0.44, cushion_cells.x) *
+        (1.0 - smoothstep(0.48, 0.78, cushion_cells.x));
 
-    grass = mix(grass, grass * vec3<f32>(1.08, 1.12, 0.86), mound * 0.12);
-    grass = mix(grass, grass * vec3<f32>(0.72, 0.82, 0.52), mound_shadow * 0.08);
+    grass = mix(grass, grass * vec3<f32>(1.10, 1.13, 0.86), cushion * 0.125);
+    grass = mix(grass, grass * vec3<f32>(0.58, 0.72, 0.42), valley * 0.155);
 
-    let tile = floor(uv * 4.55);
-    let local_uv = fract(uv * 4.55);
+    let tile = floor(uv * 4.00);
+    let local_uv = fract(uv * 4.00);
     let tile_seed = seed + vec3<f32>(tile, 41.0);
 
     var leaf_mask = 0.0;
     var leaf_shadow = 0.0;
     var leaf_highlight = 0.0;
+    var leaf_core = 0.0;
+    var leaf_cut = 0.0;
 
-    for (var i: u32 = 0u; i < 5u; i = i + 1u) {
+    for (var i: u32 = 0u; i < 6u; i = i + 1u) {
         let s = tile_seed + vec3<f32>(f32(i) * 19.0, f32(i) * 7.0, f32(i) * 3.0);
         let spawn = hash13(s + vec3<f32>(1.0, 2.0, 3.0));
-        let enabled = select(0.0, 1.0, spawn > 0.20);
+        let enabled = select(0.0, 1.0, spawn > 0.24);
 
-        let center = vec2<f32>(
+        let leaf_center = vec2<f32>(
             hash13(s + vec3<f32>(5.0, 7.0, 11.0)),
-            hash13(s + vec3<f32>(13.0, 17.0, 19.0)),
+            hash13(s + vec3<f32>(13.0, 17.0, 19.0))
         );
 
         let angle = hash13(s + vec3<f32>(23.0, 29.0, 31.0)) * 6.28318;
-        let size = mix(0.145, 0.260, hash13(s + vec3<f32>(37.0, 41.0, 43.0)));
+        let size = mix(0.160, 0.300, hash13(s + vec3<f32>(37.0, 41.0, 43.0)));
 
-        let leaf = vv_leaf_shape(local_uv, center, angle, vec2<f32>(size, size * 0.34));
+        let leaf = vv_leaf_shape(local_uv, leaf_center, angle, vec2<f32>(size, size * 0.34));
 
         let shadow = vv_leaf_shape(
             local_uv,
-            center + vec2<f32>(0.030, -0.036),
+            leaf_center + vec2<f32>(0.034, -0.044),
             angle,
-            vec2<f32>(size * 1.10, size * 0.42)
+            vec2<f32>(size * 1.15, size * 0.46)
         );
 
         let highlight = vv_leaf_shape(
             local_uv,
-            center + vec2<f32>(-0.020, 0.020),
+            leaf_center + vec2<f32>(-0.030, 0.030),
             angle,
-            vec2<f32>(size * 0.62, size * 0.18)
+            vec2<f32>(size * 0.52, size * 0.145)
         );
+
+        let core = vv_leaf_shape(
+            local_uv,
+            leaf_center,
+            angle,
+            vec2<f32>(size * 0.55, size * 0.20)
+        );
+
+        let rim_cut = shadow * (1.0 - leaf);
 
         leaf_mask = max(leaf_mask, leaf * enabled);
         leaf_shadow = max(leaf_shadow, shadow * enabled);
         leaf_highlight = max(leaf_highlight, highlight * enabled);
+        leaf_core = max(leaf_core, core * enabled);
+        leaf_cut = max(leaf_cut, rim_cut * enabled);
     }
 
-    let leaf_body = vec3<f32>(0.38, 0.64, 0.16);
-    let leaf_dark = vec3<f32>(0.15, 0.31, 0.07);
-    let leaf_light = vec3<f32>(0.61, 0.78, 0.27);
+    let leaf_body = vec3<f32>(0.335, 0.565, 0.135);
+    let leaf_dark = vec3<f32>(0.095, 0.225, 0.045);
+    let leaf_light = vec3<f32>(0.55, 0.72, 0.22);
 
-    // Ombre décalée puis corps puis highlight: faux relief très lisible.
-    grass = mix(grass, grass * leaf_dark, leaf_shadow * 0.28);
-    grass = mix(grass, leaf_body, leaf_mask * 0.34);
-    grass = mix(grass, leaf_light, leaf_highlight * 0.30);
+    // Vrai faux volume : ombre portée, corps, coeur clair, liseré.
+    grass = mix(grass, grass * leaf_dark, leaf_shadow * 0.38);
+    grass = mix(grass, grass * vec3<f32>(0.50, 0.64, 0.34), leaf_cut * 0.28);
+    grass = mix(grass, leaf_body, leaf_mask * 0.38);
+    grass = mix(grass, leaf_light, leaf_highlight * 0.32);
+    grass = mix(grass, grass * vec3<f32>(1.13, 1.12, 0.84), leaf_core * 0.12);
 
-    // Contour du tapis d'herbe: effet "gros coussin" sans géométrie.
+    // Volume global du dessus : bord = plus sombre, centre = doux.
     let edge_x = min(uv.x, 1.0 - uv.x);
     let edge_y = min(uv.y, 1.0 - uv.y);
-    let edge = 1.0 - smoothstep(0.020, 0.155, min(edge_x, edge_y));
+    let edge_dist = min(edge_x, edge_y);
+    let border = 1.0 - smoothstep(0.020, 0.150, edge_dist);
+    let inner_lift = smoothstep(0.06, 0.28, edge_dist) *
+        (1.0 - smoothstep(0.50, 0.86, edge_dist));
 
-    grass = mix(grass, grass * vec3<f32>(0.46, 0.66, 0.28), edge * 0.28);
-    grass = mix(grass, grass * vec3<f32>(1.13, 1.10, 0.90), edge * 0.08);
+    grass = mix(grass, grass * vec3<f32>(0.38, 0.58, 0.24), border * 0.34);
+    grass = mix(grass, grass * vec3<f32>(1.14, 1.11, 0.88), border * 0.085);
+    grass = mix(grass, grass * vec3<f32>(1.055, 1.045, 0.96), inner_lift * 0.045);
 
     return max(grass, vec3<f32>(0.0));
 }
+
+
+
+
 
 
 
@@ -341,84 +366,106 @@ fn vv_grass_side(
     world_pos: vec3<f32>,
     seed: vec3<f32>,
 ) -> vec3<f32> {
-    var soil = vec3<f32>(0.30, 0.16, 0.075);
+    var soil = vec3<f32>(0.265, 0.128, 0.055);
 
     let side_bias = vv_face_bias(visual, 2u);
     if (vv_has_color(side_bias)) {
         soil = side_bias;
     }
 
-    let density = 3.65;
+    let density = 3.35;
     let cell_seed = seed + vec3<f32>(71.0, 13.0, 5.0);
 
     let warp = vec2<f32>(
-        vv_value_noise_3d(world_pos * 0.18 + cell_seed * 0.017),
-        vv_value_noise_3d(world_pos * 0.25 + cell_seed * 0.029)
-    ) * 0.065;
+        vv_value_noise_3d(world_pos * 0.16 + cell_seed * 0.017),
+        vv_value_noise_3d(world_pos * 0.22 + cell_seed * 0.029)
+    ) * 0.052;
 
     let cells = vv_voronoi((uv + warp) * density, cell_seed);
     let closest = cells.x;
     let second = cells.y;
     let cell_hash = cells.z;
 
-    let joint = 1.0 - smoothstep(0.014, 0.112, second - closest);
-    let core = 1.0 - smoothstep(0.09, 0.59, closest);
-    let shoulder = smoothstep(0.18, 0.42, closest) * (1.0 - smoothstep(0.44, 0.74, closest));
+    let joint = 1.0 - smoothstep(0.010, 0.104, second - closest);
+    let deep_joint = 1.0 - smoothstep(0.008, 0.040, second - closest);
+    let panel_core = 1.0 - smoothstep(0.08, 0.61, closest);
+    let panel_mid = smoothstep(0.15, 0.40, closest) *
+        (1.0 - smoothstep(0.44, 0.76, closest));
 
-    soil *= 0.76 + cell_hash * 0.28;
+    soil *= 0.74 + cell_hash * 0.25;
 
-    // Faux relief propre, sans taches/plaques claires.
-    soil = mix(soil, soil * vec3<f32>(1.24, 1.12, 0.92), core * 0.13);
-    soil = mix(soil, soil * vec3<f32>(0.62, 0.50, 0.38), shoulder * 0.10);
-    soil = mix(soil, vec3<f32>(0.090, 0.045, 0.022), joint * 0.78);
+    // Heightfield fake : panel core ressort, joints rentrent.
+    soil = mix(soil, soil * vec3<f32>(1.34, 1.17, 0.90), panel_core * 0.18);
+    soil = mix(soil, soil * vec3<f32>(0.55, 0.43, 0.32), panel_mid * 0.13);
+    soil = mix(soil, vec3<f32>(0.065, 0.030, 0.014), joint * 0.82);
+    soil = mix(soil, vec3<f32>(0.035, 0.016, 0.008), deep_joint * 0.45);
 
-    let fake_light = saturate((0.68 - uv.x) * 0.30 + (uv.y - 0.20) * 0.18);
-    soil = mix(soil, soil * vec3<f32>(1.12, 1.06, 0.92), core * fake_light * 0.09);
+    // Lumière fake gauche-haut / ombre droite-bas.
+    let fake_light = saturate((0.72 - uv.x) * 0.34 + (uv.y - 0.14) * 0.24);
+    let fake_shadow = saturate((uv.x - 0.12) * 0.22 + (0.55 - uv.y) * 0.18);
 
-    // Micro rayures très discrètes, pas de grosses taches.
-    let scratch_noise = vv_value_noise_3d(vec3<f32>(uv * 22.0, seed.z * 0.025));
-    let scratch_line = abs(fract(uv.x * 17.0 + scratch_noise * 0.65) - 0.5);
-    let scratch = (1.0 - smoothstep(0.020, 0.060, scratch_line)) *
-        smoothstep(0.64, 0.91, scratch_noise);
+    soil = mix(soil, soil * vec3<f32>(1.20, 1.10, 0.88), panel_core * fake_light * 0.15);
+    soil = mix(soil, soil * vec3<f32>(0.56, 0.45, 0.34), panel_core * fake_shadow * 0.11);
 
-    soil = mix(soil, soil * vec3<f32>(0.62, 0.50, 0.40), scratch * 0.045);
+    // Thin inner bevel around joints.
+    let joint_near = smoothstep(0.050, 0.120, second - closest) *
+        (1.0 - smoothstep(0.120, 0.210, second - closest));
+
+    soil = mix(soil, soil * vec3<f32>(1.12, 1.06, 0.90), joint_near * fake_light * 0.09);
+    soil = mix(soil, soil * vec3<f32>(0.60, 0.50, 0.40), joint_near * fake_shadow * 0.08);
 
     let side_from_top = 1.0 - uv.y;
 
-    var grass = vec3<f32>(0.27, 0.50, 0.11);
+    var grass = vec3<f32>(0.245, 0.455, 0.095);
     let grass_top = vv_face_bias(visual, 0u);
     if (vv_has_color(grass_top)) {
         grass = grass_top;
     }
 
-    grass *= vec3<f32>(0.88, 0.91, 0.72);
+    grass *= vec3<f32>(0.86, 0.90, 0.72);
 
-    let x_noise = vv_value_noise_3d(vec3<f32>(uv.x * 5.9, seed.x * 0.03, seed.y * 0.05));
-    let fine_noise = vv_value_noise_3d(vec3<f32>(uv.x * 16.5, seed.z * 0.04, 9.0));
+    let x_noise = vv_value_noise_3d(vec3<f32>(uv.x * 5.0, seed.x * 0.03, seed.y * 0.05));
+    let fine_noise = vv_value_noise_3d(vec3<f32>(uv.x * 12.0, seed.z * 0.04, 9.0));
 
-    let scallop = 1.0 - smoothstep(0.10, 0.36, abs(fract(uv.x * 6.8 + x_noise * 0.28) - 0.5));
-    let drip_depth = 0.125 + x_noise * 0.095 + scallop * 0.105 + fine_noise * 0.018;
+    let column = fract(uv.x * 5.4 + x_noise * 0.20);
+    let column_center = abs(column - 0.5);
 
-    let cap = 1.0 - smoothstep(drip_depth - 0.030, drip_depth + 0.044, side_from_top);
+    // Lobes ronds, moins dents de scie.
+    let round_lobe = 1.0 - smoothstep(0.20, 0.50, column_center);
+    let soft_lobe = round_lobe * round_lobe * (3.0 - 2.0 * round_lobe);
 
-    let under_shadow = smoothstep(drip_depth - 0.016, drip_depth + 0.060, side_from_top) *
-        (1.0 - smoothstep(drip_depth + 0.050, drip_depth + 0.145, side_from_top));
+    let drip_depth = 0.105 + x_noise * 0.070 + soft_lobe * 0.115 + fine_noise * 0.012;
 
-    let lobe = cap * scallop * smoothstep(0.026, 0.165, side_from_top);
-    let lobe_tip = lobe * (1.0 - smoothstep(drip_depth - 0.020, drip_depth + 0.045, side_from_top));
-    let cap_highlight = cap * (1.0 - smoothstep(0.00, 0.055, side_from_top));
+    let cap = 1.0 - smoothstep(drip_depth - 0.033, drip_depth + 0.044, side_from_top);
 
-    var out_color = mix(soil, grass, cap * 0.95);
+    let lip_shadow = smoothstep(drip_depth - 0.012, drip_depth + 0.050, side_from_top) *
+        (1.0 - smoothstep(drip_depth + 0.045, drip_depth + 0.130, side_from_top));
 
-    // Ombre sous la lèvre d'herbe : volume oui, taches non.
-    out_color = mix(out_color, soil * vec3<f32>(0.32, 0.21, 0.13), under_shadow * 0.60);
+    let lobe = cap * soft_lobe * smoothstep(0.018, 0.145, side_from_top);
+    let lobe_tip = lobe * (1.0 - smoothstep(drip_depth - 0.016, drip_depth + 0.040, side_from_top));
+    let cap_highlight = cap * (1.0 - smoothstep(0.00, 0.048, side_from_top));
 
-    out_color = mix(out_color, grass * vec3<f32>(0.40, 0.55, 0.24), lobe * 0.36);
-    out_color = mix(out_color, grass * vec3<f32>(1.06, 1.05, 0.84), cap_highlight * 0.050);
-    out_color = mix(out_color, grass * vec3<f32>(0.55, 0.74, 0.34), lobe_tip * 0.11);
+    var out_color = mix(soil, grass, cap * 0.96);
+
+    // Ombre de contact très importante : c'est elle qui vend le volume.
+    out_color = mix(out_color, soil * vec3<f32>(0.24, 0.145, 0.080), lip_shadow * 0.72);
+
+    // Lobe body + tip highlight.
+    out_color = mix(out_color, grass * vec3<f32>(0.36, 0.50, 0.20), lobe * 0.40);
+    out_color = mix(out_color, grass * vec3<f32>(0.54, 0.72, 0.32), lobe_tip * 0.145);
+    out_color = mix(out_color, grass * vec3<f32>(1.05, 1.04, 0.84), cap_highlight * 0.038);
+
+    // Vertical fake curvature on the whole grass curtain.
+    let curtain_round = cap * smoothstep(0.05, 0.24, side_from_top) *
+        (1.0 - smoothstep(0.18, 0.42, side_from_top));
+    out_color = mix(out_color, out_color * vec3<f32>(0.72, 0.82, 0.54), curtain_round * 0.12);
 
     return max(out_color, vec3<f32>(0.0));
 }
+
+
+
+
 
 
 
@@ -658,10 +705,6 @@ fn vv_cartoon_fake_bevel(
     up: vec3<f32>,
     visual: BlockVisual,
 ) -> vec3<f32> {
-    // Micro-radius shader-only.
-    // Aucun vertex en plus, aucun trou entre voxels, coût très faible.
-    // Le but : arêtes un peu rondes, quelques pixels seulement.
-
     let edge_x = min(uv.x, 1.0 - uv.x);
     let edge_y = min(uv.y, 1.0 - uv.y);
     let edge = min(edge_x, edge_y);
@@ -677,14 +720,10 @@ fn vv_cartoon_fake_bevel(
         )
     );
 
-    // Petit radius visuel : assez pour casser le côté couteau,
-    // pas assez pour donner l'impression d'un cube gonflé.
-    let radius = 0.070;
-
+    let radius = 0.086;
     let edge_bevel = 1.0 - smoothstep(0.006, radius, edge);
-    let corner_bevel = 1.0 - smoothstep(0.020, radius * 1.20, corner_dist);
-
-    let bevel = saturate(edge_bevel * 0.55 + corner_bevel * 0.35);
+    let corner_bevel = 1.0 - smoothstep(0.018, radius * 1.24, corner_dist);
+    let bevel = saturate(edge_bevel * 0.60 + corner_bevel * 0.40);
 
     let topness = saturate(dot(normal, up));
     let bottomness = saturate(dot(-normal, up));
@@ -692,34 +731,20 @@ fn vv_cartoon_fake_bevel(
 
     var c = color;
 
-    // Ombre très fine sur l'arête.
-    let edge_shadow = vec3<f32>(0.72, 0.75, 0.80);
-    c = mix(
-        c,
-        c * edge_shadow,
-        bevel * (0.10 + sideness * 0.12 + bottomness * 0.16)
-    );
+    c = mix(c, c * vec3<f32>(0.64, 0.68, 0.76), bevel * (0.10 + sideness * 0.16 + bottomness * 0.20));
+    c = mix(c, c * vec3<f32>(1.11, 1.08, 0.94), bevel * topness * 0.075);
 
-    // Highlight crémeux très léger sur les arêtes du dessus.
-    let edge_light = vec3<f32>(1.10, 1.08, 0.94);
-    c = mix(
-        c,
-        c * edge_light,
-        bevel * topness * 0.075
-    );
-
-    // Liseré doux juste avant l'arête, donne l'illusion d'un mini congé rond.
     let inner_band = smoothstep(radius * 0.35, radius, edge) *
-        (1.0 - smoothstep(radius, radius * 1.85, edge));
+        (1.0 - smoothstep(radius, radius * 1.78, edge));
 
-    c = mix(
-        c,
-        c * vec3<f32>(1.035, 1.025, 0.97),
-        inner_band * topness * 0.035
-    );
+    c = mix(c, c * vec3<f32>(1.030, 1.020, 0.970), inner_band * topness * 0.030);
 
-    return max(vv_saturate_color(c, 1.025), vec3<f32>(0.0));
+    return max(vv_saturate_color(c, 1.015), vec3<f32>(0.0));
 }
+
+
+
+
 
 
 
