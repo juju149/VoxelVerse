@@ -658,6 +658,10 @@ fn vv_cartoon_fake_bevel(
     up: vec3<f32>,
     visual: BlockVisual,
 ) -> vec3<f32> {
+    // Micro-radius shader-only.
+    // Aucun vertex en plus, aucun trou entre voxels, coût très faible.
+    // Le but : arêtes un peu rondes, quelques pixels seulement.
+
     let edge_x = min(uv.x, 1.0 - uv.x);
     let edge_y = min(uv.y, 1.0 - uv.y);
     let edge = min(edge_x, edge_y);
@@ -673,10 +677,14 @@ fn vv_cartoon_fake_bevel(
         )
     );
 
-    let radius = 0.165;
-    let edge_band = 1.0 - smoothstep(0.012, radius, edge);
-    let corner_band = 1.0 - smoothstep(0.038, radius * 1.35, corner_dist);
-    let bevel = saturate(edge_band * 0.86 + corner_band * 0.62);
+    // Petit radius visuel : assez pour casser le côté couteau,
+    // pas assez pour donner l'impression d'un cube gonflé.
+    let radius = 0.070;
+
+    let edge_bevel = 1.0 - smoothstep(0.006, radius, edge);
+    let corner_bevel = 1.0 - smoothstep(0.020, radius * 1.20, corner_dist);
+
+    let bevel = saturate(edge_bevel * 0.55 + corner_bevel * 0.35);
 
     let topness = saturate(dot(normal, up));
     let bottomness = saturate(dot(-normal, up));
@@ -684,11 +692,36 @@ fn vv_cartoon_fake_bevel(
 
     var c = color;
 
-    c = mix(c, c * vec3<f32>(0.50, 0.54, 0.62), bevel * (0.16 + sideness * 0.30 + bottomness * 0.36));
-    c = mix(c, c * vec3<f32>(1.16, 1.12, 0.92), bevel * topness * 0.12);
+    // Ombre très fine sur l'arête.
+    let edge_shadow = vec3<f32>(0.72, 0.75, 0.80);
+    c = mix(
+        c,
+        c * edge_shadow,
+        bevel * (0.10 + sideness * 0.12 + bottomness * 0.16)
+    );
 
-    return max(vv_saturate_color(c, 1.04), vec3<f32>(0.0));
+    // Highlight crémeux très léger sur les arêtes du dessus.
+    let edge_light = vec3<f32>(1.10, 1.08, 0.94);
+    c = mix(
+        c,
+        c * edge_light,
+        bevel * topness * 0.075
+    );
+
+    // Liseré doux juste avant l'arête, donne l'illusion d'un mini congé rond.
+    let inner_band = smoothstep(radius * 0.35, radius, edge) *
+        (1.0 - smoothstep(radius, radius * 1.85, edge));
+
+    c = mix(
+        c,
+        c * vec3<f32>(1.035, 1.025, 0.97),
+        inner_band * topness * 0.035
+    );
+
+    return max(vv_saturate_color(c, 1.025), vec3<f32>(0.0));
 }
+
+
 
 
 
