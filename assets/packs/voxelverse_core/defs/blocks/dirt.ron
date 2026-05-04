@@ -29,10 +29,7 @@
             face_depth: 0.0,
             normal_strength: 0.72,
         ),
-        program: (
-            type: "flat",
-        ),
-        model: Some((
+        model: (
             seed: 1207,
             palette: (
                 colors: {
@@ -98,7 +95,7 @@
                 height_distance: 32.0,
                 instance_distance: 12.0,
             ),
-        )),
+        ),
         variation: (
             per_voxel_tint: 0.08,
             per_face_tint: 0.025,

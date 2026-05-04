@@ -1,33 +1,19 @@
 use super::helpers::*;
 use super::prelude::*;
-use super::ContentCompiler;
 
-impl ContentCompiler {
+impl super::ContentCompiler {
     pub(super) fn compile_render_surface_program(
         &mut self,
         doc: &RawDocument<BlockDef>,
         render: &BlockRenderDef,
     ) -> CompiledSurfaceProgram {
-        if let Some(model) = &render.model {
-            if let Some(program) = self.compile_model_surface_program(doc, model) {
-                return program;
-            }
+        let model = &render.model;
+
+        if let Some(program) = self.compile_model_surface_program(doc, model) {
+            return program;
         }
 
-        self.compile_surface_program(doc, &render.program)
-    }
-
-    pub(super) fn compile_surface_program(
-        &mut self,
-        doc: &RawDocument<BlockDef>,
-        program: &BlockSurfaceProgramDef,
-    ) -> CompiledSurfaceProgram {
-        match program {
-            BlockSurfaceProgramDef::Flat => CompiledSurfaceProgram::flat(),
-            BlockSurfaceProgramDef::Patterned(patterned) => {
-                CompiledSurfaceProgram::patterned(self.compile_patterned_program(doc, patterned))
-            }
-        }
+        CompiledSurfaceProgram::flat()
     }
 
     fn compile_model_surface_program(
@@ -35,11 +21,88 @@ impl ContentCompiler {
         doc: &RawDocument<BlockDef>,
         model: &BlockProceduralModelDef,
     ) -> Option<CompiledSurfaceProgram> {
-        let layer = model.layers.iter().find(|layer| layer.enabled)?;
-        let patterned = self.patterned_from_model_layer(doc, model, layer)?;
+        let active_layers = model
+            .layers
+            .iter()
+            .filter(|layer| layer.enabled)
+            .collect::<Vec<_>>();
+
+        if active_layers.is_empty() {
+            return None;
+        }
+
+        if let Some(cap_layer) = active_layers
+            .iter()
+            .copied()
+            .find(|layer| matches!(layer.mask, BlockMaskDef::Cap { .. }))
+        {
+            let program = self.patterned_from_cap_layer(doc, model, cap_layer);
+            return Some(CompiledSurfaceProgram::patterned(
+                self.compile_patterned_program(doc, &program),
+            ));
+        }
+
+        let primary = active_layers[0];
+        let program = self.patterned_from_model_layer(doc, model, primary)?;
         Some(CompiledSurfaceProgram::patterned(
-            self.compile_patterned_program(doc, &patterned),
+            self.compile_patterned_program(doc, &program),
         ))
+    }
+
+    fn patterned_from_cap_layer(
+        &mut self,
+        doc: &RawDocument<BlockDef>,
+        model: &BlockProceduralModelDef,
+        layer: &BlockLayerDef,
+    ) -> BlockPatternedProgramDef {
+        let seed = self.layer_seed(doc, model, layer, "cap");
+
+        let mut program = BlockPatternedProgramDef {
+            pattern: BlockPatternKind::LayeredSurface,
+            rows: 10,
+            columns: 10,
+            stagger: true,
+            gap_width: 0.10,
+            gap_depth: 0.018,
+            cell_bevel: 0.008,
+            cell_roundness: 0.88,
+            cell_pillow: 0.028,
+            height_variation: 0.08,
+            color_variation: 0.18,
+            crack_density: 0.0,
+            crack_depth: 0.0,
+            orientation: BlockPatternOrientation::Auto,
+            seed,
+        };
+
+        if let BlockMaskDef::Cap {
+            thickness,
+            side_falloff,
+            drip_amount,
+            drip_noise,
+        } = layer.mask
+        {
+            program.gap_width =
+                (thickness * 0.50 + side_falloff * 0.18 + drip_amount * 0.20).clamp(0.035, 0.20);
+            program.height_variation = (drip_noise * 0.07 + drip_amount * 0.08).clamp(0.015, 0.15);
+        }
+
+        if let BlockLayerOperatorDef::Blobs {
+            density,
+            roundness,
+            height,
+            ..
+        } = &layer.operator
+        {
+            let cells = (5.0 + density.clamp(0.0, 1.0) * 8.0).round() as u8;
+            program.rows = cells.clamp(1, 12);
+            program.columns = program.rows;
+            program.cell_roundness = (*roundness).clamp(0.0, 1.0);
+            program.cell_pillow = (*height * 0.55).clamp(0.0, 0.10);
+            program.color_variation = (0.10 + density.clamp(0.0, 1.0) * 0.18).clamp(0.0, 1.0);
+        }
+
+        program
     }
 
     fn patterned_from_model_layer(
@@ -48,13 +111,7 @@ impl ContentCompiler {
         model: &BlockProceduralModelDef,
         layer: &BlockLayerDef,
     ) -> Option<BlockPatternedProgramDef> {
-        let seed = if layer.seed != 0 {
-            layer.seed
-        } else if model.seed != 0 {
-            model.seed
-        } else {
-            stable_hash32(&format!("{}:{}", doc.relative_path.display(), layer.id))
-        };
+        let seed = self.layer_seed(doc, model, layer, "layer");
 
         let mut program = BlockPatternedProgramDef {
             seed,
@@ -313,14 +370,46 @@ impl ContentCompiler {
         Some(program)
     }
 
+    fn layer_seed(
+        &self,
+        doc: &RawDocument<BlockDef>,
+        model: &BlockProceduralModelDef,
+        layer: &BlockLayerDef,
+        salt: &str,
+    ) -> u32 {
+        if layer.seed != 0 {
+            layer.seed
+        } else if model.seed != 0 {
+            stable_hash32(&format!("{}:{}:{}", model.seed, layer.id, salt))
+        } else {
+            stable_hash32(&format!(
+                "{}:{}:{}",
+                doc.relative_path.display(),
+                layer.id,
+                salt
+            ))
+        }
+    }
+
     fn compile_patterned_program(
         &mut self,
         doc: &RawDocument<BlockDef>,
         program: &BlockPatternedProgramDef,
     ) -> RuntimePatternedProgram {
-        let rows = self.clamp_u8_range(doc, "render.program.rows", program.rows, 1, 12) as u32;
-        let columns =
-            self.clamp_u8_range(doc, "render.program.columns", program.columns, 1, 12) as u32;
+        let rows = self.clamp_u8_range(
+            doc,
+            "render.model.layers[].operator.rows",
+            program.rows,
+            1,
+            12,
+        ) as u32;
+        let columns = self.clamp_u8_range(
+            doc,
+            "render.model.layers[].operator.columns",
+            program.columns,
+            1,
+            12,
+        ) as u32;
 
         RuntimePatternedProgram {
             kind: compiled_pattern_kind(program.pattern),
@@ -330,59 +419,59 @@ impl ContentCompiler {
 
             gap_width: self.clamp_range(
                 doc,
-                "render.program.gap_width",
+                "render.model.layers[].operator.gap_width",
                 program.gap_width,
                 0.0,
                 0.20,
             ),
             gap_depth: self.clamp_range(
                 doc,
-                "render.program.gap_depth",
+                "render.model.layers[].operator.gap_depth",
                 program.gap_depth,
                 0.0,
                 0.20,
             ),
             cell_bevel: self.clamp_range(
                 doc,
-                "render.program.cell_bevel",
+                "render.model.layers[].operator.cell_bevel",
                 program.cell_bevel,
                 0.0,
                 0.15,
             ),
             cell_roundness: self.clamp_unit(
                 doc,
-                "render.program.cell_roundness",
+                "render.model.layers[].operator.cell_roundness",
                 program.cell_roundness,
             ),
 
             cell_pillow: self.clamp_range(
                 doc,
-                "render.program.cell_pillow",
+                "render.model.layers[].operator.cell_pillow",
                 program.cell_pillow,
                 0.0,
                 0.10,
             ),
             height_variation: self.clamp_range(
                 doc,
-                "render.program.height_variation",
+                "render.model.layers[].operator.height_variation",
                 program.height_variation,
                 0.0,
                 0.15,
             ),
             color_variation: self.clamp_unit(
                 doc,
-                "render.program.color_variation",
+                "render.model.layers[].operator.color_variation",
                 program.color_variation,
             ),
             crack_density: self.clamp_unit(
                 doc,
-                "render.program.crack_density",
+                "render.model.layers[].operator.crack_density",
                 program.crack_density,
             ),
 
             crack_depth: self.clamp_range(
                 doc,
-                "render.program.crack_depth",
+                "render.model.layers[].operator.crack_depth",
                 program.crack_depth,
                 0.0,
                 0.15,

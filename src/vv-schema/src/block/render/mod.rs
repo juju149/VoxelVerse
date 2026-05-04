@@ -27,13 +27,11 @@ pub struct BlockRenderDef {
     pub lighting: BlockLightingDef,
     pub shape: BlockShapeDef,
 
-    // Legacy/simple bridge. Kept so old .ron still works.
-    // New authored blocks should prefer `model`.
+    // Deprecated field. Kept only because current assets may still contain it.
+    // New rendering is driven by `model`.
     pub program: BlockSurfaceProgramDef,
 
-    // VoxelForge procedural surface model.
-    // A complete .ron can now sculpt layers, masks, operators, details and near-camera instances.
-    pub model: Option<BlockProceduralModelDef>,
+    pub model: BlockProceduralModelDef,
 
     pub variation: BlockVariationDef,
     pub environment: BlockEnvironmentDef,
@@ -51,7 +49,7 @@ impl Default for BlockRenderDef {
             lighting: BlockLightingDef::default(),
             shape: BlockShapeDef::default(),
             program: BlockSurfaceProgramDef::default(),
-            model: None,
+            model: BlockProceduralModelDef::default(),
             variation: BlockVariationDef::default(),
             environment: BlockEnvironmentDef::default(),
             faces: BlockFaceOverrides::default(),

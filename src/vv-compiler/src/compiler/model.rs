@@ -1,22 +1,21 @@
 use super::helpers::*;
 use super::prelude::*;
 
-impl ContentCompiler {
+impl super::ContentCompiler {
     pub(super) fn compile_render_details(
         &mut self,
         doc: &RawDocument<BlockDef>,
         render: &BlockRenderDef,
     ) -> SmallVec<[CompiledBlockDetail; 8]> {
         let mut merged = render.details.clone();
+        let model = &render.model;
 
-        if let Some(model) = &render.model {
-            for detail in &model.details {
-                merged.push(self.model_detail_to_legacy(doc, model, detail));
-            }
+        for detail in &model.details {
+            merged.push(self.model_detail_to_legacy(doc, model, detail));
+        }
 
-            for instance in &model.instances {
-                merged.push(self.model_instance_to_legacy(doc, model, instance));
-            }
+        for instance in &model.instances {
+            merged.push(self.model_instance_to_legacy(doc, model, instance));
         }
 
         self.compile_details(doc, &merged)
@@ -127,7 +126,7 @@ impl ContentCompiler {
             doc,
             "render.model.palette.colors",
             role_or_hex,
-            "unknown model color role, using fallback magenta-tinted debug color",
+            "unknown model color role",
         );
 
         HexColor("#FF00FFAA".to_owned())
