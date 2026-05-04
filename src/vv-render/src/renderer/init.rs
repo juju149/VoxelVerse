@@ -11,10 +11,7 @@ use vv_diagnostics::{emit, DiagnosticConfig, LogDomain, LogLevel};
 use vv_mesh::{MeshGen, Vertex};
 use vv_registry::CompiledContent;
 
-use crate::{
-    atmosphere::AtmosphereUniform, shader_source, sky_state::SkyState, AnyKey, ChunkMesh,
-    LodAnimator,
-};
+use crate::{atmosphere::AtmosphereUniform, shader_source, AnyKey, ChunkMesh, LodAnimator};
 
 use super::types::{GlobalUniform, LocalUniform, RendererFrameTelemetry};
 use super::visual_content::{build_block_visual_palette, build_block_visuals};
@@ -360,34 +357,6 @@ impl<'a> Renderer<'a> {
         );
         let pipeline_feedback =
             Self::create_feedback_pipeline(&device, &surf_cfg, &layout, &shader);
-        let pipeline_sky = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Sky Pipeline"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "vs_sky",
-                buffers: &[], // Fullscreen triangle generated in shader from vertex_index
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "fs_sky",
-                targets: &[Some(surf_cfg.format.into())],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                cull_mode: None,
-                ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: false, // Sky must not occlude terrain
-                depth_compare: wgpu::CompareFunction::Always, // Drawn first, always passes
-                stencil: Default::default(),
-                bias: Default::default(),
-            }),
-            multisample: Default::default(),
-            multiview: None,
-        });
         let depth = Self::mk_depth(&device, &surf_cfg);
 
         let ui_renderer = crate::ui::UiRenderer::new(&device, surf_cfg.format);
@@ -519,7 +488,7 @@ impl<'a> Renderer<'a> {
             pipeline_wire,
             pipeline_line,
             pipeline_feedback,
-            pipeline_sky,
+
             chunks: HashMap::new(),
             lod_chunks: HashMap::new(),
             global_buf,
@@ -553,7 +522,7 @@ impl<'a> Renderer<'a> {
             collision_i_buf,
             collision_inds: 0,
             frozen_frustum: None,
-            sky_state: SkyState::new(cfg.day_cycle.clone()),
+
             load_queue: Vec::new(),
             player_chunk_pos: None,
             mesh_tx,

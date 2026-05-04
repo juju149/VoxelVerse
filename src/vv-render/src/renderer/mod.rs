@@ -14,7 +14,7 @@ use vv_registry::{BlockContent, RuntimeBlockVisual};
 use vv_voxel::{ChunkKey, LodKey};
 use vv_world_runtime::PlanetData;
 
-use crate::{sky_state::SkyState, AnyKey, ChunkMesh, Frustum, LodAnimator};
+use crate::{AnyKey, ChunkMesh, Frustum, LodAnimator};
 
 use self::types::{MeshJobResult, RendererFrameTelemetry};
 
@@ -27,7 +27,7 @@ mod mesh_upload;
 mod pipelines;
 mod public_api;
 mod shadow_pass;
-mod sky_pass;
+
 mod streaming;
 mod terrain_pass;
 mod types;
@@ -74,7 +74,6 @@ pub struct Renderer<'a> {
     pipeline_wire: wgpu::RenderPipeline,
     pipeline_line: wgpu::RenderPipeline,
     pipeline_feedback: wgpu::RenderPipeline,
-    pipeline_sky: wgpu::RenderPipeline,
 
     chunks: HashMap<ChunkKey, ChunkMesh>,
     lod_chunks: HashMap<LodKey, ChunkMesh>,
@@ -114,10 +113,6 @@ pub struct Renderer<'a> {
     collision_inds: u32,
 
     frozen_frustum: Option<Frustum>,
-
-    /// Day/night cycle clock. Owns the current time and computes atmosphere per frame.
-    sky_state: SkyState,
-
     // Async mesh loading
     load_queue: Vec<ChunkKey>,
     player_chunk_pos: Option<ChunkKey>,

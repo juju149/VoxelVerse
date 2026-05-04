@@ -60,25 +60,9 @@ impl<'a> Renderer<'a> {
 
         let mvp = controller.get_matrix(player, physics, w, h, &self.render_cfg);
 
-        let atmosphere = AtmosphereUniform::from_config(&self.sky_state.to_atmosphere())
+        let atmosphere = AtmosphereUniform::from_config(&self.render_cfg.atmosphere)
             .with_planet_geometry(planet.geometry);
-        let sun_dir = atmosphere.sun_direction_vec3();
-        let shadow_dist = 240.0f32;
-        let proj_size = 72.0f32;
-        let center = player.position;
-        let mut sun_view = glam::Mat4::look_at_rh(center + sun_dir * shadow_dist, center, Vec3::Y);
-
-        let shadow_map_size_f = self.render_cfg.shadow_map_size as f32;
-        let texel_size = (2.0 * proj_size) / shadow_map_size_f;
-        let shadow_origin = sun_view.transform_point3(center);
-        let snap_x = (shadow_origin.x / texel_size).round() * texel_size - shadow_origin.x;
-        let snap_y = (shadow_origin.y / texel_size).round() * texel_size - shadow_origin.y;
-        sun_view = glam::Mat4::from_translation(Vec3::new(snap_x, snap_y, 0.0)) * sun_view;
-
-        let sun_proj = glam::Mat4::orthographic_rh(
-            -proj_size, proj_size, -proj_size, proj_size, -280.0, 640.0,
-        );
-        let light_vp = sun_proj * sun_view;
+        let light_vp = glam::Mat4::IDENTITY;
 
         let cam_pos = controller.get_camera_pos(player, physics);
         let frustum = Frustum::from_matrix(mvp);
@@ -188,16 +172,8 @@ impl<'a> Renderer<'a> {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
-        let shadow_visible_chunks = self
-            .chunks
-            .values()
-            .filter(|mesh| frustum.intersects_sphere(mesh.center, mesh.radius))
-            .count();
-        let shadow_visible_lods = self
-            .lod_chunks
-            .values()
-            .filter(|mesh| frustum.intersects_sphere(mesh.center, mesh.radius))
-            .count();
+        let shadow_visible_chunks = 0usize;
+        let shadow_visible_lods = 0usize;
         let main_visible_chunks = self
             .chunks
             .values()
@@ -214,45 +190,6 @@ impl<'a> Renderer<'a> {
             .values()
             .filter(|state| frustum.intersects_sphere(state.mesh.center, state.mesh.radius))
             .count();
-
-        {
-            let mut sp = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Shadow"),
-                color_attachments: &[],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.shadow_view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-
-            sp.set_pipeline(&self.pipeline_shadow);
-            sp.set_bind_group(0, &self.shadow_global_bind, &[]);
-
-            for mesh in self.chunks.values() {
-                if frustum.intersects_sphere(mesh.center, mesh.radius) {
-                    sp.set_bind_group(1, &mesh.bind_group, &[]);
-                    sp.set_vertex_buffer(0, mesh.v_buf.slice(..));
-                    sp.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                    sp.draw_indexed(0..mesh.num_inds, 0, 0..1);
-                }
-            }
-
-            for mesh in self.lod_chunks.values() {
-                if frustum.intersects_sphere(mesh.center, mesh.radius) {
-                    sp.set_bind_group(1, &mesh.bind_group, &[]);
-                    sp.set_vertex_buffer(0, mesh.v_buf.slice(..));
-                    sp.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                    sp.draw_indexed(0..mesh.num_inds, 0, 0..1);
-                }
-            }
-        }
-
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Main"),
@@ -281,12 +218,6 @@ impl<'a> Renderer<'a> {
             } else {
                 &self.pipeline_fill
             };
-
-            pass.set_pipeline(&self.pipeline_sky);
-            pass.set_bind_group(0, &self.global_bind, &[]);
-            pass.set_bind_group(1, &self.local_bind_identity, &[]);
-            pass.draw(0..3, 0..1);
-
             pass.set_pipeline(terrain_pipeline);
             pass.set_bind_group(0, &self.global_bind, &[]);
 

@@ -12,9 +12,7 @@ use crate::block_feedback::{selection_outline_mesh, SelectionOutlineStyle};
 use super::Renderer;
 
 impl<'a> Renderer<'a> {
-    pub fn advance_time(&mut self, dt: f32) {
-        self.sky_state.advance(dt);
-    }
+    pub fn advance_time(&mut self, _dt: f32) {}
 
     pub fn resize(&mut self, width: u32, height: u32) {
         self.config.width = width;
