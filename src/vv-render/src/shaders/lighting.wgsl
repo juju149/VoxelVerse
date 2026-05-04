@@ -1,13 +1,18 @@
 fn vv_cartoon_sky_color() -> vec3<f32> {
-    return vec3<f32>(0.62, 0.80, 1.0);
+    return vec3<f32>(0.58, 0.76, 1.0);
 }
 
 fn vv_cartoon_ambient() -> vec3<f32> {
-    return vec3<f32>(0.58, 0.66, 0.78);
+    return vec3<f32>(0.42, 0.52, 0.68);
 }
 
 fn vv_cartoon_sun_dir() -> vec3<f32> {
-    return safe_normalize(vec3<f32>(-0.42, 0.88, -0.34));
+    return safe_normalize(vec3<f32>(-0.48, 0.82, -0.34));
+}
+
+fn vv_toon_tonemap(color: vec3<f32>) -> vec3<f32> {
+    let mapped = color / (color + vec3<f32>(0.72));
+    return clamp(mapped * 1.22, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 fn vv_cartoon_lighting(
@@ -18,27 +23,30 @@ fn vv_cartoon_lighting(
     ao: f32,
     roughness: f32,
 ) -> vec3<f32> {
-    let N = safe_normalize(normal);
-    let V = safe_normalize(view_dir);
-    let L = vv_cartoon_sun_dir();
+    let n = safe_normalize(normal);
+    let v = safe_normalize(view_dir);
+    let l = vv_cartoon_sun_dir();
 
-    let n_dot_l = saturate(dot(N, L));
-    let hemi = saturate(N.y * 0.5 + 0.5);
+    let n_dot_l = saturate(dot(n, l));
+    let topness = saturate(n.y * 0.5 + 0.5);
 
-    let ambient = mix(vec3<f32>(0.42, 0.48, 0.56), vv_cartoon_ambient(), hemi);
-    let soft_direct = smoothstep(0.02, 0.72, n_dot_l);
-    let direct = vec3<f32>(1.0, 0.92, 0.76) * (0.52 + soft_direct * 0.72);
+    let ambient = mix(vec3<f32>(0.30, 0.34, 0.42), vv_cartoon_ambient(), topness) * 0.78;
+    let direct_band = smoothstep(0.04, 0.78, n_dot_l);
+    let direct = vec3<f32>(1.0, 0.92, 0.76) * (0.20 + direct_band * 0.72);
 
-    let rim = pow(1.0 - saturate(dot(N, V)), 2.35) * 0.10;
+    let rim = pow(1.0 - saturate(dot(n, v)), 2.6) * 0.075;
     let gloss = pow(1.0 - saturate(roughness), 2.0);
-    let spec = pow(saturate(dot(reflect(-L, N), V)), mix(18.0, 80.0, gloss)) * gloss * 0.08;
+    let spec = pow(saturate(dot(reflect(-l, n), v)), mix(24.0, 90.0, gloss)) * gloss * 0.07;
 
-    let clean_ao = mix(1.0, saturate(ao), 0.62);
-    let lit = albedo * (ambient + direct) * clean_ao + vv_cartoon_sky_color() * rim + spec + emission;
+    let clean_ao = mix(1.0, saturate(ao), 0.52);
 
-    // Mario-like candy color. Saturated, readable, not physically moody.
-    let saturated = vv_saturate_color(lit, 1.18);
-    return max(saturated, vec3<f32>(0.0));
+    var lit = albedo * (ambient + direct) * clean_ao;
+    lit += vv_cartoon_sky_color() * rim;
+    lit += vec3<f32>(spec);
+    lit += emission;
+
+    lit = vv_saturate_color(lit, 1.22);
+    return max(lit, vec3<f32>(0.0));
 }
 
 fn apply_planetary_lighting(
@@ -62,6 +70,6 @@ fn apply_planetary_fog(color: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
 }
 
 fn encode_final_color(color: vec3<f32>) -> vec3<f32> {
-    // Lightweight gamma-ish output. No filmic mood, no night blue soup.
-    return pow(clamp(color, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 / 2.2));
+    let mapped = vv_toon_tonemap(color);
+    return pow(mapped, vec3<f32>(1.0 / 2.2));
 }

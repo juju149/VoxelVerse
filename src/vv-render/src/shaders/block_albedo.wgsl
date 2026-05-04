@@ -46,17 +46,39 @@ fn vv_face_bias(visual: BlockVisual, face_id: u32) -> vec3<f32> {
     return face_visual_for(visual, face_id).color_bias.rgb;
 }
 
+fn vv_has_color(color: vec3<f32>) -> bool {
+    return length(color - vec3<f32>(1.0)) > 0.018;
+}
+
+fn vv_seed(
+    voxel_pos: vec3<i32>,
+    block_id: i32,
+    block_visual_id: u32,
+    face_id: u32,
+    variation_seed: u32,
+    salt: f32,
+) -> vec3<f32> {
+    return face_seed(
+        voxel_pos,
+        block_id,
+        block_visual_id,
+        face_id,
+        variation_seed,
+        vec2<f32>(0.0),
+        f32(visual_for(block_visual_id).patterned.seed & 65535u) + salt,
+    );
+}
+
 fn vv_base_color(visual: BlockVisual, face_id: u32, seed: vec3<f32>) -> vec3<f32> {
     var base = visual.base_color.rgb;
 
-    let white = length(base - vec3<f32>(1.0)) < 0.04;
-    if (white) {
+    if (length(base - vec3<f32>(1.0)) < 0.04) {
         base = palette_color(visual, hash13(seed + vec3<f32>(31.0, 17.0, 9.0)));
     }
 
     let face = vv_face_bias(visual, face_id);
-    if (length(face - vec3<f32>(1.0)) > 0.015) {
-        base = mix(base, face, 0.86);
+    if (vv_has_color(face)) {
+        base = mix(base, face, 0.92);
     }
 
     return max(base, vec3<f32>(0.0));
@@ -92,23 +114,11 @@ fn vv_variation(
     let bottomness = saturate(dot(-normal, up));
     let sideness = saturate(1.0 - topness - bottomness);
 
-    c *= mix(vec3<f32>(1.0), vec3<f32>(1.035, 1.025, 0.970), topness * 0.14);
-    c *= mix(vec3<f32>(1.0), vec3<f32>(0.92, 0.94, 1.00), sideness * 0.08);
-    c *= mix(vec3<f32>(1.0), vec3<f32>(0.72, 0.76, 0.85), bottomness * 0.24);
+    c *= mix(vec3<f32>(1.0), vec3<f32>(1.035, 1.025, 0.97), topness * 0.12);
+    c *= mix(vec3<f32>(1.0), vec3<f32>(0.92, 0.94, 0.98), sideness * 0.08);
+    c *= mix(vec3<f32>(1.0), vec3<f32>(0.74, 0.76, 0.82), bottomness * 0.20);
 
     return max(c, vec3<f32>(0.0));
-}
-
-fn vv_pattern_seed(
-    voxel_pos: vec3<i32>,
-    block_id: i32,
-    block_visual_id: u32,
-    face_id: u32,
-    variation_seed: u32,
-    cell: vec2<f32>,
-    salt: f32,
-) -> vec3<f32> {
-    return face_seed(voxel_pos, block_id, block_visual_id, face_id, variation_seed, cell, salt);
 }
 
 fn vv_voronoi(p: vec2<f32>, seed: vec3<f32>) -> vec3<f32> {
@@ -140,71 +150,42 @@ fn vv_voronoi(p: vec2<f32>, seed: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(closest, second, cell_hash);
 }
 
-fn vv_cells_color(
-    visual: BlockVisual,
+fn vv_cells_material(
     base: vec3<f32>,
-    world_pos: vec3<f32>,
     uv: vec2<f32>,
-    voxel_pos: vec3<i32>,
-    block_id: i32,
-    block_visual_id: u32,
-    face_id: u32,
-    variation_seed: u32,
+    world_pos: vec3<f32>,
+    density: f32,
+    gap: f32,
+    contrast: f32,
+    seed: vec3<f32>,
 ) -> vec3<f32> {
-    let seed = vv_pattern_seed(
-        voxel_pos,
-        block_id,
-        block_visual_id,
-        face_id,
-        variation_seed,
-        vec2<f32>(0.0),
-        f32(visual.patterned.seed & 65535u) + 43.0,
-    );
-
-    let density = max(max(f32(visual.patterned.rows), f32(visual.patterned.columns)), 2.0);
     let warp = vec2<f32>(
-        vv_value_noise_3d(world_pos * 0.31 + seed * 0.017),
-        vv_value_noise_3d(world_pos * 0.37 + seed * 0.029),
-    ) * 0.12;
+        vv_value_noise_3d(world_pos * 0.25 + seed * 0.017),
+        vv_value_noise_3d(world_pos * 0.31 + seed * 0.029),
+    ) * 0.10;
 
     let cells = vv_voronoi((uv + warp) * density, seed);
     let closest = cells.x;
     let second = cells.y;
     let cell_hash = cells.z;
 
-    let boundary = 1.0 - smoothstep(
-        0.025,
-        0.135 + visual.patterned.gap_width * 1.6,
-        second - closest,
-    );
+    let boundary = 1.0 - smoothstep(0.020, gap, second - closest);
 
     var c = base;
-    c *= 1.0 + (cell_hash - 0.5) * 2.0 * saturate(visual.patterned.color_variation);
+    c *= 1.0 + (cell_hash - 0.5) * contrast;
 
-    // Flat cartoon faces: no cell pillow highlight.
+    let center = 1.0 - smoothstep(0.06, 0.62, closest);
+    c *= 1.0 + center * 0.040;
 
-    let crack_amount = max(
-        visual.patterned.crack_density,
-        select(0.0, 0.18, visual.patterned.kind == PATTERN_CRACKED_CELLS),
-    );
-    let crack_hash = hash13(seed + vec3<f32>(floor((uv + warp) * density), 71.0));
-    let crack = boundary * select(0.0, 1.0, crack_hash < crack_amount + visual.patterned.gap_width);
-
-    c = mix(c, c * vec3<f32>(0.48, 0.48, 0.46), boundary * visual.patterned.gap_depth * 5.0);
-    c = mix(c, c * vec3<f32>(0.30, 0.30, 0.28), crack * 0.62);
-
+    c = mix(c, c * vec3<f32>(0.48, 0.40, 0.32), boundary * 0.58);
     return max(c, vec3<f32>(0.0));
 }
 
-fn vv_rect_color(
+fn vv_rect_material(
     visual: BlockVisual,
     base: vec3<f32>,
     uv: vec2<f32>,
-    voxel_pos: vec3<i32>,
-    block_id: i32,
-    block_visual_id: u32,
-    face_id: u32,
-    variation_seed: u32,
+    seed: vec3<f32>,
 ) -> vec3<f32> {
     let rows = max(f32(visual.patterned.rows), 1.0);
     let columns = max(f32(visual.patterned.columns), 1.0);
@@ -221,63 +202,151 @@ fn vv_rect_color(
     }
 
     let cell = floor(grid_uv);
-    let local = fract(grid_uv);
-    let seed = vv_pattern_seed(
-        voxel_pos,
-        block_id,
-        block_visual_id,
-        face_id,
-        variation_seed,
-        cell,
-        f32(visual.patterned.seed & 65535u) + 17.0,
-    );
-
-    let h = hash13(seed + vec3<f32>(13.0, 31.0, 73.0));
-    let h2 = hash13(seed + vec3<f32>(97.0, 11.0, 41.0));
+    let local_uv = fract(grid_uv);
+    let h = hash13(seed + vec3<f32>(cell, 13.0));
+    let h2 = hash13(seed + vec3<f32>(cell, 97.0));
 
     var c = base;
     c *= 1.0 + (h - 0.5) * 2.0 * saturate(visual.patterned.color_variation);
 
-    // Flat cartoon faces: no center pillow highlight.
-
     let gap = clamp(visual.patterned.gap_width, 0.0, 0.20);
-    let warped = clamp(local + vec2<f32>(h - 0.5, h2 - 0.5) * 0.035, vec2<f32>(0.0), vec2<f32>(1.0));
+    let warped = clamp(local_uv + vec2<f32>(h - 0.5, h2 - 0.5) * 0.035, vec2<f32>(0.0), vec2<f32>(1.0));
     let edge = min(min(warped.x, 1.0 - warped.x) / columns, min(warped.y, 1.0 - warped.y) / rows);
     let mortar = 1.0 - smoothstep(gap * 0.40, gap * 1.05 + 0.0001, edge);
-    let mortar_tint = mix(vec3<f32>(0.56), vec3<f32>(0.38), saturate(visual.patterned.gap_depth * 7.0));
 
-    c = mix(c, c * mortar_tint, mortar * 0.68);
+    c = mix(c, c * vec3<f32>(0.44, 0.38, 0.34), mortar * 0.70);
     return max(c, vec3<f32>(0.0));
 }
 
-fn vv_rings_color(
+fn vv_leaf_shape(uv: vec2<f32>, center: vec2<f32>, angle: f32, radius: vec2<f32>) -> f32 {
+    let p = uv - center;
+    let ca = cos(angle);
+    let sa = sin(angle);
+    let q = vec2<f32>(
+        ca * p.x - sa * p.y,
+        sa * p.x + ca * p.y,
+    ) / radius;
+
+    let body = 1.0 - smoothstep(0.62, 1.0, dot(q, q));
+    let tip = smoothstep(-0.95, 0.75, q.x) * (1.0 - smoothstep(0.48, 1.10, abs(q.y)));
+    return saturate(body * tip);
+}
+
+fn vv_grass_top(
     visual: BlockVisual,
     base: vec3<f32>,
-    world_pos: vec3<f32>,
     uv: vec2<f32>,
-    face_id: u32,
-    voxel_pos: vec3<i32>,
-    block_id: i32,
-    block_visual_id: u32,
-    variation_seed: u32,
+    world_pos: vec3<f32>,
+    seed: vec3<f32>,
 ) -> vec3<f32> {
-    let seed = vv_pattern_seed(
-        voxel_pos,
-        block_id,
-        block_visual_id,
-        face_id,
-        variation_seed,
-        vec2<f32>(0.0),
-        f32(visual.patterned.seed & 65535u) + 101.0,
+    var grass = base;
+
+    let n = vv_value_noise_3d(vec3<f32>(uv * 5.0, seed.z * 0.07));
+    let cells = vv_voronoi((uv + n * 0.035) * 7.5, seed + vec3<f32>(3.0, 9.0, 17.0));
+    let soft_cell = 1.0 - smoothstep(0.08, 0.52, cells.x);
+
+    grass *= 1.0 + (cells.z - 0.5) * 0.16;
+    grass = mix(grass, grass * vec3<f32>(1.12, 1.20, 0.86), soft_cell * 0.14);
+
+    let tile = floor(uv * 6.0);
+    let local_uv = fract(uv * 6.0);
+    let tile_seed = seed + vec3<f32>(tile, 41.0);
+
+    var leaf_mix = 0.0;
+    for (var i: u32 = 0u; i < 3u; i = i + 1u) {
+        let s = tile_seed + vec3<f32>(f32(i) * 19.0, f32(i) * 7.0, f32(i) * 3.0);
+        let spawn = hash13(s + vec3<f32>(1.0, 2.0, 3.0));
+        let center = vec2<f32>(
+            hash13(s + vec3<f32>(5.0, 7.0, 11.0)),
+            hash13(s + vec3<f32>(13.0, 17.0, 19.0)),
+        );
+        let angle = hash13(s + vec3<f32>(23.0, 29.0, 31.0)) * 6.28318;
+        let size = mix(0.105, 0.185, hash13(s + vec3<f32>(37.0, 41.0, 43.0)));
+
+        let leaf = vv_leaf_shape(local_uv, center, angle, vec2<f32>(size, size * 0.38));
+        leaf_mix = max(leaf_mix, leaf * select(0.0, 1.0, spawn > 0.28));
+    }
+
+    let leaf_light = vec3<f32>(0.58, 0.78, 0.24);
+    let leaf_shadow = vec3<f32>(0.25, 0.50, 0.12);
+
+    grass = mix(grass, grass * leaf_shadow, leaf_mix * 0.16);
+    grass = mix(grass, leaf_light, leaf_mix * 0.22);
+
+    let edge_x = min(uv.x, 1.0 - uv.x);
+    let edge_y = min(uv.y, 1.0 - uv.y);
+    let edge = 1.0 - smoothstep(0.02, 0.16, min(edge_x, edge_y));
+    grass = mix(grass, grass * vec3<f32>(0.72, 0.86, 0.54), edge * 0.16);
+
+    return max(grass, vec3<f32>(0.0));
+}
+
+fn vv_grass_side(
+    visual: BlockVisual,
+    soil_base: vec3<f32>,
+    uv: vec2<f32>,
+    world_pos: vec3<f32>,
+    seed: vec3<f32>,
+) -> vec3<f32> {
+    var soil = vv_cells_material(
+        soil_base,
+        uv,
+        world_pos,
+        5.2,
+        0.145,
+        0.34,
+        seed + vec3<f32>(71.0, 13.0, 5.0),
     );
 
+    let pebble_cell = floor(uv * vec2<f32>(6.0, 5.0));
+    let pebble_local = fract(uv * vec2<f32>(6.0, 5.0));
+    let pebble_seed = seed + vec3<f32>(pebble_cell, 101.0);
+    let pebble_spawn = hash13(pebble_seed);
+    let pebble_center = vec2<f32>(
+        hash13(pebble_seed + vec3<f32>(2.0, 4.0, 6.0)),
+        hash13(pebble_seed + vec3<f32>(8.0, 10.0, 12.0)),
+    );
+    let pebble_q = (pebble_local - pebble_center) / vec2<f32>(0.23, 0.16);
+    let pebble = (1.0 - smoothstep(0.55, 1.0, dot(pebble_q, pebble_q))) *
+        select(0.0, 1.0, pebble_spawn > 0.76);
+
+    soil = mix(soil, vec3<f32>(0.62, 0.38, 0.20), pebble * 0.38);
+
+    let grass_top = vv_face_bias(visual, 0u);
+    var grass = vec3<f32>(0.36, 0.64, 0.16);
+    if (vv_has_color(grass_top)) {
+        grass = grass_top;
+    }
+
+    // Side UV convention: top edge is uv.y ~= 1.0 on vertical faces.
+    let side_from_top = 1.0 - uv.y;
+    let x_noise = vv_value_noise_3d(vec3<f32>(uv.x * 7.0, seed.x * 0.03, seed.y * 0.05));
+    let thin_noise = vv_value_noise_3d(vec3<f32>(uv.x * 17.0, seed.z * 0.04, 9.0));
+    let drip_depth = 0.18 + x_noise * 0.18 + thin_noise * 0.07;
+    let cap = 1.0 - smoothstep(drip_depth - 0.035, drip_depth + 0.045, side_from_top);
+
+    let droplet_column = 1.0 - smoothstep(0.10, 0.38, abs(fract(uv.x * 8.0 + x_noise * 0.35) - 0.5));
+    let droplet = cap * droplet_column;
+
+    let grass_shadow = grass * vec3<f32>(0.50, 0.70, 0.34);
+    var out_color = mix(soil, grass, cap * 0.92);
+    out_color = mix(out_color, grass_shadow, droplet * smoothstep(0.10, 0.44, side_from_top) * 0.34);
+
+    return max(out_color, vec3<f32>(0.0));
+}
+
+fn vv_rings_material(
+    visual: BlockVisual,
+    base: vec3<f32>,
+    uv: vec2<f32>,
+    face_id: u32,
+    seed: vec3<f32>,
+) -> vec3<f32> {
     if (face_id == 0u || face_id == 1u) {
         let p = uv - vec2<f32>(0.5);
         let r = length(p);
         let rings = max(f32(visual.patterned.rows), 5.0);
-
-        let wobble =
-            sin(p.x * 8.7 + hash13(seed) * 6.28318) * 0.012 +
+        let wobble = sin(p.x * 8.7 + hash13(seed) * 6.28318) * 0.012 +
             sin(p.y * 7.9 + hash13(seed + vec3<f32>(9.0, 4.0, 2.0)) * 6.28318) * 0.010;
 
         let wave = abs(fract((r + wobble) * rings * 1.42) - 0.5);
@@ -303,9 +372,6 @@ fn vv_rings_color(
     c = mix(c, c * vec3<f32>(0.60, 0.38, 0.19), streak * 0.28);
     c = mix(c, c * vec3<f32>(0.42, 0.25, 0.12), dark * 0.20);
 
-    let patch_noise = vv_value_noise_3d(world_pos * 0.85 + seed * 0.015);
-    c *= 1.0 + (patch_noise - 0.5) * saturate(visual.patterned.color_variation) * 0.55;
-
     return max(c, vec3<f32>(0.0));
 }
 
@@ -318,43 +384,31 @@ fn vv_layered_surface_color(
     seed: vec3<f32>,
 ) -> vec3<f32> {
     if (face_id == 0u) {
-        let top = vv_face_bias(visual, 0u);
-        var c = mix(base, top, select(0.0, 0.88, length(top - vec3<f32>(1.0)) > 0.015));
+        var top = vv_face_bias(visual, 0u);
+        if (!vv_has_color(top)) {
+            top = vec3<f32>(0.36, 0.64, 0.16);
+        }
 
-        let n = vv_value_noise_3d(vec3<f32>(uv * 5.0, seed.z * 0.07));
-        let fiber_density = max(f32(visual.patterned.rows), 6.0);
-        let fiber = 1.0 - smoothstep(0.10, 0.32, abs(fract((uv.x + n * 0.12) * fiber_density * 0.55) - 0.5));
-
-        c *= 1.0 + (n - 0.5) * saturate(visual.patterned.color_variation) * 0.50;
-        c = mix(c, c * vec3<f32>(1.04, 1.12, 0.88), fiber * 0.18);
-        return max(c, vec3<f32>(0.0));
+        return vv_grass_top(visual, top, uv, world_pos, seed);
     }
 
     if (face_id == 1u) {
-        return base;
+        var bottom = vv_face_bias(visual, 1u);
+        if (!vv_has_color(bottom)) {
+            bottom = base * vec3<f32>(0.60, 0.48, 0.38);
+        }
+        return bottom;
     }
 
-    let top_color = vv_face_bias(visual, 0u);
-    let has_top = length(top_color - vec3<f32>(1.0)) > 0.015;
-    var bleed = base * vec3<f32>(0.62, 1.10, 0.55);
-    if (has_top) {
-        bleed = top_color;
+    var side = vv_face_bias(visual, face_id);
+    if (!vv_has_color(side)) {
+        side = vv_face_bias(visual, 2u);
+    }
+    if (!vv_has_color(side)) {
+        side = vec3<f32>(0.46, 0.26, 0.13);
     }
 
-    let fringe_h = clamp(visual.patterned.gap_width * 2.5, 0.05, 0.50);
-    let irregularity = saturate(visual.patterned.height_variation * 4.0) * 0.12;
-
-    let from_top_a = 1.0 - uv.y;
-    let from_top_b = uv.y;
-
-    let noise = vv_value_noise_3d(vec3<f32>(uv.x * 3.5, seed.x * 0.05, seed.y * 0.03));
-    let edge = fringe_h + (noise - 0.5) * irregularity * 2.0;
-
-    let fringe_a = 1.0 - smoothstep(edge - 0.04, edge + 0.05, from_top_a);
-    let fringe_b = 1.0 - smoothstep(edge - 0.04, edge + 0.05, from_top_b);
-    let fringe = max(fringe_a, fringe_b * 0.55);
-
-    return max(mix(base, bleed, fringe), vec3<f32>(0.0));
+    return vv_grass_side(visual, side, uv, world_pos, seed);
 }
 
 fn vv_detail_face_enabled(detail: BlockDetail, face_id: u32) -> bool {
@@ -384,15 +438,14 @@ fn vv_detail_mask(
     let density = saturate(detail.params.x);
     let min_size = clamp(detail.params.y, 0.001, 0.50);
     let max_size = clamp(max(detail.params.z, min_size), 0.001, 0.75);
-    let slope_bias = saturate(detail.params.w);
     let average = clamp((min_size + max_size) * 0.5, 0.005, 0.60);
     let cell_scale = clamp(1.0 / average, 2.0, 42.0);
 
     let p = uv * cell_scale;
     let cell = floor(p);
-    let local = fract(p);
+    let local_uv = fract(p);
 
-    let seed = vv_pattern_seed(
+    let seed = face_seed(
         voxel_pos,
         block_id,
         block_visual_id,
@@ -416,7 +469,7 @@ fn vv_detail_mask(
         hash13(seed + vec3<f32>(47.0, 53.0, 59.0)),
     );
 
-    let centered = local - center;
+    let centered = local_uv - center;
     let angle = angle_hash * 6.28318;
     let ca = cos(angle);
     let sa = sin(angle);
@@ -436,11 +489,8 @@ fn vv_detail_mask(
         let along = 1.0 - smoothstep(0.12, 0.48, abs(rotated.x));
         m = (1.0 - smoothstep(0.010, 0.038, line)) * along;
     } else if (kind == DETAIL_LEAF_LOBE) {
-        let q = rotated / vec2<f32>(max(radius * 1.15, 0.001), max(radius * 0.46, 0.001));
-        let lobe = 1.0 - smoothstep(0.58, 1.0, dot(q, q));
-        let vein = (1.0 - smoothstep(0.010, 0.038, abs(rotated.y))) *
-            (1.0 - smoothstep(0.18, 0.48, abs(rotated.x))) * lobe;
-        m = saturate(lobe * 0.85 + vein * 0.25);
+        let leaf = vv_leaf_shape(local_uv, center, angle, vec2<f32>(radius * 0.95, radius * 0.36));
+        m = leaf;
     } else if (kind == DETAIL_GRAIN) {
         let stripe = abs(fract((uv.x + angle_hash * 0.37) * cell_scale * 0.72) - 0.5);
         m = 1.0 - smoothstep(0.060, 0.19, stripe);
@@ -460,7 +510,7 @@ fn vv_detail_mask(
     let topness = saturate(dot(normal, up));
     let bottomness = saturate(dot(-normal, up));
     let sideness = saturate(1.0 - topness - bottomness);
-    let slope_weight = mix(1.0, saturate(topness + sideness * 0.65 + bottomness * 0.25), slope_bias);
+    let slope_weight = saturate(topness + sideness * 0.78 + bottomness * 0.30);
 
     return saturate(m * slope_weight * detail.color.a);
 }
@@ -504,12 +554,11 @@ fn vv_apply_details(
             detail_color = mix(c * 0.42, detail_color, 0.55);
         }
 
-        c = mix(c, detail_color, mask);
+        c = mix(c, detail_color, mask * 0.75);
     }
 
     return max(c, vec3<f32>(0.0));
 }
-
 
 fn vv_cartoon_fake_bevel(
     color: vec3<f32>,
@@ -518,8 +567,6 @@ fn vv_cartoon_fake_bevel(
     up: vec3<f32>,
     visual: BlockVisual,
 ) -> vec3<f32> {
-    // Shader-only rounded voxel look.
-    // No vertex displacement, no holes, no extra mesh cost.
     let edge_x = min(uv.x, 1.0 - uv.x);
     let edge_y = min(uv.y, 1.0 - uv.y);
     let edge = min(edge_x, edge_y);
@@ -535,11 +582,11 @@ fn vv_cartoon_fake_bevel(
         )
     );
 
-    let radius = 0.135;
-    let edge_band = 1.0 - smoothstep(0.010, radius, edge);
+    let radius = 0.125;
+    let edge_band = 1.0 - smoothstep(0.012, radius, edge);
     let corner_band = 1.0 - smoothstep(0.045, radius * 1.35, corner_dist);
 
-    let bevel = saturate(edge_band * 0.75 + corner_band * 0.55);
+    let bevel = saturate(edge_band * 0.70 + corner_band * 0.50);
 
     let topness = saturate(dot(normal, up));
     let bottomness = saturate(dot(-normal, up));
@@ -547,18 +594,12 @@ fn vv_cartoon_fake_bevel(
 
     var c = color;
 
-    // Soft candy edge: darker on side/bottom edges, slightly creamy on top edges.
-    let dark_edge = vec3<f32>(0.72, 0.76, 0.82);
-    let warm_highlight = vec3<f32>(1.10, 1.08, 0.98);
+    c = mix(c, c * vec3<f32>(0.68, 0.72, 0.78), bevel * (0.20 + sideness * 0.16 + bottomness * 0.22));
+    c = mix(c, c * vec3<f32>(1.10, 1.08, 0.98), bevel * topness * 0.12);
 
-    c = mix(c, c * dark_edge, bevel * (0.22 + sideness * 0.18 + bottomness * 0.24));
-    c = mix(c, c * warm_highlight, bevel * topness * 0.13);
-
-    // Preserve readable material colors.
-    c = vv_saturate_color(c, 1.06);
-
-    return max(c, vec3<f32>(0.0));
+    return max(vv_saturate_color(c, 1.08), vec3<f32>(0.0));
 }
+
 fn procedural_block_albedo(
     world_pos: vec3<f32>,
     normal: vec3<f32>,
@@ -571,16 +612,7 @@ fn procedural_block_albedo(
     up: vec3<f32>,
 ) -> vec3<f32> {
     let visual = visual_for(block_visual_id);
-
-    let seed = vv_pattern_seed(
-        voxel_pos,
-        block_id,
-        block_visual_id,
-        face_id,
-        variation_seed,
-        vec2<f32>(0.0),
-        f32(visual.patterned.seed & 65535u) + 7.0,
-    );
+    let seed = vv_seed(voxel_pos, block_id, block_visual_id, face_id, variation_seed, 7.0);
 
     var color = vv_base_color(visual, face_id, seed);
 
@@ -591,44 +623,24 @@ fn procedural_block_albedo(
             visual.patterned.kind == PATTERN_NATURAL_CELLS ||
             visual.patterned.kind == PATTERN_CRACKED_CELLS
         ) {
-            color = vv_cells_color(
-                visual,
+            let density = max(max(f32(visual.patterned.rows), f32(visual.patterned.columns)), 2.0);
+            color = vv_cells_material(
                 color,
-                world_pos,
                 uv,
-                voxel_pos,
-                block_id,
-                block_visual_id,
-                face_id,
-                variation_seed,
+                world_pos,
+                density,
+                0.135 + visual.patterned.gap_width,
+                saturate(visual.patterned.color_variation) * 0.75,
+                seed,
             );
         } else if (
             visual.patterned.kind == PATTERN_GRID ||
             visual.patterned.kind == PATTERN_RUNNING_BOND ||
             visual.patterned.kind == PATTERN_STRIPS
         ) {
-            color = vv_rect_color(
-                visual,
-                color,
-                uv,
-                voxel_pos,
-                block_id,
-                block_visual_id,
-                face_id,
-                variation_seed,
-            );
+            color = vv_rect_material(visual, color, uv, seed);
         } else if (visual.patterned.kind == PATTERN_RINGS) {
-            color = vv_rings_color(
-                visual,
-                color,
-                world_pos,
-                uv,
-                face_id,
-                voxel_pos,
-                block_id,
-                block_visual_id,
-                variation_seed,
-            );
+            color = vv_rings_material(visual, color, uv, face_id, seed);
         }
     }
 
@@ -650,5 +662,5 @@ fn procedural_block_albedo(
 
     color = vv_cartoon_fake_bevel(color, uv, normal, up, visual);
 
-    return clamp(color, vec3<f32>(0.0), vec3<f32>(1.25));
+    return clamp(color, vec3<f32>(0.0), vec3<f32>(1.35));
 }
