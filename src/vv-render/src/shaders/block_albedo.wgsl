@@ -306,8 +306,8 @@ fn vv_rings_color(
     c = mix(c, c * vec3<f32>(0.60, 0.38, 0.19), streak * 0.28);
     c = mix(c, c * vec3<f32>(0.42, 0.25, 0.12), dark * 0.20);
 
-    let patch = vv_value_noise_3d(world_pos * 0.85 + seed * 0.015);
-    c *= 1.0 + (patch - 0.5) * saturate(visual.patterned.color_variation) * 0.55;
+    let patch_noise = vv_value_noise_3d(world_pos * 0.85 + seed * 0.015);
+    c *= 1.0 + (patch_noise - 0.5) * saturate(visual.patterned.color_variation) * 0.55;
 
     return max(c, vec3<f32>(0.0));
 }
@@ -501,13 +501,13 @@ fn vv_apply_details(
         );
 
         let kind = detail.kind_data.x;
-        var target = detail.color.rgb;
+        var detail_color = detail.color.rgb;
 
         if (kind == DETAIL_CRACK || kind == DETAIL_STAIN || kind == DETAIL_ROOT) {
-            target = mix(c * 0.42, target, 0.55);
+            detail_color = mix(c * 0.42, detail_color, 0.55);
         }
 
-        c = mix(c, target, mask);
+        c = mix(c, detail_color, mask);
     }
 
     return max(c, vec3<f32>(0.0));
