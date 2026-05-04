@@ -9,6 +9,7 @@ use winit::window::Window;
 
 use vv_mesh::Vertex;
 use vv_registry::{BlockContent, CompiledContent, ContentKey, RuntimeBlockVisual};
+use vv_render::{atmosphere::AtmosphereUniform, shader_source};
 
 use crate::args::ViewerState;
 use crate::block_selector::BlockSelector;
@@ -20,24 +21,20 @@ use crate::viewer_ui;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
-struct ViewerGlobalUniform {
+struct SharedGlobalUniform {
     view_proj: [f32; 16],
+    light_view_proj: [f32; 16],
     camera_pos: [f32; 4],
-    sun_direction: [f32; 4],
-    sun_color: [f32; 4],
-    sky_color: [f32; 4],
+    atmosphere: AtmosphereUniform,
+    inv_view_proj: [f32; 16],
+    planet: [f32; 4],
 }
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 struct ViewerLocalUniform {
     model: [f32; 16],
-    // x=debug_mode, y=variation_scale, z=edge_strength_mult, w=exposure
     params: [f32; 4],
-    // x=ao_mult, y=bevel_mult, z=macro_strength_mult, w=micro_strength_mult
-    sliders: [f32; 4],
 }
-
 fn build_block_visual_uniforms(content: &CompiledContent) -> Vec<RuntimeBlockVisual> {
     let mut out = Vec::new();
     for &v in content.block_visuals.entries() {
@@ -48,6 +45,55 @@ fn build_block_visual_uniforms(content: &CompiledContent) -> Vec<RuntimeBlockVis
     }
     out
 }
+
+const VIEWER_LINE_SHADER: &str = r#"
+struct Global {
+    view_proj: mat4x4<f32>,
+}
+
+struct Local {
+    model: mat4x4<f32>,
+    params: vec4<f32>,
+}
+
+@group(0) @binding(0)
+var<uniform> global: Global;
+
+@group(1) @binding(0)
+var<uniform> local: Local;
+
+struct VertexIn {
+    @location(0) pos: vec3<f32>,
+    @location(1) color: vec3<f32>,
+    @location(2) normal: vec3<f32>,
+    @location(3) uv: vec2<f32>,
+    @location(4) texture_id: i32,
+    @location(5) block_id: i32,
+    @location(6) block_visual_id: u32,
+    @location(7) face_id: u32,
+    @location(8) voxel_pos: vec3<i32>,
+    @location(9) variation_seed: u32,
+    @location(10) ao: f32,
+}
+
+struct GridOut {
+    @builtin(position) clip_pos: vec4<f32>,
+    @location(0) color: vec4<f32>,
+}
+
+@vertex
+fn vs_line(in: VertexIn) -> GridOut {
+    var out: GridOut;
+    out.clip_pos = global.view_proj * (local.model * vec4<f32>(in.pos, 1.0));
+    out.color = vec4<f32>(in.color, 1.0);
+    return out;
+}
+
+@fragment
+fn fs_line(in: GridOut) -> @location(0) vec4<f32> {
+    return in.color;
+}
+"#;
 
 const VERTEX_ATTRIBUTES: &[wgpu::VertexAttribute] = &[
     wgpu::VertexAttribute {
@@ -305,7 +351,7 @@ impl<'w> ViewerRenderer<'w> {
         // --- Global buffer and bind group ---
         let global_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("viewer global"),
-            size: std::mem::size_of::<ViewerGlobalUniform>() as u64,
+            size: std::mem::size_of::<SharedGlobalUniform>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -338,10 +384,16 @@ impl<'w> ViewerRenderer<'w> {
         });
 
         // --- Shader ---
-        let shader_src = include_str!("viewer.wgsl");
+        // Blocks use the exact same WGSL source as the game renderer.
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("viewer shader"),
-            source: wgpu::ShaderSource::Wgsl(shader_src.into()),
+            label: Some("vv-viewer shared game shader"),
+            source: wgpu::ShaderSource::Wgsl(shader_source::main_shader_source().into()),
+        });
+
+        // Grid/lines stay tiny and viewer-only.
+        let line_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("vv-viewer line shader"),
+            source: wgpu::ShaderSource::Wgsl(VIEWER_LINE_SHADER.into()),
         });
 
         // --- Pipelines ---
@@ -396,12 +448,12 @@ impl<'w> ViewerRenderer<'w> {
             label: Some("viewer line pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shader,
+                module: &line_shader,
                 entry_point: "vs_line",
                 buffers: &[vertex_buf_layout.clone()],
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
+                module: &line_shader,
                 entry_point: "fs_line",
                 targets: &[Some(wgpu::ColorTargetState {
                     format: surf_format,
@@ -468,7 +520,6 @@ impl<'w> ViewerRenderer<'w> {
         let identity = ViewerLocalUniform {
             model: Mat4::IDENTITY.to_cols_array(),
             params: [0.0, 1.0, 1.0, 1.0],
-            sliders: [1.0, 1.0, 1.0, 1.0],
         };
         let scene_local_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("scene local"),
@@ -493,7 +544,6 @@ impl<'w> ViewerRenderer<'w> {
         let grid_identity = ViewerLocalUniform {
             model: Mat4::IDENTITY.to_cols_array(),
             params: [0.0, 1.0, 1.0, 1.0],
-            sliders: [1.0, 1.0, 1.0, 1.0],
         };
         let grid_local_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("grid local"),
@@ -579,7 +629,6 @@ impl<'w> ViewerRenderer<'w> {
                 contents: bytemuck::bytes_of(&ViewerLocalUniform {
                     model: Mat4::IDENTITY.to_cols_array(),
                     params: [0.0, 1.0, 1.0, 1.0],
-                    sliders: [1.0, 1.0, 1.0, 1.0],
                 }),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
@@ -653,36 +702,26 @@ impl<'w> ViewerRenderer<'w> {
         selector: &mut BlockSelector,
         content: &CompiledContent,
     ) -> viewer_ui::UiActions {
-        // Write debug/slider uniforms every frame.
+        // Write real game local uniform every frame.
         let local_data = ViewerLocalUniform {
             model: Mat4::IDENTITY.to_cols_array(),
-            params: [
-                state.debug_mode.as_u32() as f32,
-                state.variation_scale,
-                state.edge_strength_mult,
-                state.exposure,
-            ],
-            sliders: [
-                state.ao_mult,
-                state.bevel_mult,
-                state.macro_strength_mult,
-                state.micro_strength_mult,
-            ],
+            params: [1.0, 0.0, 0.0, 0.0],
         };
         self.queue
             .write_buffer(&self.scene_local_buf, 0, bytemuck::bytes_of(&local_data));
 
-        // Update global uniform
+        // Update shared game global uniform.
         let vp = self.camera.view_proj();
         let cam_pos = self.camera.position();
-        // Fixed studio lighting: sun from upper-right front
-        let sun_dir = Vec3::new(0.6, 0.9, 0.4).normalize();
-        let global = ViewerGlobalUniform {
+        let atmosphere = viewer_atmosphere();
+
+        let global = SharedGlobalUniform {
             view_proj: vp.to_cols_array(),
-            camera_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 0.0],
-            sun_direction: [sun_dir.x, sun_dir.y, sun_dir.z, 0.0],
-            sun_color: [1.15, 1.05, 0.90, 0.0],
-            sky_color: [0.46, 0.62, 0.88, 0.0],
+            light_view_proj: Mat4::IDENTITY.to_cols_array(),
+            camera_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
+            atmosphere,
+            inv_view_proj: vp.inverse().to_cols_array(),
+            planet: [1.0, 12_000.0, 0.0, 0.0],
         };
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::bytes_of(&global));
@@ -904,5 +943,28 @@ fn create_index_buffer(device: &wgpu::Device, data: &[u32], label: &str) -> wgpu
             contents: bytemuck::cast_slice(data),
             usage: wgpu::BufferUsages::INDEX,
         })
+    }
+}
+
+fn viewer_atmosphere() -> AtmosphereUniform {
+    AtmosphereUniform {
+        sun_direction: [-0.42, 0.88, -0.34, 0.0],
+        sun_color: [1.0, 0.92, 0.76, 0.0],
+        sky_color: [0.62, 0.80, 1.0, 0.0],
+        ground_ambient_color: [0.42, 0.48, 0.56, 0.0],
+        shadow_tint_color: [0.72, 0.76, 0.82, 0.0],
+        fog_color_density: [0.62, 0.80, 1.0, 0.0],
+        clear_color: [0.62, 0.80, 1.0, 1.0],
+
+        zenith_color: [0.62, 0.80, 1.0, 0.0],
+        horizon_glow_color: [0.90, 0.96, 1.0, 0.0],
+        moon_direction: [0.0, -1.0, 0.0, 0.0],
+        moon_color: [0.0, 0.0, 0.0, 0.0],
+
+        grading: [1.0, 1.0, 1.0, 0.0],
+        sky_params: [0.0, 1.0, 0.0, 0.0],
+
+        planet_center_radius: [0.0, 0.0, 0.0, 1.0],
+        atmosphere_params: [12_000.0, 0.0, 12_000.0, 0.1],
     }
 }

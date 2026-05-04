@@ -11,6 +11,7 @@ vv-voxel        = { path = "../vv-voxel" }
 vv-compiler  = { path = "../vv-compiler" }
 vv-registry  = { path = "../vv-registry" }
 vv-mesh      = { path = "../vv-mesh" }
+vv-render    = { path = "../vv-render" }
 
 glam         = "0.25"
 wgpu         = "0.19"
