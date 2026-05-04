@@ -69,6 +69,44 @@ fn vv_seed(
     );
 }
 
+
+fn vv_global_surface_seed(visual: BlockVisual, salt: f32) -> vec3<f32> {
+    let s = f32(visual.patterned.seed & 65535u) + salt;
+    return vec3<f32>(
+        s * 0.1031 + 11.17,
+        s * 0.1137 + 23.31,
+        s * 0.1379 + 37.73
+    );
+}
+
+fn vv_world_projected_uv(world_pos: vec3<f32>, normal: vec3<f32>) -> vec2<f32> {
+    // Triplanar-lite projection.
+    // Top/bottom use XZ, X sides use ZY, Z sides use XY.
+    // This makes procedural cells continue across neighboring blocks.
+    let ax = abs(normal.x);
+    let ay = abs(normal.y);
+    let az = abs(normal.z);
+
+    if (ay >= ax && ay >= az) {
+        return world_pos.xz;
+    }
+
+    if (ax >= az) {
+        return vec2<f32>(world_pos.z, world_pos.y);
+    }
+
+    return vec2<f32>(world_pos.x, world_pos.y);
+}
+
+fn vv_world_top_uv(world_pos: vec3<f32>) -> vec2<f32> {
+    return world_pos.xz;
+}
+
+fn vv_world_side_uv(world_pos: vec3<f32>) -> vec2<f32> {
+    // Orientation-independent side coordinate.
+    // X faces and Z faces both get a continuous horizontal coordinate.
+    return vec2<f32>(world_pos.x + world_pos.z, world_pos.y);
+}
 fn vv_base_color(visual: BlockVisual, face_id: u32, seed: vec3<f32>) -> vec3<f32> {
     var base = visual.base_color.rgb;
 
@@ -249,6 +287,8 @@ fn vv_grass_top(
     world_pos: vec3<f32>,
     seed: vec3<f32>,
 ) -> vec3<f32> {
+    let surf_uv = vv_world_top_uv(world_pos);
+
     var grass = vec3<f32>(0.27, 0.50, 0.115);
 
     let face_top = vv_face_bias(visual, 0u);
@@ -256,13 +296,12 @@ fn vv_grass_top(
         grass = face_top;
     }
 
-    let broad = vv_value_noise_3d(vec3<f32>(uv * 2.15, seed.z * 0.05));
-    let fine = vv_value_noise_3d(vec3<f32>(uv * 7.40, seed.x * 0.03));
+    let broad = vv_value_noise_3d(vec3<f32>(surf_uv * 2.15, seed.z * 0.05));
+    let fine = vv_value_noise_3d(vec3<f32>(surf_uv * 7.40, seed.x * 0.03));
 
     grass *= 0.80 + broad * 0.15 + fine * 0.026;
 
-    // Large coussins organiques sous les feuilles.
-    let cushion_cells = vv_voronoi((uv + broad * 0.014) * 3.85, seed + vec3<f32>(3.0, 9.0, 17.0));
+    let cushion_cells = vv_voronoi((surf_uv + broad * 0.014) * 3.85, seed + vec3<f32>(3.0, 9.0, 17.0));
     let cushion = 1.0 - smoothstep(0.11, 0.64, cushion_cells.x);
     let valley = smoothstep(0.18, 0.44, cushion_cells.x) *
         (1.0 - smoothstep(0.48, 0.78, cushion_cells.x));
@@ -270,8 +309,8 @@ fn vv_grass_top(
     grass = mix(grass, grass * vec3<f32>(1.10, 1.13, 0.86), cushion * 0.125);
     grass = mix(grass, grass * vec3<f32>(0.58, 0.72, 0.42), valley * 0.155);
 
-    let tile = floor(uv * 4.00);
-    let local_uv = fract(uv * 4.00);
+    let tile = floor(surf_uv * 4.00);
+    let local_uv = fract(surf_uv * 4.00);
     let tile_seed = seed + vec3<f32>(tile, 41.0);
 
     var leaf_mask = 0.0;
@@ -329,14 +368,13 @@ fn vv_grass_top(
     let leaf_dark = vec3<f32>(0.095, 0.225, 0.045);
     let leaf_light = vec3<f32>(0.55, 0.72, 0.22);
 
-    // Vrai faux volume : ombre portée, corps, coeur clair, liseré.
     grass = mix(grass, grass * leaf_dark, leaf_shadow * 0.38);
     grass = mix(grass, grass * vec3<f32>(0.50, 0.64, 0.34), leaf_cut * 0.28);
     grass = mix(grass, leaf_body, leaf_mask * 0.38);
     grass = mix(grass, leaf_light, leaf_highlight * 0.32);
     grass = mix(grass, grass * vec3<f32>(1.13, 1.12, 0.84), leaf_core * 0.12);
 
-    // Volume global du dessus : bord = plus sombre, centre = doux.
+    // Local cube edge is kept local: this is a bevel, not a texture tile.
     let edge_x = min(uv.x, 1.0 - uv.x);
     let edge_y = min(uv.y, 1.0 - uv.y);
     let edge_dist = min(edge_x, edge_y);
@@ -359,6 +397,8 @@ fn vv_grass_top(
 
 
 
+
+
 fn vv_grass_side(
     visual: BlockVisual,
     soil_base: vec3<f32>,
@@ -366,6 +406,8 @@ fn vv_grass_side(
     world_pos: vec3<f32>,
     seed: vec3<f32>,
 ) -> vec3<f32> {
+    let side_uv = vv_world_side_uv(world_pos);
+
     var soil = vec3<f32>(0.265, 0.128, 0.055);
 
     let side_bias = vv_face_bias(visual, 2u);
@@ -377,11 +419,11 @@ fn vv_grass_side(
     let cell_seed = seed + vec3<f32>(71.0, 13.0, 5.0);
 
     let warp = vec2<f32>(
-        vv_value_noise_3d(world_pos * 0.16 + cell_seed * 0.017),
-        vv_value_noise_3d(world_pos * 0.22 + cell_seed * 0.029)
+        vv_value_noise_3d(vec3<f32>(side_uv * 0.16, cell_seed.x * 0.017)),
+        vv_value_noise_3d(vec3<f32>(side_uv * 0.22, cell_seed.y * 0.029))
     ) * 0.052;
 
-    let cells = vv_voronoi((uv + warp) * density, cell_seed);
+    let cells = vv_voronoi((side_uv + warp) * density, cell_seed);
     let closest = cells.x;
     let second = cells.y;
     let cell_hash = cells.z;
@@ -394,25 +436,23 @@ fn vv_grass_side(
 
     soil *= 0.74 + cell_hash * 0.25;
 
-    // Heightfield fake : panel core ressort, joints rentrent.
     soil = mix(soil, soil * vec3<f32>(1.34, 1.17, 0.90), panel_core * 0.18);
     soil = mix(soil, soil * vec3<f32>(0.55, 0.43, 0.32), panel_mid * 0.13);
     soil = mix(soil, vec3<f32>(0.065, 0.030, 0.014), joint * 0.82);
     soil = mix(soil, vec3<f32>(0.035, 0.016, 0.008), deep_joint * 0.45);
 
-    // Lumière fake gauche-haut / ombre droite-bas.
-    let fake_light = saturate((0.72 - uv.x) * 0.34 + (uv.y - 0.14) * 0.24);
-    let fake_shadow = saturate((uv.x - 0.12) * 0.22 + (0.55 - uv.y) * 0.18);
+    // No local horizontal reset. This prevents one block = one visible texture tile.
+    let fake_light = saturate(0.38 + (uv.y - 0.14) * 0.24);
+    let fake_shadow = saturate(0.26 + (0.55 - uv.y) * 0.18);
 
-    soil = mix(soil, soil * vec3<f32>(1.20, 1.10, 0.88), panel_core * fake_light * 0.15);
-    soil = mix(soil, soil * vec3<f32>(0.56, 0.45, 0.34), panel_core * fake_shadow * 0.11);
+    soil = mix(soil, soil * vec3<f32>(1.20, 1.10, 0.88), panel_core * fake_light * 0.12);
+    soil = mix(soil, soil * vec3<f32>(0.56, 0.45, 0.34), panel_core * fake_shadow * 0.08);
 
-    // Thin inner bevel around joints.
     let joint_near = smoothstep(0.050, 0.120, second - closest) *
         (1.0 - smoothstep(0.120, 0.210, second - closest));
 
-    soil = mix(soil, soil * vec3<f32>(1.12, 1.06, 0.90), joint_near * fake_light * 0.09);
-    soil = mix(soil, soil * vec3<f32>(0.60, 0.50, 0.40), joint_near * fake_shadow * 0.08);
+    soil = mix(soil, soil * vec3<f32>(1.12, 1.06, 0.90), joint_near * fake_light * 0.07);
+    soil = mix(soil, soil * vec3<f32>(0.60, 0.50, 0.40), joint_near * fake_shadow * 0.06);
 
     let side_from_top = 1.0 - uv.y;
 
@@ -424,13 +464,12 @@ fn vv_grass_side(
 
     grass *= vec3<f32>(0.86, 0.90, 0.72);
 
-    let x_noise = vv_value_noise_3d(vec3<f32>(uv.x * 5.0, seed.x * 0.03, seed.y * 0.05));
-    let fine_noise = vv_value_noise_3d(vec3<f32>(uv.x * 12.0, seed.z * 0.04, 9.0));
+    let x_noise = vv_value_noise_3d(vec3<f32>(side_uv.x * 5.0, seed.x * 0.03, seed.y * 0.05));
+    let fine_noise = vv_value_noise_3d(vec3<f32>(side_uv.x * 12.0, seed.z * 0.04, 9.0));
 
-    let column = fract(uv.x * 5.4 + x_noise * 0.20);
+    let column = fract(side_uv.x * 5.4 + x_noise * 0.20);
     let column_center = abs(column - 0.5);
 
-    // Lobes ronds, moins dents de scie.
     let round_lobe = 1.0 - smoothstep(0.20, 0.50, column_center);
     let soft_lobe = round_lobe * round_lobe * (3.0 - 2.0 * round_lobe);
 
@@ -447,21 +486,20 @@ fn vv_grass_side(
 
     var out_color = mix(soil, grass, cap * 0.96);
 
-    // Ombre de contact très importante : c'est elle qui vend le volume.
     out_color = mix(out_color, soil * vec3<f32>(0.24, 0.145, 0.080), lip_shadow * 0.72);
 
-    // Lobe body + tip highlight.
     out_color = mix(out_color, grass * vec3<f32>(0.36, 0.50, 0.20), lobe * 0.40);
     out_color = mix(out_color, grass * vec3<f32>(0.54, 0.72, 0.32), lobe_tip * 0.145);
     out_color = mix(out_color, grass * vec3<f32>(1.05, 1.04, 0.84), cap_highlight * 0.038);
 
-    // Vertical fake curvature on the whole grass curtain.
     let curtain_round = cap * smoothstep(0.05, 0.24, side_from_top) *
         (1.0 - smoothstep(0.18, 0.42, side_from_top));
     out_color = mix(out_color, out_color * vec3<f32>(0.72, 0.82, 0.54), curtain_round * 0.12);
 
     return max(out_color, vec3<f32>(0.0));
 }
+
+
 
 
 
@@ -583,14 +621,10 @@ fn vv_detail_mask(
     let cell = floor(p);
     let local_uv = fract(p);
 
-    let seed = face_seed(
-        voxel_pos,
-        block_id,
-        block_visual_id,
-        face_id,
-        variation_seed,
-        cell,
-        f32(detail.kind_data.z & 65535u) + f32(index) * 41.0,
+    let seed = vec3<f32>(
+        f32(block_visual_id) * 0.53 + f32(face_id) * 3.11 + f32(detail.kind_data.z & 65535u) * 0.017 + f32(index) * 41.0,
+        cell.x * 1.97 + f32(detail.kind_data.z & 255u) * 0.13,
+        cell.y * 2.41 + f32(detail.kind_data.z >> 8u) * 0.19
     );
 
     let spawn = hash13(seed + vec3<f32>(3.0, 7.0, 11.0));
@@ -764,12 +798,18 @@ fn procedural_block_albedo(
     up: vec3<f32>,
 ) -> vec3<f32> {
     let visual = visual_for(block_visual_id);
-    let seed = vv_seed(voxel_pos, block_id, block_visual_id, face_id, variation_seed, 7.0);
+
+    // Global material seed: same block type = same invisible procedural atlas.
+    // No voxel_pos here, otherwise every cube becomes its own tile.
+    let seed = vv_global_surface_seed(visual, 7.0);
+    let material_uv = vv_world_projected_uv(world_pos, normal);
 
     var color = vv_base_color(visual, face_id, seed);
 
     if (visual.procedural.w == SURFACE_PROGRAM_PATTERNED) {
         if (visual.patterned.kind == PATTERN_LAYERED_SURFACE) {
+            // Layered grass keeps local uv only for the actual block edge/cap.
+            // Internal texture/noise uses world-space inside vv_grass_top/side.
             color = vv_layered_surface_color(visual, color, world_pos, uv, face_id, seed);
         } else if (
             visual.patterned.kind == PATTERN_NATURAL_CELLS ||
@@ -778,7 +818,7 @@ fn procedural_block_albedo(
             let density = max(max(f32(visual.patterned.rows), f32(visual.patterned.columns)), 2.0);
             color = vv_cells_material(
                 color,
-                uv,
+                material_uv,
                 world_pos,
                 density,
                 0.135 + visual.patterned.gap_width,
@@ -790,20 +830,22 @@ fn procedural_block_albedo(
             visual.patterned.kind == PATTERN_RUNNING_BOND ||
             visual.patterned.kind == PATTERN_STRIPS
         ) {
-            color = vv_rect_material(visual, color, uv, seed);
+            color = vv_rect_material(visual, color, material_uv, seed);
         } else if (visual.patterned.kind == PATTERN_RINGS) {
+            // Logs/rings intentionally stay local per block.
             color = vv_rings_material(visual, color, uv, face_id, seed);
         }
     }
 
     color = vv_variation(color, visual, world_pos, normal, up, seed);
 
+    // Details use material_uv too, so they do not restart per cube.
     color = vv_apply_details(
         visual,
         color,
         world_pos,
         normal,
-        uv,
+        material_uv,
         block_id,
         block_visual_id,
         face_id,
@@ -812,7 +854,9 @@ fn procedural_block_albedo(
         up,
     );
 
+    // Bevel remains local to each cube edge, because this is shape shading, not texture.
     color = vv_cartoon_fake_bevel(color, uv, normal, up, visual);
 
     return clamp(color, vec3<f32>(0.0), vec3<f32>(1.35));
 }
+
