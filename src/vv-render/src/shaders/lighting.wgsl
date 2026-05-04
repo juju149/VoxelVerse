@@ -1,9 +1,9 @@
 fn vv_cartoon_sky_color() -> vec3<f32> {
-    return vec3<f32>(0.50, 0.68, 0.98);
+    return vec3<f32>(0.46, 0.62, 0.90);
 }
 
 fn vv_cartoon_ambient() -> vec3<f32> {
-    return vec3<f32>(0.34, 0.42, 0.58);
+    return vec3<f32>(0.30, 0.38, 0.52);
 }
 
 fn vv_cartoon_sun_dir() -> vec3<f32> {
@@ -11,8 +11,8 @@ fn vv_cartoon_sun_dir() -> vec3<f32> {
 }
 
 fn vv_toon_tonemap(color: vec3<f32>) -> vec3<f32> {
-    let mapped = color / (color + vec3<f32>(0.82));
-    return clamp(mapped * 1.34, vec3<f32>(0.0), vec3<f32>(1.0));
+    let mapped = color / (color + vec3<f32>(0.95));
+    return clamp(mapped * 1.18, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 fn vv_cartoon_lighting(
@@ -29,25 +29,25 @@ fn vv_cartoon_lighting(
 
     let n_dot_l = saturate(dot(n, l));
     let topness = saturate(n.y * 0.5 + 0.5);
-    let side_shadow = saturate(1.0 - topness);
+    let sideness = saturate(1.0 - topness);
 
-    let ambient = mix(vec3<f32>(0.22, 0.24, 0.30), vv_cartoon_ambient(), topness) * 0.70;
-    let direct_band = smoothstep(0.08, 0.82, n_dot_l);
-    let direct = vec3<f32>(1.0, 0.88, 0.68) * (0.16 + direct_band * 0.78);
+    let ambient = mix(vec3<f32>(0.18, 0.20, 0.26), vv_cartoon_ambient(), topness) * 0.66;
+    let direct_band = smoothstep(0.10, 0.84, n_dot_l);
+    let direct = vec3<f32>(1.0, 0.90, 0.72) * (0.12 + direct_band * 0.68);
 
-    let rim = pow(1.0 - saturate(dot(n, v)), 2.8) * 0.055;
+    let rim = pow(1.0 - saturate(dot(n, v)), 2.9) * 0.045;
     let gloss = pow(1.0 - saturate(roughness), 2.0);
-    let spec = pow(saturate(dot(reflect(-l, n), v)), mix(28.0, 96.0, gloss)) * gloss * 0.055;
+    let spec = pow(saturate(dot(reflect(-l, n), v)), mix(32.0, 100.0, gloss)) * gloss * 0.045;
 
-    let clean_ao = mix(1.0, saturate(ao), 0.68);
+    let clean_ao = mix(1.0, saturate(ao), 0.72);
 
     var lit = albedo * (ambient + direct) * clean_ao;
-    lit *= mix(1.0, 0.86, side_shadow * 0.18);
+    lit *= mix(1.0, 0.82, sideness * 0.22);
     lit += vv_cartoon_sky_color() * rim;
     lit += vec3<f32>(spec);
     lit += emission;
 
-    lit = vv_saturate_color(lit, 1.34);
+    lit = vv_saturate_color(lit, 1.18);
     return max(lit, vec3<f32>(0.0));
 }
 
