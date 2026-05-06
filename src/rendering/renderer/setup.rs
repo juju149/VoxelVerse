@@ -4,7 +4,6 @@ use crate::diagnostics::{FrameStats, SystemDiagnostics};
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
 use crate::rendering::texture_atlas::TextureAtlas;
-use crate::rendering::types::Vertex;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
 use wgpu::util::DeviceExt;
@@ -369,13 +368,13 @@ impl<'a> Renderer<'a> {
 
         let cursor_v_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Cursor V"),
-            size: 4096,
+            size: 8192,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         let cursor_i_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Cursor I"),
-            size: 4096,
+            size: 2048,
             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });

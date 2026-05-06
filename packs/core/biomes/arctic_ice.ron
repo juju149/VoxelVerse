@@ -1,0 +1,10 @@
+RawBiomeDef(
+    display_name: "Arctic Ice Plains",
+    surface_block: "core:ice",
+    subsurface_block: "core:stone",
+    // Polar zone, very flat — vast ice sheets with minimal relief.
+    temperature_center: 0.05,
+    roughness_center: 0.20,
+    terrain_amplitude: 0.12,
+    terrain_flatness: 0.88,
+)

@@ -1,0 +1,10 @@
+RawBiomeDef(
+    display_name: "Tropical Mountains",
+    surface_block: "core:stone",
+    subsurface_block: "core:stone",
+    // Hot, very rough — dramatic ridged mountain chains near the equator.
+    temperature_center: 0.75,
+    roughness_center: 0.85,
+    terrain_amplitude: 1.0,
+    terrain_flatness: 0.02,
+)

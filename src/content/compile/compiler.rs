@@ -1,5 +1,6 @@
+use crate::content::biome_registry::{BiomeRegistry, CompiledBiome};
 use crate::content::block_registry::{BlockRegistry, CompiledBlock};
-use crate::content::schema::RawBlockDef;
+use crate::content::schema::{RawBiomeDef, RawBlockDef};
 use crate::voxel::VoxelId;
 use std::collections::HashMap;
 
@@ -69,4 +70,72 @@ impl ContentCompiler {
 
         Ok(BlockRegistry::new(blocks, key_to_id, default_place))
     }
+
+    /// Compile raw biome definitions into a `BiomeRegistry`.
+    ///
+    /// Rules:
+    /// - At least one biome must be defined.
+    /// - Biomes are sorted by temperature_center descending (tropical first) for
+    ///   stable ID assignment.
+    /// - All block references are resolved against the provided `BlockRegistry`.
+    /// - Returns human-readable errors on failure.
+    pub fn compile_biomes(
+        mut raw: Vec<(String, RawBiomeDef)>,
+        block_registry: &BlockRegistry,
+    ) -> Result<BiomeRegistry, Vec<String>> {
+        let mut errors = Vec::new();
+
+        if raw.is_empty() {
+            errors.push("Pack must define at least one biome.".into());
+            return Err(errors);
+        }
+
+        // Sort by temperature_center descending for deterministic IDs.
+        raw.sort_by(|(_, a), (_, b)| {
+            b.temperature_center
+                .partial_cmp(&a.temperature_center)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        let mut biomes: Vec<CompiledBiome> = Vec::with_capacity(raw.len());
+
+        for (idx, (key, def)) in raw.into_iter().enumerate() {
+            let surface = block_registry.lookup(&def.surface_block);
+            let subsurface = block_registry.lookup(&def.subsurface_block);
+
+            if surface.is_none() {
+                errors.push(format!(
+                    "Biome '{}': unknown surface_block '{}'",
+                    key, def.surface_block
+                ));
+            }
+            if subsurface.is_none() {
+                errors.push(format!(
+                    "Biome '{}': unknown subsurface_block '{}'",
+                    key, def.subsurface_block
+                ));
+            }
+
+            if errors.is_empty() {
+                biomes.push(CompiledBiome {
+                    id: idx as u8,
+                    key,
+                    display_name: def.display_name,
+                    surface_block: surface.unwrap(),
+                    subsurface_block: subsurface.unwrap(),
+                    temperature_center: def.temperature_center.clamp(0.0, 1.0),
+                    roughness_center: def.roughness_center.clamp(0.0, 1.0),
+                    terrain_amplitude: def.terrain_amplitude.clamp(0.0, 1.0),
+                    terrain_flatness: def.terrain_flatness.clamp(0.0, 1.0),
+                });
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        Ok(BiomeRegistry::new(biomes))
+    }
 }
+

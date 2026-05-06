@@ -1,0 +1,6 @@
+RawBlockDef(
+    display_name: "Gravel",
+    solid: true,
+    color: (0.52, 0.50, 0.48),
+    hardness: 0.6,
+)

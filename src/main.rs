@@ -30,21 +30,33 @@ fn main() {
     SystemDiagnostics::print_startup_info();
 
     // --- Load and compile content ---
-    let registry = {
+    let (registry, biome_registry) = {
         let pack = PackLoader::load_from_dir(std::path::Path::new("packs/core"))
             .expect("Failed to load packs/core — make sure the directory exists next to the executable.");
-        let compiled = ContentCompiler::compile_blocks(pack.blocks)
+
+        let compiled_blocks = ContentCompiler::compile_blocks(pack.blocks)
             .unwrap_or_else(|errors| {
                 for e in &errors {
                     eprintln!("[content error] {}", e);
                 }
-                panic!("Content compilation failed — see errors above.");
+                panic!("Block compilation failed — see errors above.");
             });
+
+        let compiled_biomes = ContentCompiler::compile_biomes(pack.biomes, &compiled_blocks)
+            .unwrap_or_else(|errors| {
+                for e in &errors {
+                    eprintln!("[content error] {}", e);
+                }
+                panic!("Biome compilation failed — see errors above.");
+            });
+
         println!(
-            "Loaded {} blocks from pack 'core'.",
-            compiled.block_count()
+            "Loaded {} blocks, {} biomes from pack 'core'.",
+            compiled_blocks.block_count(),
+            compiled_biomes.biome_count(),
         );
-        Arc::new(compiled)
+
+        (Arc::new(compiled_blocks), Arc::new(compiled_biomes))
     };
 
     let event_loop = EventLoop::new().unwrap();
@@ -56,7 +68,10 @@ fn main() {
     let mut renderer = pollster::block_on(Renderer::new(&window, &registry));
     let mut controller = Controller::new();
     let mut player = Player::new();
-    let mut planet = PlanetData::new(1000, registry);
+    use crate::world::PlanetProfile;
+    const WORLD_SEED: u32 = 0x4242_1234;
+    let world_resolution = PlanetProfile::procedural_resolution(WORLD_SEED);
+    let mut planet = PlanetData::new(world_resolution, WORLD_SEED, registry, biome_registry);
 
     let mut console = Console::new();
     console.log("Welcome to voxanet.", [0.0, 1.0, 0.0]);

@@ -1,0 +1,10 @@
+RawBiomeDef(
+    display_name: "Tropical Desert",
+    surface_block: "core:sand",
+    subsurface_block: "core:sand",
+    // Hot equatorial zone, very flat — wide sand plains with gentle dunes.
+    temperature_center: 0.95,
+    roughness_center: 0.15,
+    terrain_amplitude: 0.20,
+    terrain_flatness: 0.70,
+)

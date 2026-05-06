@@ -1,0 +1,6 @@
+RawBlockDef(
+    display_name: "Ice",
+    solid: true,
+    color: (0.78, 0.90, 0.97),
+    hardness: 0.5,
+)

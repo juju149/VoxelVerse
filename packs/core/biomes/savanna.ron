@@ -1,0 +1,10 @@
+RawBiomeDef(
+    display_name: "Savanna",
+    surface_block: "core:grass",
+    subsurface_block: "core:dirt",
+    // Hot zone with moderate terrain — scattered plateaux and flat valleys.
+    temperature_center: 0.80,
+    roughness_center: 0.45,
+    terrain_amplitude: 0.45,
+    terrain_flatness: 0.45,
+)

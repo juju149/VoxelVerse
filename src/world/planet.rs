@@ -1,23 +1,20 @@
-use crate::content::BlockRegistry;
+use crate::content::{BiomeRegistry, BlockRegistry};
 use crate::generation::{terrain::PlanetTerrain, CoordSystem};
 use crate::voxel::{ChunkKey, VoxelCoord, VoxelId};
 use crate::world::{PlanetProfile, VoxelRuntime};
 use std::sync::Arc;
 
-/// Cached runtime block IDs for world generation.
-/// Looked up once from the registry at planet creation — avoids per-voxel string lookups.
+/// Cached runtime block ID for the planet core (deep underground).
+/// Surface/subsurface blocks come from the biome registry.
+#[derive(Clone, Copy)]
 struct PlanetBlockIds {
     core: VoxelId,
-    dirt: VoxelId,
-    grass: VoxelId,
 }
 
 impl PlanetBlockIds {
     fn from_registry(registry: &BlockRegistry) -> Self {
         Self {
             core: registry.lookup("core:core").unwrap_or(VoxelId::AIR),
-            dirt: registry.lookup("core:dirt").unwrap_or(VoxelId::AIR),
-            grass: registry.lookup("core:grass").unwrap_or(VoxelId::AIR),
         }
     }
 }
@@ -26,31 +23,30 @@ impl PlanetBlockIds {
 pub struct PlanetData {
     pub voxels: VoxelRuntime,
     pub content: Arc<BlockRegistry>,
+    pub biomes: Arc<BiomeRegistry>,
     pub profile: PlanetProfile,
     pub resolution: u32,
     pub has_core: bool,
     pub terrain: PlanetTerrain,
     block_ids: PlanetBlockIds,
-}
-
-impl Clone for PlanetBlockIds {
-    fn clone(&self) -> Self {
-        Self {
-            core: self.core,
-            dirt: self.dirt,
-            grass: self.grass,
-        }
-    }
+    /// Seed stored so resize can regenerate terrain with the same seed.
+    seed: u32,
 }
 
 impl PlanetData {
-    pub fn new(resolution: u32, registry: Arc<BlockRegistry>) -> Self {
-        let profile = PlanetProfile::new(resolution);
+    pub fn new(
+        resolution: u32,
+        seed: u32,
+        registry: Arc<BlockRegistry>,
+        biome_registry: Arc<BiomeRegistry>,
+    ) -> Self {
+        let profile = PlanetProfile::with_seed(resolution, seed);
         println!(
-            "Generating terrain for resolution {}...",
-            profile.resolution
+            "Generating terrain for resolution {}  (radius ≈ {})…",
+            profile.resolution,
+            profile.resolution / 2
         );
-        let terrain = PlanetTerrain::new(profile);
+        let terrain = PlanetTerrain::new(profile, &biome_registry);
         println!("Terrain generation complete.");
 
         let block_ids = PlanetBlockIds::from_registry(&registry);
@@ -59,10 +55,12 @@ impl PlanetData {
             voxels: VoxelRuntime::new(),
             block_ids,
             content: registry,
+            biomes: biome_registry,
             profile,
             resolution: profile.resolution,
             has_core: true,
             terrain,
+            seed,
         }
     }
 
@@ -76,11 +74,11 @@ impl PlanetData {
         }
 
         self.voxels.clear();
-        self.profile = PlanetProfile::new(self.resolution);
+        self.profile = PlanetProfile::with_seed(self.resolution, self.seed);
         self.resolution = self.profile.resolution;
 
-        println!("Regenerating terrain for resolution {}...", self.resolution);
-        self.terrain = PlanetTerrain::new(self.profile);
+        println!("Regenerating terrain for resolution {}…", self.resolution);
+        self.terrain = PlanetTerrain::new(self.profile, &self.biomes);
     }
 
     pub fn add_block(&mut self, coord: VoxelCoord) {
@@ -134,10 +132,15 @@ impl PlanetData {
             VoxelId::AIR
         } else if self.has_core && coord.layer < self.profile.core_layers {
             self.block_ids.core
-        } else if coord.layer == height {
-            self.block_ids.grass
         } else {
-            self.block_ids.dirt
+            // Surface and subsurface blocks come from the biome at this location.
+            let biome_id = self.terrain.get_biome_id(coord.face, coord.u, coord.v);
+            let biome = self.biomes.biome(biome_id);
+            if coord.layer == height {
+                biome.surface_block
+            } else {
+                biome.subsurface_block
+            }
         }
     }
 

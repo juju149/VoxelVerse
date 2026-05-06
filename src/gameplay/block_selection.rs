@@ -57,7 +57,18 @@ mod tests {
 
     #[test]
     fn empty_ray_returns_no_hit() {
-        let planet = PlanetData::new(16);
+        use crate::content::pack::PackLoader;
+        use crate::content::compile::ContentCompiler;
+        use std::sync::Arc;
+        let pack = PackLoader::load_from_dir(std::path::Path::new("packs/core"))
+            .expect("packs/core must exist for tests");
+        let registry = Arc::new(
+            ContentCompiler::compile_blocks(pack.blocks).expect("blocks"),
+        );
+        let biomes = Arc::new(
+            ContentCompiler::compile_biomes(pack.biomes, &registry).expect("biomes"),
+        );
+        let planet = PlanetData::new(16, 42, registry, biomes);
         let ray = Ray {
             origin: Vec3::new(0.0, 0.0, 10_000.0),
             direction: Vec3::Z,
