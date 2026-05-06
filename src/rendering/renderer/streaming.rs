@@ -79,18 +79,37 @@ impl<'a> Renderer<'a> {
 
     pub(super) fn process_load_queue(&mut self, _player_pos: Vec3, planet: &PlanetData) {
         // Drain completed voxel meshes from the channel.
-        // Only upload chunks still in the required set (load_queue was already filtered).
         let mut upload_budget = UPLOAD_VOXEL_PER_FRAME;
         while let Ok((key, v, i)) = self.mesh_rx.try_recv() {
             self.pending_chunks.remove(&key);
-            // Skip stale chunks (evicted while the job was in flight)
-            if !v.is_empty() && !self.chunks.contains_key(&key) {
+            let is_dirty_rebuild = self.pending_dirty.remove(&key);
+            // Skip stale initial-load results (chunk was evicted while job was in flight).
+            // Always accept dirty rebuilds — they replace an existing chunk with updated geometry.
+            if !v.is_empty() && (is_dirty_rebuild || !self.chunks.contains_key(&key)) {
                 self.upload_chunk_buffers(key, v, i);
                 upload_budget -= 1;
             }
             if upload_budget == 0 {
                 break;
             }
+        }
+
+        // --- DIRTY CHUNKS (player edits) — dispatched with priority ---
+        let dirty: Vec<ChunkKey> = self
+            .dirty_chunks
+            .drain()
+            .filter(|k| !self.pending_chunks.contains(k))
+            .collect();
+
+        for key in dirty {
+            self.pending_chunks.insert(key);
+            self.pending_dirty.insert(key);
+            let planet_clone = planet.clone();
+            let tx = self.mesh_tx.clone();
+            rayon::spawn(move || {
+                let (v, i) = MeshGen::build_chunk(key, &planet_clone);
+                let _ = tx.send((key, v, i));
+            });
         }
 
         if upload_budget == 0 || self.load_queue.is_empty() {
@@ -100,7 +119,7 @@ impl<'a> Renderer<'a> {
             return;
         }
 
-        // Dispatch new jobs using rayon (bounded global thread pool, no OS-thread explosion).
+        // Dispatch new initial-load jobs.
         for _ in 0..DISPATCH_VOXEL_PER_FRAME {
             let Some(key) = self.load_queue.pop() else {
                 break;
@@ -123,50 +142,28 @@ impl<'a> Renderer<'a> {
         self.lod_chunks.clear();
         self.load_queue.clear();
         self.pending_chunks.clear();
+        self.pending_dirty.clear();
         self.pending_lods.clear();
+        self.dirty_chunks.clear();
         self.player_chunk_pos = None;
         self.update_view(player_pos, planet);
     }
 
-    pub fn refresh_neighbors(&mut self, id: VoxelCoord, planet: &PlanetData) {
+    /// Mark a voxel edit as dirty — all affected chunk meshes will be rebuilt
+    /// asynchronously on the next process_load_queue call.
+    /// Non-blocking: never touches the GPU from the main thread.
+    pub fn refresh_neighbors(&mut self, id: VoxelCoord, _planet: &PlanetData) {
         let u_c = id.u / CHUNK_SIZE;
         let v_c = id.v / CHUNK_SIZE;
-        let keys = vec![
-            ChunkKey {
-                face: id.face,
-                u_idx: u_c,
-                v_idx: v_c,
-            },
-            ChunkKey {
-                face: id.face,
-                u_idx: u_c.saturating_sub(1),
-                v_idx: v_c,
-            },
-            ChunkKey {
-                face: id.face,
-                u_idx: u_c + 1,
-                v_idx: v_c,
-            },
-            ChunkKey {
-                face: id.face,
-                u_idx: u_c,
-                v_idx: v_c.saturating_sub(1),
-            },
-            ChunkKey {
-                face: id.face,
-                u_idx: u_c,
-                v_idx: v_c + 1,
-            },
+        let keys = [
+            ChunkKey { face: id.face, u_idx: u_c,                        v_idx: v_c },
+            ChunkKey { face: id.face, u_idx: u_c.saturating_sub(1),      v_idx: v_c },
+            ChunkKey { face: id.face, u_idx: u_c + 1,                    v_idx: v_c },
+            ChunkKey { face: id.face, u_idx: u_c,                        v_idx: v_c.saturating_sub(1) },
+            ChunkKey { face: id.face, u_idx: u_c,                        v_idx: v_c + 1 },
         ];
         for key in keys {
-            if self.chunks.contains_key(&key) {
-                let (v, i) = MeshGen::build_chunk(key, planet);
-                if v.is_empty() {
-                    self.chunks.remove(&key);
-                } else {
-                    self.upload_chunk_buffers(key, v, i);
-                }
-            }
+            self.dirty_chunks.insert(key);
         }
     }
 

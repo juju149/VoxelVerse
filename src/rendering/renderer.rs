@@ -107,6 +107,11 @@ pub struct Renderer<'a> {
     mesh_rx: Receiver<(ChunkKey, Vec<Vertex>, Vec<u32>)>,
     pending_chunks: HashSet<ChunkKey>,
 
+    /// Chunks invalidated by a player edit — dispatched before the normal load queue.
+    dirty_chunks: HashSet<ChunkKey>,
+    /// In-flight dirty rebuild jobs (subset of pending_chunks — lets us skip the stale guard on receipt).
+    pending_dirty: HashSet<ChunkKey>,
+
     lod_tx: Sender<(LodKey, Vec<Vertex>, Vec<u32>)>,
     lod_rx: Receiver<(LodKey, Vec<Vertex>, Vec<u32>)>,
     pending_lods: HashSet<LodKey>,

@@ -480,6 +480,8 @@ impl<'a> Renderer<'a> {
             mesh_tx,
             mesh_rx,
             pending_chunks: HashSet::new(),
+            dirty_chunks: HashSet::new(),
+            pending_dirty: HashSet::new(),
             lod_tx,
             lod_rx,
             pending_lods: HashSet::new(),
