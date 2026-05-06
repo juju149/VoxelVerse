@@ -1,5 +1,5 @@
 use crate::generation::CoordSystem;
-use crate::voxel::BlockId;
+use crate::voxel::VoxelCoord;
 use crate::world::PlanetData;
 use glam::{Quat, Vec3};
 
@@ -47,12 +47,12 @@ impl Physics {
 
         // check U axis
         if local.x < margin && id.u > 0 {
-            let neighbor = BlockId { u: id.u - 1, ..id };
+            let neighbor = VoxelCoord { u: id.u - 1, ..id };
             if !planet.exists(neighbor) {
                 return false;
             }
         } else if local.x > (1.0 - margin) && id.u < res - 1 {
-            let neighbor = BlockId { u: id.u + 1, ..id };
+            let neighbor = VoxelCoord { u: id.u + 1, ..id };
             if !planet.exists(neighbor) {
                 return false;
             }
@@ -60,12 +60,12 @@ impl Physics {
 
         // check V axis (Front/Back neighbors)
         if local.y < margin && id.v > 0 {
-            let neighbor = BlockId { v: id.v - 1, ..id };
+            let neighbor = VoxelCoord { v: id.v - 1, ..id };
             if !planet.exists(neighbor) {
                 return false;
             }
         } else if local.y > (1.0 - margin) && id.v < res - 1 {
-            let neighbor = BlockId { v: id.v + 1, ..id };
+            let neighbor = VoxelCoord { v: id.v + 1, ..id };
             if !planet.exists(neighbor) {
                 return false;
             }
@@ -73,7 +73,7 @@ impl Physics {
 
         // check layer axis (Top/Bottom neighbors)
         if local.z < margin && id.layer > 0 {
-            let neighbor = BlockId {
+            let neighbor = VoxelCoord {
                 layer: id.layer - 1,
                 ..id
             };
@@ -81,7 +81,7 @@ impl Physics {
                 return false;
             }
         } else if local.z > (1.0 - margin) && id.layer < res - 1 {
-            let neighbor = BlockId {
+            let neighbor = VoxelCoord {
                 layer: id.layer + 1,
                 ..id
             };

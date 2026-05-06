@@ -7,7 +7,7 @@ use crate::generation::{CoordSystem, MeshGen};
 use crate::input::Controller;
 use crate::rendering::lod_animation::{AnyKey, LodAnimator};
 use crate::rendering::types::{ChunkMesh, Frustum, Vertex};
-use crate::voxel::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
+use crate::voxel::{ChunkKey, LodKey, VoxelCoord, CHUNK_SIZE};
 use crate::world::PlanetData;
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
@@ -136,7 +136,7 @@ struct QuadNode {
 struct QuadContext<'a> {
     cam_pos: Vec3,
     planet: &'a PlanetData,
-    player_id: Option<BlockId>,
+    player_id: Option<VoxelCoord>,
 }
 
 impl<'a> Renderer<'a> {
@@ -1176,7 +1176,7 @@ impl<'a> Renderer<'a> {
         self.update_view(player_pos, planet);
     }
 
-    pub fn refresh_neighbors(&mut self, id: BlockId, planet: &PlanetData) {
+    pub fn refresh_neighbors(&mut self, id: VoxelCoord, planet: &PlanetData) {
         let u_c = id.u / CHUNK_SIZE;
         let v_c = id.v / CHUNK_SIZE;
         let keys = vec![
@@ -1312,7 +1312,7 @@ impl<'a> Renderer<'a> {
         println!("------------------------------------------");
     }
 
-    pub fn update_cursor(&mut self, planet: &PlanetData, id: Option<BlockId>) {
+    pub fn update_cursor(&mut self, planet: &PlanetData, id: Option<VoxelCoord>) {
         if let Some(id) = id {
             let res = planet.resolution;
             let p = |u, v, l| {

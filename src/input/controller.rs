@@ -3,7 +3,7 @@
 use crate::gameplay::{Player, PlayerInput};
 use crate::generation::CoordSystem;
 use crate::physics::Physics;
-use crate::voxel::BlockId;
+use crate::voxel::VoxelCoord;
 use crate::world::PlanetData;
 use glam::{Mat4, Vec2, Vec3};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
@@ -21,7 +21,7 @@ pub struct Controller {
     pub fly_mode: bool,
     pub sprint: bool,
     pub freeze_culling: bool,
-    pub cursor_id: Option<BlockId>,
+    pub cursor_id: Option<VoxelCoord>,
 
     pub first_person: bool,
 
@@ -227,7 +227,7 @@ impl Controller {
         width: f32,
         height: f32,
         place_mode: bool,
-    ) -> Option<(BlockId, f32)> {
+    ) -> Option<(VoxelCoord, f32)> {
         let mvp = self.get_matrix(player, width, height);
         let inv = mvp.inverse();
 

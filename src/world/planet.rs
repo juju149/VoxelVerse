@@ -1,25 +1,13 @@
+use crate::content::VoxelRegistry;
 use crate::generation::terrain::PlanetTerrain;
-use crate::voxel::{BlockId, ChunkKey, CHUNK_SIZE};
-use std::collections::{HashMap, HashSet};
-
-#[derive(Clone)]
-pub struct ChunkMods {
-    pub mined: HashSet<BlockId>,
-    pub placed: HashSet<BlockId>,
-}
-
-impl ChunkMods {
-    pub fn new() -> Self {
-        Self {
-            mined: HashSet::new(),
-            placed: HashSet::new(),
-        }
-    }
-}
+use crate::voxel::{ChunkKey, VoxelCoord, VoxelId};
+use crate::world::VoxelRuntime;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct PlanetData {
-    pub chunks: HashMap<ChunkKey, ChunkMods>,
+    pub voxels: VoxelRuntime,
+    pub content: Arc<VoxelRegistry>,
     pub resolution: u32,
     pub has_core: bool,
     pub terrain: PlanetTerrain,
@@ -28,86 +16,88 @@ pub struct PlanetData {
 impl PlanetData {
     pub fn new(resolution: u32) -> Self {
         println!("Generating Terrain Noise Map for res {}...", resolution);
-        let terrain = PlanetTerrain::new(resolution); // calculate once
+        let terrain = PlanetTerrain::new(resolution);
         println!("Terrain Generation Complete.");
 
         Self {
-            chunks: HashMap::new(),
+            voxels: VoxelRuntime::new(),
+            content: Arc::new(VoxelRegistry::builtin()),
             resolution,
             has_core: true,
-            terrain, // <--- Store it
+            terrain,
         }
     }
 
     pub fn resize(&mut self, increase: bool) {
         if increase {
-            // multiply by 1.2
-            // i use .max(self.resolution + 1) to ensure it always grows by at least 1 block
             let new_res = (self.resolution as f32 * 1.2) as u32;
             self.resolution = new_res.max(self.resolution + 1).min(16384);
         } else {
-            // divide by 1.2
             let new_res = (self.resolution as f32 / 1.2) as u32;
             self.resolution = new_res.max(8);
         }
 
-        self.chunks.clear();
+        self.voxels.clear();
 
-        // regenerate noise map for new resolution
         println!("Regenerating Terrain for new res {}...", self.resolution);
         self.terrain = PlanetTerrain::new(self.resolution);
     }
 
-    fn get_chunk_key(id: BlockId) -> ChunkKey {
-        ChunkKey {
-            face: id.face,
-            u_idx: id.u / CHUNK_SIZE,
-            v_idx: id.v / CHUNK_SIZE,
-        }
+    pub fn add_block(&mut self, coord: VoxelCoord) {
+        let voxel = self.content.default_place_voxel();
+        self.set_voxel(coord, voxel);
     }
 
-    pub fn add_block(&mut self, id: BlockId) {
-        let key = Self::get_chunk_key(id);
-        let mods = self.chunks.entry(key).or_insert_with(ChunkMods::new);
-
-        if mods.mined.contains(&id) {
-            mods.mined.remove(&id);
-        } else {
-            mods.placed.insert(id);
-        }
-    }
-
-    pub fn remove_block(&mut self, id: BlockId) {
-        // protect the bottom 4 layers as the unbreakable core
-        if self.has_core && id.layer < 6 {
+    pub fn remove_block(&mut self, coord: VoxelCoord) {
+        if self.has_core && coord.layer < 6 {
             return;
         }
 
-        let key = Self::get_chunk_key(id);
-        let mods = self.chunks.entry(key).or_insert_with(ChunkMods::new);
-
-        if mods.placed.contains(&id) {
-            mods.placed.remove(&id);
-        } else {
-            if id.layer < self.resolution {
-                mods.mined.insert(id);
-            }
-        }
+        self.set_voxel(coord, VoxelId::AIR);
     }
 
-    pub fn exists(&self, id: BlockId) -> bool {
-        let key = Self::get_chunk_key(id);
-        if let Some(mods) = self.chunks.get(&key) {
-            if mods.placed.contains(&id) {
-                return true;
-            }
-            if mods.mined.contains(&id) {
-                return false;
-            }
+    pub fn get_voxel(&self, coord: VoxelCoord) -> VoxelId {
+        self.voxels
+            .get_override(coord)
+            .unwrap_or_else(|| self.generated_voxel(coord))
+    }
+
+    pub fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) {
+        let generated = self.generated_voxel(coord);
+        let override_voxel = (voxel != generated).then_some(voxel);
+        self.voxels.set_override(coord, override_voxel);
+    }
+
+    pub fn exists(&self, coord: VoxelCoord) -> bool {
+        self.content.is_solid(self.get_voxel(coord))
+    }
+
+    pub fn modified_voxels_in_chunk_column(
+        &self,
+        key: ChunkKey,
+    ) -> impl Iterator<Item = (VoxelCoord, VoxelId)> + '_ {
+        self.voxels
+            .iter_column_overrides(key.face, key.u_idx, key.v_idx)
+            .filter(move |(coord, _)| coord.u < self.resolution && coord.v < self.resolution)
+    }
+
+    fn generated_voxel(&self, coord: VoxelCoord) -> VoxelId {
+        if coord.layer >= self.resolution
+            || coord.u >= self.resolution
+            || coord.v >= self.resolution
+        {
+            return VoxelId::AIR;
         }
 
-        // instead of a flat floor, we check the pre-calculated noise map
-        let height = self.terrain.get_height(id.face, id.u, id.v);
-        id.layer <= height
+        let height = self.terrain.get_height(coord.face, coord.u, coord.v);
+        if coord.layer > height {
+            VoxelId::AIR
+        } else if self.has_core && coord.layer < 6 {
+            VoxelId::CORE
+        } else if coord.layer == height {
+            VoxelId::GRASS
+        } else {
+            VoxelId::DIRT
+        }
     }
 }

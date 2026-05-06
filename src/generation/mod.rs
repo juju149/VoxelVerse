@@ -2,8 +2,8 @@ pub mod terrain;
 
 use crate::content::TerrainPalette;
 use crate::rendering::Vertex;
-use crate::voxel::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
-use crate::world::{ChunkMods, PlanetData};
+use crate::voxel::{ChunkKey, LodKey, VoxelCoord, CHUNK_SIZE};
+use crate::world::PlanetData;
 use glam::Vec3;
 use std::collections::HashSet;
 
@@ -142,7 +142,7 @@ impl CoordSystem {
         Vec3::new(x as f32, y as f32, z as f32)
     }
 
-    pub fn get_local_coords(pos: Vec3, res: u32) -> Option<(BlockId, Vec3)> {
+    pub fn get_local_coords(pos: Vec3, res: u32) -> Option<(VoxelCoord, Vec3)> {
         let dist = pos.length() as f64;
         let s = res as f64 / 2.0;
 
@@ -202,7 +202,7 @@ impl CoordSystem {
         let v = v.clamp(0, res as i32 - 1) as u32;
 
         Some((
-            BlockId {
+            VoxelCoord {
                 face: face as u8,
                 layer: layer as u32,
                 u,
@@ -281,7 +281,7 @@ impl CoordSystem {
         dir * (radius as f32)
     }
 
-    pub fn pos_to_id(pos: Vec3, res: u32) -> Option<BlockId> {
+    pub fn pos_to_id(pos: Vec3, res: u32) -> Option<VoxelCoord> {
         let dist = pos.length() as f64;
         let s = res as f64 / 2.0;
 
@@ -337,7 +337,7 @@ impl CoordSystem {
         let u = u_raw.clamp(0, res as i32 - 1) as u32;
         let v = v_raw.clamp(0, res as i32 - 1) as u32;
 
-        Some(BlockId {
+        Some(VoxelCoord {
             face: face as u8,
             layer,
             u,
@@ -349,30 +349,31 @@ impl CoordSystem {
 pub struct MeshGen;
 
 impl MeshGen {
-    fn add_mined_candidates(mods: &ChunkMods, candidates: &mut HashSet<BlockId>, res: u32) {
-        for &id in &mods.mined {
-            candidates.insert(BlockId {
+    fn add_modified_candidates(id: VoxelCoord, candidates: &mut HashSet<VoxelCoord>, res: u32) {
+        candidates.insert(id);
+        if id.layer + 1 < res {
+            candidates.insert(VoxelCoord {
                 layer: id.layer + 1,
                 ..id
             });
-            if id.layer > 0 {
-                candidates.insert(BlockId {
-                    layer: id.layer - 1,
-                    ..id
-                });
-            }
-            if id.u > 0 {
-                candidates.insert(BlockId { u: id.u - 1, ..id });
-            }
-            if id.u < res - 1 {
-                candidates.insert(BlockId { u: id.u + 1, ..id });
-            }
-            if id.v > 0 {
-                candidates.insert(BlockId { v: id.v - 1, ..id });
-            }
-            if id.v < res - 1 {
-                candidates.insert(BlockId { v: id.v + 1, ..id });
-            }
+        }
+        if id.layer > 0 {
+            candidates.insert(VoxelCoord {
+                layer: id.layer - 1,
+                ..id
+            });
+        }
+        if id.u > 0 {
+            candidates.insert(VoxelCoord { u: id.u - 1, ..id });
+        }
+        if id.u < res - 1 {
+            candidates.insert(VoxelCoord { u: id.u + 1, ..id });
+        }
+        if id.v > 0 {
+            candidates.insert(VoxelCoord { v: id.v - 1, ..id });
+        }
+        if id.v < res - 1 {
+            candidates.insert(VoxelCoord { v: id.v + 1, ..id });
         }
     }
 
@@ -410,7 +411,7 @@ impl MeshGen {
                 }
 
                 // always add the top surface block
-                candidates.insert(BlockId {
+                candidates.insert(VoxelCoord {
                     face: key.face,
                     layer: h,
                     u,
@@ -437,7 +438,7 @@ impl MeshGen {
                     let bottom = min_h.max(h.saturating_sub(20));
 
                     for l in (bottom + 1)..h {
-                        candidates.insert(BlockId {
+                        candidates.insert(VoxelCoord {
                             face: key.face,
                             layer: l,
                             u,
@@ -448,16 +449,9 @@ impl MeshGen {
             }
         }
 
-        // current Chunk Modifications
-        if let Some(mods) = data.chunks.get(&key) {
-            for &id in &mods.placed {
-                candidates.insert(id);
-            }
-            Self::add_mined_candidates(mods, &mut candidates, res);
-        }
-
-        // neighbor Chunks Modifications
+        // runtime voxel overrides in this surface tile and its direct neighbors.
         let neighbor_keys = [
+            key,
             ChunkKey {
                 u_idx: key.u_idx.wrapping_sub(1),
                 ..key
@@ -477,8 +471,8 @@ impl MeshGen {
         ];
 
         for n_key in neighbor_keys {
-            if let Some(mods) = data.chunks.get(&n_key) {
-                Self::add_mined_candidates(mods, &mut candidates, res);
+            for (id, _) in data.modified_voxels_in_chunk_column(n_key) {
+                Self::add_modified_candidates(id, &mut candidates, res);
             }
         }
 
@@ -542,7 +536,7 @@ impl MeshGen {
             for l in start_l..=end_l {
                 for v in start_v..=end_v {
                     for u in start_u..=end_u {
-                        let id = BlockId {
+                        let id = VoxelCoord {
                             face: center_id.face,
                             layer: l as u32,
                             u: u as u32,
@@ -788,7 +782,7 @@ impl MeshGen {
     }
 
     fn add_voxel(
-        id: BlockId,
+        id: VoxelCoord,
         data: &PlanetData,
         verts: &mut Vec<Vertex>,
         inds: &mut Vec<u32>,
@@ -802,7 +796,7 @@ impl MeshGen {
             let u = id.u as i32 + d_u;
             let v = id.v as i32 + d_v;
             if l >= 0 && u >= 0 && u < res as i32 && v >= 0 && v < res as i32 {
-                return data.exists(BlockId {
+                return data.exists(VoxelCoord {
                     face: d_face,
                     layer: l as u32,
                     u: u as u32,
@@ -844,16 +838,7 @@ impl MeshGen {
             light_val = 1.0;
         }
 
-        let is_core = data.has_core && id.layer < 6;
-        let is_grass = id.layer == natural_h;
-
-        let mut base_color = if is_core {
-            TerrainPalette::CORE
-        } else if is_grass {
-            TerrainPalette::GRASS
-        } else {
-            TerrainPalette::DIRT
-        };
+        let mut base_color = data.content.color(data.get_voxel(id));
 
         // apply Skylight
         base_color[0] *= light_val;
