@@ -1,7 +1,12 @@
 use crate::generation::CoordSystem;
 use crate::world::PlanetProfile;
 use glam::Vec3;
+use rayon::prelude::*;
 use std::sync::Arc;
+
+/// Maximum heightmap resolution per cube-face axis.
+/// Caps memory at 6 × 2048² × 1 byte ≈ 25 MB regardless of planet resolution.
+const MAX_HEIGHTMAP_RES: u32 = 2048;
 
 // --- SETTINGS & ENUMS ---
 
@@ -38,72 +43,83 @@ impl NoiseSettings {
 // --- PLANET TERRAIN DATA ---
 
 pub struct PlanetTerrain {
-    // Flattened height map
-    heights: Arc<Vec<u16>>,
-    resolution: u32,
+    /// Terrain height stored as i8 offset from `surface_layer`.
+    /// Range [-127, 127] layers — compact and valid for any planet resolution.
+    heights: Arc<Vec<i8>>,
+    /// Resolution of the heightmap grid (capped at MAX_HEIGHTMAP_RES).
+    heightmap_res: u32,
+    /// Surface layer in voxel space (= profile.surface_layer).
+    surface_layer: u32,
+    /// Full voxel resolution of the planet (= profile.resolution).
+    voxel_res: u32,
 }
 
 impl PlanetTerrain {
     pub fn new(profile: PlanetProfile) -> Self {
-        let resolution = profile.resolution;
-        let size = (6 * resolution * resolution) as usize;
-        let mut heights = vec![0; size];
+        let heightmap_res = profile.resolution.min(MAX_HEIGHTMAP_RES);
+        let surface_layer = profile.surface_layer;
+        let size = (6 * heightmap_res * heightmap_res) as usize;
+
         let generator = NoiseGenerator::new(profile.seed);
         let settings = NoiseSettings::default_terrain(profile);
-        let base_layer = profile.surface_layer as f32;
+        let detail_settings = NoiseSettings {
+            frequency: settings.frequency * 3.7,
+            amplitude: settings.amplitude,
+            octaves: 3,
+            persistence: 0.42,
+            lacunarity: 2.15,
+            offset: Vec3::splat(17.0),
+            ..settings
+        };
 
-        for face in 0..6 {
-            for v in 0..resolution {
-                for u in 0..resolution {
-                    let dir = CoordSystem::get_direction(face, u, v, resolution);
-                    let rolling = generator.compute(dir, &settings) * 2.0 - 1.0;
-                    let detail = generator.compute(
-                        dir,
-                        &NoiseSettings {
-                            frequency: settings.frequency * 3.7,
-                            amplitude: settings.amplitude,
-                            octaves: 3,
-                            persistence: 0.42,
-                            lacunarity: 2.15,
-                            offset: Vec3::splat(17.0),
-                            ..settings
-                        },
-                    ) * 2.0
-                        - 1.0;
-                    let latitude = dir.y.abs();
-                    let roundness_bias = (1.0 - latitude * 0.18).clamp(0.82, 1.0);
-                    let h_offset =
-                        (rolling * 0.78 + detail * 0.22) * settings.amplitude * roundness_bias;
-                    let min_layer = profile.core_layers + 2;
-                    let max_layer = resolution.saturating_sub(3);
-                    let final_layer = (base_layer + h_offset).round() as i32;
-                    let final_layer = final_layer.clamp(min_layer as i32, max_layer as i32) as u16;
-                    let idx = Self::get_index(face, u, v, resolution);
-                    heights[idx] = final_layer;
-                }
-            }
-        }
+        let min_layer = (profile.core_layers as i32).saturating_add(2);
+        let max_layer = (profile.resolution as i32).saturating_sub(3);
 
-        // Wrap in Arc for cheap cloning
+        let mut heights = vec![0i8; size];
+        heights.par_iter_mut().enumerate().for_each(|(idx, h)| {
+            let face_area = (heightmap_res * heightmap_res) as usize;
+            let face = (idx / face_area) as u8;
+            let rem = idx % face_area;
+            let v = (rem / heightmap_res as usize) as u32;
+            let u = (rem % heightmap_res as usize) as u32;
+
+            let dir = CoordSystem::get_direction(face, u, v, heightmap_res);
+            let rolling = generator.compute(dir, &settings) * 2.0 - 1.0;
+            let detail = generator.compute(dir, &detail_settings) * 2.0 - 1.0;
+            let latitude = dir.y.abs();
+            let roundness_bias = (1.0 - latitude * 0.18).clamp(0.82, 1.0);
+            let h_offset =
+                (rolling * 0.78 + detail * 0.22) * settings.amplitude * roundness_bias;
+            let final_layer = (surface_layer as f32 + h_offset).round() as i32;
+            let final_layer = final_layer.clamp(min_layer, max_layer);
+            *h = (final_layer - surface_layer as i32).clamp(-127, 127) as i8;
+        });
+
         Self {
             heights: Arc::new(heights),
-            resolution,
+            heightmap_res,
+            surface_layer,
+            voxel_res: profile.resolution,
         }
     }
 
     #[inline(always)]
     fn get_index(face: u8, u: u32, v: u32, res: u32) -> usize {
-        let face_offset = (face as usize) * (res as usize) * (res as usize);
-        let row_offset = (v as usize) * (res as usize);
-        face_offset + row_offset + (u as usize)
+        (face as usize) * (res as usize) * (res as usize)
+            + (v as usize) * (res as usize)
+            + (u as usize)
     }
 
     pub fn get_height(&self, face: u8, u: u32, v: u32) -> u32 {
-        let u_safe = u.min(self.resolution - 1);
-        let v_safe = v.min(self.resolution - 1);
+        // Scale voxel UV coords down to heightmap resolution (no-op when equal).
+        let u_h = ((u as u64 * self.heightmap_res as u64) / self.voxel_res as u64)
+            .min(self.heightmap_res as u64 - 1) as u32;
+        let v_h = ((v as u64 * self.heightmap_res as u64) / self.voxel_res as u64)
+            .min(self.heightmap_res as u64 - 1) as u32;
 
-        let idx = Self::get_index(face, u_safe, v_safe, self.resolution);
-        self.heights[idx] as u32
+        let idx = Self::get_index(face, u_h, v_h, self.heightmap_res);
+        let offset = self.heights[idx] as i32;
+        (self.surface_layer as i32 + offset).max(0) as u32
     }
 }
 
@@ -111,7 +127,9 @@ impl Clone for PlanetTerrain {
     fn clone(&self) -> Self {
         Self {
             heights: self.heights.clone(),
-            resolution: self.resolution,
+            heightmap_res: self.heightmap_res,
+            surface_layer: self.surface_layer,
+            voxel_res: self.voxel_res,
         }
     }
 }
