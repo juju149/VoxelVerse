@@ -1,6 +1,6 @@
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::diagnostics::SystemDiagnostics;
-use crate::generation::MeshGen;
+use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
 use crate::rendering::types::Vertex;
 use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};

@@ -1,5 +1,5 @@
 use super::{LocalUniform, Renderer};
-use crate::generation::MeshGen;
+use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::AnyKey;
 use crate::rendering::types::{ChunkMesh, Vertex};
 use crate::voxel::{ChunkKey, LodKey, VoxelCoord, CHUNK_SIZE};

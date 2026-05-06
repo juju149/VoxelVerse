@@ -1,0 +1,101 @@
+use super::MeshGen;
+use crate::content::TerrainPalette;
+use crate::rendering::Vertex;
+use glam::Vec3;
+
+impl MeshGen {
+    pub fn generate_cylinder(radius: f32, height: f32, segments: u32) -> (Vec<Vertex>, Vec<u32>) {
+        let mut verts = Vec::new();
+        let mut inds = Vec::new();
+        let color = TerrainPalette::PLAYER;
+
+        for i in 0..=segments {
+            let theta = (i as f32 / segments as f32) * std::f32::consts::TAU;
+            let x = theta.cos() * radius;
+            let z = theta.sin() * radius;
+            let normal = Vec3::new(x, 0.0, z).normalize().to_array();
+
+            verts.push(Vertex {
+                pos: [x, 0.0, z],
+                color,
+                normal,
+            });
+
+            verts.push(Vertex {
+                pos: [x, height, z],
+                color,
+                normal,
+            });
+        }
+
+        for i in 0..segments {
+            let bottom1 = i * 2;
+            let top1 = bottom1 + 1;
+            let bottom2 = bottom1 + 2;
+            let top2 = bottom1 + 3;
+
+            inds.push(bottom1);
+            inds.push(top1);
+            inds.push(bottom2);
+            inds.push(bottom2);
+            inds.push(top1);
+            inds.push(top2);
+        }
+
+        let center_idx = verts.len() as u32;
+        verts.push(Vertex {
+            pos: [0.0, height, 0.0],
+            color,
+            normal: [0.0, 1.0, 0.0],
+        });
+        for i in 0..=segments {
+            let theta = (i as f32 / segments as f32) * std::f32::consts::TAU;
+            let x = theta.cos() * radius;
+            let z = theta.sin() * radius;
+            verts.push(Vertex {
+                pos: [x, height, z],
+                color,
+                normal: [0.0, 1.0, 0.0],
+            });
+        }
+        for i in 0..segments {
+            inds.push(center_idx);
+            inds.push(center_idx + 1 + i);
+            inds.push(center_idx + 1 + i + 1);
+        }
+
+        (verts, inds)
+    }
+
+    // generates a simple 2D crosshair for the center of the screen
+    pub fn generate_crosshair() -> (Vec<Vertex>, Vec<u32>) {
+        let s = 0.02; // size relative to screen (2%)
+        let color = TerrainPalette::UI_WHITE;
+        let normal = [0.0, 0.0, 1.0];
+
+        let verts = vec![
+            Vertex {
+                pos: [-s, 0.0, 0.0],
+                color,
+                normal,
+            },
+            Vertex {
+                pos: [s, 0.0, 0.0],
+                color,
+                normal,
+            },
+            Vertex {
+                pos: [0.0, -s, 0.0],
+                color,
+                normal,
+            },
+            Vertex {
+                pos: [0.0, s, 0.0],
+                color,
+                normal,
+            },
+        ];
+        let inds = vec![0, 1, 2, 3];
+        (verts, inds)
+    }
+}

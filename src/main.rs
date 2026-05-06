@@ -3,6 +3,7 @@ mod diagnostics;
 mod gameplay;
 mod generation;
 mod input;
+mod meshing;
 mod physics;
 mod rendering;
 mod voxel;

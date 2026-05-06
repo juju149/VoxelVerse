@@ -1,5 +1,6 @@
 use super::{QuadContext, QuadNode, Renderer};
-use crate::generation::{CoordSystem, MeshGen};
+use crate::generation::CoordSystem;
+use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::AnyKey;
 use crate::voxel::{ChunkKey, LodKey, CHUNK_SIZE};
 use crate::world::PlanetData;
