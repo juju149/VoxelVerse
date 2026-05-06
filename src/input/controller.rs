@@ -1,9 +1,10 @@
 //engine controller
 
-use crate::common::*;
-use crate::entity::{Player, PlayerInput};
-use crate::gen::CoordSystem;
+use crate::gameplay::{Player, PlayerInput};
+use crate::generation::CoordSystem;
 use crate::physics::Physics;
+use crate::voxel::BlockId;
+use crate::world::PlanetData;
 use glam::{Mat4, Vec2, Vec3};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};

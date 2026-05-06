@@ -1,4 +1,5 @@
-use crate::common::{ChunkKey, ChunkMesh, LodKey};
+use crate::rendering::types::ChunkMesh;
+use crate::voxel::{ChunkKey, LodKey};
 use std::collections::HashMap;
 use std::time::Instant;
 

@@ -1,5 +1,6 @@
-use crate::common::{BlockId, PlanetData};
-use crate::gen::CoordSystem;
+use crate::generation::CoordSystem;
+use crate::voxel::BlockId;
+use crate::world::PlanetData;
 use glam::{Quat, Vec3};
 
 pub struct Physics;

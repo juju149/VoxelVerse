@@ -1,55 +1,6 @@
-//common.rs
-
-use crate::noise::PlanetTerrain;
-use bytemuck::{Pod, Zeroable};
+use crate::generation::terrain::PlanetTerrain;
+use crate::voxel::{BlockId, ChunkKey, CHUNK_SIZE};
 use std::collections::{HashMap, HashSet};
-
-// --- CONSTANTS ---
-pub const CHUNK_SIZE: u32 = 32;
-
-// --- DATA TYPES ---
-
-#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
-pub struct BlockId {
-    pub face: u8,
-    pub layer: u32,
-    pub u: u32,
-    pub v: u32,
-}
-
-#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
-pub struct ChunkKey {
-    pub face: u8,
-    pub u_idx: u32,
-    pub v_idx: u32,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable)]
-pub struct Vertex {
-    pub pos: [f32; 3],
-    pub color: [f32; 3],
-    pub normal: [f32; 3],
-}
-
-pub struct ChunkMesh {
-    pub v_buf: wgpu::Buffer,
-    pub i_buf: wgpu::Buffer,
-    pub num_inds: u32,
-    pub num_verts: usize,
-    pub uniform_buf: wgpu::Buffer,
-    pub bind_group: wgpu::BindGroup,
-    pub center: glam::Vec3,
-    pub radius: f32,
-}
-
-#[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
-pub struct LodKey {
-    pub face: u8,
-    pub x: u32,
-    pub y: u32,
-    pub size: u32,
-}
 
 #[derive(Clone)]
 pub struct ChunkMods {
@@ -71,7 +22,7 @@ pub struct PlanetData {
     pub chunks: HashMap<ChunkKey, ChunkMods>,
     pub resolution: u32,
     pub has_core: bool,
-    pub terrain: crate::noise::PlanetTerrain,
+    pub terrain: PlanetTerrain,
 }
 
 impl PlanetData {
@@ -158,49 +109,5 @@ impl PlanetData {
         // instead of a flat floor, we check the pre-calculated noise map
         let height = self.terrain.get_height(id.face, id.u, id.v);
         id.layer <= height
-    }
-}
-
-// --- FRUSTUM CULLING HELPER ---
-
-pub struct Frustum {
-    planes: [glam::Vec4; 6],
-}
-
-impl Frustum {
-    pub fn from_matrix(m: glam::Mat4) -> Self {
-        let r0 = m.row(0);
-        let r1 = m.row(1);
-        let r2 = m.row(2);
-        let r3 = m.row(3);
-
-        let mut planes = [
-            r3 + r0, // Left
-            r3 - r0, // Right
-            r3 + r1, // Bottom
-            r3 - r1, // Top
-            r3 + r2, // Near
-            r3 - r2, // Far
-        ];
-
-        // normalize planes
-        for plane in &mut planes {
-            let len = glam::Vec3::new(plane.x, plane.y, plane.z).length();
-            *plane /= len;
-        }
-
-        Self { planes }
-    }
-
-    // returns true if a sphere is partly or fully inside the frustum
-    pub fn intersects_sphere(&self, center: glam::Vec3, radius: f32) -> bool {
-        for plane in &self.planes {
-            let dist = plane.x * center.x + plane.y * center.y + plane.z * center.z + plane.w;
-
-            if dist < -radius {
-                return false;
-            }
-        }
-        true
     }
 }

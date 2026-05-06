@@ -1,6 +1,9 @@
-//gen.rs
+pub mod terrain;
 
-use crate::common::*;
+use crate::content::TerrainPalette;
+use crate::rendering::Vertex;
+use crate::voxel::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
+use crate::world::{ChunkMods, PlanetData};
 use glam::Vec3;
 use std::collections::HashSet;
 
@@ -520,7 +523,7 @@ impl MeshGen {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
         let res = planet.resolution;
-        let color = [1.0, 0.0, 0.0]; // red
+        let color = TerrainPalette::COLLISION_DEBUG;
         let normal = [0.0, 1.0, 0.0];
 
         // check a 3x3x3 area around the player
@@ -539,7 +542,7 @@ impl MeshGen {
             for l in start_l..=end_l {
                 for v in start_v..=end_v {
                     for u in start_u..=end_u {
-                        let id = crate::common::BlockId {
+                        let id = BlockId {
                             face: center_id.face,
                             layer: l as u32,
                             u: u as u32,
@@ -629,10 +632,7 @@ impl MeshGen {
     }
 
     // generates a simplified heightmap mesh for distant terrain
-    pub fn generate_lod_mesh(
-        key: crate::common::LodKey,
-        data: &PlanetData,
-    ) -> (Vec<Vertex>, Vec<u32>) {
+    pub fn generate_lod_mesh(key: LodKey, data: &PlanetData) -> (Vec<Vertex>, Vec<u32>) {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
 
@@ -692,11 +692,11 @@ impl MeshGen {
                 let is_steep = slope < 0.85;
 
                 let color = if is_core {
-                    [0.2, 0.22, 0.25]
+                    TerrainPalette::LOD_CORE
                 } else if is_steep {
-                    [0.1 * 0.75, 0.8 * 0.75, 0.1 * 0.75] // Dark Green (Matches Voxel Sides)
+                    TerrainPalette::LOD_STEEP_GRASS
                 } else {
-                    [0.1, 0.8, 0.1] // Green (Top)
+                    TerrainPalette::LOD_GRASS
                 };
 
                 verts.push(Vertex {
@@ -848,11 +848,11 @@ impl MeshGen {
         let is_grass = id.layer == natural_h;
 
         let mut base_color = if is_core {
-            [0.2, 0.2, 0.2] // rock
+            TerrainPalette::CORE
         } else if is_grass {
-            [0.1, 0.7, 0.1] // grass
+            TerrainPalette::GRASS
         } else {
-            [0.6, 0.4, 0.2] // dirt
+            TerrainPalette::DIRT
         };
 
         // apply Skylight
@@ -923,7 +923,7 @@ impl MeshGen {
     pub fn generate_cylinder(radius: f32, height: f32, segments: u32) -> (Vec<Vertex>, Vec<u32>) {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
-        let color = [0.0, 0.5, 1.0];
+        let color = TerrainPalette::PLAYER;
 
         for i in 0..=segments {
             let theta = (i as f32 / segments as f32) * std::f32::consts::TAU;
@@ -986,7 +986,7 @@ impl MeshGen {
     // generates a simple 2D crosshair for the center of the screen
     pub fn generate_crosshair() -> (Vec<Vertex>, Vec<u32>) {
         let s = 0.02; // size relative to screen (2%)
-        let color = [1.0, 1.0, 1.0];
+        let color = TerrainPalette::UI_WHITE;
         let normal = [0.0, 0.0, 1.0];
 
         let verts = vec![

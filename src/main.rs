@@ -1,20 +1,19 @@
-mod cmd;
-mod common;
-mod controller;
-mod entity;
-mod gen;
-mod lod_animation;
-mod noise;
+mod content;
+mod diagnostics;
+mod gameplay;
+mod generation;
+mod input;
 mod physics;
-mod renderer;
-mod system_diagnostics;
+mod rendering;
+mod voxel;
+mod world;
 
-use crate::cmd::Console;
-use crate::common::PlanetData;
-use crate::controller::Controller;
-use crate::entity::Player;
-use crate::renderer::Renderer;
-use crate::system_diagnostics::SystemDiagnostics;
+use crate::diagnostics::{Console, SystemDiagnostics};
+use crate::gameplay::Player;
+use crate::generation::CoordSystem;
+use crate::input::Controller;
+use crate::rendering::Renderer;
+use crate::world::PlanetData;
 use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent}; // Added DeviceEvent
 use winit::event_loop::EventLoop;
@@ -43,7 +42,7 @@ fn main() {
     // we query the height at face 0, u=res/2, v=res/2 (roughly the "North Pole" of face 0)
     let center = planet.resolution / 2;
     let ground_level = planet.terrain.get_height(0, center, center);
-    let spawn_h = crate::gen::CoordSystem::get_layer_radius(ground_level, planet.resolution) + 10.0;
+    let spawn_h = CoordSystem::get_layer_radius(ground_level, planet.resolution) + 10.0;
 
     player.spawn(glam::Vec3::new(0.0, spawn_h, 0.0));
     let mut last_time = Instant::now();
@@ -172,10 +171,10 @@ fn main() {
                                     let dummy_pos = current_dir * probe_dist;
 
                                     let spawn_radius = if let Some(id) =
-                                        crate::gen::CoordSystem::pos_to_id(dummy_pos, new_res)
+                                        CoordSystem::pos_to_id(dummy_pos, new_res)
                                     {
                                         let h = planet.terrain.get_height(id.face, id.u, id.v);
-                                        crate::gen::CoordSystem::get_layer_radius(h, new_res) + 5.0
+                                        CoordSystem::get_layer_radius(h, new_res) + 5.0
                                     } else {
                                         (new_res as f32 / 2.0) + 20.0
                                     };

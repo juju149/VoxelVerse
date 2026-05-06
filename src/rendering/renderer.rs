@@ -1,11 +1,14 @@
 // engine renderer
 
-use crate::cmd::Console;
-use crate::common::*;
-use crate::controller::Controller;
-use crate::entity::Player;
-use crate::gen::{CoordSystem, MeshGen};
-use crate::lod_animation::{AnyKey, LodAnimator};
+use crate::content::TerrainPalette;
+use crate::diagnostics::{Console, SystemDiagnostics};
+use crate::gameplay::Player;
+use crate::generation::{CoordSystem, MeshGen};
+use crate::input::Controller;
+use crate::rendering::lod_animation::{AnyKey, LodAnimator};
+use crate::rendering::types::{ChunkMesh, Frustum, Vertex};
+use crate::voxel::{BlockId, ChunkKey, LodKey, CHUNK_SIZE};
+use crate::world::PlanetData;
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
 use glyphon::{
@@ -102,7 +105,7 @@ pub struct Renderer<'a> {
     collision_v_buf: wgpu::Buffer,
     collision_i_buf: wgpu::Buffer,
     collision_inds: u32,
-    frozen_frustum: Option<crate::common::Frustum>,
+    frozen_frustum: Option<Frustum>,
 
     // --- THREADING ---
     load_queue: Vec<ChunkKey>,
@@ -151,7 +154,7 @@ impl<'a> Renderer<'a> {
             .unwrap();
 
         // log GPU info
-        crate::system_diagnostics::SystemDiagnostics::log_gpu(&adapter.get_info());
+        SystemDiagnostics::log_gpu(&adapter.get_info());
 
         let target_buffer_size: u64 = 8 * 1024 * 1024 * 1024;
         let mut limits = adapter.limits();
@@ -1345,7 +1348,7 @@ impl<'a> Renderer<'a> {
             let mut verts = Vec::new();
             let mut inds = Vec::new();
             let thickness = 0.025;
-            let color = [1.0, 1.0, 0.0];
+            let color = TerrainPalette::CURSOR;
             let mut idx_base = 0;
 
             for (start, end) in edges {
@@ -1464,13 +1467,13 @@ impl<'a> Renderer<'a> {
             controller.get_matrix(player, self.config.width as f32, self.config.height as f32);
 
         // --- FRUSTUM CULLING LOGIC ---
-        let current_frustum = crate::common::Frustum::from_matrix(mvp);
+        let current_frustum = Frustum::from_matrix(mvp);
 
         // determine which frustum to use for culling
         // if freeze is on, we use the stored one. if freeze is off, update the stored one (or just use current).
         let cull_frustum = if controller.freeze_culling {
             if self.frozen_frustum.is_none() {
-                self.frozen_frustum = Some(crate::common::Frustum::from_matrix(mvp));
+                self.frozen_frustum = Some(Frustum::from_matrix(mvp));
             }
             self.frozen_frustum.as_ref().unwrap()
         } else {
@@ -1483,7 +1486,7 @@ impl<'a> Renderer<'a> {
         let mut rendered_chunks = 0;
 
         let cam_pos = controller.get_camera_pos(player);
-        let frustum = crate::common::Frustum::from_matrix(mvp);
+        let frustum = Frustum::from_matrix(mvp);
 
         // 1. update main global uni
         let global_data = GlobalUniform {

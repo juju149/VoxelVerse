@@ -1,4 +1,4 @@
-use crate::entity::Player;
+use crate::gameplay::Player;
 
 pub struct Console {
     pub is_open: bool,

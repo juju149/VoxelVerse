@@ -1,5 +1,5 @@
-use crate::common::PlanetData;
 use crate::physics::Physics;
+use crate::world::PlanetData;
 use glam::{Mat4, Quat, Vec3};
 
 pub struct Player {

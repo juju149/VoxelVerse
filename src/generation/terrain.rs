@@ -1,4 +1,4 @@
-use crate::gen::CoordSystem;
+use crate::generation::CoordSystem;
 use glam::Vec3;
 use std::sync::Arc;
 
