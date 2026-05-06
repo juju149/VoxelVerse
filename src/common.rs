@@ -1,8 +1,8 @@
 //common.rs
 
-use std::collections::{HashMap, HashSet};
-use bytemuck::{Pod, Zeroable};
 use crate::noise::PlanetTerrain;
+use bytemuck::{Pod, Zeroable};
+use std::collections::{HashMap, HashSet};
 
 // --- CONSTANTS ---
 pub const CHUNK_SIZE: u32 = 32;
@@ -11,16 +11,16 @@ pub const CHUNK_SIZE: u32 = 32;
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct BlockId {
-    pub face: u8, 
-    pub layer: u32, 
-    pub u: u32, 
+    pub face: u8,
+    pub layer: u32,
+    pub u: u32,
     pub v: u32,
 }
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct ChunkKey {
-    pub face: u8, 
-    pub u_idx: u32, 
+    pub face: u8,
+    pub u_idx: u32,
     pub v_idx: u32,
 }
 
@@ -43,34 +43,32 @@ pub struct ChunkMesh {
     pub radius: f32,
 }
 
-
-
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub struct LodKey {
     pub face: u8,
-    pub x: u32,      
-    pub y: u32,      
-    pub size: u32,   
+    pub x: u32,
+    pub y: u32,
+    pub size: u32,
 }
 
-
-#[derive(Clone)] 
+#[derive(Clone)]
 pub struct ChunkMods {
     pub mined: HashSet<BlockId>,
     pub placed: HashSet<BlockId>,
 }
 
-
-
 impl ChunkMods {
     pub fn new() -> Self {
-        Self { mined: HashSet::new(), placed: HashSet::new() }
+        Self {
+            mined: HashSet::new(),
+            placed: HashSet::new(),
+        }
     }
 }
 
-#[derive(Clone)] 
+#[derive(Clone)]
 pub struct PlanetData {
-    pub chunks: HashMap<ChunkKey, ChunkMods>, 
+    pub chunks: HashMap<ChunkKey, ChunkMods>,
     pub resolution: u32,
     pub has_core: bool,
     pub terrain: crate::noise::PlanetTerrain,
@@ -81,7 +79,7 @@ impl PlanetData {
         println!("Generating Terrain Noise Map for res {}...", resolution);
         let terrain = PlanetTerrain::new(resolution); // calculate once
         println!("Terrain Generation Complete.");
-        
+
         Self {
             chunks: HashMap::new(),
             resolution,
@@ -90,24 +88,23 @@ impl PlanetData {
         }
     }
 
-pub fn resize(&mut self, increase: bool) {
+    pub fn resize(&mut self, increase: bool) {
         if increase {
             // multiply by 1.2
             // i use .max(self.resolution + 1) to ensure it always grows by at least 1 block
             let new_res = (self.resolution as f32 * 1.2) as u32;
-            self.resolution = new_res.max(self.resolution + 1).min(16384); 
+            self.resolution = new_res.max(self.resolution + 1).min(16384);
         } else {
             // divide by 1.2
             let new_res = (self.resolution as f32 / 1.2) as u32;
             self.resolution = new_res.max(8);
         }
-        
 
         self.chunks.clear();
-        
+
         // regenerate noise map for new resolution
         println!("Regenerating Terrain for new res {}...", self.resolution);
-        self.terrain = PlanetTerrain::new(self.resolution); 
+        self.terrain = PlanetTerrain::new(self.resolution);
     }
 
     fn get_chunk_key(id: BlockId) -> ChunkKey {
@@ -121,7 +118,7 @@ pub fn resize(&mut self, increase: bool) {
     pub fn add_block(&mut self, id: BlockId) {
         let key = Self::get_chunk_key(id);
         let mods = self.chunks.entry(key).or_insert_with(ChunkMods::new);
-        
+
         if mods.mined.contains(&id) {
             mods.mined.remove(&id);
         } else {
@@ -129,12 +126,12 @@ pub fn resize(&mut self, increase: bool) {
         }
     }
 
-pub fn remove_block(&mut self, id: BlockId) {
+    pub fn remove_block(&mut self, id: BlockId) {
         // protect the bottom 4 layers as the unbreakable core
         if self.has_core && id.layer < 6 {
-            return; 
+            return;
         }
-        
+
         let key = Self::get_chunk_key(id);
         let mods = self.chunks.entry(key).or_insert_with(ChunkMods::new);
 
@@ -146,23 +143,23 @@ pub fn remove_block(&mut self, id: BlockId) {
             }
         }
     }
-    
+
     pub fn exists(&self, id: BlockId) -> bool {
         let key = Self::get_chunk_key(id);
         if let Some(mods) = self.chunks.get(&key) {
-            if mods.placed.contains(&id) { return true; }
-            if mods.mined.contains(&id) { return false; }
+            if mods.placed.contains(&id) {
+                return true;
+            }
+            if mods.mined.contains(&id) {
+                return false;
+            }
         }
-        
 
         // instead of a flat floor, we check the pre-calculated noise map
         let height = self.terrain.get_height(id.face, id.u, id.v);
         id.layer <= height
     }
-
-    
 }
-
 
 // --- FRUSTUM CULLING HELPER ---
 
@@ -199,7 +196,7 @@ impl Frustum {
     pub fn intersects_sphere(&self, center: glam::Vec3, radius: f32) -> bool {
         for plane in &self.planes {
             let dist = plane.x * center.x + plane.y * center.y + plane.z * center.z + plane.w;
-            
+
             if dist < -radius {
                 return false;
             }

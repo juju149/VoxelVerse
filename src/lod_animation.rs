@@ -1,6 +1,6 @@
+use crate::common::{ChunkKey, ChunkMesh, LodKey};
 use std::collections::HashMap;
 use std::time::Instant;
-use crate::common::{ChunkKey, LodKey, ChunkMesh};
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub enum AnyKey {
@@ -11,8 +11,8 @@ pub enum AnyKey {
 pub struct FadeState {
     pub mesh: ChunkMesh,
     pub start_time: Instant,
-    pub start_alpha: f32, 
-    pub target_alpha: f32, 
+    pub start_alpha: f32,
+    pub target_alpha: f32,
     pub duration: f32,
 }
 
@@ -28,7 +28,7 @@ impl LodAnimator {
             dying_chunks: HashMap::new(),
             spawning_chunks: HashMap::new(),
             // CHANGED: Increased to 2.0 seconds for a very slow, cinematic transition
-            fade_duration: 2.0, 
+            fade_duration: 2.0,
         }
     }
 
@@ -40,20 +40,23 @@ impl LodAnimator {
     }
 
     pub fn start_spawn(&mut self, key: AnyKey) {
-        if let Some(_) = self.dying_chunks.remove(&key) {
-             // if reviving, we just reset.
+        if self.dying_chunks.remove(&key).is_some() {
+            // if reviving, we just reset.
         }
         self.spawning_chunks.insert(key, Instant::now());
     }
 
     pub fn retire(&mut self, key: AnyKey, mesh: ChunkMesh) {
-        self.dying_chunks.insert(key, FadeState {
-            mesh,
-            start_time: Instant::now(),
-            start_alpha: 1.0, 
-            target_alpha: 0.0,
-            duration: self.fade_duration,
-        });
+        self.dying_chunks.insert(
+            key,
+            FadeState {
+                mesh,
+                start_time: Instant::now(),
+                start_alpha: 1.0,
+                target_alpha: 0.0,
+                duration: self.fade_duration,
+            },
+        );
         self.spawning_chunks.remove(&key);
     }
 
@@ -63,7 +66,7 @@ impl LodAnimator {
             let linear_t = elapsed / self.fade_duration;
             return Self::smoothstep(linear_t);
         }
-        1.0 
+        1.0
     }
 
     pub fn update_dying(&mut self, now: Instant) -> Vec<(AnyKey, f32)> {
@@ -73,11 +76,12 @@ impl LodAnimator {
         for (key, state) in &self.dying_chunks {
             let elapsed = (now - state.start_time).as_secs_f32();
             let linear_t = elapsed / state.duration;
-            
+
             if linear_t >= 1.0 {
                 to_remove.push(*key);
             } else {
-                let alpha = 1.0 - Self::smoothstep(linear_t); 
+                let t = Self::smoothstep(linear_t);
+                let alpha = state.start_alpha + (state.target_alpha - state.start_alpha) * t;
                 results.push((*key, alpha));
             }
         }
