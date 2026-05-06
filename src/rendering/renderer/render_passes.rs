@@ -331,14 +331,7 @@ impl<'a> Renderer<'a> {
             }
         }
 
-        // --- FPS CALCULATION ---
-        self.frame_count += 1;
-        let now = std::time::Instant::now();
-        if now.duration_since(self.last_fps_time).as_secs_f32() >= 1.0 {
-            self.current_fps = self.frame_count;
-            self.frame_count = 0;
-            self.last_fps_time = now;
-        }
+        self.frame_stats.tick();
 
         // --- PASS 3: TEXT RENDER ---
         // run this pass every frame to show FPS
@@ -413,7 +406,7 @@ impl<'a> Renderer<'a> {
             );
             fps_buffer.set_text(
                 &mut self.font_system,
-                &format!("FPS: {}", self.current_fps),
+                &format!("FPS: {}", self.frame_stats.fps()),
                 Attrs::new()
                     .family(Family::Monospace)
                     .color(glyphon::Color::rgb(0, 255, 0)),
@@ -429,8 +422,9 @@ impl<'a> Renderer<'a> {
                     "ACTIVE"
                 };
                 let info = format!(
-                    "Culling: {}\nChunks: {} / {}\nLODs:   {} / {}\nQueue:  {}",
+                    "Culling: {}\nFrame:   {:.2} ms\nChunks:  {} / {}\nLODs:    {} / {}\nQueue:   {}",
                     status,
+                    self.frame_stats.frame_time_ms(),
                     rendered_chunks,
                     self.chunks.len(),
                     rendered_lods,

@@ -1,5 +1,6 @@
 // engine renderer
 
+use crate::diagnostics::FrameStats;
 use crate::math::Frustum;
 use crate::rendering::lod_animation::LodAnimator;
 use crate::rendering::types::{ChunkMesh, Vertex};
@@ -110,10 +111,7 @@ pub struct Renderer<'a> {
     lod_rx: Receiver<(LodKey, Vec<Vertex>, Vec<u32>)>,
     pending_lods: HashSet<LodKey>,
 
-    // --- FPS ---
-    last_fps_time: std::time::Instant,
-    frame_count: u32,
-    current_fps: u32,
+    frame_stats: FrameStats,
 }
 
 #[derive(Clone, Copy)]

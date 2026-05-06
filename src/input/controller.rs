@@ -1,11 +1,9 @@
 //engine controller
 
 use crate::gameplay::{Player, PlayerInput};
-use crate::generation::CoordSystem;
 use crate::math::Ray;
 use crate::physics::Physics;
 use crate::voxel::VoxelCoord;
-use crate::world::PlanetData;
 use glam::{Mat4, Vec2, Vec3};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -51,9 +49,7 @@ impl Controller {
         self.mouse_delta = (0.0, 0.0);
     }
 
-    pub fn update_player(&mut self, player: &mut Player, planet: &PlanetData, dt: f32) {
-        // read inputs regardless of the view mode.
-
+    pub fn sample_player_input(&mut self) -> PlayerInput {
         let mut input = Vec3::ZERO;
         if self.keys[0] {
             input.z -= 1.0;
@@ -75,20 +71,16 @@ impl Controller {
             (0.0, 0.0)
         };
 
-        player.update(
-            dt,
-            planet,
-            PlayerInput {
-                movement: input,
-                jump,
-                mouse_delta: rotation_delta,
-                flying: self.fly_mode,
-                sprint: self.sprint,
-            },
-        );
+        let player_input = PlayerInput {
+            movement: input,
+            jump,
+            mouse_delta: rotation_delta,
+            flying: self.fly_mode,
+            sprint: self.sprint,
+        };
 
-        // reset delta after use
         self.mouse_delta = (0.0, 0.0);
+        player_input
     }
 
     pub fn get_camera_pos(&self, player: &Player) -> Vec3 {
@@ -109,12 +101,7 @@ impl Controller {
         }
     }
 
-    pub fn process_events(
-        &mut self,
-        event: &WindowEvent,
-        _player: &mut Player,
-        _planet: &PlanetData,
-    ) -> bool {
+    pub fn process_events(&mut self, event: &WindowEvent, player: &Player) -> bool {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 let new_pos = Vec2::new(position.x as f32, position.y as f32);
@@ -152,14 +139,14 @@ impl Controller {
                     PhysicalKey::Code(KeyCode::ControlLeft) => self.sprint = pressed,
 
                     PhysicalKey::Code(KeyCode::KeyP) if pressed => {
-                        if _player.debug_mode {
+                        if player.debug_mode {
                             self.is_wireframe = !self.is_wireframe;
                         }
                         return true;
                     }
 
                     PhysicalKey::Code(KeyCode::KeyO) if pressed => {
-                        if _player.debug_mode {
+                        if player.debug_mode {
                             self.show_collisions = !self.show_collisions;
                             println!("Show Collisions: {}", self.show_collisions);
                         }
@@ -167,7 +154,7 @@ impl Controller {
                     }
 
                     PhysicalKey::Code(KeyCode::Quote) if pressed => {
-                        if _player.debug_mode {
+                        if player.debug_mode {
                             self.freeze_culling = !self.freeze_culling;
                         }
                         return true;
@@ -221,14 +208,7 @@ impl Controller {
         proj * view
     }
 
-    pub fn raycast(
-        &self,
-        player: &Player,
-        planet: &PlanetData,
-        width: f32,
-        height: f32,
-        place_mode: bool,
-    ) -> Option<(VoxelCoord, f32)> {
+    pub fn view_ray(&self, player: &Player, width: f32, height: f32) -> Ray {
         let mvp = self.get_matrix(player, width, height);
         let inv = mvp.inverse();
 
@@ -241,44 +221,14 @@ impl Controller {
             )
         };
 
-        let ray = Ray::from_clip_space(inv, ndc_x, ndc_y);
+        Ray::from_clip_space(inv, ndc_x, ndc_y)
+    }
 
-        let mut dist = 0.0;
-        let mut last_empty = None;
-
-        let reach = if self.first_person {
+    pub fn interaction_reach(&self) -> f32 {
+        if self.first_person {
             8.0
         } else {
             self.cam_dist + 100.0
-        };
-        // stop raycast if we hit the absolute math center (radius < 0.5)
-        let min_radius = 0.5;
-
-        while dist < reach {
-            let p = ray.point_at(dist);
-            if p.length() < min_radius {
-                break;
-            }
-
-            // since blocks are now approx 1.0 unit thick/wide, 0.25 is a safe step.
-            let step = 0.25;
-
-            if let Some(id) = CoordSystem::pos_to_id(p, planet.resolution) {
-                let exists = planet.exists(id);
-                if place_mode {
-                    if exists {
-                        return last_empty.map(|i| (i, dist));
-                    } else {
-                        last_empty = Some(id);
-                    }
-                } else {
-                    if exists {
-                        return Some((id, dist));
-                    }
-                }
-            }
-            dist += step;
         }
-        None
     }
 }

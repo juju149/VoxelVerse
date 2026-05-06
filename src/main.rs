@@ -11,15 +11,17 @@ mod voxel;
 mod world;
 
 use crate::diagnostics::{Console, SystemDiagnostics};
-use crate::gameplay::{BlockActionIntent, BlockInteraction, Player};
-use crate::generation::CoordSystem;
+use crate::gameplay::{
+    BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, PlanetResize,
+    PlanetResizeIntent, Player, PlayerController,
+};
 use crate::input::Controller;
 use crate::rendering::Renderer;
 use crate::world::PlanetData;
 use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent}; // Added DeviceEvent
 use winit::event_loop::EventLoop;
-use winit::keyboard::{Key, KeyCode, PhysicalKey};
+use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, WindowBuilder};
 
 fn main() {
@@ -33,7 +35,7 @@ fn main() {
     let mut renderer = pollster::block_on(Renderer::new(&window));
     let mut controller = Controller::new();
     let mut player = Player::new();
-    let mut planet = PlanetData::new(1000); // Keep high resolution
+    let mut planet = PlanetData::new(10000);
 
     let mut console = Console::new();
     console.log("Welcome to voxanet.", [0.0, 1.0, 0.0]);
@@ -107,7 +109,7 @@ fn main() {
                         return;
                     }
 
-                    controller.process_events(&event, &mut player, &planet);
+                    controller.process_events(&event, &player);
 
                     match event {
                         WindowEvent::CloseRequested => target.exit(),
@@ -126,15 +128,18 @@ fn main() {
 
                             if let Some(intent) = intent {
                                 let placement = if intent == BlockActionIntent::Place {
-                                    controller
-                                        .raycast(
-                                            &player,
-                                            &planet,
-                                            renderer.config.width as f32,
-                                            renderer.config.height as f32,
-                                            true,
-                                        )
-                                        .map(|(id, _)| id)
+                                    let ray = controller.view_ray(
+                                        &player,
+                                        renderer.config.width as f32,
+                                        renderer.config.height as f32,
+                                    );
+                                    BlockSelection::trace(
+                                        ray,
+                                        controller.interaction_reach(),
+                                        &planet,
+                                        BlockSelectionMode::Placement,
+                                    )
+                                    .map(|(id, _)| id)
                                 } else {
                                     None
                                 };
@@ -158,40 +163,21 @@ fn main() {
                         WindowEvent::KeyboardInput { event, .. }
                             if event.state == ElementState::Pressed =>
                         {
-                            if let Key::Character(ref s) = event.logical_key {
-                                if s == "]" || s == "[" {
-                                    if s == "]" {
-                                        planet.resize(true);
-                                    } else {
-                                        planet.resize(false);
-                                    }
-
-                                    let new_res = planet.resolution;
-                                    let current_dir = if player.position.length() > 0.1 {
-                                        player.position.normalize()
-                                    } else {
-                                        glam::Vec3::Y
-                                    };
-                                    let probe_dist = planet.profile.surface_radius;
-                                    let dummy_pos = current_dir * probe_dist;
-
-                                    let spawn_radius = if let Some(id) =
-                                        CoordSystem::pos_to_id(dummy_pos, new_res)
-                                    {
-                                        let h = planet.terrain.get_height(id.face, id.u, id.v);
-                                        planet.profile.layer_radius(h + 1)
-                                            + planet.profile.spawn_clearance()
-                                    } else {
-                                        (new_res as f32 / 2.0) + 20.0
-                                    };
-
-                                    player.position = current_dir * spawn_radius;
-                                    player.velocity = glam::Vec3::ZERO;
-
-                                    renderer.force_reload_all(&planet, player.position);
-                                    renderer.log_memory(&planet);
-                                    renderer.window.request_redraw();
+                            let resize = match event.physical_key {
+                                PhysicalKey::Code(KeyCode::BracketRight) => {
+                                    Some(PlanetResizeIntent::Grow)
                                 }
+                                PhysicalKey::Code(KeyCode::BracketLeft) => {
+                                    Some(PlanetResizeIntent::Shrink)
+                                }
+                                _ => None,
+                            };
+
+                            if let Some(intent) = resize {
+                                PlanetResize::apply(intent, &mut planet, &mut player);
+                                renderer.force_reload_all(&planet, player.position);
+                                renderer.log_memory(&planet);
+                                renderer.window.request_redraw();
                             }
                         }
 
@@ -220,11 +206,18 @@ fn main() {
                     console.update_animation(dt);
 
                     if !console.is_open {
-                        controller.update_player(&mut player, &planet, dt);
+                        let player_input = controller.sample_player_input();
+                        PlayerController::update(&mut player, &planet, player_input, dt);
 
                         let width = renderer.config.width as f32;
                         let height = renderer.config.height as f32;
-                        let ray_result = controller.raycast(&player, &planet, width, height, false);
+                        let ray = controller.view_ray(&player, width, height);
+                        let ray_result = BlockSelection::trace(
+                            ray,
+                            controller.interaction_reach(),
+                            &planet,
+                            BlockSelectionMode::HitSolid,
+                        );
                         controller.cursor_id = ray_result.map(|(id, _)| id);
                     } else {
                         controller.clear_transient_input();

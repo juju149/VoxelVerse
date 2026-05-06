@@ -1,5 +1,5 @@
 use super::{GlobalUniform, LocalUniform, Renderer};
-use crate::diagnostics::SystemDiagnostics;
+use crate::diagnostics::{FrameStats, SystemDiagnostics};
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
 use crate::rendering::types::Vertex;
@@ -562,9 +562,7 @@ impl<'a> Renderer<'a> {
             lod_rx,
             pending_lods: HashSet::new(),
 
-            last_fps_time: std::time::Instant::now(),
-            frame_count: 0,
-            current_fps: 0,
+            frame_stats: FrameStats::new(),
         }
     }
 }
