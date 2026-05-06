@@ -1,6 +1,6 @@
 RawBlockDef(
     display_name: "Stone",
     solid: true,
-    color: (0.50, 0.50, 0.52),
+    color: (0.46, 0.46, 0.48),
     hardness: 3.0,
 )

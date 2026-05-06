@@ -25,10 +25,10 @@ struct Local {
 
 // --- CONSTANTS ---
 // Natural, physical light values
-const SUN_COLOR       = vec3<f32>(1.6, 1.5, 1.3);    // High intensity warm sun
-const SKY_COLOR       = vec3<f32>(0.15, 0.3, 0.6);   // Deep blue ambient sky
-const GROUND_COLOR    = vec3<f32>(0.05, 0.04, 0.03); // Dark earth ambient bounce
-const SHADOW_OPACITY  = 0.85;                        // Shadows are not pitch black
+const SUN_COLOR       = vec3<f32>(1.55, 1.42, 1.15);  // Warm golden sun
+const SKY_COLOR       = vec3<f32>(0.20, 0.42, 0.78);  // Rich deep blue sky
+const GROUND_COLOR    = vec3<f32>(0.06, 0.05, 0.03);  // Warm earth ambient bounce
+const SHADOW_OPACITY  = 0.80;                         // Soft shadows
 
 // --- VERTEX SHADER ---
 
@@ -222,13 +222,13 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     var final_color = albedo * (direct_light + ambient_light + rim_light);
 
     // 4. Fog (Atmospheric Scattering)
+    // fog_density is passed in sun_dir.w, computed per-planet from surface radius.
     let dist = distance(global.camera_pos.xyz, in.world_pos);
-    // Fog density tuned for the scale defined in gen.rs
-    let fog_density = 0.0015; 
-    let fog_factor = 1.0 - exp(-(dist * fog_density) * (dist * fog_density * 0.5)); // Exp2 fog
-    
-    // Horizon Fog Color blends into Sky
-    let fog_col = mix(SKY_COLOR * 0.8, vec3<f32>(0.7, 0.8, 0.9), 0.2); 
+    let fog_density = global.sun_dir.w;
+    let fog_factor = 1.0 - exp(-(dist * fog_density) * (dist * fog_density * 0.5));
+
+    // Horizon color: warm haze near the sun mixes into the sky blue.
+    let fog_col = mix(SKY_COLOR * 0.9, vec3<f32>(0.72, 0.82, 1.0), 0.25);
     final_color = mix(final_color, fog_col, clamp(fog_factor, 0.0, 1.0));
 
     // 5. Post Processing

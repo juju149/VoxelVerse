@@ -38,10 +38,15 @@ impl<'a> Renderer<'a> {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        // -- sun matrix --
-        let sun_dir = glam::Vec3::new(0.5, 0.8, 0.4).normalize();
-        let shadow_dist = 200.0; // distance of light source from center
-        let proj_size = 60.0; // SIZE OF SHADOW AREA (Smaller = Sharper Shadows)
+        // -- sun direction: low angle for long dramatic shadows --
+        let sun_dir = glam::Vec3::new(0.38, 0.62, 0.28).normalize();
+        let shadow_dist = 200.0;
+        let proj_size = 60.0;
+
+        // Fog density scales with planet surface radius so that all planet sizes
+        // have visually appropriate atmospheric depth.
+        // Formula: 0.75 / surface_radius → same angular density at every scale.
+        let fog_density = 0.75 / planet.profile.surface_radius.max(1.0);
 
         // basic LookAt
         let center = player.position;
@@ -104,17 +109,18 @@ impl<'a> Renderer<'a> {
             view_proj: mvp.to_cols_array(),
             light_view_proj: light_view_proj.to_cols_array(),
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
-            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, 0.0],
+            // w component carries per-planet fog density (read in shader via sun_dir.w).
+            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, fog_density],
         };
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
 
         // 2. update shadow global uni (put Light Matrix in view_proj)
         let shadow_uniform_data = GlobalUniform {
-            view_proj: light_view_proj.to_cols_array(), // Used by Shadow Pass Vertex Shader
+            view_proj: light_view_proj.to_cols_array(),
             light_view_proj: light_view_proj.to_cols_array(),
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
-            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, 0.0],
+            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, fog_density],
         };
         self.queue.write_buffer(
             &self.shadow_global_buf,
@@ -221,11 +227,11 @@ impl<'a> Renderer<'a> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        // Matches the atmospheric fog color in shader
+                        // Sky blue — matches the horizon fog color after ACES tonemapping.
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.02,
-                            g: 0.03,
-                            b: 0.05,
+                            r: 0.28,
+                            g: 0.52,
+                            b: 0.94,
                             a: 1.0,
                         }),
                         store: wgpu::StoreOp::Store,

@@ -1,6 +1,6 @@
 RawBlockDef(
     display_name: "Dirt",
     solid: true,
-    color: (0.6, 0.4, 0.2),
+    color: (0.55, 0.38, 0.18),
     hardness: 1.5,
 )

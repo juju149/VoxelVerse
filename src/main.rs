@@ -24,7 +24,7 @@ use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent}; // Added DeviceEvent
 use winit::event_loop::EventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
-use winit::window::{CursorGrabMode, WindowBuilder};
+use winit::window::{CursorGrabMode, Fullscreen, WindowBuilder};
 
 fn main() {
     SystemDiagnostics::print_startup_info();
@@ -62,8 +62,13 @@ fn main() {
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new()
         .with_title("voxanet")
+        .with_fullscreen(Some(Fullscreen::Borderless(None)))
         .build(&event_loop)
         .unwrap();
+
+    let _ = window.set_cursor_grab(CursorGrabMode::Locked)
+        .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
+    window.set_cursor_visible(false);
 
     let mut renderer = pollster::block_on(Renderer::new(&window, &registry));
     let mut controller = Controller::new();
@@ -151,6 +156,23 @@ fn main() {
                         WindowEvent::CloseRequested => target.exit(),
                         WindowEvent::Resized(size) => renderer.resize(size.width, size.height),
 
+                        // Re-grab the cursor every time the window gains focus so
+                        // alt-tab / task-switch releases are properly re-locked.
+                        WindowEvent::Focused(true) => {
+                            if controller.first_person && !console.is_open {
+                                if renderer.window.set_cursor_grab(CursorGrabMode::Locked).is_err() {
+                                    let _ = renderer.window.set_cursor_grab(CursorGrabMode::Confined);
+                                }
+                                renderer.window.set_cursor_visible(false);
+                            }
+                        }
+
+                        WindowEvent::Focused(false) => {
+                            // Release the cursor when focus is lost so the OS can use it.
+                            let _ = renderer.window.set_cursor_grab(CursorGrabMode::None);
+                            renderer.window.set_cursor_visible(true);
+                        }
+
                         WindowEvent::MouseInput {
                             state: ElementState::Pressed,
                             button,
@@ -231,7 +253,9 @@ fn main() {
                     if controller.first_person != current_mode_first_person {
                         current_mode_first_person = controller.first_person;
                         if current_mode_first_person && !console.is_open {
-                            let _ = renderer.window.set_cursor_grab(CursorGrabMode::Locked);
+                            if renderer.window.set_cursor_grab(CursorGrabMode::Locked).is_err() {
+                                let _ = renderer.window.set_cursor_grab(CursorGrabMode::Confined);
+                            }
                             renderer.window.set_cursor_visible(false);
                         } else {
                             let _ = renderer.window.set_cursor_grab(CursorGrabMode::None);

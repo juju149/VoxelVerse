@@ -63,14 +63,24 @@ impl MeshGen {
                 );
 
                 let is_core = data.has_core && h < data.profile.core_layers;
-                let is_steep = slope < 0.85;
 
                 let color = if is_core {
                     TerrainPalette::LOD_CORE
-                } else if is_steep {
-                    TerrainPalette::LOD_STEEP_GRASS
                 } else {
-                    TerrainPalette::LOD_GRASS
+                    // Look up the biome at this surface point and use its actual block colors.
+                    // This makes deserts yellow, arctic ice white-blue, tundra grey, etc.
+                    let bu = (key.x + offset_u).min(data.resolution.saturating_sub(1));
+                    let bv = (key.y + offset_v).min(data.resolution.saturating_sub(1));
+                    let biome_id = data.terrain.get_biome_id(key.face, bu, bv);
+                    let biome = data.biomes.biome(biome_id);
+
+                    if slope < 0.82 {
+                        // Steep face → subsurface block color (stone, gravel, bare rock).
+                        data.content.color(biome.subsurface_block)
+                    } else {
+                        // Gently sloped → surface block color (grass, snow, sand, ice…).
+                        data.content.color(biome.surface_block)
+                    }
                 };
 
                 verts.push(Vertex {

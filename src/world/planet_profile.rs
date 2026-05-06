@@ -13,7 +13,7 @@ pub struct PlanetProfile {
 }
 
 impl PlanetProfile {
-    const DEFAULT_SEED: u32 = 42;
+    const DEFAULT_SEED: u32 = 1;
 
     pub fn new(resolution: u32) -> Self {
         Self::with_seed(resolution, Self::DEFAULT_SEED)
@@ -29,9 +29,10 @@ impl PlanetProfile {
         let layer_height = (surface_radius - inner_radius) / surface_layer.max(1) as f32;
 
         // Scale max_terrain_offset with planet size so large planets have
-        // proper mountain relief.  Clamped to i16 range (safety margin).
+        // proper mountain relief.  0.008 × res gives ~160 for a 20k-radius
+        // planet (≈80 blocks for mountains, ≈10 for plains) — Minecraft-scale.
         let max_terrain_offset =
-            ((resolution as f32 * 0.025).round() as i32).clamp(12, 20_000);
+            ((resolution as f32 * 0.008).round() as i32).clamp(8, 1_200);
 
         Self {
             resolution,

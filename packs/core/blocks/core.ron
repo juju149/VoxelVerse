@@ -1,6 +1,6 @@
 RawBlockDef(
     display_name: "Core Rock",
     solid: true,
-    color: (0.2, 0.2, 0.2),
+    color: (0.22, 0.18, 0.16),
     hardness: 999.0,
 )
