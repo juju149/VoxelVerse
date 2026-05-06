@@ -130,9 +130,11 @@ struct QuadContext<'a> {
 
 mod debug_draw;
 mod lod_selection;
+mod metrics;
 mod pipelines;
 mod render_passes;
 mod setup;
+mod setup_resources;
 mod streaming;
 mod ui;
 

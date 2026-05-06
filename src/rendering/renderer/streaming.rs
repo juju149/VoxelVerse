@@ -242,22 +242,14 @@ impl<'a> Renderer<'a> {
     }
 
     pub fn log_memory(&self, planet: &PlanetData) {
-        let mut total_v = 0;
-        let mut total_i = 0;
-        for c in self.chunks.values() {
-            total_v += c.num_verts;
-            total_i += c.num_inds as usize;
-        }
-        let bytes = (total_v * 36) + (total_i * 4);
-        let mb = bytes as f32 / (1024.0 * 1024.0);
+        let stats = self.render_stats(0, 0);
         println!("------------------------------------------");
         println!("RESOLUTION: {}", planet.resolution);
-        println!("Active Chunks: {}", self.chunks.len());
-        if mb > 1024.0 {
-            println!("GPU Memory: {:.2} GB", mb / 1024.0);
-        } else {
-            println!("GPU Memory: {:.2} MB", mb);
-        }
+        println!("Active Chunks: {}", stats.active_chunks);
+        println!("Active LODs: {}", stats.active_lods);
+        println!("Pending Chunks: {}", stats.pending_chunks);
+        println!("Pending LODs: {}", stats.pending_lods);
+        println!("GPU Memory: {}", stats.gpu_memory_label());
         println!("------------------------------------------");
     }
 }

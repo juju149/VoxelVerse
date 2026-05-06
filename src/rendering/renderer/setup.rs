@@ -3,7 +3,6 @@ use crate::diagnostics::{FrameStats, SystemDiagnostics};
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
 use crate::rendering::types::Vertex;
-use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
 use wgpu::util::DeviceExt;
@@ -70,45 +69,9 @@ impl<'a> Renderer<'a> {
 
         surface.configure(&device, &config);
 
-        let font_system = FontSystem::new();
+        let text_resources = Self::create_text_resources(&device, &queue, config.format);
 
-        let swash_cache = SwashCache::new();
-        let mut text_atlas = TextAtlas::new(&device, &queue, config.format);
-        let text_renderer = GlyphRenderer::new(
-            &mut text_atlas,
-            &device,
-            wgpu::MultisampleState::default(),
-            None,
-        );
-
-        let shadow_size = 4096;
-        let shadow_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Shadow Map"),
-            size: wgpu::Extent3d {
-                width: shadow_size,
-                height: shadow_size,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Depth32Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        let shadow_view = shadow_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("Shadow Sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            compare: Some(wgpu::CompareFunction::LessEqual),
-            ..Default::default()
-        });
+        let shadow_map = Self::create_shadow_map(&device);
 
         let global_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -175,61 +138,18 @@ impl<'a> Renderer<'a> {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&shadow_view),
+                    resource: wgpu::BindingResource::TextureView(&shadow_map.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&shadow_sampler),
+                    resource: wgpu::BindingResource::Sampler(&shadow_map.sampler),
                 },
             ],
             label: None,
         });
 
-        // --- SHADOW PASS RESOURCES ---
-        // shadow uniform buffer
-        let shadow_global_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Shadow Global Uniform"),
-            size: 160,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        // dummy depth tex (1x1)
-        let dummy_depth_tex = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Dummy Depth"),
-            size: wgpu::Extent3d {
-                width: 1,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Depth32Float,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        let dummy_depth_view = dummy_depth_tex.create_view(&wgpu::TextureViewDescriptor::default());
-
-        // shadow pass bind group
-        let shadow_global_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Shadow Pass Bind Group"),
-            layout: &global_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: shadow_global_buf.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&dummy_depth_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&shadow_sampler),
-                },
-            ],
-        });
+        let shadow_pass =
+            Self::create_shadow_pass_resources(&device, &global_layout, &shadow_map.sampler);
 
         let identity_mat = glam::Mat4::IDENTITY;
         let default_local = LocalUniform {
@@ -494,11 +414,11 @@ impl<'a> Renderer<'a> {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&shadow_view),
+                    resource: wgpu::BindingResource::TextureView(&shadow_map.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&shadow_sampler),
+                    resource: wgpu::BindingResource::Sampler(&shadow_map.sampler),
                 },
             ],
             label: Some("Identity Bind Group"),
@@ -525,14 +445,14 @@ impl<'a> Renderer<'a> {
             local_bind_player,
             depth,
 
-            font_system,
-            swash_cache,
-            text_atlas,
-            text_renderer,
-            shadow_view,
+            font_system: text_resources.font_system,
+            swash_cache: text_resources.swash_cache,
+            text_atlas: text_resources.text_atlas,
+            text_renderer: text_resources.text_renderer,
+            shadow_view: shadow_map.view,
             pipeline_shadow,
-            shadow_global_buf,
-            shadow_global_bind,
+            shadow_global_buf: shadow_pass.global_buf,
+            shadow_global_bind: shadow_pass.global_bind,
             collision_v_buf,
             collision_i_buf,
             collision_inds: 0,

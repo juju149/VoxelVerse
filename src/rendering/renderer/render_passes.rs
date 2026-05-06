@@ -421,16 +421,8 @@ impl<'a> Renderer<'a> {
                 } else {
                     "ACTIVE"
                 };
-                let info = format!(
-                    "Culling: {}\nFrame:   {:.2} ms\nChunks:  {} / {}\nLODs:    {} / {}\nQueue:   {}",
-                    status,
-                    self.frame_stats.frame_time_ms(),
-                    rendered_chunks,
-                    self.chunks.len(),
-                    rendered_lods,
-                    self.lod_chunks.len(),
-                    self.load_queue.len()
-                );
+                let stats = self.render_stats(rendered_chunks, rendered_lods);
+                let info = stats.debug_overlay(status, self.frame_stats.frame_time_ms());
 
                 debug_buf.set_size(
                     &mut self.font_system,
