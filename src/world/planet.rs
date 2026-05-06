@@ -1,13 +1,14 @@
 use crate::content::VoxelRegistry;
-use crate::generation::terrain::PlanetTerrain;
+use crate::generation::{terrain::PlanetTerrain, CoordSystem};
 use crate::voxel::{ChunkKey, VoxelCoord, VoxelId};
-use crate::world::VoxelRuntime;
+use crate::world::{PlanetProfile, VoxelRuntime};
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct PlanetData {
     pub voxels: VoxelRuntime,
     pub content: Arc<VoxelRegistry>,
+    pub profile: PlanetProfile,
     pub resolution: u32,
     pub has_core: bool,
     pub terrain: PlanetTerrain,
@@ -15,14 +16,19 @@ pub struct PlanetData {
 
 impl PlanetData {
     pub fn new(resolution: u32) -> Self {
-        println!("Generating Terrain Noise Map for res {}...", resolution);
-        let terrain = PlanetTerrain::new(resolution);
+        let profile = PlanetProfile::new(resolution);
+        println!(
+            "Generating Terrain Noise Map for res {}...",
+            profile.resolution
+        );
+        let terrain = PlanetTerrain::new(profile);
         println!("Terrain Generation Complete.");
 
         Self {
             voxels: VoxelRuntime::new(),
             content: Arc::new(VoxelRegistry::builtin()),
-            resolution,
+            profile,
+            resolution: profile.resolution,
             has_core: true,
             terrain,
         }
@@ -38,9 +44,11 @@ impl PlanetData {
         }
 
         self.voxels.clear();
+        self.profile = PlanetProfile::new(self.resolution);
+        self.resolution = self.profile.resolution;
 
         println!("Regenerating Terrain for new res {}...", self.resolution);
-        self.terrain = PlanetTerrain::new(self.resolution);
+        self.terrain = PlanetTerrain::new(self.profile);
     }
 
     pub fn add_block(&mut self, coord: VoxelCoord) {
@@ -49,7 +57,7 @@ impl PlanetData {
     }
 
     pub fn remove_block(&mut self, coord: VoxelCoord) {
-        if self.has_core && coord.layer < 6 {
+        if self.has_core && coord.layer < self.profile.core_layers {
             return;
         }
 
@@ -92,12 +100,24 @@ impl PlanetData {
         let height = self.terrain.get_height(coord.face, coord.u, coord.v);
         if coord.layer > height {
             VoxelId::AIR
-        } else if self.has_core && coord.layer < 6 {
+        } else if self.has_core && coord.layer < self.profile.core_layers {
             VoxelId::CORE
         } else if coord.layer == height {
             VoxelId::GRASS
         } else {
             VoxelId::DIRT
         }
+    }
+
+    pub fn surface_radius(&self, face: u8, u: u32, v: u32) -> f32 {
+        let h = self.terrain.get_height(face, u, v);
+        self.profile.layer_radius(h + 1)
+    }
+
+    pub fn spawn_position(&self) -> glam::Vec3 {
+        let u = self.resolution / 2;
+        let v = self.resolution / 2;
+        let dir = CoordSystem::get_direction(0, u, v, self.resolution);
+        dir * (self.surface_radius(0, u, v) + self.profile.spawn_clearance())
     }
 }

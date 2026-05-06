@@ -3,16 +3,13 @@ pub mod terrain;
 use crate::content::TerrainPalette;
 use crate::rendering::Vertex;
 use crate::voxel::{ChunkKey, LodKey, VoxelCoord, CHUNK_SIZE};
-use crate::world::PlanetData;
+use crate::world::{PlanetData, PlanetProfile};
 use glam::Vec3;
 use std::collections::HashSet;
 
 pub struct CoordSystem;
 
 impl CoordSystem {
-    // k = 0.85 balances the shape.
-    const K: f64 = 0.85;
-
     // forward Mapping: Unit Cube -> Sphere
     fn cube_to_sphere(x: f64, y: f64, z: f64) -> Vec3 {
         let x2 = x * x;
@@ -26,9 +23,23 @@ impl CoordSystem {
         Vec3::new(sx as f32, sy as f32, sz as f32)
     }
 
-    // inverse Mapping: Sphere -> Unit Cube
+    fn direction_to_face_uv(dir: Vec3) -> (u8, f32, f32) {
+        let cube_pos = Self::sphere_to_cube_surface(dir.normalize_or_zero());
+        let abs = cube_pos.abs();
 
-    fn cubize_point(pos: Vec3) -> Vec3 {
+        if abs.y >= abs.x && abs.y >= abs.z {
+            let face = if cube_pos.y >= 0.0 { 0 } else { 1 };
+            (face, cube_pos.x, cube_pos.z)
+        } else if abs.x >= abs.y && abs.x >= abs.z {
+            let face = if cube_pos.x >= 0.0 { 2 } else { 3 };
+            (face, cube_pos.y, cube_pos.z)
+        } else {
+            let face = if cube_pos.z >= 0.0 { 4 } else { 5 };
+            (face, cube_pos.x, cube_pos.y)
+        }
+    }
+
+    fn sphere_to_cube_surface(pos: Vec3) -> Vec3 {
         let mut x = pos.x as f64;
         let mut y = pos.y as f64;
         let mut z = pos.z as f64;
@@ -39,151 +50,79 @@ impl CoordSystem {
 
         const INVERSE_SQRT_2: f64 = 0.707_106_769_084_930_4;
 
+        let sqrt = |value: f64| value.max(0.0).sqrt();
+
         if fy >= fx && fy >= fz {
             let a2 = x * x * 2.0;
             let b2 = z * z * 2.0;
             let inner = -a2 + b2 - 3.0;
-            let inner_sqrt = -((inner * inner) - 12.0 * a2).sqrt();
+            let inner_sqrt = -sqrt((inner * inner) - 12.0 * a2);
 
-            if x == 0.0 {
-                x = 0.0;
+            x = if x == 0.0 {
+                0.0
             } else {
-                x = (inner_sqrt + a2 - b2 + 3.0).sqrt() * INVERSE_SQRT_2;
-            }
-
-            if z == 0.0 {
-                z = 0.0;
+                sqrt(inner_sqrt + a2 - b2 + 3.0) * INVERSE_SQRT_2
+            };
+            z = if z == 0.0 {
+                0.0
             } else {
-                z = (inner_sqrt - a2 + b2 + 3.0).sqrt() * INVERSE_SQRT_2;
-            }
+                sqrt(inner_sqrt - a2 + b2 + 3.0) * INVERSE_SQRT_2
+            };
 
-            if x > 1.0 {
-                x = 1.0;
-            }
-            if z > 1.0 {
-                z = 1.0;
-            }
-
-            if pos.x < 0.0 {
-                x = -x;
-            }
-            if pos.z < 0.0 {
-                z = -z;
-            }
-
-            y = if pos.y > 0.0 { 1.0 } else { -1.0 };
+            x = x.min(1.0).copysign(pos.x as f64);
+            z = z.min(1.0).copysign(pos.z as f64);
+            y = if pos.y >= 0.0 { 1.0 } else { -1.0 };
         } else if fx >= fy && fx >= fz {
             let a2 = y * y * 2.0;
             let b2 = z * z * 2.0;
             let inner = -a2 + b2 - 3.0;
-            let inner_sqrt = -((inner * inner) - 12.0 * a2).sqrt();
+            let inner_sqrt = -sqrt((inner * inner) - 12.0 * a2);
 
-            if y == 0.0 {
-                y = 0.0;
+            y = if y == 0.0 {
+                0.0
             } else {
-                y = (inner_sqrt + a2 - b2 + 3.0).sqrt() * INVERSE_SQRT_2;
-            }
-
-            if z == 0.0 {
-                z = 0.0;
+                sqrt(inner_sqrt + a2 - b2 + 3.0) * INVERSE_SQRT_2
+            };
+            z = if z == 0.0 {
+                0.0
             } else {
-                z = (inner_sqrt - a2 + b2 + 3.0).sqrt() * INVERSE_SQRT_2;
-            }
+                sqrt(inner_sqrt - a2 + b2 + 3.0) * INVERSE_SQRT_2
+            };
 
-            if y > 1.0 {
-                y = 1.0;
-            }
-            if z > 1.0 {
-                z = 1.0;
-            }
-
-            if pos.y < 0.0 {
-                y = -y;
-            }
-            if pos.z < 0.0 {
-                z = -z;
-            }
-
-            x = if pos.x > 0.0 { 1.0 } else { -1.0 };
+            y = y.min(1.0).copysign(pos.y as f64);
+            z = z.min(1.0).copysign(pos.z as f64);
+            x = if pos.x >= 0.0 { 1.0 } else { -1.0 };
         } else {
             let a2 = x * x * 2.0;
             let b2 = y * y * 2.0;
             let inner = -a2 + b2 - 3.0;
-            let inner_sqrt = -((inner * inner) - 12.0 * a2).sqrt();
+            let inner_sqrt = -sqrt((inner * inner) - 12.0 * a2);
 
-            if x == 0.0 {
-                x = 0.0;
+            x = if x == 0.0 {
+                0.0
             } else {
-                x = (inner_sqrt + a2 - b2 + 3.0).sqrt() * INVERSE_SQRT_2;
-            }
-
-            if y == 0.0 {
-                y = 0.0;
+                sqrt(inner_sqrt + a2 - b2 + 3.0) * INVERSE_SQRT_2
+            };
+            y = if y == 0.0 {
+                0.0
             } else {
-                y = (inner_sqrt - a2 + b2 + 3.0).sqrt() * INVERSE_SQRT_2;
-            }
+                sqrt(inner_sqrt - a2 + b2 + 3.0) * INVERSE_SQRT_2
+            };
 
-            if x > 1.0 {
-                x = 1.0;
-            }
-            if y > 1.0 {
-                y = 1.0;
-            }
-
-            if pos.x < 0.0 {
-                x = -x;
-            }
-            if pos.y < 0.0 {
-                y = -y;
-            }
-
-            z = if pos.z > 0.0 { 1.0 } else { -1.0 };
+            x = x.min(1.0).copysign(pos.x as f64);
+            y = y.min(1.0).copysign(pos.y as f64);
+            z = if pos.z >= 0.0 { 1.0 } else { -1.0 };
         }
+
         Vec3::new(x as f32, y as f32, z as f32)
     }
 
     pub fn get_local_coords(pos: Vec3, res: u32) -> Option<(VoxelCoord, Vec3)> {
-        let dist = pos.length() as f64;
-        let s = res as f64 / 2.0;
+        let profile = PlanetProfile::new(res);
+        let dist = pos.length();
+        let (layer, f_layer) = profile.radius_to_layer(dist)?;
 
-        let min_r = s * (-Self::K).exp();
-        if dist < min_r {
-            return None;
-        }
-
-        let layer_f = s * (1.0 + (dist / s).ln() / Self::K);
-        let layer = layer_f.floor() as i32;
-
-        if layer < 0 || layer >= res as i32 {
-            return None;
-        }
-
-        // local Layer Coordinate (0.0 to 1.0)
-        let f_layer = (layer_f - layer as f64) as f32;
-
-        // map sphere point back to Unit Cube
-        let cube_pos = Self::cubize_point(pos.normalize());
-        let abs = cube_pos.abs();
-
-        let (face, u_local, v_local) = if abs.y >= abs.x && abs.y >= abs.z {
-            if cube_pos.y > 0.0 {
-                (0, cube_pos.x, cube_pos.z)
-            } else {
-                (1, cube_pos.x, cube_pos.z)
-            }
-        } else if abs.x >= abs.y && abs.x >= abs.z {
-            if cube_pos.x > 0.0 {
-                (2, cube_pos.y, cube_pos.z)
-            } else {
-                (3, cube_pos.y, cube_pos.z)
-            }
-        } else {
-            if cube_pos.z > 0.0 {
-                (4, cube_pos.x, cube_pos.y)
-            } else {
-                (5, cube_pos.x, cube_pos.y)
-            }
-        };
+        let (face, u_local, v_local) = Self::direction_to_face_uv(pos);
 
         let rf = res as f64;
 
@@ -202,20 +141,13 @@ impl CoordSystem {
         let v = v.clamp(0, res as i32 - 1) as u32;
 
         Some((
-            VoxelCoord {
-                face: face as u8,
-                layer: layer as u32,
-                u,
-                v,
-            },
+            VoxelCoord { face, layer, u, v },
             Vec3::new(f_u, f_v, f_layer), // x=u, y=v, z=layer
         ))
     }
 
     pub fn get_layer_radius(layer: u32, res: u32) -> f32 {
-        let s = res as f64 / 2.0;
-        let r = s * (Self::K * ((layer as f64 / s) - 1.0)).exp();
-        r as f32
+        PlanetProfile::new(res).layer_radius(layer)
     }
 
     pub fn get_direction(face: u8, u: u32, v: u32, res: u32) -> Vec3 {
@@ -275,58 +207,15 @@ impl CoordSystem {
 
         let dir = Self::cube_to_sphere(cx, cy, cz).normalize();
 
-        let s = rf / 2.0;
-        let radius = s * (Self::K * (((layer as f64 + 0.5) / s) - 1.0)).exp();
+        let radius = PlanetProfile::new(res).layer_center_radius(layer);
 
-        dir * (radius as f32)
+        dir * radius
     }
 
     pub fn pos_to_id(pos: Vec3, res: u32) -> Option<VoxelCoord> {
-        let dist = pos.length() as f64;
-        let s = res as f64 / 2.0;
-
-        let min_r = s * (-Self::K).exp();
-        if dist < min_r {
-            return None;
-        }
-
-        let layer_f = s * (1.0 + (dist / s).ln() / Self::K);
-        let layer = layer_f.floor() as i32;
-
-        if layer < 0 {
-            return None;
-        }
-        let layer = layer as u32;
-        if layer >= res {
-            return None;
-        }
-
-        // map sphere point back to unit cube surface
-        // normalize 'pos' first to project it onto the unit sphere required for the math
-        let cube_pos = Self::cubize_point(pos.normalize());
-
-        // determine Face based on which component is 1.0 or -1.0
-        // use a small epsilon for float comparison safety, though logic forces exactly 1.0
-        let abs = cube_pos.abs();
-        let (face, u_local, v_local) = if abs.y >= abs.x && abs.y >= abs.z {
-            if cube_pos.y > 0.0 {
-                (0, cube_pos.x, cube_pos.z)
-            } else {
-                (1, cube_pos.x, cube_pos.z)
-            }
-        } else if abs.x >= abs.y && abs.x >= abs.z {
-            if cube_pos.x > 0.0 {
-                (2, cube_pos.y, cube_pos.z)
-            } else {
-                (3, cube_pos.y, cube_pos.z)
-            }
-        } else {
-            if cube_pos.z > 0.0 {
-                (4, cube_pos.x, cube_pos.y)
-            } else {
-                (5, cube_pos.x, cube_pos.y)
-            }
-        };
+        let profile = PlanetProfile::new(res);
+        let (layer, _) = profile.radius_to_layer(pos.length())?;
+        let (face, u_local, v_local) = Self::direction_to_face_uv(pos);
 
         // convert Local [-1, 1] coords to grid indices
         let rf = res as f64;
@@ -337,12 +226,7 @@ impl CoordSystem {
         let u = u_raw.clamp(0, res as i32 - 1) as u32;
         let v = v_raw.clamp(0, res as i32 - 1) as u32;
 
-        Some(VoxelCoord {
-            face: face as u8,
-            layer,
-            u,
-            v,
-        })
+        Some(VoxelCoord { face, layer, u, v })
     }
 }
 
@@ -682,7 +566,7 @@ impl MeshGen {
                     (key.y + offset_v).min(data.resolution),
                 );
 
-                let is_core = data.has_core && h < 6;
+                let is_core = data.has_core && h < data.profile.core_layers;
                 let is_steep = slope < 0.85;
 
                 let color = if is_core {
@@ -719,7 +603,7 @@ impl MeshGen {
         }
 
         // generate Skirts (hides physical gaps)
-        let radius = CoordSystem::get_layer_radius(data.resolution / 2, data.resolution);
+        let radius = data.profile.surface_radius;
         let chunk_phys_size = (key.size as f32 / data.resolution as f32) * radius;
 
         let skirt_depth = (chunk_phys_size * 0.15).clamp(4.0, 500.0);
@@ -1033,5 +917,41 @@ impl MeshGen {
         inds.push(*idx + 3);
         inds.push(*idx);
         *idx += 4;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CoordSystem;
+    use crate::world::PlanetProfile;
+
+    #[test]
+    fn cube_sphere_coords_roundtrip_on_all_faces() {
+        let profile = PlanetProfile::new(49);
+        let samples = [
+            (0, 3, 5),
+            (1, 9, 17),
+            (2, 12, 7),
+            (3, 18, 23),
+            (4, 27, 11),
+            (5, 33, 31),
+        ];
+
+        for (face, u, v) in samples {
+            let pos = CoordSystem::get_block_center(
+                face,
+                u,
+                v,
+                profile.surface_layer,
+                profile.resolution,
+            );
+            let coord = CoordSystem::pos_to_id(pos, profile.resolution)
+                .expect("surface sample should map back to a voxel coordinate");
+
+            assert_eq!(coord.face, face);
+            assert!((coord.u as i32 - u as i32).abs() <= 1);
+            assert!((coord.v as i32 - v as i32).abs() <= 1);
+            assert_eq!(coord.layer, profile.surface_layer);
+        }
     }
 }

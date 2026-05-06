@@ -938,7 +938,7 @@ impl<'a> Renderer<'a> {
             let get_center = |k: &ChunkKey| -> glam::Vec3 {
                 let u = k.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
                 let v = k.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
-                let h = planet.resolution / 2;
+                let h = planet.profile.surface_layer;
                 CoordSystem::get_vertex_pos(k.face, u, v, h, planet.resolution)
             };
             let da = get_center(a).distance_squared(player_pos);
@@ -966,7 +966,7 @@ impl<'a> Renderer<'a> {
 
         let center_u = (x + size / 2).min(planet.resolution - 1);
         let center_v = (y + size / 2).min(planet.resolution - 1);
-        let h = planet.resolution / 2;
+        let h = planet.profile.surface_layer;
 
         let world_pos = CoordSystem::get_vertex_pos(face, center_u, center_v, h, planet.resolution);
 
@@ -979,8 +979,8 @@ impl<'a> Renderer<'a> {
             }
         }
 
-        let node_radius_world = (size as f32 * CoordSystem::get_layer_radius(h, planet.resolution))
-            / planet.resolution as f32;
+        let node_radius_world =
+            (size as f32 * planet.profile.layer_radius(h)) / planet.resolution as f32;
 
         let mut lod_factor = 4.0;
         if size <= CHUNK_SIZE * 8 {

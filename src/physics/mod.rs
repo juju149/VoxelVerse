@@ -28,10 +28,7 @@ impl Physics {
         let (id, local) = match CoordSystem::get_local_coords(pos, res) {
             Some(val) => val,
             None => {
-                // Check if deep underground (core)
-                let s = res as f32 / 2.0;
-                let min_r = s * (-0.85_f32).exp();
-                return pos.length() < min_r;
+                return pos.length() < planet.profile.inner_radius;
             }
         };
 

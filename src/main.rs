@@ -37,14 +37,7 @@ fn main() {
     console.log("Welcome to voxanet.", [0.0, 1.0, 0.0]);
     console.log("Press ` to open console.", [1.0, 1.0, 1.0]);
 
-    // initialize player spawn
-
-    // we query the height at face 0, u=res/2, v=res/2 (roughly the "North Pole" of face 0)
-    let center = planet.resolution / 2;
-    let ground_level = planet.terrain.get_height(0, center, center);
-    let spawn_h = CoordSystem::get_layer_radius(ground_level, planet.resolution) + 10.0;
-
-    player.spawn(glam::Vec3::new(0.0, spawn_h, 0.0));
+    player.spawn(planet.spawn_position());
     let mut last_time = Instant::now();
     let mut current_mode_first_person = false;
 
@@ -167,14 +160,15 @@ fn main() {
                                     } else {
                                         glam::Vec3::Y
                                     };
-                                    let probe_dist = new_res as f32 / 2.0;
+                                    let probe_dist = planet.profile.surface_radius;
                                     let dummy_pos = current_dir * probe_dist;
 
                                     let spawn_radius = if let Some(id) =
                                         CoordSystem::pos_to_id(dummy_pos, new_res)
                                     {
                                         let h = planet.terrain.get_height(id.face, id.u, id.v);
-                                        CoordSystem::get_layer_radius(h, new_res) + 5.0
+                                        planet.profile.layer_radius(h + 1)
+                                            + planet.profile.spawn_clearance()
                                     } else {
                                         (new_res as f32 / 2.0) + 20.0
                                     };

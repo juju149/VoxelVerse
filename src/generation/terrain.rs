@@ -1,4 +1,5 @@
 use crate::generation::CoordSystem;
+use crate::world::PlanetProfile;
 use glam::Vec3;
 use std::sync::Arc;
 
@@ -21,13 +22,13 @@ pub struct NoiseSettings {
 }
 
 impl NoiseSettings {
-    pub fn default_terrain(res: u32) -> Self {
+    pub fn default_terrain(profile: PlanetProfile) -> Self {
         Self {
             noise_type: NoiseType::Perlin,
-            frequency: res as f32 / 100.0,
-            amplitude: 24.0,
-            octaves: 4,
-            persistence: 0.5,
+            frequency: 1.85,
+            amplitude: profile.max_terrain_offset as f32,
+            octaves: 5,
+            persistence: 0.48,
             lacunarity: 2.0,
             offset: Vec3::ZERO,
         }
@@ -43,19 +44,40 @@ pub struct PlanetTerrain {
 }
 
 impl PlanetTerrain {
-    pub fn new(resolution: u32) -> Self {
+    pub fn new(profile: PlanetProfile) -> Self {
+        let resolution = profile.resolution;
         let size = (6 * resolution * resolution) as usize;
         let mut heights = vec![0; size];
-        let generator = NoiseGenerator::new(42); // Seed 42
-        let settings = NoiseSettings::default_terrain(resolution);
-        let base_radius = resolution as f32 / 2.0;
+        let generator = NoiseGenerator::new(profile.seed);
+        let settings = NoiseSettings::default_terrain(profile);
+        let base_layer = profile.surface_layer as f32;
+
         for face in 0..6 {
             for v in 0..resolution {
                 for u in 0..resolution {
                     let dir = CoordSystem::get_direction(face, u, v, resolution);
-                    let noise_val = generator.compute(dir, &settings);
-                    let h_offset = noise_val * settings.amplitude;
-                    let final_layer = (base_radius + h_offset).max(1.0) as u16;
+                    let rolling = generator.compute(dir, &settings) * 2.0 - 1.0;
+                    let detail = generator.compute(
+                        dir,
+                        &NoiseSettings {
+                            frequency: settings.frequency * 3.7,
+                            amplitude: settings.amplitude,
+                            octaves: 3,
+                            persistence: 0.42,
+                            lacunarity: 2.15,
+                            offset: Vec3::splat(17.0),
+                            ..settings
+                        },
+                    ) * 2.0
+                        - 1.0;
+                    let latitude = dir.y.abs();
+                    let roundness_bias = (1.0 - latitude * 0.18).clamp(0.82, 1.0);
+                    let h_offset =
+                        (rolling * 0.78 + detail * 0.22) * settings.amplitude * roundness_bias;
+                    let min_layer = profile.core_layers + 2;
+                    let max_layer = resolution.saturating_sub(3);
+                    let final_layer = (base_layer + h_offset).round() as i32;
+                    let final_layer = final_layer.clamp(min_layer as i32, max_layer as i32) as u16;
                     let idx = Self::get_index(face, u, v, resolution);
                     heights[idx] = final_layer;
                 }
