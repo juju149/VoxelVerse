@@ -31,7 +31,7 @@ fn main() {
     let mut renderer = pollster::block_on(Renderer::new(&window));
     let mut controller = Controller::new();
     let mut player = Player::new();
-    let mut planet = PlanetData::new(49); // Keep high resolution
+    let mut planet = PlanetData::new(1000); // Keep high resolution
 
     let mut console = Console::new();
     console.log("Welcome to voxanet.", [0.0, 1.0, 0.0]);

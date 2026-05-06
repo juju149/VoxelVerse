@@ -1,0 +1,542 @@
+use super::{GlobalUniform, LocalUniform, Renderer};
+use crate::diagnostics::Console;
+use crate::gameplay::Player;
+use crate::generation::MeshGen;
+use crate::input::Controller;
+use crate::rendering::lod_animation::AnyKey;
+use crate::rendering::types::{ChunkMesh, Frustum};
+use crate::world::PlanetData;
+use glyphon::{Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea, TextBounds};
+
+impl<'a> Renderer<'a> {
+    pub fn render(
+        &mut self,
+        controller: &Controller,
+        player: &Player,
+        planet: &PlanetData,
+        console: &Console,
+    ) {
+        self.update_console_mesh(console.height_fraction);
+
+        if controller.show_collisions {
+            let (v, i) = MeshGen::generate_collision_debug(player.position, planet);
+            self.queue
+                .write_buffer(&self.collision_v_buf, 0, bytemuck::cast_slice(&v));
+            self.queue
+                .write_buffer(&self.collision_i_buf, 0, bytemuck::cast_slice(&i));
+            self.collision_inds = i.len() as u32;
+        } else {
+            self.collision_inds = 0;
+        }
+
+        let out = match self.surface.get_current_texture() {
+            Ok(o) => o,
+            _ => return,
+        };
+        let view = out
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        // -- sun matrix --
+        let sun_dir = glam::Vec3::new(0.5, 0.8, 0.4).normalize();
+        let shadow_dist = 200.0; // distance of light source from center
+        let proj_size = 60.0; // SIZE OF SHADOW AREA (Smaller = Sharper Shadows)
+
+        // basic LookAt
+        let center = player.position;
+        let mut sun_view =
+            glam::Mat4::look_at_rh(center + (sun_dir * shadow_dist), center, glam::Vec3::Y);
+
+        // texel Snapping
+        // project the center position into light space, snap it to a pixel,
+        // and then offset the view matrix by the difference.
+        let shadow_map_size = 4096.0;
+        let texel_size = (2.0 * proj_size) / shadow_map_size;
+
+        let shadow_origin = sun_view.transform_point3(center);
+        let snapped_x = (shadow_origin.x / texel_size).round() * texel_size;
+        let snapped_y = (shadow_origin.y / texel_size).round() * texel_size;
+
+        let snap_offset_x = snapped_x - shadow_origin.x;
+        let snap_offset_y = snapped_y - shadow_origin.y;
+
+        // apply snap to the view matrix
+        let snap_mat =
+            glam::Mat4::from_translation(glam::Vec3::new(snap_offset_x, snap_offset_y, 0.0));
+        sun_view = snap_mat * sun_view;
+
+        // projection
+        let sun_proj = glam::Mat4::orthographic_rh(
+            -proj_size, proj_size, -proj_size, proj_size, -200.0, 500.0,
+        );
+
+        let light_view_proj = sun_proj * sun_view;
+
+        // -- Camera Matrix --
+        let mvp =
+            controller.get_matrix(player, self.config.width as f32, self.config.height as f32);
+
+        // --- FRUSTUM CULLING LOGIC ---
+        let current_frustum = Frustum::from_matrix(mvp);
+
+        // determine which frustum to use for culling
+        // if freeze is on, we use the stored one. if freeze is off, update the stored one (or just use current).
+        let cull_frustum = if controller.freeze_culling {
+            if self.frozen_frustum.is_none() {
+                self.frozen_frustum = Some(Frustum::from_matrix(mvp));
+            }
+            self.frozen_frustum.as_ref().unwrap()
+        } else {
+            self.frozen_frustum = None;
+            &current_frustum
+        };
+
+        // debug Stats
+        let mut rendered_lods = 0;
+        let mut rendered_chunks = 0;
+
+        let cam_pos = controller.get_camera_pos(player);
+        let frustum = Frustum::from_matrix(mvp);
+
+        // 1. update main global uni
+        let global_data = GlobalUniform {
+            view_proj: mvp.to_cols_array(),
+            light_view_proj: light_view_proj.to_cols_array(),
+            cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
+            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, 0.0],
+        };
+        self.queue
+            .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
+
+        // 2. update shadow global uni (put Light Matrix in view_proj)
+        let shadow_uniform_data = GlobalUniform {
+            view_proj: light_view_proj.to_cols_array(), // Used by Shadow Pass Vertex Shader
+            light_view_proj: light_view_proj.to_cols_array(),
+            cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, 1.0],
+            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, 0.0],
+        };
+        self.queue.write_buffer(
+            &self.shadow_global_buf,
+            0,
+            bytemuck::cast_slice(&[shadow_uniform_data]),
+        );
+
+        let model_mat = player.get_model_matrix();
+        self.queue.write_buffer(
+            &self.local_buf_player,
+            0,
+            bytemuck::cast_slice(model_mat.as_ref()),
+        );
+
+        let now = std::time::Instant::now();
+        let dying_status = self.animator.update_dying(now);
+        for (key, alpha) in dying_status {
+            if let Some(state) = self.animator.dying_chunks.get(&key) {
+                let data = LocalUniform {
+                    model: glam::Mat4::IDENTITY.to_cols_array(),
+                    params: [alpha, 1.0, 0.0, 0.0],
+                };
+                self.queue
+                    .write_buffer(&state.mesh.uniform_buf, 0, bytemuck::cast_slice(&[data]));
+            }
+        }
+
+        let queue = &self.queue;
+        let animator = &mut self.animator;
+
+        let mut update_opacity = |key: AnyKey, mesh: &ChunkMesh| {
+            let alpha = animator.get_opacity(key, now);
+            if alpha < 1.0 {
+                let data = LocalUniform {
+                    model: glam::Mat4::IDENTITY.to_cols_array(),
+                    params: [alpha, 0.0, 0.0, 0.0],
+                };
+                queue.write_buffer(&mesh.uniform_buf, 0, bytemuck::cast_slice(&[data]));
+            } else if animator.spawning_chunks.contains_key(&key) {
+                let data = LocalUniform {
+                    model: glam::Mat4::IDENTITY.to_cols_array(),
+                    params: [1.0, 0.0, 0.0, 0.0],
+                };
+                queue.write_buffer(&mesh.uniform_buf, 0, bytemuck::cast_slice(&[data]));
+                animator.spawning_chunks.remove(&key);
+            }
+        };
+
+        for (key, mesh) in &self.lod_chunks {
+            update_opacity(AnyKey::Lod(*key), mesh);
+        }
+        for (key, mesh) in &self.chunks {
+            update_opacity(AnyKey::Voxel(*key), mesh);
+        }
+
+        let mut enc = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+
+        // --- PASS 1: SHADOW MAP GENERATION ---
+        {
+            let mut shadow_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Shadow Pass"),
+                color_attachments: &[],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.shadow_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            shadow_pass.set_pipeline(&self.pipeline_shadow);
+            shadow_pass.set_bind_group(0, &self.shadow_global_bind, &[]);
+
+            for mesh in self.chunks.values() {
+                if frustum.intersects_sphere(mesh.center, mesh.radius) {
+                    shadow_pass.set_bind_group(1, &mesh.bind_group, &[]);
+                    shadow_pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
+                    shadow_pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                    shadow_pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
+                }
+            }
+            for mesh in self.lod_chunks.values() {
+                if frustum.intersects_sphere(mesh.center, mesh.radius) {
+                    shadow_pass.set_bind_group(1, &mesh.bind_group, &[]);
+                    shadow_pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
+                    shadow_pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                    shadow_pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
+                }
+            }
+        }
+
+        // --- PASS 2: MAIN RENDER ---
+        {
+            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        // Matches the atmospheric fog color in shader
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.02,
+                            g: 0.03,
+                            b: 0.05,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            if controller.is_wireframe {
+                pass.set_pipeline(&self.pipeline_wire);
+            } else {
+                pass.set_pipeline(&self.pipeline_fill);
+            }
+
+            pass.set_bind_group(0, &self.global_bind, &[]);
+
+            // DRAW LOD CHUNKS
+            for mesh in self.lod_chunks.values() {
+                if cull_frustum.intersects_sphere(mesh.center, mesh.radius) {
+                    rendered_lods += 1; // Count
+                    pass.set_bind_group(1, &mesh.bind_group, &[]);
+                    pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
+                    pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
+                }
+            }
+
+            // DRAW VOXEL CHUNKS
+            for mesh in self.chunks.values() {
+                if cull_frustum.intersects_sphere(mesh.center, mesh.radius) {
+                    rendered_chunks += 1; // Count
+                    pass.set_bind_group(1, &mesh.bind_group, &[]);
+                    pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
+                    pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
+                }
+            }
+
+            // DRAW DYING ANIMATIONS
+            for state in self.animator.dying_chunks.values() {
+                if frustum.intersects_sphere(state.mesh.center, state.mesh.radius) {
+                    pass.set_bind_group(1, &state.mesh.bind_group, &[]);
+                    pass.set_vertex_buffer(0, state.mesh.v_buf.slice(..));
+                    pass.set_index_buffer(state.mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..state.mesh.num_inds, 0, 0..1);
+                }
+            }
+
+            if !controller.first_person {
+                if controller.is_wireframe {
+                    pass.set_pipeline(&self.pipeline_wire);
+                } else {
+                    pass.set_pipeline(&self.pipeline_fill);
+                }
+                pass.set_bind_group(1, &self.local_bind_player, &[]);
+                pass.set_vertex_buffer(0, self.player_v_buf.slice(..));
+                pass.set_index_buffer(self.player_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.player_inds, 0, 0..1);
+            }
+
+            if self.collision_inds > 0 {
+                pass.set_pipeline(&self.pipeline_line); // Use line pipeline
+                pass.set_bind_group(0, &self.global_bind, &[]);
+                pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_vertex_buffer(0, self.collision_v_buf.slice(..));
+                pass.set_index_buffer(self.collision_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.collision_inds, 0, 0..1);
+            }
+
+            if self.cursor_inds > 0 {
+                pass.set_pipeline(&self.pipeline_fill);
+                pass.set_bind_group(0, &self.global_bind, &[]);
+                pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_vertex_buffer(0, self.cursor_v_buf.slice(..));
+                pass.set_index_buffer(self.cursor_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.cursor_inds, 0, 0..1);
+            }
+
+            if controller.first_person {
+                pass.set_pipeline(&self.pipeline_line);
+                pass.set_bind_group(0, &self.global_bind_identity, &[]);
+                pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_vertex_buffer(0, self.cross_v_buf.slice(..));
+                pass.set_index_buffer(self.cross_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.cross_inds, 0, 0..1);
+            }
+
+            if self.console_inds > 0 {
+                pass.set_pipeline(&self.pipeline_ui);
+                pass.set_bind_group(0, &self.global_bind_identity, &[]);
+                pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_vertex_buffer(0, self.console_v_buf.slice(..));
+                pass.set_index_buffer(self.console_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.console_inds, 0, 0..1);
+            }
+        }
+
+        // --- FPS CALCULATION ---
+        self.frame_count += 1;
+        let now = std::time::Instant::now();
+        if now.duration_since(self.last_fps_time).as_secs_f32() >= 1.0 {
+            self.current_fps = self.frame_count;
+            self.frame_count = 0;
+            self.last_fps_time = now;
+        }
+
+        // --- PASS 3: TEXT RENDER ---
+        // run this pass every frame to show FPS
+        {
+            let mut text_buffers = Vec::new();
+            if console.height_fraction > 0.0 {
+                let console_pixel_height =
+                    (self.config.height as f32 / 2.0) * console.height_fraction;
+                let start_y = console_pixel_height - 40.0;
+                let line_height = 20.0;
+
+                for (i, (line_text, color)) in console.history.iter().rev().enumerate() {
+                    let y = start_y - (i as f32 * line_height);
+                    if y < 0.0 {
+                        break;
+                    }
+
+                    let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
+                    buffer.set_size(
+                        &mut self.font_system,
+                        self.config.width as f32,
+                        self.config.height as f32,
+                    );
+                    buffer.set_text(
+                        &mut self.font_system,
+                        line_text,
+                        Attrs::new()
+                            .family(Family::Monospace)
+                            .color(glyphon::Color::rgb(
+                                (color[0] * 255.0) as u8,
+                                (color[1] * 255.0) as u8,
+                                (color[2] * 255.0) as u8,
+                            )),
+                        Shaping::Advanced,
+                    );
+                    text_buffers.push((buffer, y));
+                }
+
+                let input_y = console_pixel_height - 20.0;
+                let mut input_buf = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
+                input_buf.set_size(
+                    &mut self.font_system,
+                    self.config.width as f32,
+                    self.config.height as f32,
+                );
+                let time = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis();
+                let cursor = if (time / 500).is_multiple_of(2) {
+                    "_"
+                } else {
+                    " "
+                };
+                input_buf.set_text(
+                    &mut self.font_system,
+                    &format!("> {}{}", console.input_buffer, cursor),
+                    Attrs::new()
+                        .family(Family::Monospace)
+                        .color(glyphon::Color::rgb(255, 255, 0)),
+                    Shaping::Advanced,
+                );
+                text_buffers.push((input_buf, input_y));
+            }
+
+            // 2. FPS Text
+            let mut fps_buffer = Buffer::new(&mut self.font_system, Metrics::new(20.0, 24.0));
+            fps_buffer.set_size(
+                &mut self.font_system,
+                self.config.width as f32,
+                self.config.height as f32,
+            );
+            fps_buffer.set_text(
+                &mut self.font_system,
+                &format!("FPS: {}", self.current_fps),
+                Attrs::new()
+                    .family(Family::Monospace)
+                    .color(glyphon::Color::rgb(0, 255, 0)),
+                Shaping::Advanced,
+            );
+
+            let mut debug_buf = Buffer::new(&mut self.font_system, Metrics::new(14.0, 18.0));
+
+            if player.debug_mode {
+                let status = if controller.freeze_culling {
+                    "FROZEN"
+                } else {
+                    "ACTIVE"
+                };
+                let info = format!(
+                    "Culling: {}\nChunks: {} / {}\nLODs:   {} / {}\nQueue:  {}",
+                    status,
+                    rendered_chunks,
+                    self.chunks.len(),
+                    rendered_lods,
+                    self.lod_chunks.len(),
+                    self.load_queue.len()
+                );
+
+                debug_buf.set_size(
+                    &mut self.font_system,
+                    self.config.width as f32,
+                    self.config.height as f32,
+                );
+                debug_buf.set_text(
+                    &mut self.font_system,
+                    &info,
+                    Attrs::new()
+                        .family(Family::Monospace)
+                        .color(glyphon::Color::rgb(200, 200, 200)),
+                    Shaping::Advanced,
+                );
+            }
+
+            // create text areas
+            let mut text_areas: Vec<TextArea> = text_buffers
+                .iter()
+                .map(|(buf, y)| TextArea {
+                    buffer: buf,
+                    left: 10.0,
+                    top: *y,
+                    scale: 1.0,
+                    bounds: TextBounds {
+                        left: 0,
+                        top: 0,
+                        right: self.config.width as i32,
+                        bottom: self.config.height as i32,
+                    },
+                    default_color: glyphon::Color::rgb(255, 255, 255),
+                })
+                .collect();
+
+            text_areas.push(TextArea {
+                buffer: &fps_buffer,
+                left: self.config.width as f32 - 120.0,
+                top: 10.0,
+                scale: 1.0,
+                bounds: TextBounds {
+                    left: 0,
+                    top: 0,
+                    right: self.config.width as i32,
+                    bottom: self.config.height as i32,
+                },
+                default_color: glyphon::Color::rgb(255, 255, 255),
+            });
+
+            if player.debug_mode {
+                text_areas.push(TextArea {
+                    buffer: &debug_buf,
+                    left: self.config.width as f32 - 180.0,
+                    top: 40.0,
+                    scale: 1.0,
+                    bounds: TextBounds {
+                        left: 0,
+                        top: 0,
+                        right: self.config.width as i32,
+                        bottom: self.config.height as i32,
+                    },
+                    default_color: glyphon::Color::rgb(255, 255, 255),
+                });
+            }
+
+            self.text_renderer
+                .prepare(
+                    &self.device,
+                    &self.queue,
+                    &mut self.font_system,
+                    &mut self.text_atlas,
+                    Resolution {
+                        width: self.config.width,
+                        height: self.config.height,
+                    },
+                    text_areas,
+                    &mut self.swash_cache,
+                )
+                .unwrap();
+
+            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Text Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+
+            self.text_renderer
+                .render(&self.text_atlas, &mut pass)
+                .unwrap();
+        }
+
+        self.queue.submit(std::iter::once(enc.finish()));
+        out.present();
+        self.text_atlas.trim();
+    }
+}
