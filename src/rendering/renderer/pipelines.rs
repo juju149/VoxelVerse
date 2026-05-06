@@ -1,6 +1,42 @@
 use super::Renderer;
 use crate::rendering::Vertex;
 
+/// Shared vertex buffer layout matching `Vertex` (48 bytes).
+/// pos(0,12) | uv(12,8) | normal(20,12) | color(32,12) | tex_index(44,4)
+pub(super) fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<Vertex>() as _,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &[
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x3,
+                offset: 0,
+                shader_location: 0, // pos
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x2,
+                offset: 12,
+                shader_location: 1, // uv
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x3,
+                offset: 20,
+                shader_location: 2, // normal
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Float32x3,
+                offset: 32,
+                shader_location: 3, // color
+            },
+            wgpu::VertexAttribute {
+                format: wgpu::VertexFormat::Uint32,
+                offset: 44,
+                shader_location: 4, // tex_index
+            },
+        ],
+    }
+}
+
 impl<'a> Renderer<'a> {
     pub(super) fn create_pipeline(
         device: &wgpu::Device,
@@ -16,27 +52,7 @@ impl<'a> Renderer<'a> {
             vertex: wgpu::VertexState {
                 module: shader,
                 entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<Vertex>() as _,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 0,
-                            shader_location: 0,
-                        },
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 12,
-                            shader_location: 1,
-                        },
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 24,
-                            shader_location: 2,
-                        },
-                    ],
-                }],
+                buffers: &[vertex_buffer_layout()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: shader,
@@ -86,3 +102,4 @@ impl<'a> Renderer<'a> {
         .create_view(&wgpu::TextureViewDescriptor::default())
     }
 }
+

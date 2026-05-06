@@ -18,6 +18,8 @@ use crate::gameplay::{
 use crate::input::Controller;
 use crate::rendering::Renderer;
 use crate::world::PlanetData;
+use crate::content::{pack::PackLoader, compile::ContentCompiler};
+use std::sync::Arc;
 use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent}; // Added DeviceEvent
 use winit::event_loop::EventLoop;
@@ -26,16 +28,35 @@ use winit::window::{CursorGrabMode, WindowBuilder};
 
 fn main() {
     SystemDiagnostics::print_startup_info();
+
+    // --- Load and compile content ---
+    let registry = {
+        let pack = PackLoader::load_from_dir(std::path::Path::new("packs/core"))
+            .expect("Failed to load packs/core — make sure the directory exists next to the executable.");
+        let compiled = ContentCompiler::compile_blocks(pack.blocks)
+            .unwrap_or_else(|errors| {
+                for e in &errors {
+                    eprintln!("[content error] {}", e);
+                }
+                panic!("Content compilation failed — see errors above.");
+            });
+        println!(
+            "Loaded {} blocks from pack 'core'.",
+            compiled.block_count()
+        );
+        Arc::new(compiled)
+    };
+
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new()
         .with_title("voxanet")
         .build(&event_loop)
         .unwrap();
 
-    let mut renderer = pollster::block_on(Renderer::new(&window));
+    let mut renderer = pollster::block_on(Renderer::new(&window, &registry));
     let mut controller = Controller::new();
     let mut player = Player::new();
-    let mut planet = PlanetData::new(10000);
+    let mut planet = PlanetData::new(1000, registry);
 
     let mut console = Console::new();
     console.log("Welcome to voxanet.", [0.0, 1.0, 0.0]);

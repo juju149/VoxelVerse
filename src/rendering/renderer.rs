@@ -112,6 +112,9 @@ pub struct Renderer<'a> {
     pending_lods: HashSet<LodKey>,
 
     frame_stats: FrameStats,
+
+    // --- ATLAS ---
+    atlas_bind: wgpu::BindGroup,
 }
 
 #[derive(Clone, Copy)]

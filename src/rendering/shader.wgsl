@@ -18,6 +18,11 @@ struct Local {
 }
 @group(1) @binding(0) var<uniform> local: Local;
 
+// Block texture atlas (one 16x16 tile per block type, indexed by tex_index).
+// All tiles are currently solid white — vertex color carries the block color.
+@group(2) @binding(0) var t_atlas: texture_2d_array<f32>;
+@group(2) @binding(1) var s_atlas: sampler;
+
 // --- CONSTANTS ---
 // Natural, physical light values
 const SUN_COLOR       = vec3<f32>(1.6, 1.5, 1.3);    // High intensity warm sun
@@ -28,18 +33,22 @@ const SHADOW_OPACITY  = 0.85;                        // Shadows are not pitch bl
 // --- VERTEX SHADER ---
 
 struct VertexIn {
-    @location(0) pos: vec3<f32>,
-    @location(1) color: vec3<f32>,
-    @location(2) normal: vec3<f32>,
+    @location(0) pos:       vec3<f32>,
+    @location(1) uv:        vec2<f32>,
+    @location(2) normal:    vec3<f32>,
+    @location(3) color:     vec3<f32>,
+    @location(4) tex_index: u32,
 };
 
 struct VertexOut {
-    @builtin(position) clip_pos: vec4<f32>,
-    @location(0) color: vec3<f32>,
-    @location(1) world_normal: vec3<f32>,
-    @location(2) world_pos: vec3<f32>,
-    @location(3) view_pos: vec3<f32>,
-    @location(4) shadow_pos: vec3<f32>,
+    @builtin(position)              clip_pos:    vec4<f32>,
+    @location(0)                    uv:          vec2<f32>,
+    @location(1)                    world_normal: vec3<f32>,
+    @location(2)                    world_pos:   vec3<f32>,
+    @location(3)                    view_pos:    vec3<f32>,
+    @location(4)                    shadow_pos:  vec3<f32>,
+    @location(5)                    color:       vec3<f32>,
+    @location(6) @interpolate(flat) tex_index:   u32,
 };
 
 @vertex
@@ -61,12 +70,13 @@ fn vs_main(in: VertexIn) -> VertexOut {
     );
     out.world_normal = normalize(normal_mat * in.normal);
     
-    // Color (Vertex Color + Baked AO)
-    out.color = in.color;
-    out.view_pos = global.camera_pos.xyz;
+    // Pass-through
+    out.color     = in.color;
+    out.uv        = in.uv;
+    out.tex_index = in.tex_index;
+    out.view_pos  = global.camera_pos.xyz;
 
     // Shadow Calculation Space
-    // We pre-calculate this to save work in the fragment shader
     // We apply a "Normal Offset" bias here to fix shadow acne on rounded surfaces
     let normal_offset = out.world_normal * 0.05; 
     let pos_light = global.light_view_proj * vec4<f32>(out.world_pos + normal_offset, 1.0);
@@ -176,12 +186,14 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let V = normalize(global.camera_pos.xyz - in.world_pos);
 
     // 2. Material Setup
-    // De-Gamma the vertex color to Linear Space for math
+    // Sample the block texture atlas (white tiles for now — vertex color is the sole color).
+    let tex_sample = textureSample(t_atlas, s_atlas, in.uv, i32(in.tex_index));
+    // De-gamma vertex color to linear space and multiply by atlas sample.
     let vert_color_linear = pow(in.color, vec3<f32>(2.2));
     
     // Apply Detail Noise (Grain)
     let noise = triplanar_detail(in.world_pos, N);
-    let albedo = vert_color_linear * (1.0 + 0.03 * noise);
+    let albedo = vert_color_linear * tex_sample.rgb * (1.0 + 0.03 * noise);
 
     // 3. Lighting Math
     let NdotL = max(dot(N, L), 0.0);

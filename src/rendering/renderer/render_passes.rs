@@ -193,6 +193,7 @@ impl<'a> Renderer<'a> {
 
             shadow_pass.set_pipeline(&self.pipeline_shadow);
             shadow_pass.set_bind_group(0, &self.shadow_global_bind, &[]);
+            shadow_pass.set_bind_group(2, &self.atlas_bind, &[]);
 
             for mesh in self.chunks.values() {
                 if frustum.intersects_sphere(mesh.center, mesh.radius) {
@@ -248,7 +249,9 @@ impl<'a> Renderer<'a> {
                 pass.set_pipeline(&self.pipeline_fill);
             }
 
+            // Set atlas bind group once for the whole main pass.
             pass.set_bind_group(0, &self.global_bind, &[]);
+            pass.set_bind_group(2, &self.atlas_bind, &[]);
 
             // DRAW LOD CHUNKS
             for mesh in self.lod_chunks.values() {

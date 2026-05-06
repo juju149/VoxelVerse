@@ -8,9 +8,11 @@ winit = "0.29"
 wgpu = "0.19"
 pollster = "0.3"
 bytemuck = { version = "1.14", features = ["derive"] }
-glam = "0.25" 
-rayon = "1.8" 
+glam = "0.25"
+rayon = "1.8"
 glyphon = "0.5"
 sysinfo = "0.30"
+serde = { version = "1", features = ["derive"] }
+ron = "0.8"
 
 

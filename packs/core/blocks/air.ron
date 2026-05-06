@@ -1,0 +1,6 @@
+RawBlockDef(
+    display_name: "Air",
+    solid: false,
+    color: (0.0, 0.0, 0.0),
+    hardness: 0.0,
+)

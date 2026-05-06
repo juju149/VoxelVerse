@@ -1,0 +1,6 @@
+RawBlockDef(
+    display_name: "Grass",
+    solid: true,
+    color: (0.1, 0.7, 0.1),
+    hardness: 1.0,
+)

@@ -201,7 +201,9 @@ impl MeshGen {
             light_val = 1.0;
         }
 
-        let mut base_color = data.content.color(data.get_voxel(id));
+        let voxel_id = data.get_voxel(id);
+        let tex_index = voxel_id.raw() as u32;
+        let mut base_color = data.content.color(voxel_id);
 
         // apply Skylight
         base_color[0] *= light_val;
@@ -237,6 +239,7 @@ impl MeshGen {
                 [o_bl, o_br, o_tr, o_tl],
                 [apply(ao_bl), apply(ao_br), apply(ao_tr), apply(ao_tl)],
                 true,
+                tex_index,
             );
         }
 
@@ -249,6 +252,7 @@ impl MeshGen {
                 [i_tl, i_tr, i_br, i_bl],
                 [c, c, c, c],
                 true,
+                tex_index,
             );
         }
 
@@ -256,16 +260,16 @@ impl MeshGen {
         let colors = [side_c, side_c, side_c, side_c];
 
         if !has_front {
-            Self::quad(verts, inds, idx, [i_bl, i_br, o_br, o_bl], colors, false);
+            Self::quad(verts, inds, idx, [i_bl, i_br, o_br, o_bl], colors, false, tex_index);
         }
         if !has_back {
-            Self::quad(verts, inds, idx, [o_tl, o_tr, i_tr, i_tl], colors, false);
+            Self::quad(verts, inds, idx, [o_tl, o_tr, i_tr, i_tl], colors, false, tex_index);
         }
         if !has_left {
-            Self::quad(verts, inds, idx, [i_tl, i_bl, o_bl, o_tl], colors, false);
+            Self::quad(verts, inds, idx, [i_tl, i_bl, o_bl, o_tl], colors, false, tex_index);
         }
         if !has_right {
-            Self::quad(verts, inds, idx, [i_br, i_tr, o_tr, o_br], colors, false);
+            Self::quad(verts, inds, idx, [i_br, i_tr, o_tr, o_br], colors, false, tex_index);
         }
     }
 
@@ -276,7 +280,11 @@ impl MeshGen {
         pos: [Vec3; 4],
         colors: [[f32; 3]; 4],
         force_radial: bool,
+        tex_index: u32,
     ) {
+        // UV corners: (0,0) bl, (1,0) br, (1,1) tr, (0,1) tl
+        let uvs: [[f32; 2]; 4] = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+
         let normal = if force_radial {
             let center = (pos[0] + pos[1] + pos[2] + pos[3]) * 0.25;
             center.normalize().to_array()
@@ -290,8 +298,10 @@ impl MeshGen {
         for i in 0..4 {
             verts.push(Vertex {
                 pos: pos[i].to_array(),
+                uv: uvs[i],
                 color: colors[i],
                 normal,
+                tex_index,
             });
         }
 

@@ -17,14 +17,18 @@ impl MeshGen {
 
             verts.push(Vertex {
                 pos: [x, 0.0, z],
+                uv: [0.0, 0.0],
                 color,
                 normal,
+                tex_index: 0,
             });
 
             verts.push(Vertex {
                 pos: [x, height, z],
+                uv: [0.0, 0.0],
                 color,
                 normal,
+                tex_index: 0,
             });
         }
 
@@ -45,8 +49,10 @@ impl MeshGen {
         let center_idx = verts.len() as u32;
         verts.push(Vertex {
             pos: [0.0, height, 0.0],
+            uv: [0.0, 0.0],
             color,
             normal: [0.0, 1.0, 0.0],
+            tex_index: 0,
         });
         for i in 0..=segments {
             let theta = (i as f32 / segments as f32) * std::f32::consts::TAU;
@@ -54,8 +60,10 @@ impl MeshGen {
             let z = theta.sin() * radius;
             verts.push(Vertex {
                 pos: [x, height, z],
+                uv: [0.0, 0.0],
                 color,
                 normal: [0.0, 1.0, 0.0],
+                tex_index: 0,
             });
         }
         for i in 0..segments {
@@ -74,26 +82,10 @@ impl MeshGen {
         let normal = [0.0, 0.0, 1.0];
 
         let verts = vec![
-            Vertex {
-                pos: [-s, 0.0, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [s, 0.0, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [0.0, -s, 0.0],
-                color,
-                normal,
-            },
-            Vertex {
-                pos: [0.0, s, 0.0],
-                color,
-                normal,
-            },
+            Vertex { pos: [-s, 0.0, 0.0], uv: [0.0, 0.0], color, normal, tex_index: 0 },
+            Vertex { pos: [ s, 0.0, 0.0], uv: [0.0, 0.0], color, normal, tex_index: 0 },
+            Vertex { pos: [0.0, -s, 0.0], uv: [0.0, 0.0], color, normal, tex_index: 0 },
+            Vertex { pos: [0.0,  s, 0.0], uv: [0.0, 0.0], color, normal, tex_index: 0 },
         ];
         let inds = vec![0, 1, 2, 3];
         (verts, inds)

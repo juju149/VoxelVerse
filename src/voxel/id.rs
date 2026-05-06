@@ -3,10 +3,9 @@
 pub struct VoxelId(u16);
 
 impl VoxelId {
+    /// Air is always ID 0 — this is a structural engine constant, not content.
     pub const AIR: Self = Self::new(0);
-    pub const CORE: Self = Self::new(1);
-    pub const DIRT: Self = Self::new(2);
-    pub const GRASS: Self = Self::new(3);
+    /// Sentinel value meaning "no override stored". Never appears in world queries.
     pub const UNSET: Self = Self::new(u16::MAX);
 
     pub const fn new(raw: u16) -> Self {
@@ -21,3 +20,4 @@ impl VoxelId {
         self.0 == Self::UNSET.0
     }
 }
+

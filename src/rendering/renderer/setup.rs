@@ -1,7 +1,9 @@
 use super::{GlobalUniform, LocalUniform, Renderer};
+use crate::content::BlockRegistry;
 use crate::diagnostics::{FrameStats, SystemDiagnostics};
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
+use crate::rendering::texture_atlas::TextureAtlas;
 use crate::rendering::types::Vertex;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
@@ -10,7 +12,7 @@ use wgpu::PresentMode;
 use winit::window::Window;
 
 impl<'a> Renderer<'a> {
-    pub async fn new(window: &'a Window) -> Self {
+    pub async fn new(window: &'a Window, registry: &BlockRegistry) -> Self {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window).unwrap();
 
@@ -121,6 +123,46 @@ impl<'a> Renderer<'a> {
             label: Some("local_layout"),
         });
 
+        // --- ATLAS BIND GROUP LAYOUT (group 2) ---
+        let atlas_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("atlas_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
+        // Create the texture atlas from the block registry.
+        let atlas = TextureAtlas::new(&device, &queue, registry);
+        let atlas_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Atlas Bind Group"),
+            layout: &atlas_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&atlas.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&atlas.sampler),
+                },
+            ],
+        });
+
         // --- BUFFERS ---
         let global_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Global Uniform"),
@@ -208,7 +250,7 @@ impl<'a> Renderer<'a> {
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&global_layout, &local_layout],
+            bind_group_layouts: &[&global_layout, &local_layout, &atlas_layout],
             push_constant_ranges: &[],
         });
 
@@ -218,27 +260,7 @@ impl<'a> Renderer<'a> {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<Vertex>() as _,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 0,
-                            shader_location: 0,
-                        },
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 12,
-                            shader_location: 1,
-                        },
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 24,
-                            shader_location: 2,
-                        },
-                    ],
-                }],
+                buffers: &[super::pipelines::vertex_buffer_layout()],
             },
             fragment: None,
             primitive: wgpu::PrimitiveState {
@@ -294,27 +316,7 @@ impl<'a> Renderer<'a> {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<Vertex>() as _,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 0,
-                            shader_location: 0,
-                        },
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 12,
-                            shader_location: 1,
-                        },
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x3,
-                            offset: 24,
-                            shader_location: 2,
-                        },
-                    ],
-                }],
+                buffers: &[super::pipelines::vertex_buffer_layout()],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -483,6 +485,7 @@ impl<'a> Renderer<'a> {
             pending_lods: HashSet::new(),
 
             frame_stats: FrameStats::new(),
+            atlas_bind,
         }
     }
 }

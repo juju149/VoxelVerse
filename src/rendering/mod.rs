@@ -1,3 +1,4 @@
+pub(crate) mod texture_atlas;
 mod lod_animation;
 mod renderer;
 mod types;

@@ -75,8 +75,10 @@ impl MeshGen {
 
                 verts.push(Vertex {
                     pos: pos.to_array(),
+                    uv: [0.0, 0.0],
                     color,
                     normal: normal.to_array(),
+                    tex_index: 0,
                 });
             }
         }
@@ -116,8 +118,10 @@ impl MeshGen {
 
                 verts.push(Vertex {
                     pos: (p + down).to_array(),
+                    uv: [0.0, 0.0],
                     color: src_v.color,
                     normal: src_v.normal,
+                    tex_index: 0,
                 });
             }
             let len = coord_pairs.len() as u32;

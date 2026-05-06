@@ -72,8 +72,10 @@ impl MeshGen {
 
                             let v = |p: Vec3| Vertex {
                                 pos: (center + (p - center) * shrink).to_array(),
+                                uv: [0.0, 0.0],
                                 color,
                                 normal,
+                                tex_index: 0,
                             };
 
                             let corners = [

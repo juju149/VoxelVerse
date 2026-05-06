@@ -62,13 +62,17 @@ impl<'a> Renderer<'a> {
                 for off in offsets {
                     verts.push(Vertex {
                         pos: (a + off).to_array(),
+                        uv: [0.0, 0.0],
                         color,
                         normal: [0.0; 3],
+                        tex_index: 0,
                     });
                     verts.push(Vertex {
                         pos: (b + off).to_array(),
+                        uv: [0.0, 0.0],
                         color,
                         normal: [0.0; 3],
+                        tex_index: 0,
                     });
                 }
 
