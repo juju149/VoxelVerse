@@ -1,7 +1,8 @@
 // engine renderer
 
+use crate::math::Frustum;
 use crate::rendering::lod_animation::LodAnimator;
-use crate::rendering::types::{ChunkMesh, Frustum, Vertex};
+use crate::rendering::types::{ChunkMesh, Vertex};
 use crate::voxel::{ChunkKey, LodKey, VoxelCoord};
 use crate::world::PlanetData;
 use bytemuck::{Pod, Zeroable};

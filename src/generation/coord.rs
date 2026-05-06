@@ -1,3 +1,4 @@
+use crate::math::{sphere_to_cube_surface, unit_cube_to_sphere};
 use crate::voxel::VoxelCoord;
 use crate::world::PlanetProfile;
 use glam::Vec3;
@@ -5,21 +6,8 @@ use glam::Vec3;
 pub struct CoordSystem;
 
 impl CoordSystem {
-    // forward Mapping: Unit Cube -> Sphere
-    fn cube_to_sphere(x: f64, y: f64, z: f64) -> Vec3 {
-        let x2 = x * x;
-        let y2 = y * y;
-        let z2 = z * z;
-
-        let sx = x * (1.0 - y2 * 0.5 - z2 * 0.5 + y2 * z2 / 3.0).sqrt();
-        let sy = y * (1.0 - z2 * 0.5 - x2 * 0.5 + z2 * x2 / 3.0).sqrt();
-        let sz = z * (1.0 - x2 * 0.5 - y2 * 0.5 + x2 * y2 / 3.0).sqrt();
-
-        Vec3::new(sx as f32, sy as f32, sz as f32)
-    }
-
     fn direction_to_face_uv(dir: Vec3) -> (u8, f32, f32) {
-        let cube_pos = Self::sphere_to_cube_surface(dir.normalize_or_zero());
+        let cube_pos = sphere_to_cube_surface(dir.normalize_or_zero());
         let abs = cube_pos.abs();
 
         if abs.y >= abs.x && abs.y >= abs.z {
@@ -32,84 +20,6 @@ impl CoordSystem {
             let face = if cube_pos.z >= 0.0 { 4 } else { 5 };
             (face, cube_pos.x, cube_pos.y)
         }
-    }
-
-    fn sphere_to_cube_surface(pos: Vec3) -> Vec3 {
-        let mut x = pos.x as f64;
-        let mut y = pos.y as f64;
-        let mut z = pos.z as f64;
-
-        let fx = x.abs();
-        let fy = y.abs();
-        let fz = z.abs();
-
-        const INVERSE_SQRT_2: f64 = 0.707_106_769_084_930_4;
-
-        let sqrt = |value: f64| value.max(0.0).sqrt();
-
-        if fy >= fx && fy >= fz {
-            let a2 = x * x * 2.0;
-            let b2 = z * z * 2.0;
-            let inner = -a2 + b2 - 3.0;
-            let inner_sqrt = -sqrt((inner * inner) - 12.0 * a2);
-
-            x = if x == 0.0 {
-                0.0
-            } else {
-                sqrt(inner_sqrt + a2 - b2 + 3.0) * INVERSE_SQRT_2
-            };
-            z = if z == 0.0 {
-                0.0
-            } else {
-                sqrt(inner_sqrt - a2 + b2 + 3.0) * INVERSE_SQRT_2
-            };
-
-            x = x.min(1.0).copysign(pos.x as f64);
-            z = z.min(1.0).copysign(pos.z as f64);
-            y = if pos.y >= 0.0 { 1.0 } else { -1.0 };
-        } else if fx >= fy && fx >= fz {
-            let a2 = y * y * 2.0;
-            let b2 = z * z * 2.0;
-            let inner = -a2 + b2 - 3.0;
-            let inner_sqrt = -sqrt((inner * inner) - 12.0 * a2);
-
-            y = if y == 0.0 {
-                0.0
-            } else {
-                sqrt(inner_sqrt + a2 - b2 + 3.0) * INVERSE_SQRT_2
-            };
-            z = if z == 0.0 {
-                0.0
-            } else {
-                sqrt(inner_sqrt - a2 + b2 + 3.0) * INVERSE_SQRT_2
-            };
-
-            y = y.min(1.0).copysign(pos.y as f64);
-            z = z.min(1.0).copysign(pos.z as f64);
-            x = if pos.x >= 0.0 { 1.0 } else { -1.0 };
-        } else {
-            let a2 = x * x * 2.0;
-            let b2 = y * y * 2.0;
-            let inner = -a2 + b2 - 3.0;
-            let inner_sqrt = -sqrt((inner * inner) - 12.0 * a2);
-
-            x = if x == 0.0 {
-                0.0
-            } else {
-                sqrt(inner_sqrt + a2 - b2 + 3.0) * INVERSE_SQRT_2
-            };
-            y = if y == 0.0 {
-                0.0
-            } else {
-                sqrt(inner_sqrt - a2 + b2 + 3.0) * INVERSE_SQRT_2
-            };
-
-            x = x.min(1.0).copysign(pos.x as f64);
-            y = y.min(1.0).copysign(pos.y as f64);
-            z = if pos.z >= 0.0 { 1.0 } else { -1.0 };
-        }
-
-        Vec3::new(x as f32, y as f32, z as f32)
     }
 
     pub fn get_local_coords(pos: Vec3, res: u32) -> Option<(VoxelCoord, Vec3)> {
@@ -173,7 +83,7 @@ impl CoordSystem {
             _ => (x_local, y_local, -1.0),
         };
 
-        Self::cube_to_sphere(cx, cy, cz).normalize()
+        unit_cube_to_sphere(cx, cy, cz).normalize()
     }
 
     pub fn get_vertex_pos(face: u8, u: u32, v: u32, layer: u32, res: u32) -> Vec3 {
@@ -200,7 +110,7 @@ impl CoordSystem {
             _ => (x_local, y_local, -1.0),
         };
 
-        let dir = Self::cube_to_sphere(cx, cy, cz).normalize();
+        let dir = unit_cube_to_sphere(cx, cy, cz).normalize();
 
         let radius = PlanetProfile::new(res).layer_center_radius(layer);
 

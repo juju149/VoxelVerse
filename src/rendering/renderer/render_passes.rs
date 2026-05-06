@@ -2,9 +2,10 @@ use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::diagnostics::Console;
 use crate::gameplay::Player;
 use crate::input::Controller;
+use crate::math::Frustum;
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::AnyKey;
-use crate::rendering::types::{ChunkMesh, Frustum};
+use crate::rendering::types::ChunkMesh;
 use crate::world::PlanetData;
 use glyphon::{Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea, TextBounds};
 

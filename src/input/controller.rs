@@ -2,6 +2,7 @@
 
 use crate::gameplay::{Player, PlayerInput};
 use crate::generation::CoordSystem;
+use crate::math::Ray;
 use crate::physics::Physics;
 use crate::voxel::VoxelCoord;
 use crate::world::PlanetData;
@@ -240,9 +241,7 @@ impl Controller {
             )
         };
 
-        let start = inv.project_point3(Vec3::new(ndc_x, ndc_y, 0.0));
-        let end = inv.project_point3(Vec3::new(ndc_x, ndc_y, 1.0));
-        let dir = (end - start).normalize();
+        let ray = Ray::from_clip_space(inv, ndc_x, ndc_y);
 
         let mut dist = 0.0;
         let mut last_empty = None;
@@ -256,7 +255,7 @@ impl Controller {
         let min_radius = 0.5;
 
         while dist < reach {
-            let p = start + dir * dist;
+            let p = ray.point_at(dist);
             if p.length() < min_radius {
                 break;
             }

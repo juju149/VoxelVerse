@@ -3,6 +3,7 @@ mod diagnostics;
 mod gameplay;
 mod generation;
 mod input;
+mod math;
 mod meshing;
 mod physics;
 mod rendering;
@@ -10,7 +11,7 @@ mod voxel;
 mod world;
 
 use crate::diagnostics::{Console, SystemDiagnostics};
-use crate::gameplay::Player;
+use crate::gameplay::{BlockActionIntent, BlockInteraction, Player};
 use crate::generation::CoordSystem;
 use crate::input::Controller;
 use crate::rendering::Renderer;
@@ -117,27 +118,37 @@ fn main() {
                             button,
                             ..
                         } => {
-                            let is_right = button == MouseButton::Right;
-                            if let Some(id) = controller.cursor_id {
-                                if is_right {
-                                    let place_info = controller.raycast(
-                                        &player,
-                                        &planet,
-                                        renderer.config.width as f32,
-                                        renderer.config.height as f32,
-                                        true,
-                                    );
-                                    if let Some((place_id, _)) = place_info {
-                                        planet.add_block(place_id);
-                                        renderer.refresh_neighbors(place_id, &planet);
-                                    }
+                            let intent = match button {
+                                MouseButton::Right => Some(BlockActionIntent::Place),
+                                MouseButton::Left => Some(BlockActionIntent::Mine),
+                                _ => None,
+                            };
+
+                            if let Some(intent) = intent {
+                                let placement = if intent == BlockActionIntent::Place {
+                                    controller
+                                        .raycast(
+                                            &player,
+                                            &planet,
+                                            renderer.config.width as f32,
+                                            renderer.config.height as f32,
+                                            true,
+                                        )
+                                        .map(|(id, _)| id)
                                 } else {
-                                    planet.remove_block(id);
-                                    renderer.refresh_neighbors(id, &planet);
-                                }
-                                renderer.window.request_redraw();
-                            } else {
-                                if controller.first_person {
+                                    None
+                                };
+
+                                if let Some(action) = BlockInteraction::resolve(
+                                    intent,
+                                    controller.cursor_id,
+                                    placement,
+                                ) {
+                                    let changed = BlockInteraction::apply(action, &mut planet);
+                                    renderer.refresh_neighbors(changed, &planet);
+                                    renderer.window.request_redraw();
+                                } else if controller.cursor_id.is_none() && controller.first_person
+                                {
                                     let _ = renderer.window.set_cursor_grab(CursorGrabMode::Locked);
                                     renderer.window.set_cursor_visible(false);
                                 }
