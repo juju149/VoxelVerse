@@ -7,43 +7,53 @@ use crate::world::PlanetData;
 use glam::Vec3;
 use std::collections::HashSet;
 
+// --- per-frame streaming budgets ---
+const UPLOAD_LOD_PER_FRAME: usize = 8;
+const DISPATCH_LOD_PER_FRAME: usize = 10;
+const MAX_PENDING_LODS: usize = 24;
+
 impl<'a> Renderer<'a> {
     pub fn update_view(&mut self, player_pos: Vec3, planet: &PlanetData) {
         let res = planet.resolution;
         let player_id = CoordSystem::pos_to_id(player_pos, res);
-        let mut upload_count = 0;
-        while let Ok((key, v, i)) = self.lod_rx.try_recv() {
-            self.pending_lods.remove(&key);
-            self.upload_lod_buffer(key, v, i);
-            upload_count += 1;
-            if upload_count > 20 {
-                break;
-            }
-        }
+        let logical_size = res.next_power_of_two();
+
+        // 1. Compute required sets FIRST — before processing any arrivals.
+        //    This lets us discard stale meshes immediately on receipt.
         let mut required_voxels: HashSet<ChunkKey> = HashSet::new();
         let mut required_lods: HashSet<LodKey> = HashSet::new();
-        let logical_size = res.next_power_of_two();
 
         let quad_context = QuadContext {
             cam_pos: player_pos,
             planet,
             player_id,
         };
-
         for face in 0..6 {
             self.process_quadtree(
-                QuadNode {
-                    face,
-                    x: 0,
-                    y: 0,
-                    size: logical_size,
-                },
+                QuadNode { face, x: 0, y: 0, size: logical_size },
                 &quad_context,
                 &mut required_voxels,
                 &mut required_lods,
             );
         }
 
+        // 2. Receive completed LOD meshes.
+        //    Only upload if the chunk is still needed — stale meshes are dropped.
+        let mut upload_count = 0;
+        while let Ok((key, v, i)) = self.lod_rx.try_recv() {
+            self.pending_lods.remove(&key);
+            if required_lods.contains(&key) {
+                self.upload_lod_buffer(key, v, i);
+                upload_count += 1;
+                if upload_count >= UPLOAD_LOD_PER_FRAME {
+                    break;
+                }
+            }
+            // stale mesh: drop without uploading
+        }
+
+        // 3. Evict LODs that are no longer required.
+        //    Keep any LOD that covers a voxel chunk still in flight (children_missing guard).
         let missing_voxels: Vec<ChunkKey> = required_voxels
             .iter()
             .filter(|k| !self.chunks.contains_key(k))
@@ -51,12 +61,10 @@ impl<'a> Renderer<'a> {
             .collect();
 
         let current_lods: Vec<LodKey> = self.lod_chunks.keys().cloned().collect();
-
         for k in current_lods {
             if required_lods.contains(&k) {
                 continue;
             }
-
             let mut children_missing = false;
             for v_key in &missing_voxels {
                 if v_key.face != k.face {
@@ -64,15 +72,15 @@ impl<'a> Renderer<'a> {
                 }
                 let v_x = v_key.u_idx * CHUNK_SIZE;
                 let v_y = v_key.v_idx * CHUNK_SIZE;
-                let v_s = CHUNK_SIZE;
-                let overlap =
-                    k.x < v_x + v_s && k.x + k.size > v_x && k.y < v_y + v_s && k.y + k.size > v_y;
+                let overlap = k.x < v_x + CHUNK_SIZE
+                    && k.x + k.size > v_x
+                    && k.y < v_y + CHUNK_SIZE
+                    && k.y + k.size > v_y;
                 if overlap {
                     children_missing = true;
                     break;
                 }
             }
-
             if children_missing {
                 required_lods.insert(k);
             } else if let Some(mesh) = self.lod_chunks.remove(&k) {
@@ -80,23 +88,39 @@ impl<'a> Renderer<'a> {
             }
         }
 
+        // 4. Dispatch new LOD jobs — sorted nearest-first so the most visible
+        //    chunks are meshed before distant ones.
+        let mut to_spawn: Vec<(LodKey, f32)> = required_lods
+            .iter()
+            .filter(|k| !self.lod_chunks.contains_key(k) && !self.pending_lods.contains(k))
+            .map(|k| {
+                let cx = (k.x + k.size / 2).min(planet.resolution.saturating_sub(1));
+                let cy = (k.y + k.size / 2).min(planet.resolution.saturating_sub(1));
+                let h = planet.profile.surface_layer;
+                let wp = CoordSystem::get_vertex_pos(k.face, cx, cy, h, planet.resolution);
+                (*k, wp.distance_squared(player_pos))
+            })
+            .collect();
+        // nearest first (smallest distance_sq at front)
+        to_spawn.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
         let mut spawn_count = 0;
-        for key in required_lods {
-            if !self.lod_chunks.contains_key(&key) && !self.pending_lods.contains(&key) {
-                if spawn_count >= 8 {
-                    break;
-                }
-                self.pending_lods.insert(key);
-                let tx = self.lod_tx.clone();
-                let p = planet.clone();
-                std::thread::spawn(move || {
-                    let (v, i) = MeshGen::generate_lod_mesh(key, &p);
-                    let _ = tx.send((key, v, i));
-                });
-                spawn_count += 1;
+        for (key, _) in to_spawn {
+            if spawn_count >= DISPATCH_LOD_PER_FRAME || self.pending_lods.len() >= MAX_PENDING_LODS
+            {
+                break;
             }
+            self.pending_lods.insert(key);
+            let tx = self.lod_tx.clone();
+            let p = planet.clone();
+            rayon::spawn(move || {
+                let (v, i) = MeshGen::generate_lod_mesh(key, &p);
+                let _ = tx.send((key, v, i));
+            });
+            spawn_count += 1;
         }
 
+        // 5. Evict voxel chunks no longer required and rebuild load queue.
         let current_voxels: Vec<ChunkKey> = self.chunks.keys().cloned().collect();
         for k in current_voxels {
             if !required_voxels.contains(&k) {
@@ -107,21 +131,25 @@ impl<'a> Renderer<'a> {
         }
 
         self.load_queue.retain(|k| required_voxels.contains(k));
-        for k in required_voxels {
-            if !self.chunks.contains_key(&k) && !self.load_queue.contains(&k) {
-                self.load_queue.push(k);
+        for k in &required_voxels {
+            if !self.chunks.contains_key(k)
+                && !self.load_queue.contains(k)
+                && !self.pending_chunks.contains(k)
+            {
+                self.load_queue.push(*k);
             }
         }
 
+        // Sort farthest-first in the Vec so pop() returns the nearest chunk.
         self.load_queue.sort_by(|a, b| {
-            let get_center = |k: &ChunkKey| -> glam::Vec3 {
+            let center = |k: &ChunkKey| -> Vec3 {
                 let u = k.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
                 let v = k.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
                 let h = planet.profile.surface_layer;
                 CoordSystem::get_vertex_pos(k.face, u, v, h, planet.resolution)
             };
-            let da = get_center(a).distance_squared(player_pos);
-            let db = get_center(b).distance_squared(player_pos);
+            let da = center(a).distance_squared(player_pos);
+            let db = center(b).distance_squared(player_pos);
             db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Equal)
         });
 

@@ -7,6 +7,11 @@ use crate::world::PlanetData;
 use glam::Vec3;
 use wgpu::util::DeviceExt;
 
+// --- per-frame streaming budgets for voxel chunks ---
+const UPLOAD_VOXEL_PER_FRAME: usize = 4;
+const DISPATCH_VOXEL_PER_FRAME: usize = 4;
+const MAX_PENDING_VOXELS: usize = 16;
+
 impl<'a> Renderer<'a> {
     pub(super) fn upload_lod_buffer(&mut self, key: LodKey, v: Vec<Vertex>, i: Vec<u32>) {
         let v_buf = self
@@ -73,44 +78,43 @@ impl<'a> Renderer<'a> {
     }
 
     pub(super) fn process_load_queue(&mut self, _player_pos: Vec3, planet: &PlanetData) {
-        let mut upload_budget = 4;
+        // Drain completed voxel meshes from the channel.
+        // Only upload chunks still in the required set (load_queue was already filtered).
+        let mut upload_budget = UPLOAD_VOXEL_PER_FRAME;
         while let Ok((key, v, i)) = self.mesh_rx.try_recv() {
             self.pending_chunks.remove(&key);
-            if !v.is_empty() {
+            // Skip stale chunks (evicted while the job was in flight)
+            if !v.is_empty() && !self.chunks.contains_key(&key) {
                 self.upload_chunk_buffers(key, v, i);
                 upload_budget -= 1;
             }
-            if upload_budget <= 0 {
+            if upload_budget == 0 {
                 break;
             }
         }
 
-        if upload_budget <= 0 {
+        if upload_budget == 0 || self.load_queue.is_empty() {
             return;
         }
-        if self.load_queue.is_empty() {
-            return;
-        }
-        if self.pending_chunks.len() >= 12 {
+        if self.pending_chunks.len() >= MAX_PENDING_VOXELS {
             return;
         }
 
-        let chunks_to_spawn = 4;
-        for _ in 0..chunks_to_spawn {
-            if let Some(key) = self.load_queue.pop() {
-                if self.chunks.contains_key(&key) || self.pending_chunks.contains(&key) {
-                    continue;
-                }
-                self.pending_chunks.insert(key);
-                let planet_clone = planet.clone();
-                let tx = self.mesh_tx.clone();
-                std::thread::spawn(move || {
-                    let (v, i) = MeshGen::build_chunk(key, &planet_clone);
-                    let _ = tx.send((key, v, i));
-                });
-            } else {
+        // Dispatch new jobs using rayon (bounded global thread pool, no OS-thread explosion).
+        for _ in 0..DISPATCH_VOXEL_PER_FRAME {
+            let Some(key) = self.load_queue.pop() else {
                 break;
+            };
+            if self.chunks.contains_key(&key) || self.pending_chunks.contains(&key) {
+                continue;
             }
+            self.pending_chunks.insert(key);
+            let planet_clone = planet.clone();
+            let tx = self.mesh_tx.clone();
+            rayon::spawn(move || {
+                let (v, i) = MeshGen::build_chunk(key, &planet_clone);
+                let _ = tx.send((key, v, i));
+            });
         }
     }
 
