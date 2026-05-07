@@ -92,10 +92,10 @@ impl PlanetTerrain {
         // Domain-warped ridged noise for mountain chains.
         let ridge = NoiseSettings {
             noise_type: NoiseType::Ridged,
-            frequency: 1.5 * freq_scale,
+            frequency: 1.3 * freq_scale,
             amplitude,
-            octaves: 5,
-            persistence: 0.50,
+            octaves: 4,
+            persistence: 0.46,
             lacunarity: 2.0,
             offset: Vec3::splat(33.0),
         };
@@ -138,8 +138,8 @@ impl PlanetTerrain {
             let base = (cont_v * 0.25 + hill_v * 0.55 + micro_v * 0.20) * flat_factor;
 
             // Ridge: only meaningful in mountainous biomes (high amp_scale, low flatness).
-            let mountain_char = (amp_scale * flat_factor).min(0.55);
-            let ridge_contrib = ridge_v * mountain_char * 0.40;
+            let mountain_char = (amp_scale * flat_factor).min(0.30);
+            let ridge_contrib = ridge_v * mountain_char * 0.25;
 
             // Latitude polar smoothing — poles are naturally flatter.
             let lat = dir.y.abs();

@@ -32,7 +32,7 @@ impl PlanetProfile {
         // proper mountain relief.  0.008 × res gives ~160 for a 20k-radius
         // planet (≈80 blocks for mountains, ≈10 for plains) — Minecraft-scale.
         let max_terrain_offset =
-            ((resolution as f32 * 0.008).round() as i32).clamp(8, 1_200);
+            ((resolution as f32 * 0.005).round() as i32).clamp(6, 800);
 
         Self {
             resolution,

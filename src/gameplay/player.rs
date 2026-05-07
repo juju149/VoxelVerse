@@ -66,7 +66,7 @@ impl Player {
 
         let effective_speed = if input.sprint {
             if input.flying {
-                self.move_speed * 10.0
+                self.move_speed * 100.0
             } else {
                 self.move_speed * 2.0
             }
