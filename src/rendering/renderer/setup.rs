@@ -4,6 +4,7 @@ use crate::diagnostics::{FrameStats, SystemDiagnostics};
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
 use crate::rendering::texture_atlas::TextureAtlas;
+use crate::rendering::types::Vertex;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
 use wgpu::util::DeviceExt;
@@ -342,7 +343,14 @@ impl<'a> Renderer<'a> {
         });
 
         // --- MESHES ---
-        let (pv, pi) = MeshGen::generate_cylinder(0.4, 1.8, 16);
+        let player_mesh = MeshGen::generate_cylinder(0.4, 1.8, 16);
+        let pv: Vec<Vertex> = player_mesh
+            .vertices
+            .iter()
+            .copied()
+            .map(Vertex::from)
+            .collect();
+        let pi = &player_mesh.indices;
         let player_v_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&pv),
@@ -350,11 +358,18 @@ impl<'a> Renderer<'a> {
         });
         let player_i_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
-            contents: bytemuck::cast_slice(&pi),
+            contents: bytemuck::cast_slice(pi),
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        let (cv, ci) = MeshGen::generate_crosshair();
+        let cross_mesh = MeshGen::generate_crosshair();
+        let cv: Vec<Vertex> = cross_mesh
+            .vertices
+            .iter()
+            .copied()
+            .map(Vertex::from)
+            .collect();
+        let ci = &cross_mesh.indices;
         let cross_v_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&cv),
@@ -362,7 +377,7 @@ impl<'a> Renderer<'a> {
         });
         let cross_i_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
-            contents: bytemuck::cast_slice(&ci),
+            contents: bytemuck::cast_slice(ci),
             usage: wgpu::BufferUsages::INDEX,
         });
 

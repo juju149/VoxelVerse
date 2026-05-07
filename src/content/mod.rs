@@ -9,4 +9,3 @@ mod materials;
 pub use biome_registry::BiomeRegistry;
 pub use block_registry::BlockRegistry;
 pub use materials::TerrainPalette;
-

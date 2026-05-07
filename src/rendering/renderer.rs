@@ -2,9 +2,10 @@
 
 use crate::diagnostics::FrameStats;
 use crate::math::Frustum;
+use crate::meshing::CpuMesh;
 use crate::rendering::lod_animation::LodAnimator;
-use crate::rendering::types::{ChunkMesh, Vertex};
-use crate::voxel::{ChunkKey, LodKey, VoxelCoord};
+use crate::rendering::types::ChunkMesh;
+use crate::voxel::{LodKey, SurfaceChunkKey, VoxelCoord};
 use crate::world::PlanetData;
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
@@ -66,7 +67,7 @@ pub struct Renderer<'a> {
     pipeline_wire: wgpu::RenderPipeline,
     pipeline_line: wgpu::RenderPipeline,
 
-    chunks: HashMap<ChunkKey, ChunkMesh>,
+    chunks: HashMap<SurfaceChunkKey, ChunkMesh>,
     lod_chunks: HashMap<LodKey, ChunkMesh>,
 
     // --- UNIFORMS ---
@@ -100,20 +101,20 @@ pub struct Renderer<'a> {
     frozen_frustum: Option<Frustum>,
 
     // --- THREADING ---
-    load_queue: Vec<ChunkKey>,
-    player_chunk_pos: Option<ChunkKey>,
+    load_queue: Vec<SurfaceChunkKey>,
+    player_chunk_pos: Option<SurfaceChunkKey>,
 
-    mesh_tx: Sender<(ChunkKey, Vec<Vertex>, Vec<u32>)>,
-    mesh_rx: Receiver<(ChunkKey, Vec<Vertex>, Vec<u32>)>,
-    pending_chunks: HashSet<ChunkKey>,
+    mesh_tx: Sender<(SurfaceChunkKey, CpuMesh)>,
+    mesh_rx: Receiver<(SurfaceChunkKey, CpuMesh)>,
+    pending_chunks: HashSet<SurfaceChunkKey>,
 
     /// Chunks invalidated by a player edit — dispatched before the normal load queue.
-    dirty_chunks: HashSet<ChunkKey>,
+    dirty_chunks: HashSet<SurfaceChunkKey>,
     /// In-flight dirty rebuild jobs (subset of pending_chunks — lets us skip the stale guard on receipt).
-    pending_dirty: HashSet<ChunkKey>,
+    pending_dirty: HashSet<SurfaceChunkKey>,
 
-    lod_tx: Sender<(LodKey, Vec<Vertex>, Vec<u32>)>,
-    lod_rx: Receiver<(LodKey, Vec<Vertex>, Vec<u32>)>,
+    lod_tx: Sender<(LodKey, CpuMesh)>,
+    lod_rx: Receiver<(LodKey, CpuMesh)>,
     pending_lods: HashSet<LodKey>,
 
     frame_stats: FrameStats,

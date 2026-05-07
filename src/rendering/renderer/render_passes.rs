@@ -5,7 +5,7 @@ use crate::input::Controller;
 use crate::math::Frustum;
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::AnyKey;
-use crate::rendering::types::ChunkMesh;
+use crate::rendering::types::{ChunkMesh, Vertex};
 use crate::world::PlanetData;
 use glyphon::{Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea, TextBounds};
 
@@ -20,12 +20,16 @@ impl<'a> Renderer<'a> {
         self.update_console_mesh(console.height_fraction);
 
         if controller.show_collisions {
-            let (v, i) = MeshGen::generate_collision_debug(player.position, planet);
+            let mesh = MeshGen::generate_collision_debug(player.position, planet);
+            let gpu_v: Vec<Vertex> = mesh.vertices.iter().copied().map(Vertex::from).collect();
             self.queue
-                .write_buffer(&self.collision_v_buf, 0, bytemuck::cast_slice(&v));
-            self.queue
-                .write_buffer(&self.collision_i_buf, 0, bytemuck::cast_slice(&i));
-            self.collision_inds = i.len() as u32;
+                .write_buffer(&self.collision_v_buf, 0, bytemuck::cast_slice(&gpu_v));
+            self.queue.write_buffer(
+                &self.collision_i_buf,
+                0,
+                bytemuck::cast_slice(&mesh.indices),
+            );
+            self.collision_inds = mesh.indices.len() as u32;
         } else {
             self.collision_inds = 0;
         }

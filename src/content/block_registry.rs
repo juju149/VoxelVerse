@@ -1,8 +1,35 @@
 use crate::voxel::VoxelId;
 use std::collections::HashMap;
 
+/// Resolved visual representation used at runtime.
+///
+/// At this stage the `atlas_index` is always 0 (a placeholder white tile).
+/// Once the texture pipeline is wired up, the compiler assigns a real index
+/// into the texture atlas.
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
+pub struct CompiledBlockVisual {
+    /// Index into the GPU texture atlas.  0 = white/debug tile.
+    pub atlas_index: u32,
+    /// RGB tint multiplied over the atlas tile.  `[1,1,1]` = no tint.
+    pub tint: [f32; 3],
+    /// RGB flat color fallback used when no atlas is present.
+    pub flat_color: [f32; 3],
+}
+
+impl Default for CompiledBlockVisual {
+    fn default() -> Self {
+        Self {
+            atlas_index: 0,
+            tint: [1.0; 3],
+            flat_color: [1.0, 0.0, 1.0],
+        }
+    }
+}
+
 /// A compiled block definition ready for runtime use.
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct CompiledBlock {
     pub id: VoxelId,
     /// Namespaced key derived from pack path, e.g. `"core:dirt"`.
@@ -13,6 +40,8 @@ pub struct CompiledBlock {
     pub color: [f32; 3],
     /// Hits needed to break this block. 0.0 = unbreakable.
     pub hardness: f32,
+    /// Visual data — ready for the renderer without further lookup.
+    pub visual: CompiledBlockVisual,
 }
 
 /// Runtime registry of all compiled blocks.
@@ -56,7 +85,7 @@ impl BlockRegistry {
         self.block(id).map(|b| b.color).unwrap_or([0.6, 0.4, 0.2])
     }
 
-    /// The block placed when the player uses the default slot (typically dirt).
+    /// The block placed when the player uses the default slot.
     pub fn default_place_voxel(&self) -> VoxelId {
         self.default_place
     }

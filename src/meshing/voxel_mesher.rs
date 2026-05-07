@@ -1,7 +1,6 @@
-use super::{ambient_occlusion, MeshGen};
+use super::{ambient_occlusion, CpuMesh, CpuVertex, MeshGen};
 use crate::generation::CoordSystem;
-use crate::rendering::Vertex;
-use crate::voxel::{ChunkKey, VoxelCoord, CHUNK_SIZE};
+use crate::voxel::{SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
 use crate::world::PlanetData;
 use glam::Vec3;
 use std::collections::HashSet;
@@ -35,7 +34,7 @@ impl MeshGen {
         }
     }
 
-    pub fn build_chunk(key: ChunkKey, data: &PlanetData) -> (Vec<Vertex>, Vec<u32>) {
+    pub fn build_chunk(key: SurfaceChunkKey, data: &PlanetData) -> CpuMesh {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
         let mut idx = 0u32;
@@ -110,19 +109,19 @@ impl MeshGen {
         // runtime voxel overrides in this surface tile and its direct neighbors.
         let neighbor_keys = [
             key,
-            ChunkKey {
+            SurfaceChunkKey {
                 u_idx: key.u_idx.wrapping_sub(1),
                 ..key
             },
-            ChunkKey {
+            SurfaceChunkKey {
                 u_idx: key.u_idx + 1,
                 ..key
             },
-            ChunkKey {
+            SurfaceChunkKey {
                 v_idx: key.v_idx.wrapping_sub(1),
                 ..key
             },
-            ChunkKey {
+            SurfaceChunkKey {
                 v_idx: key.v_idx + 1,
                 ..key
             },
@@ -141,13 +140,13 @@ impl MeshGen {
                 Self::add_voxel(id, data, &mut verts, &mut inds, &mut idx);
             }
         }
-        (verts, inds)
+        CpuMesh::new(verts, inds)
     }
 
     fn add_voxel(
         id: VoxelCoord,
         data: &PlanetData,
-        verts: &mut Vec<Vertex>,
+        verts: &mut Vec<CpuVertex>,
         inds: &mut Vec<u32>,
         idx: &mut u32,
     ) {
@@ -260,21 +259,53 @@ impl MeshGen {
         let colors = [side_c, side_c, side_c, side_c];
 
         if !has_front {
-            Self::quad(verts, inds, idx, [i_bl, i_br, o_br, o_bl], colors, false, tex_index);
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_bl, i_br, o_br, o_bl],
+                colors,
+                false,
+                tex_index,
+            );
         }
         if !has_back {
-            Self::quad(verts, inds, idx, [o_tl, o_tr, i_tr, i_tl], colors, false, tex_index);
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [o_tl, o_tr, i_tr, i_tl],
+                colors,
+                false,
+                tex_index,
+            );
         }
         if !has_left {
-            Self::quad(verts, inds, idx, [i_tl, i_bl, o_bl, o_tl], colors, false, tex_index);
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_tl, i_bl, o_bl, o_tl],
+                colors,
+                false,
+                tex_index,
+            );
         }
         if !has_right {
-            Self::quad(verts, inds, idx, [i_br, i_tr, o_tr, o_br], colors, false, tex_index);
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_br, i_tr, o_tr, o_br],
+                colors,
+                false,
+                tex_index,
+            );
         }
     }
 
     fn quad(
-        verts: &mut Vec<Vertex>,
+        verts: &mut Vec<CpuVertex>,
         inds: &mut Vec<u32>,
         idx: &mut u32,
         pos: [Vec3; 4],
@@ -296,7 +327,7 @@ impl MeshGen {
         };
 
         for i in 0..4 {
-            verts.push(Vertex {
+            verts.push(CpuVertex {
                 pos: pos[i].to_array(),
                 uv: uvs[i],
                 color: colors[i],

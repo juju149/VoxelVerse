@@ -2,6 +2,7 @@ use crate::voxel::VoxelId;
 
 /// A compiled biome definition — block IDs already resolved from the registry.
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct CompiledBiome {
     pub id: u8,
     /// Namespaced key (e.g. `"core:plains"`).
@@ -23,6 +24,7 @@ pub struct CompiledBiome {
 
 impl CompiledBiome {
     /// 2D climate coordinate used for nearest-biome Voronoi selection.
+    #[allow(dead_code)]
     #[inline]
     pub fn climate_point(&self) -> (f32, f32) {
         (self.temperature_center, self.roughness_center)
@@ -36,16 +38,17 @@ pub struct BiomeRegistry {
 
 impl BiomeRegistry {
     pub(crate) fn new(biomes: Vec<CompiledBiome>) -> Self {
-        assert!(!biomes.is_empty(), "BiomeRegistry must have at least one biome");
+        assert!(
+            !biomes.is_empty(),
+            "BiomeRegistry must have at least one biome"
+        );
         Self { biomes }
     }
 
     /// Get a biome by its compact runtime id.
     /// Falls back to biome 0 if the id is out of range.
     pub fn biome(&self, id: u8) -> &CompiledBiome {
-        self.biomes
-            .get(id as usize)
-            .unwrap_or(&self.biomes[0])
+        self.biomes.get(id as usize).unwrap_or(&self.biomes[0])
     }
 
     pub fn biomes(&self) -> &[CompiledBiome] {

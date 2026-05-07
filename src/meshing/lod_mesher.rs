@@ -1,12 +1,11 @@
-use super::MeshGen;
+use super::{CpuMesh, CpuVertex, MeshGen};
 use crate::content::TerrainPalette;
 use crate::generation::CoordSystem;
-use crate::rendering::Vertex;
 use crate::voxel::LodKey;
 use crate::world::PlanetData;
 
 impl MeshGen {
-    pub fn generate_lod_mesh(key: LodKey, data: &PlanetData) -> (Vec<Vertex>, Vec<u32>) {
+    pub fn generate_lod_mesh(key: LodKey, data: &PlanetData) -> CpuMesh {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
 
@@ -83,7 +82,7 @@ impl MeshGen {
                     }
                 };
 
-                verts.push(Vertex {
+                verts.push(CpuVertex {
                     pos: pos.to_array(),
                     uv: [0.0, 0.0],
                     color,
@@ -126,7 +125,7 @@ impl MeshGen {
                 let p = glam::Vec3::from_array(src_v.pos);
                 let down = -p.normalize() * skirt_depth;
 
-                verts.push(Vertex {
+                verts.push(CpuVertex {
                     pos: (p + down).to_array(),
                     uv: [0.0, 0.0],
                     color: src_v.color,
@@ -172,6 +171,6 @@ impl MeshGen {
         add_skirt_edge(&left, true);
         add_skirt_edge(&right, false);
 
-        (verts, inds)
+        CpuMesh::new(verts, inds)
     }
 }

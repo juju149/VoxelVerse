@@ -1,8 +1,8 @@
 use super::{LocalUniform, Renderer};
-use crate::meshing::MeshGen;
+use crate::meshing::{CpuMesh, MeshGen};
 use crate::rendering::lod_animation::AnyKey;
 use crate::rendering::types::{ChunkMesh, Vertex};
-use crate::voxel::{ChunkKey, LodKey, VoxelCoord, CHUNK_SIZE};
+use crate::voxel::{LodKey, SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
 use crate::world::PlanetData;
 use glam::Vec3;
 use wgpu::util::DeviceExt;
@@ -12,20 +12,26 @@ const UPLOAD_VOXEL_PER_FRAME: usize = 4;
 const DISPATCH_VOXEL_PER_FRAME: usize = 4;
 const MAX_PENDING_VOXELS: usize = 16;
 
+/// Convert a `CpuMesh` vertex slice to GPU-ready `Vertex` bytes.
+fn cpu_verts_to_gpu(cpu: &CpuMesh) -> Vec<Vertex> {
+    cpu.vertices.iter().copied().map(Vertex::from).collect()
+}
+
 impl<'a> Renderer<'a> {
-    pub(super) fn upload_lod_buffer(&mut self, key: LodKey, v: Vec<Vertex>, i: Vec<u32>) {
+    pub(super) fn upload_lod_buffer(&mut self, key: LodKey, mesh: CpuMesh) {
+        let gpu_verts = cpu_verts_to_gpu(&mesh);
         let v_buf = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
-                contents: bytemuck::cast_slice(&v),
+                contents: bytemuck::cast_slice(&gpu_verts),
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             });
         let i_buf = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
-                contents: bytemuck::cast_slice(&i),
+                contents: bytemuck::cast_slice(&mesh.indices),
                 usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             });
 
@@ -51,27 +57,22 @@ impl<'a> Renderer<'a> {
             label: None,
         });
 
-        let mut min = Vec3::splat(f32::MAX);
-        let mut max = Vec3::splat(f32::MIN);
-        for vert in &v {
-            let p = Vec3::from_array(vert.pos);
-            min = min.min(p);
-            max = max.max(p);
-        }
-        let real_center = (min + max) * 0.5;
-        let real_radius = min.distance(max) * 0.5;
+        let real_center = Vec3::from_array(mesh.bounds.center);
+        let real_radius = mesh.bounds.radius;
+        let num_inds = mesh.indices.len() as u32;
+        let num_verts = mesh.vertices.len();
 
         self.lod_chunks.insert(
             key,
             ChunkMesh {
                 v_buf,
                 i_buf,
-                num_inds: i.len() as u32,
-                num_verts: v.len(),
+                num_inds,
+                num_verts,
                 uniform_buf,
                 bind_group,
-                center: real_center, // <--- ADDED
-                radius: real_radius, // <--- ADDED
+                center: real_center,
+                radius: real_radius,
             },
         );
         self.animator.start_spawn(AnyKey::Lod(key));
@@ -80,13 +81,13 @@ impl<'a> Renderer<'a> {
     pub(super) fn process_load_queue(&mut self, _player_pos: Vec3, planet: &PlanetData) {
         // Drain completed voxel meshes from the channel.
         let mut upload_budget = UPLOAD_VOXEL_PER_FRAME;
-        while let Ok((key, v, i)) = self.mesh_rx.try_recv() {
+        while let Ok((key, mesh)) = self.mesh_rx.try_recv() {
             self.pending_chunks.remove(&key);
             let is_dirty_rebuild = self.pending_dirty.remove(&key);
             // Skip stale initial-load results (chunk was evicted while job was in flight).
             // Always accept dirty rebuilds — they replace an existing chunk with updated geometry.
-            if !v.is_empty() && (is_dirty_rebuild || !self.chunks.contains_key(&key)) {
-                self.upload_chunk_buffers(key, v, i);
+            if !mesh.is_empty() && (is_dirty_rebuild || !self.chunks.contains_key(&key)) {
+                self.upload_chunk_buffers(key, mesh);
                 upload_budget -= 1;
             }
             if upload_budget == 0 {
@@ -95,7 +96,7 @@ impl<'a> Renderer<'a> {
         }
 
         // --- DIRTY CHUNKS (player edits) — dispatched with priority ---
-        let dirty: Vec<ChunkKey> = self
+        let dirty: Vec<SurfaceChunkKey> = self
             .dirty_chunks
             .drain()
             .filter(|k| !self.pending_chunks.contains(k))
@@ -107,8 +108,8 @@ impl<'a> Renderer<'a> {
             let planet_clone = planet.clone();
             let tx = self.mesh_tx.clone();
             rayon::spawn(move || {
-                let (v, i) = MeshGen::build_chunk(key, &planet_clone);
-                let _ = tx.send((key, v, i));
+                let mesh = MeshGen::build_chunk(key, &planet_clone);
+                let _ = tx.send((key, mesh));
             });
         }
 
@@ -131,8 +132,8 @@ impl<'a> Renderer<'a> {
             let planet_clone = planet.clone();
             let tx = self.mesh_tx.clone();
             rayon::spawn(move || {
-                let (v, i) = MeshGen::build_chunk(key, &planet_clone);
-                let _ = tx.send((key, v, i));
+                let mesh = MeshGen::build_chunk(key, &planet_clone);
+                let _ = tx.send((key, mesh));
             });
         }
     }
@@ -156,30 +157,51 @@ impl<'a> Renderer<'a> {
         let u_c = id.u / CHUNK_SIZE;
         let v_c = id.v / CHUNK_SIZE;
         let keys = [
-            ChunkKey { face: id.face, u_idx: u_c,                        v_idx: v_c },
-            ChunkKey { face: id.face, u_idx: u_c.saturating_sub(1),      v_idx: v_c },
-            ChunkKey { face: id.face, u_idx: u_c + 1,                    v_idx: v_c },
-            ChunkKey { face: id.face, u_idx: u_c,                        v_idx: v_c.saturating_sub(1) },
-            ChunkKey { face: id.face, u_idx: u_c,                        v_idx: v_c + 1 },
+            SurfaceChunkKey {
+                face: id.face,
+                u_idx: u_c,
+                v_idx: v_c,
+            },
+            SurfaceChunkKey {
+                face: id.face,
+                u_idx: u_c.saturating_sub(1),
+                v_idx: v_c,
+            },
+            SurfaceChunkKey {
+                face: id.face,
+                u_idx: u_c + 1,
+                v_idx: v_c,
+            },
+            SurfaceChunkKey {
+                face: id.face,
+                u_idx: u_c,
+                v_idx: v_c.saturating_sub(1),
+            },
+            SurfaceChunkKey {
+                face: id.face,
+                u_idx: u_c,
+                v_idx: v_c + 1,
+            },
         ];
         for key in keys {
             self.dirty_chunks.insert(key);
         }
     }
 
-    fn upload_chunk_buffers(&mut self, key: ChunkKey, v: Vec<Vertex>, i: Vec<u32>) {
+    fn upload_chunk_buffers(&mut self, key: SurfaceChunkKey, mesh: CpuMesh) {
+        let gpu_verts = cpu_verts_to_gpu(&mesh);
         let v_buf = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
-                contents: bytemuck::cast_slice(&v),
+                contents: bytemuck::cast_slice(&gpu_verts),
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             });
         let i_buf = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: None,
-                contents: bytemuck::cast_slice(&i),
+                contents: bytemuck::cast_slice(&mesh.indices),
                 usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             });
 
@@ -208,28 +230,18 @@ impl<'a> Renderer<'a> {
             label: None,
         });
 
-        let mut min = Vec3::splat(f32::MAX);
-        let mut max = Vec3::splat(f32::MIN);
-        if v.is_empty() {
-            min = Vec3::ZERO;
-            max = Vec3::ZERO;
-        } else {
-            for vert in &v {
-                let p = Vec3::from_array(vert.pos);
-                min = min.min(p);
-                max = max.max(p);
-            }
-        }
-        let real_center = (min + max) * 0.5;
-        let real_radius = min.distance(max) * 0.5;
+        let real_center = Vec3::from_array(mesh.bounds.center);
+        let real_radius = mesh.bounds.radius;
+        let num_inds = mesh.indices.len() as u32;
+        let num_verts = mesh.vertices.len();
 
         self.chunks.insert(
             key,
             ChunkMesh {
                 v_buf,
                 i_buf,
-                num_inds: i.len() as u32,
-                num_verts: v.len(),
+                num_inds,
+                num_verts,
                 uniform_buf,
                 bind_group,
                 center: real_center,

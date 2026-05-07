@@ -1,6 +1,6 @@
 use crate::content::{BiomeRegistry, BlockRegistry};
 use crate::generation::{terrain::PlanetTerrain, CoordSystem};
-use crate::voxel::{ChunkKey, VoxelCoord, VoxelId};
+use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId};
 use crate::world::{PlanetProfile, VoxelRuntime};
 use std::sync::Arc;
 
@@ -112,7 +112,7 @@ impl PlanetData {
 
     pub fn modified_voxels_in_chunk_column(
         &self,
-        key: ChunkKey,
+        key: SurfaceChunkKey,
     ) -> impl Iterator<Item = (VoxelCoord, VoxelId)> + '_ {
         self.voxels
             .iter_column_overrides(key.face, key.u_idx, key.v_idx)
@@ -158,4 +158,3 @@ impl PlanetData {
         dir * (self.surface_radius(4, u, v) + self.profile.spawn_clearance())
     }
 }
-

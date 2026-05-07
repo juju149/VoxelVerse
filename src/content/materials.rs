@@ -8,4 +8,3 @@ impl TerrainPalette {
     pub const CURSOR: [f32; 3] = [1.0, 1.0, 0.0];
     pub const UI_WHITE: [f32; 3] = [1.0, 1.0, 1.0];
 }
-

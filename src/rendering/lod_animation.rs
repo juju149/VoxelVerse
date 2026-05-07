@@ -1,11 +1,11 @@
 use crate::rendering::types::ChunkMesh;
-use crate::voxel::{ChunkKey, LodKey};
+use crate::voxel::{LodKey, SurfaceChunkKey};
 use std::collections::HashMap;
 use std::time::Instant;
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub enum AnyKey {
-    Voxel(ChunkKey),
+    Voxel(SurfaceChunkKey),
     Lod(LodKey),
 }
 

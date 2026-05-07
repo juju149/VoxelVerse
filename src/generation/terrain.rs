@@ -145,14 +145,12 @@ impl PlanetTerrain {
             let lat = dir.y.abs();
             let polar_damp = (1.0 - lat * 0.20).clamp(0.80, 1.0);
 
-            let h_offset = (base + ridge_contrib)
-                * amplitude
-                * polar_damp
-                * amp_scale;
+            let h_offset = (base + ridge_contrib) * amplitude * polar_damp * amp_scale;
 
             let final_layer = (surface_layer as f32 + h_offset).round() as i32;
             let final_layer = final_layer.clamp(min_layer, max_layer);
-            *h = (final_layer - surface_layer as i32).clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+            *h =
+                (final_layer - surface_layer as i32).clamp(i16::MIN as i32, i16::MAX as i32) as i16;
         });
 
         Self {
@@ -194,9 +192,9 @@ impl PlanetTerrain {
         let h11 = self.heights[Self::get_index(face, u1, v1, self.heightmap_res)] as f32;
 
         let h = h00 * (1.0 - fu) * (1.0 - fv)
-              + h10 * fu          * (1.0 - fv)
-              + h01 * (1.0 - fu) * fv
-              + h11 * fu          * fv;
+            + h10 * fu * (1.0 - fv)
+            + h01 * (1.0 - fu) * fv
+            + h11 * fu * fv;
 
         let offset = h as i32;
         (self.surface_layer as i32 + offset).max(0) as u32

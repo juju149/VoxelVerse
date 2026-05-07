@@ -1,7 +1,7 @@
 use crate::content::BiomeRegistry;
 use crate::generation::{
-    CoordSystem,
     noise::{NoiseGenerator, NoiseSettings, NoiseType},
+    CoordSystem,
 };
 use crate::world::PlanetProfile;
 use glam::Vec3;
@@ -87,8 +87,18 @@ impl BiomeMap {
             *out = biomes
                 .iter()
                 .min_by(|a, b| {
-                    let da = climate_dist(temperature, roughness, a.temperature_center, a.roughness_center);
-                    let db = climate_dist(temperature, roughness, b.temperature_center, b.roughness_center);
+                    let da = climate_dist(
+                        temperature,
+                        roughness,
+                        a.temperature_center,
+                        a.roughness_center,
+                    );
+                    let db = climate_dist(
+                        temperature,
+                        roughness,
+                        b.temperature_center,
+                        b.roughness_center,
+                    );
                     da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
                 })
                 .map(|b| b.id)

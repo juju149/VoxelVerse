@@ -2,7 +2,7 @@ use super::{QuadContext, QuadNode, Renderer};
 use crate::generation::CoordSystem;
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::AnyKey;
-use crate::voxel::{ChunkKey, LodKey, CHUNK_SIZE};
+use crate::voxel::{LodKey, SurfaceChunkKey, CHUNK_SIZE};
 use crate::world::PlanetData;
 use glam::Vec3;
 use std::collections::HashSet;
@@ -20,7 +20,7 @@ impl<'a> Renderer<'a> {
 
         // 1. Compute required sets FIRST — before processing any arrivals.
         //    This lets us discard stale meshes immediately on receipt.
-        let mut required_voxels: HashSet<ChunkKey> = HashSet::new();
+        let mut required_voxels: HashSet<SurfaceChunkKey> = HashSet::new();
         let mut required_lods: HashSet<LodKey> = HashSet::new();
 
         let quad_context = QuadContext {
@@ -30,7 +30,12 @@ impl<'a> Renderer<'a> {
         };
         for face in 0..6 {
             self.process_quadtree(
-                QuadNode { face, x: 0, y: 0, size: logical_size },
+                QuadNode {
+                    face,
+                    x: 0,
+                    y: 0,
+                    size: logical_size,
+                },
                 &quad_context,
                 &mut required_voxels,
                 &mut required_lods,
@@ -40,10 +45,10 @@ impl<'a> Renderer<'a> {
         // 2. Receive completed LOD meshes.
         //    Only upload if the chunk is still needed — stale meshes are dropped.
         let mut upload_count = 0;
-        while let Ok((key, v, i)) = self.lod_rx.try_recv() {
+        while let Ok((key, mesh)) = self.lod_rx.try_recv() {
             self.pending_lods.remove(&key);
             if required_lods.contains(&key) {
-                self.upload_lod_buffer(key, v, i);
+                self.upload_lod_buffer(key, mesh);
                 upload_count += 1;
                 if upload_count >= UPLOAD_LOD_PER_FRAME {
                     break;
@@ -54,7 +59,7 @@ impl<'a> Renderer<'a> {
 
         // 3. Evict LODs that are no longer required.
         //    Keep any LOD that covers a voxel chunk still in flight (children_missing guard).
-        let missing_voxels: Vec<ChunkKey> = required_voxels
+        let missing_voxels: Vec<SurfaceChunkKey> = required_voxels
             .iter()
             .filter(|k| !self.chunks.contains_key(k))
             .cloned()
@@ -104,8 +109,7 @@ impl<'a> Renderer<'a> {
         // nearest first (smallest distance_sq at front)
         to_spawn.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        let mut spawn_count = 0;
-        for (key, _) in to_spawn {
+        for (spawn_count, (key, _)) in to_spawn.into_iter().enumerate() {
             if spawn_count >= DISPATCH_LOD_PER_FRAME || self.pending_lods.len() >= MAX_PENDING_LODS
             {
                 break;
@@ -114,14 +118,13 @@ impl<'a> Renderer<'a> {
             let tx = self.lod_tx.clone();
             let p = planet.clone();
             rayon::spawn(move || {
-                let (v, i) = MeshGen::generate_lod_mesh(key, &p);
-                let _ = tx.send((key, v, i));
+                let mesh = MeshGen::generate_lod_mesh(key, &p);
+                let _ = tx.send((key, mesh));
             });
-            spawn_count += 1;
         }
 
         // 5. Evict voxel chunks no longer required and rebuild load queue.
-        let current_voxels: Vec<ChunkKey> = self.chunks.keys().cloned().collect();
+        let current_voxels: Vec<SurfaceChunkKey> = self.chunks.keys().cloned().collect();
         for k in current_voxels {
             if !required_voxels.contains(&k) {
                 if let Some(mesh) = self.chunks.remove(&k) {
@@ -142,7 +145,7 @@ impl<'a> Renderer<'a> {
 
         // Sort farthest-first in the Vec so pop() returns the nearest chunk.
         self.load_queue.sort_by(|a, b| {
-            let center = |k: &ChunkKey| -> Vec3 {
+            let center = |k: &SurfaceChunkKey| -> Vec3 {
                 let u = k.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
                 let v = k.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
                 let h = planet.profile.surface_layer;
@@ -160,7 +163,7 @@ impl<'a> Renderer<'a> {
         &self,
         node: QuadNode,
         context: &QuadContext<'_>,
-        voxels: &mut HashSet<ChunkKey>,
+        voxels: &mut HashSet<SurfaceChunkKey>,
         lods: &mut HashSet<LodKey>,
     ) {
         let QuadNode { face, x, y, size } = node;
@@ -252,7 +255,7 @@ impl<'a> Renderer<'a> {
                 lods,
             );
         } else if size <= CHUNK_SIZE {
-            let key = ChunkKey {
+            let key = SurfaceChunkKey {
                 face,
                 u_idx: x / CHUNK_SIZE,
                 v_idx: y / CHUNK_SIZE,

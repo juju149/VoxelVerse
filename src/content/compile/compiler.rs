@@ -1,6 +1,6 @@
 use crate::content::biome_registry::{BiomeRegistry, CompiledBiome};
-use crate::content::block_registry::{BlockRegistry, CompiledBlock};
-use crate::content::schema::{RawBiomeDef, RawBlockDef};
+use crate::content::block_registry::{BlockRegistry, CompiledBlock, CompiledBlockVisual};
+use crate::content::schema::{BlockRole, RawBiomeDef, RawBlockDef};
 use crate::voxel::VoxelId;
 use std::collections::HashMap;
 
@@ -44,9 +44,9 @@ impl ContentCompiler {
         for (idx, (key, def)) in raw.into_iter().enumerate() {
             let id = VoxelId::new(idx as u16);
 
-            // The first solid non-air block named "dirt" (or fallback: first solid block) is the
-            // default placement block. Simple heuristic until tool/hotbar system exists.
-            if key.ends_with(":dirt") {
+            // A block that declares `role = "default_place"` is used as the
+            // initial placement block.  No name heuristics needed.
+            if def.role == Some(BlockRole::DefaultPlace) {
                 default_place = id;
             }
 
@@ -58,10 +58,17 @@ impl ContentCompiler {
                 solid: def.solid,
                 color: def.color,
                 hardness: def.hardness,
+                // Visual defaults: flat color from the block's `color` field.
+                // Texture atlas index will be assigned once the atlas pipeline is ready.
+                visual: CompiledBlockVisual {
+                    atlas_index: 0,
+                    tint: [1.0, 1.0, 1.0],
+                    flat_color: def.color,
+                },
             });
         }
 
-        // Fallback: if no dirt found, use first solid block.
+        // Fallback: if no block declared `role = "default_place"`, use first solid block.
         if default_place == VoxelId::AIR {
             if let Some(solid) = blocks.iter().find(|b| b.solid) {
                 default_place = solid.id;
@@ -138,4 +145,3 @@ impl ContentCompiler {
         Ok(BiomeRegistry::new(biomes))
     }
 }
-

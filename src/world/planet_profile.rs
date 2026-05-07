@@ -31,8 +31,7 @@ impl PlanetProfile {
         // Scale max_terrain_offset with planet size so large planets have
         // proper mountain relief.  0.008 × res gives ~160 for a 20k-radius
         // planet (≈80 blocks for mountains, ≈10 for plains) — Minecraft-scale.
-        let max_terrain_offset =
-            ((resolution as f32 * 0.005).round() as i32).clamp(6, 800);
+        let max_terrain_offset = ((resolution as f32 * 0.005).round() as i32).clamp(6, 800);
 
         Self {
             resolution,
@@ -131,7 +130,10 @@ mod tests {
             // radius = res/2 must be in [5_000, 1_000_000]
             let radius = res / 2;
             assert!(radius >= 5_000, "seed {seed}: radius {radius} < 5000");
-            assert!(radius <= 1_000_000, "seed {seed}: radius {radius} > 1_000_000");
+            assert!(
+                radius <= 1_000_000,
+                "seed {seed}: radius {radius} > 1_000_000"
+            );
         }
     }
 }

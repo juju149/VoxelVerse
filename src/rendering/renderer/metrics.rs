@@ -21,6 +21,15 @@ impl<'a> Renderer<'a> {
             pending_lods: self.pending_lods.len(),
             gpu_vertices,
             gpu_indices,
+            // job/timing fields are zero-filled here; the caller may override them
+            mesh_jobs_in_flight: self.pending_chunks.len(),
+            lod_jobs_in_flight: self.pending_lods.len(),
+            uploads_this_frame: 0,
+            update_view_ms: 0.0,
+            meshing_avg_ms: 0.0,
+            meshing_max_ms: 0.0,
+            render_world_ms: 0.0,
+            render_ui_ms: 0.0,
         }
     }
 }

@@ -2,6 +2,7 @@ use crate::content::schema::{RawBiomeDef, RawBlockDef};
 use std::path::Path;
 
 /// A loaded but uncompiled pack — raw definitions with their derived keys.
+#[allow(dead_code)]
 pub struct LoadedPack {
     pub namespace: String,
     pub blocks: Vec<(String, RawBlockDef)>,
@@ -24,7 +25,11 @@ impl PackLoader {
         let blocks = Self::load_typed_dir::<RawBlockDef>(&pack_dir.join("blocks"), &namespace)?;
         let biomes = Self::load_typed_dir::<RawBiomeDef>(&pack_dir.join("biomes"), &namespace)?;
 
-        Ok(LoadedPack { namespace, blocks, biomes })
+        Ok(LoadedPack {
+            namespace,
+            blocks,
+            biomes,
+        })
     }
 
     /// Generic helper: load all `.ron` files in a directory as type `T`.
@@ -69,4 +74,3 @@ impl PackLoader {
         Ok(result)
     }
 }
-

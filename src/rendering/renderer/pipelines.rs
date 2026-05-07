@@ -102,4 +102,3 @@ impl<'a> Renderer<'a> {
         .create_view(&wgpu::TextureViewDescriptor::default())
     }
 }
-

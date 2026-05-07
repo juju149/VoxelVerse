@@ -1,16 +1,12 @@
-use super::MeshGen;
+use super::{CpuMesh, CpuVertex, MeshGen};
 use crate::content::TerrainPalette;
 use crate::generation::CoordSystem;
-use crate::rendering::Vertex;
 use crate::voxel::VoxelCoord;
 use crate::world::PlanetData;
 use glam::Vec3;
 
 impl MeshGen {
-    pub fn generate_collision_debug(
-        player_pos: Vec3,
-        planet: &PlanetData,
-    ) -> (Vec<Vertex>, Vec<u32>) {
+    pub fn generate_collision_debug(player_pos: Vec3, planet: &PlanetData) -> CpuMesh {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
         let res = planet.resolution;
@@ -70,7 +66,7 @@ impl MeshGen {
                                 (c000 + c100 + c010 + c110 + c001 + c101 + c011 + c111) * 0.125;
                             let shrink = 0.90; // Exaggerate the shrink slightly so we can see it inside the block
 
-                            let v = |p: Vec3| Vertex {
+                            let v = |p: Vec3| CpuVertex {
                                 pos: (center + (p - center) * shrink).to_array(),
                                 uv: [0.0, 0.0],
                                 color,
@@ -121,6 +117,6 @@ impl MeshGen {
                 }
             }
         }
-        (verts, inds)
+        CpuMesh::new(verts, inds)
     }
 }

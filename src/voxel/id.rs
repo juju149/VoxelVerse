@@ -20,4 +20,3 @@ impl VoxelId {
         self.0 == Self::UNSET.0
     }
 }
-

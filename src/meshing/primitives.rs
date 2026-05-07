@@ -1,10 +1,9 @@
-use super::MeshGen;
+use super::{CpuMesh, CpuVertex, MeshGen};
 use crate::content::TerrainPalette;
-use crate::rendering::Vertex;
 use glam::Vec3;
 
 impl MeshGen {
-    pub fn generate_cylinder(radius: f32, height: f32, segments: u32) -> (Vec<Vertex>, Vec<u32>) {
+    pub fn generate_cylinder(radius: f32, height: f32, segments: u32) -> CpuMesh {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
         let color = TerrainPalette::PLAYER;
@@ -15,7 +14,7 @@ impl MeshGen {
             let z = theta.sin() * radius;
             let normal = Vec3::new(x, 0.0, z).normalize().to_array();
 
-            verts.push(Vertex {
+            verts.push(CpuVertex {
                 pos: [x, 0.0, z],
                 uv: [0.0, 0.0],
                 color,
@@ -23,7 +22,7 @@ impl MeshGen {
                 tex_index: 0,
             });
 
-            verts.push(Vertex {
+            verts.push(CpuVertex {
                 pos: [x, height, z],
                 uv: [0.0, 0.0],
                 color,
@@ -47,7 +46,7 @@ impl MeshGen {
         }
 
         let center_idx = verts.len() as u32;
-        verts.push(Vertex {
+        verts.push(CpuVertex {
             pos: [0.0, height, 0.0],
             uv: [0.0, 0.0],
             color,
@@ -58,7 +57,7 @@ impl MeshGen {
             let theta = (i as f32 / segments as f32) * std::f32::consts::TAU;
             let x = theta.cos() * radius;
             let z = theta.sin() * radius;
-            verts.push(Vertex {
+            verts.push(CpuVertex {
                 pos: [x, height, z],
                 uv: [0.0, 0.0],
                 color,
@@ -72,22 +71,46 @@ impl MeshGen {
             inds.push(center_idx + 1 + i + 1);
         }
 
-        (verts, inds)
+        CpuMesh::new(verts, inds)
     }
 
-    // generates a simple 2D crosshair for the center of the screen
-    pub fn generate_crosshair() -> (Vec<Vertex>, Vec<u32>) {
+    /// Generates a simple 2D crosshair for the center of the screen.
+    pub fn generate_crosshair() -> CpuMesh {
         let s = 0.02; // size relative to screen (2%)
         let color = TerrainPalette::UI_WHITE;
         let normal = [0.0, 0.0, 1.0];
 
         let verts = vec![
-            Vertex { pos: [-s, 0.0, 0.0], uv: [0.0, 0.0], color, normal, tex_index: 0 },
-            Vertex { pos: [ s, 0.0, 0.0], uv: [0.0, 0.0], color, normal, tex_index: 0 },
-            Vertex { pos: [0.0, -s, 0.0], uv: [0.0, 0.0], color, normal, tex_index: 0 },
-            Vertex { pos: [0.0,  s, 0.0], uv: [0.0, 0.0], color, normal, tex_index: 0 },
+            CpuVertex {
+                pos: [-s, 0.0, 0.0],
+                uv: [0.0, 0.0],
+                color,
+                normal,
+                tex_index: 0,
+            },
+            CpuVertex {
+                pos: [s, 0.0, 0.0],
+                uv: [0.0, 0.0],
+                color,
+                normal,
+                tex_index: 0,
+            },
+            CpuVertex {
+                pos: [0.0, -s, 0.0],
+                uv: [0.0, 0.0],
+                color,
+                normal,
+                tex_index: 0,
+            },
+            CpuVertex {
+                pos: [0.0, s, 0.0],
+                uv: [0.0, 0.0],
+                color,
+                normal,
+                tex_index: 0,
+            },
         ];
         let inds = vec![0, 1, 2, 3];
-        (verts, inds)
+        CpuMesh::new(verts, inds)
     }
 }

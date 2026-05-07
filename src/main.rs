@@ -7,9 +7,11 @@ mod math;
 mod meshing;
 mod physics;
 mod rendering;
+mod streaming;
 mod voxel;
 mod world;
 
+use crate::content::{compile::ContentCompiler, pack::PackLoader};
 use crate::diagnostics::{Console, SystemDiagnostics};
 use crate::gameplay::{
     BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, PlanetResize,
@@ -18,7 +20,6 @@ use crate::gameplay::{
 use crate::input::Controller;
 use crate::rendering::Renderer;
 use crate::world::PlanetData;
-use crate::content::{pack::PackLoader, compile::ContentCompiler};
 use std::sync::Arc;
 use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent}; // Added DeviceEvent
@@ -31,11 +32,12 @@ fn main() {
 
     // --- Load and compile content ---
     let (registry, biome_registry) = {
-        let pack = PackLoader::load_from_dir(std::path::Path::new("packs/core"))
-            .expect("Failed to load packs/core — make sure the directory exists next to the executable.");
+        let pack = PackLoader::load_from_dir(std::path::Path::new("packs/core")).expect(
+            "Failed to load packs/core — make sure the directory exists next to the executable.",
+        );
 
-        let compiled_blocks = ContentCompiler::compile_blocks(pack.blocks)
-            .unwrap_or_else(|errors| {
+        let compiled_blocks =
+            ContentCompiler::compile_blocks(pack.blocks).unwrap_or_else(|errors| {
                 for e in &errors {
                     eprintln!("[content error] {}", e);
                 }
@@ -66,7 +68,8 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
-    let _ = window.set_cursor_grab(CursorGrabMode::Locked)
+    let _ = window
+        .set_cursor_grab(CursorGrabMode::Locked)
         .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
     window.set_cursor_visible(false);
 
@@ -158,14 +161,21 @@ fn main() {
 
                         // Re-grab the cursor every time the window gains focus so
                         // alt-tab / task-switch releases are properly re-locked.
-                        WindowEvent::Focused(true) => {
-                            if controller.first_person && !console.is_open {
-                                if renderer.window.set_cursor_grab(CursorGrabMode::Locked).is_err() {
-                                    let _ = renderer.window.set_cursor_grab(CursorGrabMode::Confined);
-                                }
-                                renderer.window.set_cursor_visible(false);
+                        WindowEvent::Focused(true)
+                            if controller.first_person && !console.is_open =>
+                        {
+                            if renderer
+                                .window
+                                .set_cursor_grab(CursorGrabMode::Locked)
+                                .is_err()
+                            {
+                                let _ =
+                                    renderer.window.set_cursor_grab(CursorGrabMode::Confined);
                             }
+                            renderer.window.set_cursor_visible(false);
                         }
+
+                        WindowEvent::Focused(true) => {} // focus gained but no-op
 
                         WindowEvent::Focused(false) => {
                             // Release the cursor when focus is lost so the OS can use it.
@@ -253,7 +263,11 @@ fn main() {
                     if controller.first_person != current_mode_first_person {
                         current_mode_first_person = controller.first_person;
                         if current_mode_first_person && !console.is_open {
-                            if renderer.window.set_cursor_grab(CursorGrabMode::Locked).is_err() {
+                            if renderer
+                                .window
+                                .set_cursor_grab(CursorGrabMode::Locked)
+                                .is_err()
+                            {
                                 let _ = renderer.window.set_cursor_grab(CursorGrabMode::Confined);
                             }
                             renderer.window.set_cursor_visible(false);

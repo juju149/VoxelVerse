@@ -9,6 +9,7 @@ pub enum NoiseType {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub struct NoiseSettings {
     pub noise_type: NoiseType,
     pub frequency: f32,
@@ -79,7 +80,11 @@ impl NoiseGenerator {
     /// Perlin samples before reading the main noise.  Produces swirled,
     /// organic shapes suited to mountain-chain outlines.
     pub(crate) fn domain_warp(&self, pos: Vec3, settings: &NoiseSettings, warp_scale: f32) -> f32 {
-        let warp_s = NoiseSettings { amplitude: 1.0, octaves: 2, ..*settings };
+        let warp_s = NoiseSettings {
+            amplitude: 1.0,
+            octaves: 2,
+            ..*settings
+        };
         let wx = self.compute(pos + Vec3::new(1.7, 9.2, 5.3), &warp_s) * 2.0 - 1.0;
         let wy = self.compute(pos + Vec3::new(8.3, 2.8, 1.1), &warp_s) * 2.0 - 1.0;
         let wz = self.compute(pos + Vec3::new(3.1, 6.7, 4.4), &warp_s) * 2.0 - 1.0;

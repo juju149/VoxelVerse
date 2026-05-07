@@ -15,10 +15,34 @@ impl<'a> Renderer<'a> {
         let normal = [0.0, 0.0, 1.0];
 
         let verts = vec![
-            Vertex { pos: [-1.0, 1.0, 0.0],       uv: [0.0, 0.0], color, normal, tex_index: 0 },
-            Vertex { pos: [ 1.0, 1.0, 0.0],       uv: [0.0, 0.0], color, normal, tex_index: 0 },
-            Vertex { pos: [-1.0, bottom_y, 0.0],  uv: [0.0, 0.0], color, normal, tex_index: 0 },
-            Vertex { pos: [ 1.0, bottom_y, 0.0],  uv: [0.0, 0.0], color, normal, tex_index: 0 },
+            Vertex {
+                pos: [-1.0, 1.0, 0.0],
+                uv: [0.0, 0.0],
+                color,
+                normal,
+                tex_index: 0,
+            },
+            Vertex {
+                pos: [1.0, 1.0, 0.0],
+                uv: [0.0, 0.0],
+                color,
+                normal,
+                tex_index: 0,
+            },
+            Vertex {
+                pos: [-1.0, bottom_y, 0.0],
+                uv: [0.0, 0.0],
+                color,
+                normal,
+                tex_index: 0,
+            },
+            Vertex {
+                pos: [1.0, bottom_y, 0.0],
+                uv: [0.0, 0.0],
+                color,
+                normal,
+                tex_index: 0,
+            },
         ];
 
         let inds = vec![0, 2, 1, 1, 2, 3];

@@ -3,4 +3,5 @@ RawBlockDef(
     solid: true,
     color: (0.55, 0.38, 0.18),
     hardness: 1.5,
+    role: Some(default_place),
 )
