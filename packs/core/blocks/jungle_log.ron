@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Jungle Log",
+    solid: true,
+    color: (0.33, 0.27, 0.10),
+    hardness: 1.5,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/jungle_log/jungle_log_top_albedo",
+            normal: "core:blocks/jungle_log/jungle_log_top_normal",
+            roughness: "core:blocks/jungle_log/jungle_log_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/jungle_log/jungle_log_top_albedo",
+            normal: "core:blocks/jungle_log/jungle_log_top_normal",
+            roughness: "core:blocks/jungle_log/jungle_log_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/jungle_log/jungle_log_side_albedo",
+            normal: "core:blocks/jungle_log/jungle_log_side_normal",
+            roughness: "core:blocks/jungle_log/jungle_log_side_roughness",        )),
+    )),
+)
+
+

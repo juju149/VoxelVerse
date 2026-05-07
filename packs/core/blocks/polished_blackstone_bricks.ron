@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Polished Blackstone Bricks",
+    solid: true,
+    color: (0.16, 0.14, 0.17),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/polished_blackstone_bricks/polished_blackstone_bricks_all_albedo",
+            normal: "core:blocks/polished_blackstone_bricks/polished_blackstone_bricks_all_normal",
+            roughness: "core:blocks/polished_blackstone_bricks/polished_blackstone_bricks_all_roughness",        )),
+    )),
+)
+
+

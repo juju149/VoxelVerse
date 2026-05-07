@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Purpur Pillar",
+    solid: true,
+    color: (0.65, 0.48, 0.65),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/purpur_pillar/purpur_pillar_top_albedo",
+            normal: "core:blocks/purpur_pillar/purpur_pillar_top_normal",
+            roughness: "core:blocks/purpur_pillar/purpur_pillar_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/purpur_pillar/purpur_pillar_top_albedo",
+            normal: "core:blocks/purpur_pillar/purpur_pillar_top_normal",
+            roughness: "core:blocks/purpur_pillar/purpur_pillar_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/purpur_pillar/purpur_pillar_side_albedo",
+            normal: "core:blocks/purpur_pillar/purpur_pillar_side_normal",
+            roughness: "core:blocks/purpur_pillar/purpur_pillar_side_roughness",        )),
+    )),
+)
+
+

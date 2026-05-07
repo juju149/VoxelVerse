@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Black Concrete",
+    solid: true,
+    color: (0.03, 0.04, 0.06),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/black_concrete/black_concrete_all_albedo",
+            normal: "core:blocks/black_concrete/black_concrete_all_normal",
+            roughness: "core:blocks/black_concrete/black_concrete_all_roughness",        )),
+    )),
+)
+
+

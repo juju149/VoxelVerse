@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Warped Fungus",
+    solid: true,
+    color: (0.28, 0.53, 0.36),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/warped_fungus/warped_fungus_all_albedo",
+            normal: "core:blocks/warped_fungus/warped_fungus_all_normal",
+            roughness: "core:blocks/warped_fungus/warped_fungus_all_roughness",        )),
+    )),
+)
+
+

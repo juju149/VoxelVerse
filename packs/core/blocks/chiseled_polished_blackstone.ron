@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Chiseled Polished Blackstone",
+    solid: true,
+    color: (0.15, 0.13, 0.16),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/chiseled_polished_blackstone/chiseled_polished_blackstone_all_albedo",
+            normal: "core:blocks/chiseled_polished_blackstone/chiseled_polished_blackstone_all_normal",
+            roughness: "core:blocks/chiseled_polished_blackstone/chiseled_polished_blackstone_all_roughness",        )),
+    )),
+)
+
+

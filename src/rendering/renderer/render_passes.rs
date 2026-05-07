@@ -140,12 +140,16 @@ impl<'a> Renderer<'a> {
         );
 
         let now = std::time::Instant::now();
+        let edge_rounding_radius = |key: AnyKey| match key {
+            AnyKey::Voxel(_) => planet.profile.edge_rounding_radius_voxels,
+            AnyKey::Lod(_) => 0.0,
+        };
         let dying_status = self.animator.update_dying(now);
         for (key, alpha) in dying_status {
             if let Some(state) = self.animator.dying_chunks.get(&key) {
                 let data = LocalUniform {
                     model: glam::Mat4::IDENTITY.to_cols_array(),
-                    params: [alpha, 1.0, 0.0, 0.0],
+                    params: [alpha, edge_rounding_radius(key), 0.0, 0.0],
                 };
                 self.queue
                     .write_buffer(&state.mesh.uniform_buf, 0, bytemuck::cast_slice(&[data]));
@@ -160,13 +164,13 @@ impl<'a> Renderer<'a> {
             if alpha < 1.0 {
                 let data = LocalUniform {
                     model: glam::Mat4::IDENTITY.to_cols_array(),
-                    params: [alpha, 0.0, 0.0, 0.0],
+                    params: [alpha, edge_rounding_radius(key), 0.0, 0.0],
                 };
                 queue.write_buffer(&mesh.uniform_buf, 0, bytemuck::cast_slice(&[data]));
             } else if animator.spawning_chunks.contains_key(&key) {
                 let data = LocalUniform {
                     model: glam::Mat4::IDENTITY.to_cols_array(),
-                    params: [1.0, 0.0, 0.0, 0.0],
+                    params: [1.0, edge_rounding_radius(key), 0.0, 0.0],
                 };
                 queue.write_buffer(&mesh.uniform_buf, 0, bytemuck::cast_slice(&[data]));
                 animator.spawning_chunks.remove(&key);

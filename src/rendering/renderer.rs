@@ -30,7 +30,7 @@ pub struct GlobalUniform {
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct LocalUniform {
     pub model: [f32; 16],
-    pub params: [f32; 4], // x = opacity
+    pub params: [f32; 4], // x = opacity, y = rounded edge radius in voxel UV
 }
 
 // --- RENDERER STRUCT ---

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Resin Clump",
+    solid: true,
+    color: (0.85, 0.36, 0.07),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/resin_clump/resin_clump_all_albedo",
+            normal: "core:blocks/resin_clump/resin_clump_all_normal",
+            roughness: "core:blocks/resin_clump/resin_clump_all_roughness",        )),
+    )),
+)
+
+

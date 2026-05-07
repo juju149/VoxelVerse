@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Azalea Leaves",
+    solid: true,
+    color: (0.44, 0.57, 0.18),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/azalea_leaves/azalea_leaves_all_albedo",
+            normal: "core:blocks/azalea_leaves/azalea_leaves_all_normal",
+            roughness: "core:blocks/azalea_leaves/azalea_leaves_all_roughness",        )),
+    )),
+)
+
+

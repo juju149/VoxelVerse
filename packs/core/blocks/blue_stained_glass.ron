@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Blue Stained Glass",
+    solid: true,
+    color: (0.11, 0.24, 0.71),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/blue_stained_glass/blue_stained_glass_all_albedo",
+            normal: "core:blocks/blue_stained_glass/blue_stained_glass_all_normal",
+            roughness: "core:blocks/blue_stained_glass/blue_stained_glass_all_roughness",        )),
+    )),
+)
+
+

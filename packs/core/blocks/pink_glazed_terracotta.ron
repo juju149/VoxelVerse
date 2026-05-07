@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Pink Glazed Terracotta",
+    solid: true,
+    color: (0.92, 0.60, 0.70),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/pink_glazed_terracotta/pink_glazed_terracotta_all_albedo",
+            normal: "core:blocks/pink_glazed_terracotta/pink_glazed_terracotta_all_normal",
+            roughness: "core:blocks/pink_glazed_terracotta/pink_glazed_terracotta_all_roughness",        )),
+    )),
+)
+
+

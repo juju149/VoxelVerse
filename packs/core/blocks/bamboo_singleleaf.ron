@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Bamboo Singleleaf",
+    solid: true,
+    color: (0.31, 0.53, 0.05),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/bamboo_singleleaf/bamboo_singleleaf_all_albedo",
+            normal: "core:blocks/bamboo_singleleaf/bamboo_singleleaf_all_normal",
+            roughness: "core:blocks/bamboo_singleleaf/bamboo_singleleaf_all_roughness",        )),
+    )),
+)
+
+

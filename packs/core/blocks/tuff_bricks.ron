@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Tuff Bricks",
+    solid: true,
+    color: (0.36, 0.39, 0.39),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/tuff_bricks/tuff_bricks_all_albedo",
+            normal: "core:blocks/tuff_bricks/tuff_bricks_all_normal",
+            roughness: "core:blocks/tuff_bricks/tuff_bricks_all_roughness",        )),
+    )),
+)
+
+

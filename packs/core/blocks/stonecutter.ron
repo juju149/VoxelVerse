@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Stonecutter",
+    solid: true,
+    color: (0.44, 0.38, 0.32),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/stonecutter/stonecutter_top_albedo",
+            normal: "core:blocks/stonecutter/stonecutter_top_normal",
+            roughness: "core:blocks/stonecutter/stonecutter_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/stonecutter/stonecutter_bottom_albedo",
+            normal: "core:blocks/stonecutter/stonecutter_bottom_normal",
+            roughness: "core:blocks/stonecutter/stonecutter_bottom_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/stonecutter/stonecutter_side_albedo",
+            normal: "core:blocks/stonecutter/stonecutter_side_normal",
+            roughness: "core:blocks/stonecutter/stonecutter_side_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Dead Horn Coral Block",
+    solid: true,
+    color: (0.59, 0.56, 0.54),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/dead_horn_coral_block/dead_horn_coral_block_all_albedo",
+            normal: "core:blocks/dead_horn_coral_block/dead_horn_coral_block_all_normal",
+            roughness: "core:blocks/dead_horn_coral_block/dead_horn_coral_block_all_roughness",        )),
+    )),
+)
+
+

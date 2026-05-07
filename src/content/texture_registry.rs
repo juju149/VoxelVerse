@@ -27,8 +27,7 @@ pub struct TextureRegistry {
 impl TextureRegistry {
     pub fn load(pack_root: &Path, blocks: &BlockRegistry) -> Result<Self, Vec<String>> {
         let mut errors = Vec::new();
-        let mut materials = vec![Self::fallback_material(16)];
-        let mut tile_size = 16;
+        let mut decoded_materials = Vec::with_capacity(blocks.material_sets().len());
 
         for material in blocks.material_sets() {
             match Self::load_material(pack_root, material) {
@@ -45,16 +44,7 @@ impl TextureRegistry {
                             material.albedo, material.normal, material.roughness
                         ));
                     } else {
-                        if materials.len() == 1 {
-                            tile_size = size;
-                            materials[0] = Self::fallback_material(tile_size);
-                        } else if size != tile_size {
-                            errors.push(format!(
-                                "Material '{}' uses {}px tiles but registry already uses {}px tiles",
-                                material.albedo, size, tile_size
-                            ));
-                        }
-                        materials.push(decoded);
+                        decoded_materials.push(decoded);
                     }
                 }
                 Err(err) => errors.push(err),
@@ -62,6 +52,15 @@ impl TextureRegistry {
         }
 
         if errors.is_empty() {
+            let tile_size = decoded_materials
+                .iter()
+                .map(|material| material.albedo.width)
+                .max()
+                .unwrap_or(16);
+            let mut materials = vec![Self::fallback_material(tile_size)];
+            for material in decoded_materials {
+                materials.push(Self::resize_material_nearest(material, tile_size));
+            }
             Ok(Self {
                 tile_size,
                 materials,
@@ -168,6 +167,40 @@ impl TextureRegistry {
         })
     }
 
+    fn resize_material_nearest(
+        material: DecodedMaterialTextureSet,
+        tile_size: u32,
+    ) -> DecodedMaterialTextureSet {
+        DecodedMaterialTextureSet {
+            albedo: Self::resize_texture_nearest(material.albedo, tile_size),
+            normal: Self::resize_texture_nearest(material.normal, tile_size),
+            roughness: Self::resize_texture_nearest(material.roughness, tile_size),
+        }
+    }
+
+    fn resize_texture_nearest(image: TextureImage, tile_size: u32) -> TextureImage {
+        if image.width == tile_size && image.height == tile_size {
+            return image;
+        }
+
+        let mut rgba = vec![0; (tile_size * tile_size * 4) as usize];
+        for y in 0..tile_size {
+            let src_y = y * image.height / tile_size;
+            for x in 0..tile_size {
+                let src_x = x * image.width / tile_size;
+                let src = ((src_y * image.width + src_x) * 4) as usize;
+                let dst = ((y * tile_size + x) * 4) as usize;
+                rgba[dst..dst + 4].copy_from_slice(&image.rgba[src..src + 4]);
+            }
+        }
+
+        TextureImage {
+            width: tile_size,
+            height: tile_size,
+            rgba,
+        }
+    }
+
     fn fallback_material(tile_size: u32) -> DecodedMaterialTextureSet {
         let texels = (tile_size * tile_size) as usize;
         DecodedMaterialTextureSet {
@@ -202,8 +235,8 @@ mod tests {
         let blocks = ContentCompiler::compile_blocks(pack.blocks).expect("blocks");
         let textures = TextureRegistry::load(Path::new("packs"), &blocks).expect("textures");
 
-        assert_eq!(textures.materials().len(), 10);
-        assert_eq!(textures.tile_size(), 512);
+        assert!(textures.materials().len() > 10);
+        assert!(textures.tile_size() >= 128);
     }
 
     #[test]

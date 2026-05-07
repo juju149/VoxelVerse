@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Dead Bubble Coral",
+    solid: true,
+    color: (0.47, 0.44, 0.43),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/dead_bubble_coral/dead_bubble_coral_all_albedo",
+            normal: "core:blocks/dead_bubble_coral/dead_bubble_coral_all_normal",
+            roughness: "core:blocks/dead_bubble_coral/dead_bubble_coral_all_roughness",        )),
+    )),
+)
+
+

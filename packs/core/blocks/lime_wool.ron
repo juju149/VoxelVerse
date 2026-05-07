@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Lime Wool",
+    solid: true,
+    color: (0.42, 0.72, 0.09),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/lime_wool/lime_wool_all_albedo",
+            normal: "core:blocks/lime_wool/lime_wool_all_normal",
+            roughness: "core:blocks/lime_wool/lime_wool_all_roughness",        )),
+    )),
+)
+
+

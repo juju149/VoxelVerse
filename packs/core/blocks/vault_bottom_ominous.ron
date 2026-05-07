@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Vault Bottom Ominous",
+    solid: true,
+    color: (0.16, 0.16, 0.21),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/vault_bottom_ominous/vault_bottom_ominous_all_albedo",
+            normal: "core:blocks/vault_bottom_ominous/vault_bottom_ominous_all_normal",
+            roughness: "core:blocks/vault_bottom_ominous/vault_bottom_ominous_all_roughness",        )),
+    )),
+)
+
+

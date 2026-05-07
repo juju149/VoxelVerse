@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Frosted Ice 1",
+    solid: true,
+    color: (0.47, 0.72, 1.00),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/frosted_ice_1/frosted_ice_1_all_albedo",
+            normal: "core:blocks/frosted_ice_1/frosted_ice_1_all_normal",
+            roughness: "core:blocks/frosted_ice_1/frosted_ice_1_all_roughness",        )),
+    )),
+)
+
+

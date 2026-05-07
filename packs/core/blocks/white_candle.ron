@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "White Candle",
+    solid: true,
+    color: (0.84, 0.86, 0.86),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/white_candle/white_candle_all_albedo",
+            normal: "core:blocks/white_candle/white_candle_all_normal",
+            roughness: "core:blocks/white_candle/white_candle_all_roughness",        )),
+    )),
+)
+
+

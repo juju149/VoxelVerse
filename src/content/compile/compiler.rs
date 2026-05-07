@@ -290,6 +290,14 @@ impl ContentCompiler {
                     key
                 ));
             }
+            if !def.edge_rounding_radius_voxels.is_finite()
+                || !(0.0..=0.45).contains(&def.edge_rounding_radius_voxels)
+            {
+                errors.push(format!(
+                    "Planet '{}': edge_rounding_radius_voxels must be in 0.0..=0.45",
+                    key
+                ));
+            }
             if !(0.02..0.95).contains(&def.inner_radius_fraction) {
                 errors.push(format!(
                     "Planet '{}': inner_radius_fraction {} must be in 0.02..0.95",
@@ -313,6 +321,7 @@ impl ContentCompiler {
                 resolution,
                 surface_layer,
                 voxel_size_meters: def.voxel_size_meters,
+                edge_rounding_radius_voxels: def.edge_rounding_radius_voxels,
                 core_layers: def.core_layers,
                 inner_radius_fraction: def.inner_radius_fraction,
                 max_terrain_offset: def.max_terrain_offset,

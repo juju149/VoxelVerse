@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Nether Sprouts",
+    solid: true,
+    color: (0.08, 0.63, 0.52),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/nether_sprouts/nether_sprouts_all_albedo",
+            normal: "core:blocks/nether_sprouts/nether_sprouts_all_normal",
+            roughness: "core:blocks/nether_sprouts/nether_sprouts_all_roughness",        )),
+    )),
+)
+
+

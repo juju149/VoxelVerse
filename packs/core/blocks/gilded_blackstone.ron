@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Gilded Blackstone",
+    solid: true,
+    color: (0.28, 0.23, 0.17),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/gilded_blackstone/gilded_blackstone_all_albedo",
+            normal: "core:blocks/gilded_blackstone/gilded_blackstone_all_normal",
+            roughness: "core:blocks/gilded_blackstone/gilded_blackstone_all_roughness",        )),
+    )),
+)
+
+

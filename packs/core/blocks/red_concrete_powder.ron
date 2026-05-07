@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Red Concrete Powder",
+    solid: true,
+    color: (0.70, 0.23, 0.21),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/red_concrete_powder/red_concrete_powder_all_albedo",
+            normal: "core:blocks/red_concrete_powder/red_concrete_powder_all_normal",
+            roughness: "core:blocks/red_concrete_powder/red_concrete_powder_all_roughness",        )),
+    )),
+)
+
+

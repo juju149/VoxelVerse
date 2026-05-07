@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Fern",
+    solid: true,
+    color: (0.60, 0.60, 0.60),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/fern/fern_all_albedo",
+            normal: "core:blocks/fern/fern_all_normal",
+            roughness: "core:blocks/fern/fern_all_roughness",        )),
+    )),
+)
+
+

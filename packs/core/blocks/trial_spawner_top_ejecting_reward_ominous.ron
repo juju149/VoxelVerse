@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Trial Spawner Top Ejecting Reward Ominous",
+    solid: true,
+    color: (0.10, 0.19, 0.24),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/trial_spawner_top_ejecting_reward_ominous/trial_spawner_top_ejecting_reward_ominous_all_albedo",
+            normal: "core:blocks/trial_spawner_top_ejecting_reward_ominous/trial_spawner_top_ejecting_reward_ominous_all_normal",
+            roughness: "core:blocks/trial_spawner_top_ejecting_reward_ominous/trial_spawner_top_ejecting_reward_ominous_all_roughness",        )),
+    )),
+)
+
+

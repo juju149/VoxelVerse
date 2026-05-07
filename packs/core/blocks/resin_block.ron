@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Resin Block",
+    solid: true,
+    color: (0.82, 0.33, 0.08),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/resin_block/resin_block_all_albedo",
+            normal: "core:blocks/resin_block/resin_block_all_normal",
+            roughness: "core:blocks/resin_block/resin_block_all_roughness",        )),
+    )),
+)
+
+

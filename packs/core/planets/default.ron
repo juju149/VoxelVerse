@@ -4,6 +4,7 @@ RawPlanetDef(
     resolution: 10000,
     surface_layer: Some(5000),
     voxel_size_meters: 0.5,
+    edge_rounding_radius_voxels: 0.18,
     core_layers: 6,
     inner_radius_fraction: 0.18,
     max_terrain_offset: 50,

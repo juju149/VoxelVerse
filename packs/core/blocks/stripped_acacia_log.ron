@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Stripped Acacia Log",
+    solid: true,
+    color: (0.71, 0.38, 0.21),
+    hardness: 1.5,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/stripped_acacia_log/stripped_acacia_log_top_albedo",
+            normal: "core:blocks/stripped_acacia_log/stripped_acacia_log_top_normal",
+            roughness: "core:blocks/stripped_acacia_log/stripped_acacia_log_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/stripped_acacia_log/stripped_acacia_log_top_albedo",
+            normal: "core:blocks/stripped_acacia_log/stripped_acacia_log_top_normal",
+            roughness: "core:blocks/stripped_acacia_log/stripped_acacia_log_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/stripped_acacia_log/stripped_acacia_log_side_albedo",
+            normal: "core:blocks/stripped_acacia_log/stripped_acacia_log_side_normal",
+            roughness: "core:blocks/stripped_acacia_log/stripped_acacia_log_side_roughness",        )),
+    )),
+)
+
+

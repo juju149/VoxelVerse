@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Piston Inner",
+    solid: true,
+    color: (0.37, 0.37, 0.37),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/piston_inner/piston_inner_all_albedo",
+            normal: "core:blocks/piston_inner/piston_inner_all_normal",
+            roughness: "core:blocks/piston_inner/piston_inner_all_roughness",        )),
+    )),
+)
+
+

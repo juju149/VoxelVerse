@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Lightning Rod",
+    solid: true,
+    color: (0.75, 0.41, 0.29),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/lightning_rod/lightning_rod_all_albedo",
+            normal: "core:blocks/lightning_rod/lightning_rod_all_normal",
+            roughness: "core:blocks/lightning_rod/lightning_rod_all_roughness",        )),
+    )),
+)
+
+

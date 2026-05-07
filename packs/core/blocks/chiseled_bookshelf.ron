@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Chiseled Bookshelf",
+    solid: true,
+    color: (0.68, 0.54, 0.33),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_top_albedo",
+            normal: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_top_normal",
+            roughness: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_top_albedo",
+            normal: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_top_normal",
+            roughness: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_side_albedo",
+            normal: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_side_normal",
+            roughness: "core:blocks/chiseled_bookshelf/chiseled_bookshelf_side_roughness",        )),
+    )),
+)
+
+

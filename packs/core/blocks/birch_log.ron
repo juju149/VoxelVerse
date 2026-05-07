@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Birch Log",
+    solid: true,
+    color: (0.87, 0.87, 0.87),
+    hardness: 1.5,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/birch_log/birch_log_top_albedo",
+            normal: "core:blocks/birch_log/birch_log_top_normal",
+            roughness: "core:blocks/birch_log/birch_log_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/birch_log/birch_log_top_albedo",
+            normal: "core:blocks/birch_log/birch_log_top_normal",
+            roughness: "core:blocks/birch_log/birch_log_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/birch_log/birch_log_side_albedo",
+            normal: "core:blocks/birch_log/birch_log_side_normal",
+            roughness: "core:blocks/birch_log/birch_log_side_roughness",        )),
+    )),
+)
+
+

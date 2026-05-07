@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Diorite",
+    solid: true,
+    color: (0.80, 0.80, 0.81),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/diorite/diorite_all_albedo",
+            normal: "core:blocks/diorite/diorite_all_normal",
+            roughness: "core:blocks/diorite/diorite_all_roughness",        )),
+    )),
+)
+
+

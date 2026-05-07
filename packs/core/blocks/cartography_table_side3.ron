@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Cartography Table Side3",
+    solid: true,
+    color: (0.25, 0.16, 0.08),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/cartography_table_side3/cartography_table_side3_all_albedo",
+            normal: "core:blocks/cartography_table_side3/cartography_table_side3_all_normal",
+            roughness: "core:blocks/cartography_table_side3/cartography_table_side3_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Magenta Stained Glass",
+    solid: true,
+    color: (0.71, 0.22, 0.89),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/magenta_stained_glass/magenta_stained_glass_all_albedo",
+            normal: "core:blocks/magenta_stained_glass/magenta_stained_glass_all_normal",
+            roughness: "core:blocks/magenta_stained_glass/magenta_stained_glass_all_roughness",        )),
+    )),
+)
+
+

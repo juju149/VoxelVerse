@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Andesite",
+    solid: true,
+    color: (0.54, 0.54, 0.55),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/andesite/andesite_all_albedo",
+            normal: "core:blocks/andesite/andesite_all_normal",
+            roughness: "core:blocks/andesite/andesite_all_roughness",        )),
+    )),
+)
+
+

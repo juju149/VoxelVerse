@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Cyan Glazed Terracotta",
+    solid: true,
+    color: (0.19, 0.46, 0.48),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/cyan_glazed_terracotta/cyan_glazed_terracotta_all_albedo",
+            normal: "core:blocks/cyan_glazed_terracotta/cyan_glazed_terracotta_all_normal",
+            roughness: "core:blocks/cyan_glazed_terracotta/cyan_glazed_terracotta_all_roughness",        )),
+    )),
+)
+
+

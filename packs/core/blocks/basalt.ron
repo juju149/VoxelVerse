@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Basalt",
+    solid: true,
+    color: (0.36, 0.36, 0.38),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/basalt/basalt_top_albedo",
+            normal: "core:blocks/basalt/basalt_top_normal",
+            roughness: "core:blocks/basalt/basalt_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/basalt/basalt_top_albedo",
+            normal: "core:blocks/basalt/basalt_top_normal",
+            roughness: "core:blocks/basalt/basalt_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/basalt/basalt_side_albedo",
+            normal: "core:blocks/basalt/basalt_side_normal",
+            roughness: "core:blocks/basalt/basalt_side_roughness",        )),
+    )),
+)
+
+

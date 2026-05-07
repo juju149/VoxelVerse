@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Chiseled Stone Bricks",
+    solid: true,
+    color: (0.46, 0.46, 0.46),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/chiseled_stone_bricks/chiseled_stone_bricks_all_albedo",
+            normal: "core:blocks/chiseled_stone_bricks/chiseled_stone_bricks_all_normal",
+            roughness: "core:blocks/chiseled_stone_bricks/chiseled_stone_bricks_all_roughness",        )),
+    )),
+)
+
+

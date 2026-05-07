@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Crimson Fungus",
+    solid: true,
+    color: (0.76, 0.23, 0.18),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/crimson_fungus/crimson_fungus_all_albedo",
+            normal: "core:blocks/crimson_fungus/crimson_fungus_all_normal",
+            roughness: "core:blocks/crimson_fungus/crimson_fungus_all_roughness",        )),
+    )),
+)
+
+

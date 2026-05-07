@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Deepslate Emerald Ore",
+    solid: true,
+    color: (0.30, 0.40, 0.33),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/deepslate_emerald_ore/deepslate_emerald_ore_all_albedo",
+            normal: "core:blocks/deepslate_emerald_ore/deepslate_emerald_ore_all_normal",
+            roughness: "core:blocks/deepslate_emerald_ore/deepslate_emerald_ore_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,16 @@
+RawBlockDef(
+    display_name: "Bedrock",
+    solid: true,
+    color: (0.34, 0.34, 0.34),
+    hardness: 999.0,
+    role: Some(planet_core),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/bedrock/bedrock_all_albedo",
+            normal: "core:blocks/bedrock/bedrock_all_normal",
+            roughness: "core:blocks/bedrock/bedrock_all_roughness",        )),
+    )),
+)
+
+
+

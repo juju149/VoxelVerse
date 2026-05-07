@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Light Gray Terracotta",
+    solid: true,
+    color: (0.62, 0.50, 0.45),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/light_gray_terracotta/light_gray_terracotta_all_albedo",
+            normal: "core:blocks/light_gray_terracotta/light_gray_terracotta_all_normal",
+            roughness: "core:blocks/light_gray_terracotta/light_gray_terracotta_all_roughness",        )),
+    )),
+)
+
+

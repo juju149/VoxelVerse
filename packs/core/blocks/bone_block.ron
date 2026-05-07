@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Bone Block",
+    solid: true,
+    color: (0.89, 0.88, 0.79),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/bone_block/bone_block_top_albedo",
+            normal: "core:blocks/bone_block/bone_block_top_normal",
+            roughness: "core:blocks/bone_block/bone_block_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/bone_block/bone_block_top_albedo",
+            normal: "core:blocks/bone_block/bone_block_top_normal",
+            roughness: "core:blocks/bone_block/bone_block_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/bone_block/bone_block_side_albedo",
+            normal: "core:blocks/bone_block/bone_block_side_normal",
+            roughness: "core:blocks/bone_block/bone_block_side_roughness",        )),
+    )),
+)
+
+

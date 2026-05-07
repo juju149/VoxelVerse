@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Small Amethyst Bud",
+    solid: true,
+    color: (0.53, 0.35, 0.78),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/small_amethyst_bud/small_amethyst_bud_all_albedo",
+            normal: "core:blocks/small_amethyst_bud/small_amethyst_bud_all_normal",
+            roughness: "core:blocks/small_amethyst_bud/small_amethyst_bud_all_roughness",        )),
+    )),
+)
+
+

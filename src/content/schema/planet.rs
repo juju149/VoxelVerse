@@ -13,6 +13,8 @@ pub struct RawPlanetDef {
     pub surface_layer: Option<u32>,
     /// Physical voxel edge size in meters.
     pub voxel_size_meters: f32,
+    /// Visual rounded-edge radius as a fraction of one voxel.
+    pub edge_rounding_radius_voxels: f32,
     /// Number of protected core layers.
     pub core_layers: u32,
     /// Inner radius as a fraction of surface radius.

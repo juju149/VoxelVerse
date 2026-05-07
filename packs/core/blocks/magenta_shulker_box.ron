@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Magenta Shulker Box",
+    solid: true,
+    color: (0.70, 0.23, 0.66),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/magenta_shulker_box/magenta_shulker_box_all_albedo",
+            normal: "core:blocks/magenta_shulker_box/magenta_shulker_box_all_normal",
+            roughness: "core:blocks/magenta_shulker_box/magenta_shulker_box_all_roughness",        )),
+    )),
+)
+
+

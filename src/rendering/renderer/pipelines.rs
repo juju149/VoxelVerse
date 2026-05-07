@@ -2,7 +2,7 @@ use super::Renderer;
 use crate::rendering::Vertex;
 
 /// Shared vertex buffer layout matching `Vertex` (48 bytes).
-/// pos(0,12) | uv(12,8) | normal(20,12) | color(32,12) | tex_index(44,4)
+/// pos(0,12) | uv(12,8) | normal(20,12) | color(32,12) | packed tex_index(44,4)
 pub(super) fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<Vertex>() as _,
@@ -31,7 +31,7 @@ pub(super) fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
             wgpu::VertexAttribute {
                 format: wgpu::VertexFormat::Uint32,
                 offset: 44,
-                shader_location: 4, // tex_index
+                shader_location: 4, // packed tex_index
             },
         ],
     }

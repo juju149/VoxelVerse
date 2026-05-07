@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Large Amethyst Bud",
+    solid: true,
+    color: (0.54, 0.36, 0.79),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/large_amethyst_bud/large_amethyst_bud_all_albedo",
+            normal: "core:blocks/large_amethyst_bud/large_amethyst_bud_all_normal",
+            roughness: "core:blocks/large_amethyst_bud/large_amethyst_bud_all_roughness",        )),
+    )),
+)
+
+

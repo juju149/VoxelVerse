@@ -1,6 +1,6 @@
 RawBiomeDef(
     display_name: "Cold Mountains",
-    surface_block: "core:stone",
+    surface_block: "core:andesite",
     subsurface_block: "core:gravel",
     // Cold, very rough — sharp ridged peaks with gravel scree slopes.
     temperature_center: 0.30,
@@ -8,3 +8,4 @@ RawBiomeDef(
     terrain_amplitude: 1.0,
     terrain_flatness: 0.03,
 )
+

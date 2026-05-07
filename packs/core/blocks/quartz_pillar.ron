@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Quartz Pillar",
+    solid: true,
+    color: (0.90, 0.88, 0.85),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/quartz_pillar/quartz_pillar_top_albedo",
+            normal: "core:blocks/quartz_pillar/quartz_pillar_top_normal",
+            roughness: "core:blocks/quartz_pillar/quartz_pillar_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/quartz_pillar/quartz_pillar_top_albedo",
+            normal: "core:blocks/quartz_pillar/quartz_pillar_top_normal",
+            roughness: "core:blocks/quartz_pillar/quartz_pillar_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/quartz_pillar/quartz_pillar_side_albedo",
+            normal: "core:blocks/quartz_pillar/quartz_pillar_side_normal",
+            roughness: "core:blocks/quartz_pillar/quartz_pillar_side_roughness",        )),
+    )),
+)
+
+

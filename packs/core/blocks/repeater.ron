@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Repeater",
+    solid: true,
+    color: (0.65, 0.63, 0.63),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/repeater/repeater_all_albedo",
+            normal: "core:blocks/repeater/repeater_all_normal",
+            roughness: "core:blocks/repeater/repeater_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Beacon",
+    solid: true,
+    color: (0.47, 0.88, 0.86),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/beacon/beacon_all_albedo",
+            normal: "core:blocks/beacon/beacon_all_normal",
+            roughness: "core:blocks/beacon/beacon_all_roughness",        )),
+    )),
+)
+
+

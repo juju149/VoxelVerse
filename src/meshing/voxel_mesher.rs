@@ -1,4 +1,4 @@
-use super::{ambient_occlusion, CpuMesh, CpuVertex, MeshGen};
+use super::{ambient_occlusion, pack_material_edges, CpuMesh, CpuVertex, FaceEdgeMask, MeshGen};
 use crate::generation::CoordSystem;
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
 use crate::world::PlanetData;
@@ -266,6 +266,12 @@ impl MeshGen {
         };
         if !has_top {
             let layer = visual.layers.top;
+            let edges = FaceEdgeMask {
+                min_u: !has_left,
+                max_u: !has_right,
+                min_v: !has_front,
+                max_v: !has_back,
+            };
             let n = |u, v| check(id.face, 1, u, v);
             let ao_bl = ambient_occlusion::calculate(n(-1, 0), n(0, -1), n(-1, -1));
             let ao_br = ambient_occlusion::calculate(n(1, 0), n(0, -1), n(1, -1));
@@ -283,12 +289,18 @@ impl MeshGen {
                     face_color(layer, ao_tl),
                 ],
                 true,
-                layer,
+                pack_material_edges(layer, edges),
             );
         }
 
         if !has_btm {
             let layer = visual.layers.bottom;
+            let edges = FaceEdgeMask {
+                min_u: !has_left,
+                max_u: !has_right,
+                min_v: !has_back,
+                max_v: !has_front,
+            };
             let c = face_color(layer, 0.4);
             Self::quad(
                 verts,
@@ -297,12 +309,18 @@ impl MeshGen {
                 [i_tl, i_tr, i_br, i_bl],
                 [c, c, c, c],
                 true,
-                layer,
+                pack_material_edges(layer, edges),
             );
         }
 
         if !has_front {
             let layer = visual.layers.front;
+            let edges = FaceEdgeMask {
+                min_u: !has_left,
+                max_u: !has_right,
+                min_v: !has_btm,
+                max_v: !has_top,
+            };
             let c = face_color(layer, 0.8);
             Self::quad(
                 verts,
@@ -311,11 +329,17 @@ impl MeshGen {
                 [i_bl, i_br, o_br, o_bl],
                 [c, c, c, c],
                 false,
-                layer,
+                pack_material_edges(layer, edges),
             );
         }
         if !has_back {
             let layer = visual.layers.back;
+            let edges = FaceEdgeMask {
+                min_u: !has_left,
+                max_u: !has_right,
+                min_v: !has_top,
+                max_v: !has_btm,
+            };
             let c = face_color(layer, 0.8);
             Self::quad(
                 verts,
@@ -324,11 +348,17 @@ impl MeshGen {
                 [o_tl, o_tr, i_tr, i_tl],
                 [c, c, c, c],
                 false,
-                layer,
+                pack_material_edges(layer, edges),
             );
         }
         if !has_left {
             let layer = visual.layers.left;
+            let edges = FaceEdgeMask {
+                min_u: !has_back,
+                max_u: !has_front,
+                min_v: !has_btm,
+                max_v: !has_top,
+            };
             let c = face_color(layer, 0.8);
             Self::quad(
                 verts,
@@ -337,11 +367,17 @@ impl MeshGen {
                 [i_tl, i_bl, o_bl, o_tl],
                 [c, c, c, c],
                 false,
-                layer,
+                pack_material_edges(layer, edges),
             );
         }
         if !has_right {
             let layer = visual.layers.right;
+            let edges = FaceEdgeMask {
+                min_u: !has_front,
+                max_u: !has_back,
+                min_v: !has_btm,
+                max_v: !has_top,
+            };
             let c = face_color(layer, 0.8);
             Self::quad(
                 verts,
@@ -350,7 +386,7 @@ impl MeshGen {
                 [i_br, i_tr, o_tr, o_br],
                 [c, c, c, c],
                 false,
-                layer,
+                pack_material_edges(layer, edges),
             );
         }
     }
@@ -362,7 +398,7 @@ impl MeshGen {
         pos: [Vec3; 4],
         colors: [[f32; 3]; 4],
         force_radial: bool,
-        tex_index: u32,
+        packed_tex_index: u32,
     ) {
         // UV corners: (0,0) bl, (1,0) br, (1,1) tr, (0,1) tl
         let uvs: [[f32; 2]; 4] = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
@@ -383,7 +419,7 @@ impl MeshGen {
                 uv: uvs[i],
                 color: colors[i],
                 normal,
-                tex_index,
+                tex_index: packed_tex_index,
             });
         }
 

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Oxidized Copper",
+    solid: true,
+    color: (0.30, 0.63, 0.53),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/oxidized_copper/oxidized_copper_all_albedo",
+            normal: "core:blocks/oxidized_copper/oxidized_copper_all_normal",
+            roughness: "core:blocks/oxidized_copper/oxidized_copper_all_roughness",        )),
+    )),
+)
+
+

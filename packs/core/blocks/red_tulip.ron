@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Red Tulip",
+    solid: true,
+    color: (0.45, 0.61, 0.12),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/red_tulip/red_tulip_all_albedo",
+            normal: "core:blocks/red_tulip/red_tulip_all_normal",
+            roughness: "core:blocks/red_tulip/red_tulip_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Weathered Chiseled Copper",
+    solid: true,
+    color: (0.36, 0.57, 0.44),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/weathered_chiseled_copper/weathered_chiseled_copper_all_albedo",
+            normal: "core:blocks/weathered_chiseled_copper/weathered_chiseled_copper_all_normal",
+            roughness: "core:blocks/weathered_chiseled_copper/weathered_chiseled_copper_all_roughness",        )),
+    )),
+)
+
+

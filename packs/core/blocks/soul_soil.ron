@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Soul Soil",
+    solid: true,
+    color: (0.30, 0.23, 0.19),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/soul_soil/soul_soil_all_albedo",
+            normal: "core:blocks/soul_soil/soul_soil_all_normal",
+            roughness: "core:blocks/soul_soil/soul_soil_all_roughness",        )),
+    )),
+)
+
+

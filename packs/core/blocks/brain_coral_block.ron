@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Brain Coral Block",
+    solid: true,
+    color: (0.80, 0.35, 0.62),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/brain_coral_block/brain_coral_block_all_albedo",
+            normal: "core:blocks/brain_coral_block/brain_coral_block_all_normal",
+            roughness: "core:blocks/brain_coral_block/brain_coral_block_all_roughness",        )),
+    )),
+)
+
+

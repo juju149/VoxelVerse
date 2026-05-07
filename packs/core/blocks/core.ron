@@ -3,12 +3,13 @@ RawBlockDef(
     solid: true,
     color: (0.22, 0.18, 0.16),
     hardness: 999.0,
-    role: Some(planet_core),
+    role: Some(default_place),
     visual: Some((
         all: Some((
-            albedo: "core:blocks/core/core_all_albedo",
-            normal: "core:blocks/core/core_all_normal",
-            roughness: "core:blocks/core/core_all_roughness",
+            albedo: "core:blocks/bedrock/bedrock_all_albedo",
+            normal: "core:blocks/bedrock/bedrock_all_normal",
+            roughness: "core:blocks/bedrock/bedrock_all_roughness",
         )),
     )),
 )
+

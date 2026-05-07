@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Magenta Wool",
+    solid: true,
+    color: (0.73, 0.26, 0.70),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/magenta_wool/magenta_wool_all_albedo",
+            normal: "core:blocks/magenta_wool/magenta_wool_all_normal",
+            roughness: "core:blocks/magenta_wool/magenta_wool_all_roughness",        )),
+    )),
+)
+
+

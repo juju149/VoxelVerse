@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Vault Top Ejecting Ominous",
+    solid: true,
+    color: (0.16, 0.17, 0.19),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/vault_top_ejecting_ominous/vault_top_ejecting_ominous_all_albedo",
+            normal: "core:blocks/vault_top_ejecting_ominous/vault_top_ejecting_ominous_all_normal",
+            roughness: "core:blocks/vault_top_ejecting_ominous/vault_top_ejecting_ominous_all_roughness",        )),
+    )),
+)
+
+

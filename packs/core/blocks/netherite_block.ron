@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Netherite Block",
+    solid: true,
+    color: (0.28, 0.26, 0.28),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/netherite_block/netherite_block_all_albedo",
+            normal: "core:blocks/netherite_block/netherite_block_all_normal",
+            roughness: "core:blocks/netherite_block/netherite_block_all_roughness",        )),
+    )),
+)
+
+

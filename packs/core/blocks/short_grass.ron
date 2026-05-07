@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Short Grass",
+    solid: true,
+    color: (0.65, 0.65, 0.65),
+    hardness: 0.6,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/short_grass/short_grass_all_albedo",
+            normal: "core:blocks/short_grass/short_grass_all_normal",
+            roughness: "core:blocks/short_grass/short_grass_all_roughness",        )),
+    )),
+)
+
+

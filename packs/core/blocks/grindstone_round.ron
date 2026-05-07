@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Grindstone Round",
+    solid: true,
+    color: (0.56, 0.56, 0.56),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/grindstone_round/grindstone_round_all_albedo",
+            normal: "core:blocks/grindstone_round/grindstone_round_all_normal",
+            roughness: "core:blocks/grindstone_round/grindstone_round_all_roughness",        )),
+    )),
+)
+
+

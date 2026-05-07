@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Suspicious Sand 0",
+    solid: true,
+    color: (0.85, 0.80, 0.63),
+    hardness: 0.6,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/suspicious_sand_0/suspicious_sand_0_all_albedo",
+            normal: "core:blocks/suspicious_sand_0/suspicious_sand_0_all_normal",
+            roughness: "core:blocks/suspicious_sand_0/suspicious_sand_0_all_roughness",        )),
+    )),
+)
+
+

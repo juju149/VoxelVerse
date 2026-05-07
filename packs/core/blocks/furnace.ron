@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Furnace",
+    solid: true,
+    color: (0.34, 0.34, 0.34),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/furnace/furnace_top_albedo",
+            normal: "core:blocks/furnace/furnace_top_normal",
+            roughness: "core:blocks/furnace/furnace_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/furnace/furnace_top_albedo",
+            normal: "core:blocks/furnace/furnace_top_normal",
+            roughness: "core:blocks/furnace/furnace_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/furnace/furnace_side_albedo",
+            normal: "core:blocks/furnace/furnace_side_normal",
+            roughness: "core:blocks/furnace/furnace_side_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Pale Hanging Moss",
+    solid: true,
+    color: (0.43, 0.45, 0.42),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/pale_hanging_moss/pale_hanging_moss_all_albedo",
+            normal: "core:blocks/pale_hanging_moss/pale_hanging_moss_all_normal",
+            roughness: "core:blocks/pale_hanging_moss/pale_hanging_moss_all_roughness",        )),
+    )),
+)
+
+

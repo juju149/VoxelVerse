@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Exposed Copper Bulb",
+    solid: true,
+    color: (0.48, 0.40, 0.32),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/exposed_copper_bulb/exposed_copper_bulb_all_albedo",
+            normal: "core:blocks/exposed_copper_bulb/exposed_copper_bulb_all_normal",
+            roughness: "core:blocks/exposed_copper_bulb/exposed_copper_bulb_all_roughness",        )),
+    )),
+)
+
+

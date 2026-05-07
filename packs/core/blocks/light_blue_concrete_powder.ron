@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Light Blue Concrete Powder",
+    solid: true,
+    color: (0.32, 0.75, 0.86),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/light_blue_concrete_powder/light_blue_concrete_powder_all_albedo",
+            normal: "core:blocks/light_blue_concrete_powder/light_blue_concrete_powder_all_normal",
+            roughness: "core:blocks/light_blue_concrete_powder/light_blue_concrete_powder_all_roughness",        )),
+    )),
+)
+
+

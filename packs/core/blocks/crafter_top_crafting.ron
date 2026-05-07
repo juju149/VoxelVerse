@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Crafter Top Crafting",
+    solid: true,
+    color: (0.61, 0.41, 0.41),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/crafter_top_crafting/crafter_top_crafting_all_albedo",
+            normal: "core:blocks/crafter_top_crafting/crafter_top_crafting_all_normal",
+            roughness: "core:blocks/crafter_top_crafting/crafter_top_crafting_all_roughness",        )),
+    )),
+)
+
+

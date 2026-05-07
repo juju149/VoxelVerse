@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Diamond Block",
+    solid: true,
+    color: (0.25, 0.87, 0.81),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/diamond_block/diamond_block_all_albedo",
+            normal: "core:blocks/diamond_block/diamond_block_all_normal",
+            roughness: "core:blocks/diamond_block/diamond_block_all_roughness",        )),
+    )),
+)
+
+

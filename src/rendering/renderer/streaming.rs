@@ -91,7 +91,7 @@ impl<'a> Renderer<'a> {
             // Skip stale initial-load results (chunk was evicted while job was in flight).
             // Always accept dirty rebuilds — they replace an existing chunk with updated geometry.
             if !mesh.is_empty() && (is_dirty_rebuild || !self.chunks.contains_key(&key)) {
-                self.upload_chunk_buffers(key, mesh);
+                self.upload_chunk_buffers(key, mesh, planet.profile.edge_rounding_radius_voxels);
                 uploaded += 1;
                 self.scheduler_stats.uploaded_voxel += 1;
             }
@@ -186,7 +186,12 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    fn upload_chunk_buffers(&mut self, key: SurfaceChunkKey, mesh: CpuMesh) {
+    fn upload_chunk_buffers(
+        &mut self,
+        key: SurfaceChunkKey,
+        mesh: CpuMesh,
+        edge_rounding_radius_voxels: f32,
+    ) {
         let gpu_verts = cpu_verts_to_gpu(&mesh);
         let v_buf = self
             .device
@@ -208,7 +213,7 @@ impl<'a> Renderer<'a> {
 
         let uniform_data = LocalUniform {
             model: glam::Mat4::IDENTITY.to_cols_array(),
-            params: [start_opacity, 0.0, 0.0, 0.0],
+            params: [start_opacity, edge_rounding_radius_voxels, 0.0, 0.0],
         };
 
         let uniform_buf = self

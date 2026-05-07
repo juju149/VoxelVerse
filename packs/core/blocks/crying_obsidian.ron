@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Crying Obsidian",
+    solid: true,
+    color: (0.10, 0.01, 0.19),
+    hardness: 50.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/crying_obsidian/crying_obsidian_all_albedo",
+            normal: "core:blocks/crying_obsidian/crying_obsidian_all_normal",
+            roughness: "core:blocks/crying_obsidian/crying_obsidian_all_roughness",        )),
+    )),
+)
+
+

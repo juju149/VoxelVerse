@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Creaking Heart Top Dormant",
+    solid: true,
+    color: (0.35, 0.22, 0.16),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/creaking_heart_top_dormant/creaking_heart_top_dormant_all_albedo",
+            normal: "core:blocks/creaking_heart_top_dormant/creaking_heart_top_dormant_all_normal",
+            roughness: "core:blocks/creaking_heart_top_dormant/creaking_heart_top_dormant_all_roughness",        )),
+    )),
+)
+
+

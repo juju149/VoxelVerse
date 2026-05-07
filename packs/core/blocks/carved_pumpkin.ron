@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Carved Pumpkin",
+    solid: true,
+    color: (0.61, 0.34, 0.07),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/carved_pumpkin/carved_pumpkin_all_albedo",
+            normal: "core:blocks/carved_pumpkin/carved_pumpkin_all_normal",
+            roughness: "core:blocks/carved_pumpkin/carved_pumpkin_all_roughness",        )),
+    )),
+)
+
+

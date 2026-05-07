@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Copper Grate",
+    solid: true,
+    color: (0.73, 0.40, 0.28),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/copper_grate/copper_grate_all_albedo",
+            normal: "core:blocks/copper_grate/copper_grate_all_normal",
+            roughness: "core:blocks/copper_grate/copper_grate_all_roughness",        )),
+    )),
+)
+
+

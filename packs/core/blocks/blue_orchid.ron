@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Blue Orchid",
+    solid: true,
+    color: (0.15, 0.60, 0.55),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/blue_orchid/blue_orchid_all_albedo",
+            normal: "core:blocks/blue_orchid/blue_orchid_all_normal",
+            roughness: "core:blocks/blue_orchid/blue_orchid_all_roughness",        )),
+    )),
+)
+
+

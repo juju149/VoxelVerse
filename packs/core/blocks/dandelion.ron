@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Dandelion",
+    solid: true,
+    color: (0.60, 0.67, 0.08),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/dandelion/dandelion_all_albedo",
+            normal: "core:blocks/dandelion/dandelion_all_normal",
+            roughness: "core:blocks/dandelion/dandelion_all_roughness",        )),
+    )),
+)
+
+

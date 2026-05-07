@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Yellow Concrete",
+    solid: true,
+    color: (0.88, 0.69, 0.24),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/yellow_concrete/yellow_concrete_all_albedo",
+            normal: "core:blocks/yellow_concrete/yellow_concrete_all_normal",
+            roughness: "core:blocks/yellow_concrete/yellow_concrete_all_roughness",        )),
+    )),
+)
+
+

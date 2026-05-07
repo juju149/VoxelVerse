@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Structure Block Save",
+    solid: true,
+    color: (0.41, 0.34, 0.41),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/structure_block_save/structure_block_save_all_albedo",
+            normal: "core:blocks/structure_block_save/structure_block_save_all_normal",
+            roughness: "core:blocks/structure_block_save/structure_block_save_all_roughness",        )),
+    )),
+)
+
+

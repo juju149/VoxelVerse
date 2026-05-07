@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Ochre Froglight",
+    solid: true,
+    color: (0.97, 0.94, 0.78),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/ochre_froglight/ochre_froglight_top_albedo",
+            normal: "core:blocks/ochre_froglight/ochre_froglight_top_normal",
+            roughness: "core:blocks/ochre_froglight/ochre_froglight_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/ochre_froglight/ochre_froglight_top_albedo",
+            normal: "core:blocks/ochre_froglight/ochre_froglight_top_normal",
+            roughness: "core:blocks/ochre_froglight/ochre_froglight_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/ochre_froglight/ochre_froglight_side_albedo",
+            normal: "core:blocks/ochre_froglight/ochre_froglight_side_normal",
+            roughness: "core:blocks/ochre_froglight/ochre_froglight_side_roughness",        )),
+    )),
+)
+
+

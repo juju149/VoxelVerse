@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Yellow Glazed Terracotta",
+    solid: true,
+    color: (0.94, 0.78, 0.30),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/yellow_glazed_terracotta/yellow_glazed_terracotta_all_albedo",
+            normal: "core:blocks/yellow_glazed_terracotta/yellow_glazed_terracotta_all_normal",
+            roughness: "core:blocks/yellow_glazed_terracotta/yellow_glazed_terracotta_all_roughness",        )),
+    )),
+)
+
+

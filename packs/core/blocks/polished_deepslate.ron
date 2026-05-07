@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Polished Deepslate",
+    solid: true,
+    color: (0.31, 0.31, 0.31),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/polished_deepslate/polished_deepslate_all_albedo",
+            normal: "core:blocks/polished_deepslate/polished_deepslate_all_normal",
+            roughness: "core:blocks/polished_deepslate/polished_deepslate_all_roughness",        )),
+    )),
+)
+
+

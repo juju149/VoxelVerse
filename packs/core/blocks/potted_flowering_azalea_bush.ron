@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Potted Flowering Azalea Bush",
+    solid: true,
+    color: (0.51, 0.55, 0.31),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_top_albedo",
+            normal: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_top_normal",
+            roughness: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_top_albedo",
+            normal: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_top_normal",
+            roughness: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_side_albedo",
+            normal: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_side_normal",
+            roughness: "core:blocks/potted_flowering_azalea_bush/potted_flowering_azalea_bush_side_roughness",        )),
+    )),
+)
+
+

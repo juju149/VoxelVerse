@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Red Sandstone",
+    solid: true,
+    color: (0.70, 0.37, 0.10),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/red_sandstone/red_sandstone_top_albedo",
+            normal: "core:blocks/red_sandstone/red_sandstone_top_normal",
+            roughness: "core:blocks/red_sandstone/red_sandstone_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/red_sandstone/red_sandstone_bottom_albedo",
+            normal: "core:blocks/red_sandstone/red_sandstone_bottom_normal",
+            roughness: "core:blocks/red_sandstone/red_sandstone_bottom_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/red_sandstone/red_sandstone_side_albedo",
+            normal: "core:blocks/red_sandstone/red_sandstone_side_normal",
+            roughness: "core:blocks/red_sandstone/red_sandstone_side_roughness",        )),
+    )),
+)
+
+

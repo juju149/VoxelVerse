@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Spore Blossom",
+    solid: true,
+    color: (0.93, 0.42, 0.69),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/spore_blossom/spore_blossom_all_albedo",
+            normal: "core:blocks/spore_blossom/spore_blossom_all_normal",
+            roughness: "core:blocks/spore_blossom/spore_blossom_all_roughness",        )),
+    )),
+)
+
+

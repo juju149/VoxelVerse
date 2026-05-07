@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Pointed Dripstone Down Middle",
+    solid: true,
+    color: (0.50, 0.39, 0.35),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/pointed_dripstone_down_middle/pointed_dripstone_down_middle_all_albedo",
+            normal: "core:blocks/pointed_dripstone_down_middle/pointed_dripstone_down_middle_all_normal",
+            roughness: "core:blocks/pointed_dripstone_down_middle/pointed_dripstone_down_middle_all_roughness",        )),
+    )),
+)
+
+

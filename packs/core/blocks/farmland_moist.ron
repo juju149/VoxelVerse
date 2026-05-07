@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Farmland Moist",
+    solid: true,
+    color: (0.43, 0.21, 0.09),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/farmland_moist/farmland_moist_all_albedo",
+            normal: "core:blocks/farmland_moist/farmland_moist_all_normal",
+            roughness: "core:blocks/farmland_moist/farmland_moist_all_roughness",        )),
+    )),
+)
+
+

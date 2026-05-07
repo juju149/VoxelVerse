@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Crimson Nylium",
+    solid: true,
+    color: (0.55, 0.18, 0.18),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/crimson_nylium/crimson_nylium_side_albedo",
+            normal: "core:blocks/crimson_nylium/crimson_nylium_side_normal",
+            roughness: "core:blocks/crimson_nylium/crimson_nylium_side_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/crimson_nylium/crimson_nylium_side_albedo",
+            normal: "core:blocks/crimson_nylium/crimson_nylium_side_normal",
+            roughness: "core:blocks/crimson_nylium/crimson_nylium_side_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/crimson_nylium/crimson_nylium_side_albedo",
+            normal: "core:blocks/crimson_nylium/crimson_nylium_side_normal",
+            roughness: "core:blocks/crimson_nylium/crimson_nylium_side_roughness",        )),
+    )),
+)
+
+

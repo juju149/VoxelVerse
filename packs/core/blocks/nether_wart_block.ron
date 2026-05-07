@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Nether Wart Block",
+    solid: true,
+    color: (0.52, 0.02, 0.02),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/nether_wart_block/nether_wart_block_all_albedo",
+            normal: "core:blocks/nether_wart_block/nether_wart_block_all_normal",
+            roughness: "core:blocks/nether_wart_block/nether_wart_block_all_roughness",        )),
+    )),
+)
+
+

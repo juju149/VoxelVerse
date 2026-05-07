@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Turtle Egg Slightly Cracked",
+    solid: true,
+    color: (0.86, 0.85, 0.68),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/turtle_egg_slightly_cracked/turtle_egg_slightly_cracked_all_albedo",
+            normal: "core:blocks/turtle_egg_slightly_cracked/turtle_egg_slightly_cracked_all_normal",
+            roughness: "core:blocks/turtle_egg_slightly_cracked/turtle_egg_slightly_cracked_all_roughness",        )),
+    )),
+)
+
+

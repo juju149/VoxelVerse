@@ -12,7 +12,7 @@ struct Global {
 
 struct Local {
     model: mat4x4<f32>,
-    params: vec4<f32>, // x = opacity
+    params: vec4<f32>, // x = opacity, y = rounded edge radius in voxel UV
 }
 @group(1) @binding(0) var<uniform> local: Local;
 
@@ -43,9 +43,9 @@ struct VertexOut {
     @location(1)                    world_normal: vec3<f32>,
     @location(2)                    world_pos:   vec3<f32>,
     @location(3)                    view_pos:    vec3<f32>,
-    @location(4)                    shadow_pos:  vec3<f32>,
-    @location(5)                    color:       vec3<f32>,
-    @location(6) @interpolate(flat) tex_index:   u32,
+    @location(4)                    shadow_pos:       vec3<f32>,
+    @location(5)                    color:            vec3<f32>,
+    @location(6) @interpolate(flat) packed_tex_index: u32,
 };
 
 @vertex
@@ -70,7 +70,7 @@ fn vs_main(in: VertexIn) -> VertexOut {
     // Pass-through
     out.color     = in.color;
     out.uv        = in.uv;
-    out.tex_index = in.tex_index;
+    out.packed_tex_index = in.tex_index;
     out.view_pos  = global.camera_pos.xyz;
 
     // Shadow Calculation Space
@@ -136,6 +136,17 @@ fn fetch_shadow_accurate(shadow_pos: vec3<f32>, NdotL: f32) -> f32 {
 
 // --- UTILS ---
 
+const MATERIAL_INDEX_MASK = 0x0000FFFFu;
+const EDGE_MIN_U = 1u;
+const EDGE_MAX_U = 2u;
+const EDGE_MIN_V = 4u;
+const EDGE_MAX_V = 8u;
+
+struct SurfaceBasis {
+    tangent: vec3<f32>,
+    bitangent: vec3<f32>,
+};
+
 fn dither_opacity(pos: vec4<f32>, alpha: f32) -> bool {
     // 4x4 Ordered Dithering Matrix
     let dither_threshold = dot(vec2<f32>(171.0, 231.0), pos.xy);
@@ -158,12 +169,64 @@ fn triplanar_detail(pos: vec3<f32>, normal: vec3<f32>) -> f32 {
     return (hx * weights.x + hy * weights.y + hz * weights.z) * 2.0 - 1.0;
 }
 
-fn material_normal(world_normal: vec3<f32>, uv: vec2<f32>, layer: u32) -> vec3<f32> {
+fn surface_basis(world_pos: vec3<f32>, uv: vec2<f32>, world_normal: vec3<f32>) -> SurfaceBasis {
+    let dpdx_v = dpdx(world_pos);
+    let dpdy_v = dpdy(world_pos);
+    let duvdx_v = dpdx(uv);
+    let duvdy_v = dpdy(uv);
+    let det = duvdx_v.x * duvdy_v.y - duvdx_v.y * duvdy_v.x;
+
+    var tangent: vec3<f32>;
+    var bitangent: vec3<f32>;
+    if (abs(det) > 0.000001) {
+        let inv_det = 1.0 / det;
+        tangent = normalize((dpdx_v * duvdy_v.y - dpdy_v * duvdx_v.y) * inv_det);
+        bitangent = normalize((dpdy_v * duvdx_v.x - dpdx_v * duvdy_v.x) * inv_det);
+    } else {
+        let up_ref = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(world_normal.y) > 0.92);
+        tangent = normalize(cross(up_ref, world_normal));
+        bitangent = normalize(cross(world_normal, tangent));
+    }
+
+    return SurfaceBasis(tangent, bitangent);
+}
+
+fn edge_weight(enabled: bool, distance_to_edge: f32, radius: f32) -> f32 {
+    if (!enabled || radius <= 0.0001) {
+        return 0.0;
+    }
+    let x = 1.0 - smoothstep(0.0, radius, distance_to_edge);
+    return x * x * (3.0 - 2.0 * x);
+}
+
+fn rounded_edge_normal(
+    world_normal: vec3<f32>,
+    uv: vec2<f32>,
+    edge_mask: u32,
+    radius: f32,
+    basis: SurfaceBasis,
+) -> vec3<f32> {
+    let safe_radius = clamp(radius, 0.0, 0.45);
+
+    let min_u = (edge_mask & EDGE_MIN_U) != 0u;
+    let max_u = (edge_mask & EDGE_MAX_U) != 0u;
+    let min_v = (edge_mask & EDGE_MIN_V) != 0u;
+    let max_v = (edge_mask & EDGE_MAX_V) != 0u;
+
+    let u_bend =
+        -edge_weight(min_u, uv.x, safe_radius) +
+         edge_weight(max_u, 1.0 - uv.x, safe_radius);
+    let v_bend =
+        -edge_weight(min_v, uv.y, safe_radius) +
+         edge_weight(max_v, 1.0 - uv.y, safe_radius);
+
+    let bend = basis.tangent * u_bend + basis.bitangent * v_bend;
+    return normalize(world_normal + bend);
+}
+
+fn material_normal(world_normal: vec3<f32>, uv: vec2<f32>, layer: u32, basis: SurfaceBasis) -> vec3<f32> {
     let n_tex = textureSample(t_normal, s_material, uv, i32(layer)).xyz * 2.0 - vec3<f32>(1.0);
-    let up_ref = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(world_normal.y) > 0.92);
-    let tangent = normalize(cross(up_ref, world_normal));
-    let bitangent = normalize(cross(world_normal, tangent));
-    return normalize(tangent * n_tex.x + bitangent * n_tex.y + world_normal * max(n_tex.z, 0.12));
+    return normalize(basis.tangent * n_tex.x + basis.bitangent * n_tex.y + world_normal * max(n_tex.z, 0.12));
 }
 
 // --- TONE MAPPING (ACES) ---
@@ -191,9 +254,14 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let V = normalize(global.camera_pos.xyz - in.world_pos);
 
     // 2. Material Setup
-    let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(in.tex_index));
-    let roughness = textureSample(t_roughness, s_material, in.uv, i32(in.tex_index)).r;
-    N = material_normal(N, in.uv, in.tex_index);
+    let material_layer = in.packed_tex_index & MATERIAL_INDEX_MASK;
+    let edge_mask = (in.packed_tex_index >> 16u) & 0xFu;
+    let basis = surface_basis(in.world_pos, in.uv, N);
+
+    let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(material_layer));
+    let roughness = textureSample(t_roughness, s_material, in.uv, i32(material_layer)).r;
+    N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
+    N = material_normal(N, in.uv, material_layer, basis);
     let vert_color_linear = pow(in.color, vec3<f32>(2.2));
     
     // Apply Detail Noise (Grain)

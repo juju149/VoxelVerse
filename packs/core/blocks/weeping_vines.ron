@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Weeping Vines",
+    solid: true,
+    color: (0.43, 0.00, 0.00),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/weeping_vines/weeping_vines_all_albedo",
+            normal: "core:blocks/weeping_vines/weeping_vines_all_normal",
+            roughness: "core:blocks/weeping_vines/weeping_vines_all_roughness",        )),
+    )),
+)
+
+

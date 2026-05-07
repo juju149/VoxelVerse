@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Cyan Concrete Powder",
+    solid: true,
+    color: (0.14, 0.59, 0.62),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/cyan_concrete_powder/cyan_concrete_powder_all_albedo",
+            normal: "core:blocks/cyan_concrete_powder/cyan_concrete_powder_all_normal",
+            roughness: "core:blocks/cyan_concrete_powder/cyan_concrete_powder_all_roughness",        )),
+    )),
+)
+
+

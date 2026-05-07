@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "End Stone Bricks",
+    solid: true,
+    color: (0.96, 0.95, 0.70),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/end_stone_bricks/end_stone_bricks_all_albedo",
+            normal: "core:blocks/end_stone_bricks/end_stone_bricks_all_normal",
+            roughness: "core:blocks/end_stone_bricks/end_stone_bricks_all_roughness",        )),
+    )),
+)
+
+

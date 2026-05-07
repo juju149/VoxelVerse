@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Amethyst Block",
+    solid: true,
+    color: (0.51, 0.34, 0.77),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/amethyst_block/amethyst_block_all_albedo",
+            normal: "core:blocks/amethyst_block/amethyst_block_all_normal",
+            roughness: "core:blocks/amethyst_block/amethyst_block_all_roughness",        )),
+    )),
+)
+
+

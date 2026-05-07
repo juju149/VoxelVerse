@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Emerald Ore",
+    solid: true,
+    color: (0.44, 0.54, 0.46),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/emerald_ore/emerald_ore_all_albedo",
+            normal: "core:blocks/emerald_ore/emerald_ore_all_normal",
+            roughness: "core:blocks/emerald_ore/emerald_ore_all_roughness",        )),
+    )),
+)
+
+

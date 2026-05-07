@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Suspicious Gravel 2",
+    solid: true,
+    color: (0.48, 0.47, 0.46),
+    hardness: 0.6,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/suspicious_gravel_2/suspicious_gravel_2_all_albedo",
+            normal: "core:blocks/suspicious_gravel_2/suspicious_gravel_2_all_normal",
+            roughness: "core:blocks/suspicious_gravel_2/suspicious_gravel_2_all_roughness",        )),
+    )),
+)
+
+

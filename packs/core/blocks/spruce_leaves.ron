@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Spruce Leaves",
+    solid: true,
+    color: (0.47, 0.47, 0.47),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/spruce_leaves/spruce_leaves_all_albedo",
+            normal: "core:blocks/spruce_leaves/spruce_leaves_all_normal",
+            roughness: "core:blocks/spruce_leaves/spruce_leaves_all_roughness",        )),
+    )),
+)
+
+

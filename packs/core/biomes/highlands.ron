@@ -1,10 +1,11 @@
 RawBiomeDef(
     display_name: "Highland Range",
-    surface_block: "core:stone",
-    subsurface_block: "core:stone",
+    surface_block: "core:andesite",
+    subsurface_block: "core:andesite",
     // Temperate, very rough — steep rocky highland ridges and mountain chains.
     temperature_center: 0.45,
     roughness_center: 0.85,
     terrain_amplitude: 1.0,
     terrain_flatness: 0.02,
 )
+

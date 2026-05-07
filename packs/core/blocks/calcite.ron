@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Calcite",
+    solid: true,
+    color: (0.91, 0.93, 0.92),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/calcite/calcite_all_albedo",
+            normal: "core:blocks/calcite/calcite_all_normal",
+            roughness: "core:blocks/calcite/calcite_all_roughness",        )),
+    )),
+)
+
+

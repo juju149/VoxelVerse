@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Deepslate Copper Ore",
+    solid: true,
+    color: (0.37, 0.38, 0.37),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/deepslate_copper_ore/deepslate_copper_ore_all_albedo",
+            normal: "core:blocks/deepslate_copper_ore/deepslate_copper_ore_all_normal",
+            roughness: "core:blocks/deepslate_copper_ore/deepslate_copper_ore_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Weathered Copper",
+    solid: true,
+    color: (0.39, 0.59, 0.45),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/weathered_copper/weathered_copper_all_albedo",
+            normal: "core:blocks/weathered_copper/weathered_copper_all_normal",
+            roughness: "core:blocks/weathered_copper/weathered_copper_all_roughness",        )),
+    )),
+)
+
+

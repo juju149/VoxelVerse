@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Shroomlight",
+    solid: true,
+    color: (0.99, 0.73, 0.45),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/shroomlight/shroomlight_all_albedo",
+            normal: "core:blocks/shroomlight/shroomlight_all_normal",
+            roughness: "core:blocks/shroomlight/shroomlight_all_roughness",        )),
+    )),
+)
+
+

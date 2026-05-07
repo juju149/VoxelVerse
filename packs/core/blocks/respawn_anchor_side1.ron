@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Respawn Anchor Side1",
+    solid: true,
+    color: (0.17, 0.10, 0.24),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/respawn_anchor_side1/respawn_anchor_side1_all_albedo",
+            normal: "core:blocks/respawn_anchor_side1/respawn_anchor_side1_all_normal",
+            roughness: "core:blocks/respawn_anchor_side1/respawn_anchor_side1_all_roughness",        )),
+    )),
+)
+
+

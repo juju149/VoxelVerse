@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Test Block Accept",
+    solid: true,
+    color: (0.54, 0.78, 0.48),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/test_block_accept/test_block_accept_all_albedo",
+            normal: "core:blocks/test_block_accept/test_block_accept_all_normal",
+            roughness: "core:blocks/test_block_accept/test_block_accept_all_roughness",        )),
+    )),
+)
+
+

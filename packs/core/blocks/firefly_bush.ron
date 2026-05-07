@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Firefly Bush",
+    solid: true,
+    color: (0.38, 0.36, 0.18),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/firefly_bush/firefly_bush_all_albedo",
+            normal: "core:blocks/firefly_bush/firefly_bush_all_normal",
+            roughness: "core:blocks/firefly_bush/firefly_bush_all_roughness",        )),
+    )),
+)
+
+

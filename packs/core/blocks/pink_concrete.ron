@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Pink Concrete",
+    solid: true,
+    color: (0.93, 0.56, 0.75),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/pink_concrete/pink_concrete_all_albedo",
+            normal: "core:blocks/pink_concrete/pink_concrete_all_normal",
+            roughness: "core:blocks/pink_concrete/pink_concrete_all_roughness",        )),
+    )),
+)
+
+

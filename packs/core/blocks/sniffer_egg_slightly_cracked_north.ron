@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Sniffer Egg Slightly Cracked North",
+    solid: true,
+    color: (0.37, 0.32, 0.20),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/sniffer_egg_slightly_cracked_north/sniffer_egg_slightly_cracked_north_all_albedo",
+            normal: "core:blocks/sniffer_egg_slightly_cracked_north/sniffer_egg_slightly_cracked_north_all_normal",
+            roughness: "core:blocks/sniffer_egg_slightly_cracked_north/sniffer_egg_slightly_cracked_north_all_roughness",        )),
+    )),
+)
+
+

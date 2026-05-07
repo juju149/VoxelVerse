@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Deepslate Tiles",
+    solid: true,
+    color: (0.26, 0.26, 0.26),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/deepslate_tiles/deepslate_tiles_all_albedo",
+            normal: "core:blocks/deepslate_tiles/deepslate_tiles_all_normal",
+            roughness: "core:blocks/deepslate_tiles/deepslate_tiles_all_roughness",        )),
+    )),
+)
+
+

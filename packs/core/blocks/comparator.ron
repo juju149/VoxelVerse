@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Comparator",
+    solid: true,
+    color: (0.66, 0.64, 0.64),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/comparator/comparator_all_albedo",
+            normal: "core:blocks/comparator/comparator_all_normal",
+            roughness: "core:blocks/comparator/comparator_all_roughness",        )),
+    )),
+)
+
+

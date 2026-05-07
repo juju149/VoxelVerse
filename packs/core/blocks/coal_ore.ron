@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Coal Ore",
+    solid: true,
+    color: (0.45, 0.45, 0.45),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/coal_ore/coal_ore_all_albedo",
+            normal: "core:blocks/coal_ore/coal_ore_all_normal",
+            roughness: "core:blocks/coal_ore/coal_ore_all_roughness",        )),
+    )),
+)
+
+

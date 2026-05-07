@@ -10,7 +10,7 @@ pub struct Vertex {
     pub uv: [f32; 2],     // offset 12, attr 1
     pub normal: [f32; 3], // offset 20, attr 2
     pub color: [f32; 3],  // offset 32, attr 3 — tint / AO
-    pub tex_index: u32,   // offset 44, attr 4 — material layer
+    pub tex_index: u32,   // offset 44, attr 4 — packed material + render flags
 }
 
 /// Compile-time guard: diagnostics/render_stats.rs hardcodes VERTEX_BYTES = 48.

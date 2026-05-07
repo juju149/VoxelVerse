@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Cherry Leaves",
+    solid: true,
+    color: (0.97, 0.66, 0.84),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/cherry_leaves/cherry_leaves_all_albedo",
+            normal: "core:blocks/cherry_leaves/cherry_leaves_all_normal",
+            roughness: "core:blocks/cherry_leaves/cherry_leaves_all_roughness",        )),
+    )),
+)
+
+

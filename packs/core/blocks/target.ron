@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Target",
+    solid: true,
+    color: (0.90, 0.73, 0.73),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/target/target_top_albedo",
+            normal: "core:blocks/target/target_top_normal",
+            roughness: "core:blocks/target/target_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/target/target_top_albedo",
+            normal: "core:blocks/target/target_top_normal",
+            roughness: "core:blocks/target/target_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/target/target_side_albedo",
+            normal: "core:blocks/target/target_side_normal",
+            roughness: "core:blocks/target/target_side_roughness",        )),
+    )),
+)
+
+

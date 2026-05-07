@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Redstone Block",
+    solid: true,
+    color: (0.68, 0.09, 0.03),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/redstone_block/redstone_block_all_albedo",
+            normal: "core:blocks/redstone_block/redstone_block_all_normal",
+            roughness: "core:blocks/redstone_block/redstone_block_all_roughness",        )),
+    )),
+)
+
+

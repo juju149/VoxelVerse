@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Closed Eyeblossom",
+    solid: true,
+    color: (0.57, 0.54, 0.55),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/closed_eyeblossom/closed_eyeblossom_all_albedo",
+            normal: "core:blocks/closed_eyeblossom/closed_eyeblossom_all_normal",
+            roughness: "core:blocks/closed_eyeblossom/closed_eyeblossom_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Iron Block",
+    solid: true,
+    color: (0.76, 0.76, 0.76),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/iron_block/iron_block_all_albedo",
+            normal: "core:blocks/iron_block/iron_block_all_normal",
+            roughness: "core:blocks/iron_block/iron_block_all_roughness",        )),
+    )),
+)
+
+

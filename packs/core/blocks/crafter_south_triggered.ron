@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Crafter South Triggered",
+    solid: true,
+    color: (0.58, 0.51, 0.45),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/crafter_south_triggered/crafter_south_triggered_all_albedo",
+            normal: "core:blocks/crafter_south_triggered/crafter_south_triggered_all_normal",
+            roughness: "core:blocks/crafter_south_triggered/crafter_south_triggered_all_roughness",        )),
+    )),
+)
+
+

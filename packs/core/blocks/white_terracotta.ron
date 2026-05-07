@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "White Terracotta",
+    solid: true,
+    color: (0.82, 0.72, 0.68),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/white_terracotta/white_terracotta_all_albedo",
+            normal: "core:blocks/white_terracotta/white_terracotta_all_normal",
+            roughness: "core:blocks/white_terracotta/white_terracotta_all_roughness",        )),
+    )),
+)
+
+

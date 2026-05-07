@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Red Nether Bricks",
+    solid: true,
+    color: (0.23, 0.01, 0.02),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/red_nether_bricks/red_nether_bricks_all_albedo",
+            normal: "core:blocks/red_nether_bricks/red_nether_bricks_all_normal",
+            roughness: "core:blocks/red_nether_bricks/red_nether_bricks_all_roughness",        )),
+    )),
+)
+
+

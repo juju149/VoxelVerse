@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Nether Gold Ore",
+    solid: true,
+    color: (0.54, 0.30, 0.23),
+    hardness: 2.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/nether_gold_ore/nether_gold_ore_all_albedo",
+            normal: "core:blocks/nether_gold_ore/nether_gold_ore_all_normal",
+            roughness: "core:blocks/nether_gold_ore/nether_gold_ore_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Jigsaw",
+    solid: true,
+    color: (0.23, 0.21, 0.24),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/jigsaw/jigsaw_top_albedo",
+            normal: "core:blocks/jigsaw/jigsaw_top_normal",
+            roughness: "core:blocks/jigsaw/jigsaw_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/jigsaw/jigsaw_bottom_albedo",
+            normal: "core:blocks/jigsaw/jigsaw_bottom_normal",
+            roughness: "core:blocks/jigsaw/jigsaw_bottom_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/jigsaw/jigsaw_side_albedo",
+            normal: "core:blocks/jigsaw/jigsaw_side_normal",
+            roughness: "core:blocks/jigsaw/jigsaw_side_roughness",        )),
+    )),
+)
+
+

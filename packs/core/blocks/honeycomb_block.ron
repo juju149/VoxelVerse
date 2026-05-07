@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Honeycomb Block",
+    solid: true,
+    color: (0.91, 0.63, 0.17),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/honeycomb_block/honeycomb_block_all_albedo",
+            normal: "core:blocks/honeycomb_block/honeycomb_block_all_normal",
+            roughness: "core:blocks/honeycomb_block/honeycomb_block_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,23 @@
+RawBlockDef(
+    display_name: "Chipped Anvil",
+    solid: true,
+    color: (0.24, 0.24, 0.24),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        top: Some((
+            albedo: "core:blocks/chipped_anvil/chipped_anvil_top_albedo",
+            normal: "core:blocks/chipped_anvil/chipped_anvil_top_normal",
+            roughness: "core:blocks/chipped_anvil/chipped_anvil_top_roughness",        )),
+        bottom: Some((
+            albedo: "core:blocks/chipped_anvil/chipped_anvil_top_albedo",
+            normal: "core:blocks/chipped_anvil/chipped_anvil_top_normal",
+            roughness: "core:blocks/chipped_anvil/chipped_anvil_top_roughness",        )),
+        side: Some((
+            albedo: "core:blocks/chipped_anvil/chipped_anvil_top_albedo",
+            normal: "core:blocks/chipped_anvil/chipped_anvil_top_normal",
+            roughness: "core:blocks/chipped_anvil/chipped_anvil_top_roughness",        )),
+    )),
+)
+
+

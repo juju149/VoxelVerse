@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Yellow Wool",
+    solid: true,
+    color: (0.97, 0.76, 0.13),
+    hardness: 0.3,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/yellow_wool/yellow_wool_all_albedo",
+            normal: "core:blocks/yellow_wool/yellow_wool_all_normal",
+            roughness: "core:blocks/yellow_wool/yellow_wool_all_roughness",        )),
+    )),
+)
+
+

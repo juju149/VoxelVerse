@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Polished Diorite",
+    solid: true,
+    color: (0.86, 0.86, 0.86),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/polished_diorite/polished_diorite_all_albedo",
+            normal: "core:blocks/polished_diorite/polished_diorite_all_normal",
+            roughness: "core:blocks/polished_diorite/polished_diorite_all_roughness",        )),
+    )),
+)
+
+

@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Composter Ready",
+    solid: true,
+    color: (0.55, 0.48, 0.33),
+    hardness: 1.0,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/composter_ready/composter_ready_all_albedo",
+            normal: "core:blocks/composter_ready/composter_ready_all_normal",
+            roughness: "core:blocks/composter_ready/composter_ready_all_roughness",        )),
+    )),
+)
+
+

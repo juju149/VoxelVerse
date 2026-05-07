@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Clay",
+    solid: true,
+    color: (0.63, 0.65, 0.70),
+    hardness: 0.6,
+    role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/clay/clay_all_albedo",
+            normal: "core:blocks/clay/clay_all_normal",
+            roughness: "core:blocks/clay/clay_all_roughness",        )),
+    )),
+)
+
+
