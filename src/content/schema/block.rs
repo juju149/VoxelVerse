@@ -1,3 +1,4 @@
+use crate::content::schema::RawBlockVisual;
 use serde::Deserialize;
 
 /// Semantic role hints that allow the engine to find a block by purpose
@@ -24,4 +25,7 @@ pub struct RawBlockDef {
     /// Optional semantic role. Lets the engine find this block by purpose without hardcoding its name.
     #[serde(default)]
     pub role: Option<BlockRole>,
+    /// Optional PBR-lite visual data. Missing visual means flat color fallback.
+    #[serde(default)]
+    pub visual: Option<RawBlockVisual>,
 }

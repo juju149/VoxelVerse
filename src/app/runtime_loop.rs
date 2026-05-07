@@ -21,7 +21,7 @@ pub fn run() {
     let window = create_window(&event_loop);
     grab_cursor(&window);
 
-    let mut renderer = pollster::block_on(Renderer::new(&window, &content.blocks));
+    let mut renderer = pollster::block_on(Renderer::new(&window, &content.textures));
     let mut controller = Controller::new();
     let mut player = Player::new();
     let mut planet = PlanetData::new(content.planet, content.blocks, content.biomes);

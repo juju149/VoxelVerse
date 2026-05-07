@@ -1,5 +1,7 @@
 use crate::content::biome_registry::{BiomeRegistry, CompiledBiome};
-use crate::content::block_registry::{BlockRegistry, CompiledBlock, CompiledBlockVisual};
+use crate::content::block_registry::{
+    BlockRegistry, CompiledBlock, CompiledBlockVisual, MaterialTextureSet,
+};
 use crate::content::schema::{BlockRole, RawBiomeDef, RawBlockDef, RawPlanetDef};
 use crate::content::CompiledPlanet;
 use crate::voxel::VoxelId;
@@ -40,6 +42,7 @@ impl ContentCompiler {
 
         let mut blocks: Vec<CompiledBlock> = Vec::with_capacity(raw.len());
         let mut key_to_id: HashMap<String, VoxelId> = HashMap::with_capacity(raw.len());
+        let mut material_sets: Vec<MaterialTextureSet> = Vec::new();
         let mut default_place = VoxelId::AIR;
         let mut planet_core = None;
 
@@ -55,6 +58,31 @@ impl ContentCompiler {
                 errors.push("Only one block may declare role = \"planet_core\".".into());
             }
 
+            let visual = if let Some(raw_visual) = def.visual {
+                let material = MaterialTextureSet {
+                    albedo: raw_visual.top.albedo.0,
+                    normal: raw_visual.top.normal.0,
+                    roughness: raw_visual.top.roughness.0,
+                };
+                let layer = if let Some(index) = material_sets.iter().position(|m| m == &material) {
+                    (index + 1) as u32
+                } else {
+                    material_sets.push(material);
+                    material_sets.len() as u32
+                };
+                CompiledBlockVisual {
+                    top_material_layer: layer,
+                    tint: raw_visual.tint,
+                    flat_color: def.color,
+                }
+            } else {
+                CompiledBlockVisual {
+                    top_material_layer: 0,
+                    tint: [1.0, 1.0, 1.0],
+                    flat_color: def.color,
+                }
+            };
+
             key_to_id.insert(key.clone(), id);
             blocks.push(CompiledBlock {
                 id,
@@ -63,13 +91,7 @@ impl ContentCompiler {
                 solid: def.solid,
                 color: def.color,
                 hardness: def.hardness,
-                // Visual defaults: flat color from the block's `color` field.
-                // Texture atlas index will be assigned once the atlas pipeline is ready.
-                visual: CompiledBlockVisual {
-                    atlas_index: 0,
-                    tint: [1.0, 1.0, 1.0],
-                    flat_color: def.color,
-                },
+                visual,
             });
         }
 
@@ -93,6 +115,7 @@ impl ContentCompiler {
         Ok(BlockRegistry::new(
             blocks,
             key_to_id,
+            material_sets,
             default_place,
             planet_core,
         ))
@@ -240,6 +263,7 @@ mod tests {
             color: [1.0, 1.0, 1.0],
             hardness: 1.0,
             role,
+            visual: None,
         }
     }
 

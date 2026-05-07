@@ -1,5 +1,5 @@
 use super::{GlobalUniform, LocalUniform, Renderer};
-use crate::content::BlockRegistry;
+use crate::content::TextureRegistry;
 use crate::diagnostics::{FrameStats, SystemDiagnostics};
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
@@ -13,7 +13,7 @@ use wgpu::PresentMode;
 use winit::window::Window;
 
 impl<'a> Renderer<'a> {
-    pub async fn new(window: &'a Window, registry: &BlockRegistry) -> Self {
+    pub async fn new(window: &'a Window, textures: &TextureRegistry) -> Self {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window).unwrap();
 
@@ -124,7 +124,7 @@ impl<'a> Renderer<'a> {
             label: Some("local_layout"),
         });
 
-        // --- ATLAS BIND GROUP LAYOUT (group 2) ---
+        // --- MATERIAL TEXTURES BIND GROUP LAYOUT (group 2) ---
         let atlas_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("atlas_layout"),
             entries: &[
@@ -141,24 +141,51 @@ impl<'a> Renderer<'a> {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
         });
 
-        // Create the texture atlas from the block registry.
-        let atlas = TextureAtlas::new(&device, &queue, registry);
+        let atlas = TextureAtlas::new(&device, &queue, textures);
         let atlas_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Atlas Bind Group"),
             layout: &atlas_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&atlas.view),
+                    resource: wgpu::BindingResource::TextureView(&atlas.albedo_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&atlas.normal_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&atlas.roughness_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
                     resource: wgpu::BindingResource::Sampler(&atlas.sampler),
                 },
             ],

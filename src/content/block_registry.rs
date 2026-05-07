@@ -1,17 +1,20 @@
 use crate::voxel::VoxelId;
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct MaterialTextureSet {
+    pub albedo: String,
+    pub normal: String,
+    pub roughness: String,
+}
+
 /// Resolved visual representation used at runtime.
-///
-/// At this stage the `atlas_index` is always 0 (a placeholder white tile).
-/// Once the texture pipeline is wired up, the compiler assigns a real index
-/// into the texture atlas.
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub struct CompiledBlockVisual {
-    /// Index into the GPU texture atlas.  0 = white/debug tile.
-    pub atlas_index: u32,
-    /// RGB tint multiplied over the atlas tile.  `[1,1,1]` = no tint.
+    /// Material layer for top faces. 0 = neutral fallback material.
+    pub top_material_layer: u32,
+    /// RGB tint multiplied over the material. `[1,1,1]` = no tint.
     pub tint: [f32; 3],
     /// RGB flat color fallback used when no atlas is present.
     pub flat_color: [f32; 3],
@@ -20,7 +23,7 @@ pub struct CompiledBlockVisual {
 impl Default for CompiledBlockVisual {
     fn default() -> Self {
         Self {
-            atlas_index: 0,
+            top_material_layer: 0,
             tint: [1.0; 3],
             flat_color: [1.0, 0.0, 1.0],
         }
@@ -49,6 +52,7 @@ pub struct CompiledBlock {
 pub struct BlockRegistry {
     blocks: Vec<CompiledBlock>,
     key_to_id: HashMap<String, VoxelId>,
+    material_sets: Vec<MaterialTextureSet>,
     default_place: VoxelId,
     planet_core: VoxelId,
 }
@@ -58,12 +62,14 @@ impl BlockRegistry {
     pub(crate) fn new(
         blocks: Vec<CompiledBlock>,
         key_to_id: HashMap<String, VoxelId>,
+        material_sets: Vec<MaterialTextureSet>,
         default_place: VoxelId,
         planet_core: VoxelId,
     ) -> Self {
         Self {
             blocks,
             key_to_id,
+            material_sets,
             default_place,
             planet_core,
         }
@@ -88,6 +94,17 @@ impl BlockRegistry {
         self.block(id)
             .unwrap_or_else(|| panic!("Unknown block runtime id {}", id.raw()))
             .color
+    }
+
+    pub fn visual(&self, id: VoxelId) -> &CompiledBlockVisual {
+        &self
+            .block(id)
+            .unwrap_or_else(|| panic!("Unknown block runtime id {}", id.raw()))
+            .visual
+    }
+
+    pub fn material_sets(&self) -> &[MaterialTextureSet] {
+        &self.material_sets
     }
 
     /// The block placed when the player uses the default slot.

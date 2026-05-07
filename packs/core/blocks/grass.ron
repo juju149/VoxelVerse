@@ -4,4 +4,11 @@ RawBlockDef(
     color: (0.25, 0.58, 0.14),
     hardness: 1.0,
     role: Some(default_place),
+    visual: Some((
+        top: (
+            albedo: "core:blocks/grass_top_albedo",
+            normal: "core:blocks/grass_top_normal",
+            roughness: "core:blocks/grass_top_roughness",
+        ),
+    )),
 )

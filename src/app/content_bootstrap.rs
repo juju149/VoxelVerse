@@ -1,11 +1,12 @@
-use crate::content::CompiledPlanet;
 use crate::content::{compile::ContentCompiler, pack::PackLoader, BiomeRegistry, BlockRegistry};
+use crate::content::{CompiledPlanet, TextureRegistry};
 use std::path::Path;
 use std::sync::Arc;
 
 pub struct LoadedCoreContent {
     pub blocks: Arc<BlockRegistry>,
     pub biomes: Arc<BiomeRegistry>,
+    pub textures: Arc<TextureRegistry>,
     pub planet: CompiledPlanet,
 }
 
@@ -42,10 +43,19 @@ pub fn load_core_content() -> LoadedCoreContent {
         .next()
         .expect("compile_planets guarantees at least one planet");
 
+    let texture_registry = TextureRegistry::load(Path::new("packs"), &compiled_blocks)
+        .unwrap_or_else(|errors| {
+            for e in &errors {
+                eprintln!("[texture error] {}", e);
+            }
+            panic!("Texture loading failed; see errors above.");
+        });
+
     println!(
-        "Loaded {} blocks, {} biomes, planet '{}' ({}) from pack 'core'.",
+        "Loaded {} blocks, {} biomes, {} material layers, planet '{}' ({}) from pack 'core'.",
         compiled_blocks.block_count(),
         compiled_biomes.biome_count(),
+        texture_registry.materials().len(),
         planet.key,
         planet.display_name,
     );
@@ -53,6 +63,7 @@ pub fn load_core_content() -> LoadedCoreContent {
     LoadedCoreContent {
         blocks: Arc::new(compiled_blocks),
         biomes: Arc::new(compiled_biomes),
+        textures: Arc::new(texture_registry),
         planet,
     }
 }

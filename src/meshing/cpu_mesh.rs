@@ -8,6 +8,7 @@ pub struct CpuVertex {
     pub uv: [f32; 2],
     pub normal: [f32; 3],
     pub color: [f32; 3],
+    /// Material layer. 0 = neutral fallback.
     pub tex_index: u32,
 }
 

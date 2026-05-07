@@ -1,6 +1,4 @@
-
-
-// basic shading (IMPROVE THIS LATER)
+// Stylized PBR-lite shading.
 struct Global {
     view_proj: mat4x4<f32>,
     light_view_proj: mat4x4<f32>,
@@ -18,17 +16,16 @@ struct Local {
 }
 @group(1) @binding(0) var<uniform> local: Local;
 
-// Block texture atlas (one 16x16 tile per block type, indexed by tex_index).
-// All tiles are currently solid white — vertex color carries the block color.
-@group(2) @binding(0) var t_atlas: texture_2d_array<f32>;
-@group(2) @binding(1) var s_atlas: sampler;
+@group(2) @binding(0) var t_albedo: texture_2d_array<f32>;
+@group(2) @binding(1) var t_normal: texture_2d_array<f32>;
+@group(2) @binding(2) var t_roughness: texture_2d_array<f32>;
+@group(2) @binding(3) var s_material: sampler;
 
 // --- CONSTANTS ---
-// Natural, physical light values
-const SUN_COLOR       = vec3<f32>(1.55, 1.42, 1.15);  // Warm golden sun
-const SKY_COLOR       = vec3<f32>(0.20, 0.42, 0.78);  // Rich deep blue sky
-const GROUND_COLOR    = vec3<f32>(0.06, 0.05, 0.03);  // Warm earth ambient bounce
-const SHADOW_OPACITY  = 0.80;                         // Soft shadows
+const SUN_COLOR       = vec3<f32>(1.25, 1.12, 0.82);
+const SKY_COLOR       = vec3<f32>(0.28, 0.48, 0.86);
+const GROUND_COLOR    = vec3<f32>(0.11, 0.09, 0.06);
+const SHADOW_OPACITY  = 0.62;
 
 // --- VERTEX SHADER ---
 
@@ -161,6 +158,14 @@ fn triplanar_detail(pos: vec3<f32>, normal: vec3<f32>) -> f32 {
     return (hx * weights.x + hy * weights.y + hz * weights.z) * 2.0 - 1.0;
 }
 
+fn material_normal(world_normal: vec3<f32>, uv: vec2<f32>, layer: u32) -> vec3<f32> {
+    let n_tex = textureSample(t_normal, s_material, uv, i32(layer)).xyz * 2.0 - vec3<f32>(1.0);
+    let up_ref = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(world_normal.y) > 0.92);
+    let tangent = normalize(cross(up_ref, world_normal));
+    let bitangent = normalize(cross(world_normal, tangent));
+    return normalize(tangent * n_tex.x + bitangent * n_tex.y + world_normal * max(n_tex.z, 0.12));
+}
+
 // --- TONE MAPPING (ACES) ---
 // Industry standard for realistic color reproduction
 fn aces_approx(v: vec3<f32>) -> vec3<f32> {
@@ -181,41 +186,41 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         discard;
     }
 
-    let N = normalize(in.world_normal);
+    var N = normalize(in.world_normal);
     let L = normalize(global.sun_dir.xyz);
     let V = normalize(global.camera_pos.xyz - in.world_pos);
 
     // 2. Material Setup
-    // Sample the block texture atlas (white tiles for now — vertex color is the sole color).
-    let tex_sample = textureSample(t_atlas, s_atlas, in.uv, i32(in.tex_index));
-    // De-gamma vertex color to linear space and multiply by atlas sample.
+    let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(in.tex_index));
+    let roughness = textureSample(t_roughness, s_material, in.uv, i32(in.tex_index)).r;
+    N = material_normal(N, in.uv, in.tex_index);
     let vert_color_linear = pow(in.color, vec3<f32>(2.2));
     
     // Apply Detail Noise (Grain)
     let noise = triplanar_detail(in.world_pos, N);
-    let albedo = vert_color_linear * tex_sample.rgb * (1.0 + 0.03 * noise);
+    let albedo = vert_color_linear * albedo_sample.rgb * (1.0 + 0.025 * noise);
 
     // 3. Lighting Math
-    let NdotL = max(dot(N, L), 0.0);
+    let NdotL = max(dot(N, L) * 0.82 + 0.18, 0.0);
     
     // Shadow Map
     let shadow_raw = fetch_shadow_accurate(in.shadow_pos, NdotL);
     // Smooth transition shadow
     let shadow = mix(1.0 - SHADOW_OPACITY, 1.0, shadow_raw);
 
-    // A. Direct Sun Light
-    let direct_light = SUN_COLOR * NdotL * shadow;
+    let matte = mix(1.05, 0.62, roughness);
+    let direct_light = SUN_COLOR * NdotL * shadow * matte;
 
     // B. Hemispheric Ambient
     // Top of objects gets Sky Color, Bottom gets Ground Bounce
     let up_dot = dot(N, normalize(in.world_pos)); // Relative Up for sphere
     let hemi_factor = up_dot * 0.5 + 0.5;
-    let ambient_light = mix(GROUND_COLOR, SKY_COLOR, hemi_factor);
+    let ambient_light = mix(GROUND_COLOR, SKY_COLOR, hemi_factor) * mix(0.92, 1.22, roughness);
 
     // C. Fresnel Rim
     // Adds a subtle glow at grazing angles (atmosphere dust effect)
     let fresnel = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-    let rim_light = SKY_COLOR * fresnel * 0.2 * shadow;
+    let rim_light = SKY_COLOR * fresnel * 0.12 * shadow * (1.0 - roughness * 0.35);
 
     // Combine
     // Note: Ambient is multiplied by albedo (diffuse reflection)
