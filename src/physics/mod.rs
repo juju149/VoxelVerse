@@ -25,7 +25,7 @@ impl Physics {
         let res = planet.resolution;
 
         // 1. get precise block id and local position 0.0 - 1.0
-        let (id, local) = match CoordSystem::get_local_coords(pos, res) {
+        let (id, local) = match CoordSystem::get_local_coords(pos, planet.profile) {
             Some(val) => val,
             None => {
                 return pos.length() < planet.profile.inner_radius;

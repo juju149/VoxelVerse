@@ -11,6 +11,8 @@ pub struct RawPlanetDef {
     /// Surface layer in voxel space. If omitted, defaults to `resolution / 2`.
     #[serde(default)]
     pub surface_layer: Option<u32>,
+    /// Physical voxel edge size in meters.
+    pub voxel_size_meters: f32,
     /// Number of protected core layers.
     pub core_layers: u32,
     /// Inner radius as a fraction of surface radius.

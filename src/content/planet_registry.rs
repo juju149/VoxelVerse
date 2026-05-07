@@ -6,6 +6,7 @@ pub struct CompiledPlanet {
     pub seed: u32,
     pub resolution: u32,
     pub surface_layer: u32,
+    pub voxel_size_meters: f32,
     pub core_layers: u32,
     pub inner_radius_fraction: f32,
     pub max_terrain_offset: i32,

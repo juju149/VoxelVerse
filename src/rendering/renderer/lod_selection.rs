@@ -13,7 +13,7 @@ impl<'a> Renderer<'a> {
         self.reset_streaming_frame_stats();
 
         let res = planet.resolution;
-        let player_id = CoordSystem::pos_to_id(player_pos, res);
+        let player_id = CoordSystem::pos_to_id(player_pos, planet.profile);
         let logical_size = res.next_power_of_two();
 
         // 1. Compute required sets FIRST — before processing any arrivals.
@@ -107,7 +107,7 @@ impl<'a> Renderer<'a> {
                 let cx = (k.x + k.size / 2).min(planet.resolution.saturating_sub(1));
                 let cy = (k.y + k.size / 2).min(planet.resolution.saturating_sub(1));
                 let h = planet.profile.surface_layer;
-                let wp = CoordSystem::get_vertex_pos(k.face, cx, cy, h, planet.resolution);
+                let wp = CoordSystem::get_vertex_pos(k.face, cx, cy, h, planet.profile);
                 (*k, wp.distance_squared(player_pos))
             })
             .collect();
@@ -163,7 +163,7 @@ impl<'a> Renderer<'a> {
                 let u = k.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
                 let v = k.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
                 let h = planet.profile.surface_layer;
-                CoordSystem::get_vertex_pos(k.face, u, v, h, planet.resolution)
+                CoordSystem::get_vertex_pos(k.face, u, v, h, planet.profile)
             };
             let da = center(a).distance_squared(player_pos);
             let db = center(b).distance_squared(player_pos);
@@ -194,7 +194,7 @@ impl<'a> Renderer<'a> {
         let center_v = (y + size / 2).min(planet.resolution - 1);
         let h = planet.profile.surface_layer;
 
-        let world_pos = CoordSystem::get_vertex_pos(face, center_u, center_v, h, planet.resolution);
+        let world_pos = CoordSystem::get_vertex_pos(face, center_u, center_v, h, planet.profile);
 
         let mut dist = world_pos.distance(context.cam_pos);
 

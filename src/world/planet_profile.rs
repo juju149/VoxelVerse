@@ -5,6 +5,7 @@ pub struct PlanetProfile {
     pub resolution: u32,
     pub surface_layer: u32,
     pub core_layers: u32,
+    pub voxel_size_meters: f32,
     pub inner_radius: f32,
     pub surface_radius: f32,
     pub layer_height: f32,
@@ -16,20 +17,35 @@ pub struct PlanetProfile {
 }
 
 impl PlanetProfile {
+    #[cfg(test)]
     const DEFAULT_SEED: u32 = 1;
+    #[cfg(test)]
+    const DEFAULT_VOXEL_SIZE_METERS: f32 = 1.0;
+    #[cfg(test)]
+    const DEFAULT_INNER_RADIUS_FRACTION: f32 = 0.18;
 
+    #[cfg(test)]
     pub fn new(resolution: u32) -> Self {
         Self::with_seed(resolution, Self::DEFAULT_SEED)
     }
 
     /// Create a profile for the given resolution and explicit seed.
+    #[cfg(test)]
     pub fn with_seed(resolution: u32, seed: u32) -> Self {
+        Self::with_seed_and_voxel_size(resolution, seed, Self::DEFAULT_VOXEL_SIZE_METERS)
+    }
+
+    #[cfg(test)]
+    pub fn with_seed_and_voxel_size(resolution: u32, seed: u32, voxel_size_meters: f32) -> Self {
         let resolution = resolution.max(8);
         let surface_layer = resolution / 2;
         let core_layers = 6.min(surface_layer.saturating_sub(2)).max(2);
-        let surface_radius = resolution as f32 * 0.5;
-        let inner_radius = (surface_radius * 0.18).max(2.0);
-        let layer_height = (surface_radius - inner_radius) / surface_layer.max(1) as f32;
+        let voxel_size_meters = sanitize_voxel_size(voxel_size_meters);
+        let (inner_radius, surface_radius, layer_height) = radii_from_layers(
+            surface_layer,
+            voxel_size_meters,
+            Self::DEFAULT_INNER_RADIUS_FRACTION,
+        );
 
         // Scale max_terrain_offset with planet size so large planets have
         // proper mountain relief.  0.008 × res gives ~160 for a 20k-radius
@@ -40,6 +56,7 @@ impl PlanetProfile {
             resolution,
             surface_layer,
             core_layers,
+            voxel_size_meters,
             inner_radius,
             surface_radius,
             layer_height,
@@ -53,14 +70,16 @@ impl PlanetProfile {
         let resolution = def.resolution.max(8);
         let surface_layer = def.surface_layer.clamp(4, resolution - 1);
         let core_layers = def.core_layers.min(surface_layer.saturating_sub(1)).max(1);
-        let surface_radius = resolution as f32 * 0.5;
-        let inner_radius = (surface_radius * def.inner_radius_fraction).max(2.0);
-        let layer_height = (surface_radius - inner_radius) / surface_layer.max(1) as f32;
+        debug_assert!(def.voxel_size_meters.is_finite() && def.voxel_size_meters > 0.0);
+        let voxel_size_meters = def.voxel_size_meters;
+        let (inner_radius, surface_radius, layer_height) =
+            radii_from_layers(surface_layer, voxel_size_meters, def.inner_radius_fraction);
 
         Self {
             resolution,
             surface_layer,
             core_layers,
+            voxel_size_meters,
             inner_radius,
             surface_radius,
             layer_height,
@@ -131,6 +150,27 @@ impl PlanetProfile {
 }
 
 #[cfg(test)]
+fn sanitize_voxel_size(voxel_size_meters: f32) -> f32 {
+    if voxel_size_meters.is_finite() && voxel_size_meters > 0.0 {
+        voxel_size_meters
+    } else {
+        PlanetProfile::DEFAULT_VOXEL_SIZE_METERS
+    }
+}
+
+fn radii_from_layers(
+    surface_layer: u32,
+    voxel_size_meters: f32,
+    inner_radius_fraction: f32,
+) -> (f32, f32, f32) {
+    let fraction = inner_radius_fraction.clamp(0.02, 0.95);
+    let shell_depth = surface_layer.max(1) as f32 * voxel_size_meters;
+    let surface_radius = shell_depth / (1.0 - fraction);
+    let inner_radius = surface_radius * fraction;
+    (inner_radius, surface_radius, voxel_size_meters)
+}
+
+#[cfg(test)]
 mod tests {
     use super::PlanetProfile;
 
@@ -140,6 +180,7 @@ mod tests {
 
         assert!(profile.inner_radius > 0.0);
         assert!(profile.layer_height > 0.0);
+        assert_eq!(profile.layer_height, profile.voxel_size_meters);
         assert!(
             (profile.layer_radius(profile.surface_layer) - profile.surface_radius).abs() < 0.001
         );
@@ -161,5 +202,14 @@ mod tests {
                 "seed {seed}: radius {radius} > 1_000_000"
             );
         }
+    }
+
+    #[test]
+    fn configured_voxel_size_controls_layer_spacing() {
+        let profile = PlanetProfile::with_seed_and_voxel_size(64, 1, 0.5);
+
+        assert_eq!(profile.voxel_size_meters, 0.5);
+        assert_eq!(profile.layer_height, 0.5);
+        assert!((profile.layer_radius(11) - profile.layer_radius(10) - 0.5).abs() < 0.0001);
     }
 }

@@ -20,8 +20,9 @@ impl BlockSelection {
     ) -> Option<(VoxelCoord, f32)> {
         let mut distance = 0.0;
         let mut last_empty = None;
-        let min_radius = 0.5;
-        let step = 0.25;
+        let profile = planet.profile();
+        let min_radius = profile.voxel_size_meters;
+        let step = (profile.voxel_size_meters * 0.5).max(0.05);
 
         while distance < reach {
             let point = ray.point_at(distance);
@@ -29,7 +30,7 @@ impl BlockSelection {
                 break;
             }
 
-            if let Some(id) = CoordSystem::pos_to_id(point, planet.resolution()) {
+            if let Some(id) = CoordSystem::pos_to_id(point, profile) {
                 let exists = planet.exists(id);
                 match mode {
                     BlockSelectionMode::HitSolid if exists => return Some((id, distance)),

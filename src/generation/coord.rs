@@ -22,8 +22,8 @@ impl CoordSystem {
         }
     }
 
-    pub fn get_local_coords(pos: Vec3, res: u32) -> Option<(VoxelCoord, Vec3)> {
-        let profile = PlanetProfile::new(res);
+    pub fn get_local_coords(pos: Vec3, profile: PlanetProfile) -> Option<(VoxelCoord, Vec3)> {
+        let res = profile.resolution;
         let dist = pos.length();
         let (layer, f_layer) = profile.radius_to_layer(dist)?;
 
@@ -51,8 +51,8 @@ impl CoordSystem {
         ))
     }
 
-    pub fn get_layer_radius(layer: u32, res: u32) -> f32 {
-        PlanetProfile::new(res).layer_radius(layer)
+    pub fn get_layer_radius(layer: u32, profile: PlanetProfile) -> f32 {
+        profile.layer_radius(layer)
     }
 
     pub fn get_direction(face: u8, u: u32, v: u32, res: u32) -> Vec3 {
@@ -86,13 +86,15 @@ impl CoordSystem {
         unit_cube_to_sphere(cx, cy, cz).normalize()
     }
 
-    pub fn get_vertex_pos(face: u8, u: u32, v: u32, layer: u32, res: u32) -> Vec3 {
+    pub fn get_vertex_pos(face: u8, u: u32, v: u32, layer: u32, profile: PlanetProfile) -> Vec3 {
+        let res = profile.resolution;
         let dir = Self::get_direction(face, u, v, res);
-        let radius = Self::get_layer_radius(layer, res);
+        let radius = Self::get_layer_radius(layer, profile);
         dir * radius
     }
 
-    pub fn get_block_center(face: u8, u: u32, v: u32, layer: u32, res: u32) -> Vec3 {
+    pub fn get_block_center(face: u8, u: u32, v: u32, layer: u32, profile: PlanetProfile) -> Vec3 {
+        let res = profile.resolution;
         let rf = res as f64;
         // center is at index + 0.5
         let uf = u as f64 + 0.5;
@@ -112,13 +114,13 @@ impl CoordSystem {
 
         let dir = unit_cube_to_sphere(cx, cy, cz).normalize();
 
-        let radius = PlanetProfile::new(res).layer_center_radius(layer);
+        let radius = profile.layer_center_radius(layer);
 
         dir * radius
     }
 
-    pub fn pos_to_id(pos: Vec3, res: u32) -> Option<VoxelCoord> {
-        let profile = PlanetProfile::new(res);
+    pub fn pos_to_id(pos: Vec3, profile: PlanetProfile) -> Option<VoxelCoord> {
+        let res = profile.resolution;
         let (layer, _) = profile.radius_to_layer(pos.length())?;
         let (face, u_local, v_local) = Self::direction_to_face_uv(pos);
 
@@ -153,14 +155,8 @@ mod tests {
         ];
 
         for (face, u, v) in samples {
-            let pos = CoordSystem::get_block_center(
-                face,
-                u,
-                v,
-                profile.surface_layer,
-                profile.resolution,
-            );
-            let coord = CoordSystem::pos_to_id(pos, profile.resolution)
+            let pos = CoordSystem::get_block_center(face, u, v, profile.surface_layer, profile);
+            let coord = CoordSystem::pos_to_id(pos, profile)
                 .expect("surface sample should map back to a voxel coordinate");
 
             assert_eq!(coord.face, face);
@@ -168,5 +164,16 @@ mod tests {
             assert!((coord.v as i32 - v as i32).abs() <= 1);
             assert_eq!(coord.layer, profile.surface_layer);
         }
+    }
+
+    #[test]
+    fn profile_voxel_size_changes_world_scale() {
+        let one_meter = PlanetProfile::with_seed_and_voxel_size(64, 1, 1.0);
+        let half_meter = PlanetProfile::with_seed_and_voxel_size(64, 1, 0.5);
+
+        let p1 = CoordSystem::get_vertex_pos(4, 32, 32, one_meter.surface_layer, one_meter);
+        let p2 = CoordSystem::get_vertex_pos(4, 32, 32, half_meter.surface_layer, half_meter);
+
+        assert!((p2.length() - p1.length() * 0.5).abs() < 0.001);
     }
 }

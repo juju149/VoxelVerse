@@ -235,7 +235,13 @@ impl MeshGen {
 
         // geometry Helpers
         let p = |u_off: u32, v_off: u32, l_off: u32| {
-            CoordSystem::get_vertex_pos(id.face, id.u + u_off, id.v + v_off, id.layer + l_off, res)
+            CoordSystem::get_vertex_pos(
+                id.face,
+                id.u + u_off,
+                id.v + v_off,
+                id.layer + l_off,
+                data.profile,
+            )
         };
         let i_bl = p(0, 0, 0);
         let i_br = p(1, 0, 0);

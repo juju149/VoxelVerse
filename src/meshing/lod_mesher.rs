@@ -23,7 +23,7 @@ impl MeshGen {
             let abs_v = (key.y as i64 + step_v).clamp(0, data.resolution as i64) as u32;
 
             let h = data.terrain.get_height(key.face, abs_u, abs_v);
-            CoordSystem::get_vertex_pos(key.face, abs_u, abs_v, h, data.resolution)
+            CoordSystem::get_vertex_pos(key.face, abs_u, abs_v, h, data.profile)
         };
 
         // 1. Generate Vertices

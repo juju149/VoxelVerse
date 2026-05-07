@@ -284,6 +284,12 @@ impl ContentCompiler {
                     key, def.core_layers, surface_layer
                 ));
             }
+            if !def.voxel_size_meters.is_finite() || def.voxel_size_meters <= 0.0 {
+                errors.push(format!(
+                    "Planet '{}': voxel_size_meters must be a finite positive value",
+                    key
+                ));
+            }
             if !(0.02..0.95).contains(&def.inner_radius_fraction) {
                 errors.push(format!(
                     "Planet '{}': inner_radius_fraction {} must be in 0.02..0.95",
@@ -306,6 +312,7 @@ impl ContentCompiler {
                 seed: def.seed,
                 resolution,
                 surface_layer,
+                voxel_size_meters: def.voxel_size_meters,
                 core_layers: def.core_layers,
                 inner_radius_fraction: def.inner_radius_fraction,
                 max_terrain_offset: def.max_terrain_offset,

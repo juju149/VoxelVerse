@@ -16,7 +16,7 @@ impl MeshGen {
         // check a 3x3x3 area around the player
         let range = 2;
 
-        if let Some((center_id, _)) = CoordSystem::get_local_coords(player_pos, res) {
+        if let Some((center_id, _)) = CoordSystem::get_local_coords(player_pos, planet.profile) {
             let start_u = (center_id.u as i32 - range).max(0);
             let end_u = (center_id.u as i32 + range).min(res as i32 - 1);
             let start_v = (center_id.v as i32 - range).max(0);
@@ -36,8 +36,13 @@ impl MeshGen {
                             v: v as u32,
                         };
 
-                        let block_pos =
-                            CoordSystem::get_block_center(id.face, id.u, id.v, id.layer, res);
+                        let block_pos = CoordSystem::get_block_center(
+                            id.face,
+                            id.u,
+                            id.v,
+                            id.layer,
+                            planet.profile,
+                        );
 
                         if crate::physics::Physics::is_solid(block_pos, planet) {
                             // visualize the "Core" of the block that triggers collision
@@ -47,7 +52,7 @@ impl MeshGen {
                                     id.u + uu,
                                     id.v + vv,
                                     id.layer + ll,
-                                    res,
+                                    planet.profile,
                                 )
                             };
 

@@ -9,9 +9,14 @@ use glam::Vec3;
 impl<'a> Renderer<'a> {
     pub fn update_cursor(&mut self, planet: &PlanetData, id: Option<VoxelCoord>) {
         if let Some(id) = id {
-            let res = planet.resolution;
             let p = |u, v, l| {
-                CoordSystem::get_vertex_pos(id.face, id.u + u, id.v + v, id.layer + l, res)
+                CoordSystem::get_vertex_pos(
+                    id.face,
+                    id.u + u,
+                    id.v + v,
+                    id.layer + l,
+                    planet.profile,
+                )
             };
 
             let corners = [

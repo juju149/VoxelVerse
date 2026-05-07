@@ -28,6 +28,7 @@ pub struct VoxelEditResult {
 #[allow(dead_code)]
 pub trait VoxelRead {
     fn resolution(&self) -> u32;
+    fn profile(&self) -> PlanetProfile;
     fn get_voxel(&self, coord: VoxelCoord) -> VoxelId;
     fn exists(&self, coord: VoxelCoord) -> bool;
 }
@@ -60,9 +61,8 @@ impl PlanetData {
     ) -> Self {
         let profile = PlanetProfile::from_compiled(&planet_def);
         println!(
-            "Generating terrain for resolution {}  (radius ≈ {})…",
-            profile.resolution,
-            profile.resolution / 2
+            "Generating terrain for resolution {}  (voxel {} m, radius ≈ {:.1} m)…",
+            profile.resolution, profile.voxel_size_meters, profile.surface_radius
         );
         let terrain = PlanetTerrain::new(profile, &biome_registry);
         println!("Terrain generation complete.");
@@ -238,6 +238,10 @@ impl PlanetData {
 impl VoxelRead for PlanetData {
     fn resolution(&self) -> u32 {
         self.resolution
+    }
+
+    fn profile(&self) -> PlanetProfile {
+        self.profile
     }
 
     fn get_voxel(&self, coord: VoxelCoord) -> VoxelId {
