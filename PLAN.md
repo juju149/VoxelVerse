@@ -74,9 +74,9 @@ Etat observe apres lecture de `AGENTS.md`, `README.md` et `src/`.
 - `src/rendering/renderer.rs` depasse 1000 lignes. C'est le blocage numero 1.
 - `src/generation/mod.rs` approche 800 lignes. Il doit etre separe avant ajout de worldgen avancee.
 - Le contenu est encore partiellement hardcode:
-  - `voxanet:core`
-  - `voxanet:dirt`
-  - `voxanet:grass`
+  - `voxelverse:core`
+  - `voxelverse:dirt`
+  - `voxelverse:grass`
   - couleurs et registres builtin.
 - Il n'existe pas encore de pipeline raw data -> validation -> compilation -> runtime registry.
 - Le meshing est encore mele a `generation`.

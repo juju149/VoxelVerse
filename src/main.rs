@@ -61,7 +61,7 @@ fn main() {
 
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new()
-        .with_title("voxanet")
+        .with_title("voxelverse")
         .with_fullscreen(Some(Fullscreen::Borderless(None)))
         .build(&event_loop)
         .unwrap();
@@ -79,7 +79,7 @@ fn main() {
     let mut planet = PlanetData::new(world_resolution, WORLD_SEED, registry, biome_registry);
 
     let mut console = Console::new();
-    console.log("Welcome to voxanet.", [0.0, 1.0, 0.0]);
+    console.log("Welcome to voxelverse.", [0.0, 1.0, 0.0]);
     console.log("Press ` to open console.", [1.0, 1.0, 1.0]);
 
     player.spawn(planet.spawn_position());
