@@ -6,9 +6,9 @@ RawBlockDef(
     role: Some(planet_core),
     visual: Some((
         all: Some((
-            albedo: "core:blocks/core_all_albedo",
-            normal: "core:blocks/core_all_normal",
-            roughness: "core:blocks/core_all_roughness",
+            albedo: "core:blocks/core/core_all_albedo",
+            normal: "core:blocks/core/core_all_normal",
+            roughness: "core:blocks/core/core_all_roughness",
         )),
     )),
 )

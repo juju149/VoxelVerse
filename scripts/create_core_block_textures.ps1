@@ -3,82 +3,140 @@ $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName System.Drawing
 
-$outDir = Join-Path $PSScriptRoot "..\packs\core\textures\blocks"
-New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+Add-Type -ReferencedAssemblies "System.Drawing" -TypeDefinition @"
+using System;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Runtime.InteropServices;
 
-function Save-Png {
-    param(
-        [string]$Path,
-        [scriptblock]$Pixel
-    )
+public static class VoxelVerseTextureGen
+{
+    const int Size = 512;
 
-    $size = 16
-    $bitmap = [System.Drawing.Bitmap]::new($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
-    try {
-        for ($y = 0; $y -lt $size; $y++) {
-            for ($x = 0; $x -lt $size; $x++) {
-                $rgba = & $Pixel $x $y
-                $color = [System.Drawing.Color]::FromArgb($rgba[3], $rgba[0], $rgba[1], $rgba[2])
-                $bitmap.SetPixel($x, $y, $color)
+    static int Clamp(int v)
+    {
+        return Math.Max(0, Math.Min(255, v));
+    }
+
+    static int Hash2(int x, int y, int seed)
+    {
+        unchecked
+        {
+            int n = x * 374761393 + y * 668265263 + seed * 1442695041;
+            n = (n ^ (n >> 13)) * 1274126177;
+            return (n ^ (n >> 16)) & 255;
+        }
+    }
+
+    static void WritePng(string path, byte[] bytes)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        using (var bitmap = new Bitmap(Size, Size, PixelFormat.Format32bppArgb))
+        {
+            var rect = new Rectangle(0, 0, Size, Size);
+            var data = bitmap.LockBits(rect, ImageLockMode.WriteOnly, bitmap.PixelFormat);
+            try
+            {
+                Marshal.Copy(bytes, 0, data.Scan0, bytes.Length);
+            }
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
+            bitmap.Save(path, ImageFormat.Png);
+        }
+    }
+
+    public static void SaveMaterial(
+        string root,
+        string block,
+        string name,
+        int r,
+        int g,
+        int b,
+        int roughness,
+        int normalStrength,
+        int seed,
+        string kind)
+    {
+        byte[] albedo = new byte[Size * Size * 4];
+        byte[] normal = new byte[Size * Size * 4];
+        byte[] rough = new byte[Size * Size * 4];
+
+        for (int y = 0; y < Size; y++)
+        {
+            for (int x = 0; x < Size; x++)
+            {
+                int cellX = x / 64;
+                int cellY = y / 64;
+                int smallX = x / 16;
+                int smallY = y / 16;
+                int large = Hash2(cellX, cellY, seed) - 128;
+                int small = Hash2(smallX, smallY, seed + 7) - 128;
+                int grain = Hash2(x, y, seed + 19) - 128;
+                int shade = (int)(large * 0.22 + small * 0.10 + grain * 0.018);
+
+                double u = x / (double)(Size - 1);
+                double v = y / (double)(Size - 1);
+                int highlight = (int)(14.0 * (1.0 - ((u + v) * 0.5)));
+                int edge = (x < 10 || y < 10 || x > Size - 11 || y > Size - 11) ? -10 : 0;
+
+                if (kind == "grass_top" && (((x + y * 2) % 37) < 5)) shade += 20;
+                if (kind == "grass_side" && y < 190) shade += (int)(30 * (1.0 - (y / 190.0)));
+                if (kind == "ice") highlight += (int)(18 * Math.Abs(Math.Sin((x + y) / 47.0)));
+                if (kind == "snow") highlight += (int)(10 * Math.Abs(Math.Sin(x / 39.0)));
+                if (kind == "gravel" && ((Hash2(x / 28, y / 28, seed + 99) & 7) == 0)) shade -= 22;
+                if (kind == "sand" && ((x + y) % 53) < 2) shade += 12;
+
+                int rr = Clamp(r + shade + highlight + edge);
+                int gg = Clamp(g + shade + highlight + edge);
+                int bb = Clamp(b + shade + highlight + edge);
+
+                int idx = ((y * Size) + x) * 4;
+                albedo[idx + 0] = (byte)bb;
+                albedo[idx + 1] = (byte)gg;
+                albedo[idx + 2] = (byte)rr;
+                albedo[idx + 3] = 255;
+
+                double dx = (Hash2(smallX, smallY, seed + 31) - 128) / 128.0;
+                double dy = (Hash2(smallX + 3, smallY - 2, seed + 43) - 128) / 128.0;
+                int nx = Clamp((int)(128 + dx * normalStrength));
+                int ny = Clamp((int)(128 + dy * normalStrength));
+                normal[idx + 0] = 238;
+                normal[idx + 1] = (byte)ny;
+                normal[idx + 2] = (byte)nx;
+                normal[idx + 3] = 255;
+
+                int rv = Clamp(roughness + (int)(large * 0.08 + small * 0.05));
+                rough[idx + 0] = (byte)rv;
+                rough[idx + 1] = (byte)rv;
+                rough[idx + 2] = (byte)rv;
+                rough[idx + 3] = 255;
             }
         }
-        $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
-    }
-    finally {
-        $bitmap.Dispose()
-    }
-}
 
-function Clamp-Byte {
-    param([int]$Value)
-    [Math]::Max(0, [Math]::Min(255, $Value))
-}
-
-function Save-Material {
-    param(
-        [string]$Name,
-        [int]$R,
-        [int]$G,
-        [int]$B,
-        [int]$Roughness,
-        [int]$Noise,
-        [int]$NormalStrength
-    )
-
-    Save-Png (Join-Path $outDir "$($Name)_albedo.png") {
-        param($x, $y)
-        $n = (($x * 17 + $y * 31 + (($x -band 3) * 19) + (($y -band 2) * 23)) % ($Noise + 1)) - [int]($Noise / 2)
-        $rr = Clamp-Byte ($R + $n)
-        $gg = Clamp-Byte ($G + $n)
-        $bb = Clamp-Byte ($B + $n)
-        @($rr, $gg, $bb, 255)
-    }
-
-    Save-Png (Join-Path $outDir "$($Name)_normal.png") {
-        param($x, $y)
-        $dx = ((($x * 11 + $y * 5) % 9) - 4) * $NormalStrength
-        $dy = ((($x * 3 + $y * 13) % 9) - 4) * $NormalStrength
-        $rr = Clamp-Byte (128 + $dx)
-        $gg = Clamp-Byte (128 + $dy)
-        @($rr, $gg, 238, 255)
-    }
-
-    Save-Png (Join-Path $outDir "$($Name)_roughness.png") {
-        param($x, $y)
-        $n = (($x * 7 + $y * 11) % 21) - 10
-        $v = Clamp-Byte ($Roughness + $n)
-        @($v, $v, $v, 255)
+        string dir = Path.Combine(root, block);
+        WritePng(Path.Combine(dir, name + "_albedo.png"), albedo);
+        WritePng(Path.Combine(dir, name + "_normal.png"), normal);
+        WritePng(Path.Combine(dir, name + "_roughness.png"), rough);
     }
 }
+"@
 
-Save-Material "core_all" 48 42 42 232 22 1
-Save-Material "dirt_all" 128 82 38 218 34 2
-Save-Material "grass_top" 56 142 48 222 38 2
-Save-Material "grass_side" 82 126 48 224 32 2
-Save-Material "gravel_all" 104 102 98 236 44 3
-Save-Material "ice_all" 174 220 240 92 24 1
-Save-Material "sand_all" 202 184 112 204 26 1
-Save-Material "snow_all" 226 236 244 188 18 1
-Save-Material "stone_all" 112 112 116 228 30 2
+$rootDir = (Resolve-Path (Join-Path $PSScriptRoot "..\packs\core\textures\blocks")).Path
+New-Item -ItemType Directory -Force -Path $rootDir | Out-Null
 
-Write-Host "Wrote core block PBR-lite PNG sets to $outDir"
+Get-ChildItem -Path $rootDir -Filter "*.png" -File | Remove-Item -Force
+
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "core", "core_all", 58, 48, 50, 232, 8, 101, "core")
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "dirt", "dirt_all", 144, 88, 42, 220, 16, 211, "dirt")
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "grass", "grass_top", 62, 162, 58, 224, 13, 307, "grass_top")
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "grass", "grass_side", 84, 138, 56, 226, 12, 401, "grass_side")
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "gravel", "gravel_all", 114, 112, 108, 238, 22, 503, "gravel")
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "ice", "ice_all", 176, 226, 246, 94, 7, 607, "ice")
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "sand", "sand_all", 214, 194, 122, 206, 8, 709, "sand")
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "snow", "snow_all", 232, 242, 248, 190, 6, 811, "snow")
+[VoxelVerseTextureGen]::SaveMaterial($rootDir, "stone", "stone_all", 122, 122, 128, 230, 14, 919, "stone")
+
+Write-Host "Wrote 512x512 stylized PBR-lite block textures to $rootDir"

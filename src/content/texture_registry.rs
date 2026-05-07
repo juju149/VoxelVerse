@@ -203,7 +203,7 @@ mod tests {
         let textures = TextureRegistry::load(Path::new("packs"), &blocks).expect("textures");
 
         assert_eq!(textures.materials().len(), 10);
-        assert_eq!(textures.tile_size(), 16);
+        assert_eq!(textures.tile_size(), 512);
     }
 
     #[test]

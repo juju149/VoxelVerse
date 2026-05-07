@@ -6,9 +6,9 @@ RawBlockDef(
     role: Some(default_place),
     visual: Some((
         all: Some((
-            albedo: "core:blocks/dirt_all_albedo",
-            normal: "core:blocks/dirt_all_normal",
-            roughness: "core:blocks/dirt_all_roughness",
+            albedo: "core:blocks/dirt/dirt_all_albedo",
+            normal: "core:blocks/dirt/dirt_all_normal",
+            roughness: "core:blocks/dirt/dirt_all_roughness",
         )),
     )),
 )

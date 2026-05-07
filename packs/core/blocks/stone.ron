@@ -5,9 +5,9 @@ RawBlockDef(
     hardness: 3.0,
     visual: Some((
         all: Some((
-            albedo: "core:blocks/stone_all_albedo",
-            normal: "core:blocks/stone_all_normal",
-            roughness: "core:blocks/stone_all_roughness",
+            albedo: "core:blocks/stone/stone_all_albedo",
+            normal: "core:blocks/stone/stone_all_normal",
+            roughness: "core:blocks/stone/stone_all_roughness",
         )),
     )),
 )
