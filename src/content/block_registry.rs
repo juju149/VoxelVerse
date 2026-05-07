@@ -8,12 +8,22 @@ pub struct MaterialTextureSet {
     pub roughness: String,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct BlockMaterialLayers {
+    pub top: u32,
+    pub bottom: u32,
+    pub front: u32,
+    pub back: u32,
+    pub left: u32,
+    pub right: u32,
+}
+
 /// Resolved visual representation used at runtime.
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub struct CompiledBlockVisual {
-    /// Material layer for top faces. 0 = neutral fallback material.
-    pub top_material_layer: u32,
+    /// Material layers per cube face. 0 = neutral fallback material.
+    pub layers: BlockMaterialLayers,
     /// RGB tint multiplied over the material. `[1,1,1]` = no tint.
     pub tint: [f32; 3],
     /// RGB flat color fallback used when no atlas is present.
@@ -23,7 +33,7 @@ pub struct CompiledBlockVisual {
 impl Default for CompiledBlockVisual {
     fn default() -> Self {
         Self {
-            top_material_layer: 0,
+            layers: BlockMaterialLayers::default(),
             tint: [1.0; 3],
             flat_color: [1.0, 0.0, 1.0],
         }
@@ -83,6 +93,11 @@ impl BlockRegistry {
     /// Get the compiled definition for a runtime ID.
     pub fn block(&self, id: VoxelId) -> Option<&CompiledBlock> {
         self.blocks.get(id.raw() as usize)
+    }
+
+    #[cfg(test)]
+    pub fn blocks(&self) -> &[CompiledBlock] {
+        &self.blocks
     }
 
     pub fn is_solid(&self, id: VoxelId) -> bool {

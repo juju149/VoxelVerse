@@ -3,4 +3,11 @@ RawBlockDef(
     solid: true,
     color: (0.44, 0.42, 0.40),
     hardness: 0.6,
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/gravel_all_albedo",
+            normal: "core:blocks/gravel_all_normal",
+            roughness: "core:blocks/gravel_all_roughness",
+        )),
+    )),
 )

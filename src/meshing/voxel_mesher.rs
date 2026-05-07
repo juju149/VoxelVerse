@@ -226,21 +226,12 @@ impl MeshGen {
 
         let voxel_id = data.get_voxel(id);
         let visual = data.content.visual(voxel_id);
-        let top_material_layer = visual.top_material_layer;
         let mut fallback_color = data.content.color(voxel_id);
-        let mut top_color = if top_material_layer == 0 {
-            fallback_color
-        } else {
-            visual.tint
-        };
 
         // apply Skylight
         fallback_color[0] *= light_val;
         fallback_color[1] *= light_val;
         fallback_color[2] *= light_val;
-        top_color[0] *= light_val;
-        top_color[1] *= light_val;
-        top_color[2] *= light_val;
 
         // geometry Helpers
         let p = |u_off: u32, v_off: u32, l_off: u32| {
@@ -255,17 +246,20 @@ impl MeshGen {
         let o_tl = p(0, 1, 1);
         let o_tr = p(1, 1, 1);
 
-        let apply_top =
-            |ao: f32| -> [f32; 3] { [top_color[0] * ao, top_color[1] * ao, top_color[2] * ao] };
-        let apply_fallback = |ao: f32| -> [f32; 3] {
-            [
-                fallback_color[0] * ao,
-                fallback_color[1] * ao,
-                fallback_color[2] * ao,
-            ]
+        let face_color = |layer: u32, ao: f32| -> [f32; 3] {
+            let c = if layer == 0 {
+                fallback_color
+            } else {
+                [
+                    visual.tint[0] * light_val,
+                    visual.tint[1] * light_val,
+                    visual.tint[2] * light_val,
+                ]
+            };
+            [c[0] * ao, c[1] * ao, c[2] * ao]
         };
-
         if !has_top {
+            let layer = visual.layers.top;
             let n = |u, v| check(id.face, 1, u, v);
             let ao_bl = ambient_occlusion::calculate(n(-1, 0), n(0, -1), n(-1, -1));
             let ao_br = ambient_occlusion::calculate(n(1, 0), n(0, -1), n(1, -1));
@@ -277,18 +271,19 @@ impl MeshGen {
                 idx,
                 [o_bl, o_br, o_tr, o_tl],
                 [
-                    apply_top(ao_bl),
-                    apply_top(ao_br),
-                    apply_top(ao_tr),
-                    apply_top(ao_tl),
+                    face_color(layer, ao_bl),
+                    face_color(layer, ao_br),
+                    face_color(layer, ao_tr),
+                    face_color(layer, ao_tl),
                 ],
                 true,
-                top_material_layer,
+                layer,
             );
         }
 
         if !has_btm {
-            let c = apply_fallback(0.4);
+            let layer = visual.layers.bottom;
+            let c = face_color(layer, 0.4);
             Self::quad(
                 verts,
                 inds,
@@ -296,24 +291,61 @@ impl MeshGen {
                 [i_tl, i_tr, i_br, i_bl],
                 [c, c, c, c],
                 true,
-                0,
+                layer,
             );
         }
 
-        let side_c = apply_fallback(0.8);
-        let colors = [side_c, side_c, side_c, side_c];
-
         if !has_front {
-            Self::quad(verts, inds, idx, [i_bl, i_br, o_br, o_bl], colors, false, 0);
+            let layer = visual.layers.front;
+            let c = face_color(layer, 0.8);
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_bl, i_br, o_br, o_bl],
+                [c, c, c, c],
+                false,
+                layer,
+            );
         }
         if !has_back {
-            Self::quad(verts, inds, idx, [o_tl, o_tr, i_tr, i_tl], colors, false, 0);
+            let layer = visual.layers.back;
+            let c = face_color(layer, 0.8);
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [o_tl, o_tr, i_tr, i_tl],
+                [c, c, c, c],
+                false,
+                layer,
+            );
         }
         if !has_left {
-            Self::quad(verts, inds, idx, [i_tl, i_bl, o_bl, o_tl], colors, false, 0);
+            let layer = visual.layers.left;
+            let c = face_color(layer, 0.8);
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_tl, i_bl, o_bl, o_tl],
+                [c, c, c, c],
+                false,
+                layer,
+            );
         }
         if !has_right {
-            Self::quad(verts, inds, idx, [i_br, i_tr, o_tr, o_br], colors, false, 0);
+            let layer = visual.layers.right;
+            let c = face_color(layer, 0.8);
+            Self::quad(
+                verts,
+                inds,
+                idx,
+                [i_br, i_tr, o_tr, o_br],
+                [c, c, c, c],
+                false,
+                layer,
+            );
         }
     }
 

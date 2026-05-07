@@ -4,4 +4,11 @@ RawBlockDef(
     color: (0.55, 0.38, 0.18),
     hardness: 1.5,
     role: Some(default_place),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/dirt_all_albedo",
+            normal: "core:blocks/dirt_all_normal",
+            roughness: "core:blocks/dirt_all_roughness",
+        )),
+    )),
 )

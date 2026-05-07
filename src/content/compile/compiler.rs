@@ -1,8 +1,10 @@
 use crate::content::biome_registry::{BiomeRegistry, CompiledBiome};
 use crate::content::block_registry::{
-    BlockRegistry, CompiledBlock, CompiledBlockVisual, MaterialTextureSet,
+    BlockMaterialLayers, BlockRegistry, CompiledBlock, CompiledBlockVisual, MaterialTextureSet,
 };
-use crate::content::schema::{BlockRole, RawBiomeDef, RawBlockDef, RawPlanetDef};
+use crate::content::schema::{
+    BlockRole, RawBiomeDef, RawBlockDef, RawBlockVisual, RawMaterialTextureSet, RawPlanetDef,
+};
 use crate::content::CompiledPlanet;
 use crate::voxel::VoxelId;
 use std::collections::HashMap;
@@ -59,25 +61,20 @@ impl ContentCompiler {
             }
 
             let visual = if let Some(raw_visual) = def.visual {
-                let material = MaterialTextureSet {
-                    albedo: raw_visual.top.albedo.0,
-                    normal: raw_visual.top.normal.0,
-                    roughness: raw_visual.top.roughness.0,
-                };
-                let layer = if let Some(index) = material_sets.iter().position(|m| m == &material) {
-                    (index + 1) as u32
-                } else {
-                    material_sets.push(material);
-                    material_sets.len() as u32
-                };
-                CompiledBlockVisual {
-                    top_material_layer: layer,
-                    tint: raw_visual.tint,
-                    flat_color: def.color,
+                match Self::compile_block_visual(&key, def.color, raw_visual, &mut material_sets) {
+                    Ok(visual) => visual,
+                    Err(err) => {
+                        errors.extend(err);
+                        CompiledBlockVisual {
+                            layers: BlockMaterialLayers::default(),
+                            tint: [1.0, 1.0, 1.0],
+                            flat_color: def.color,
+                        }
+                    }
                 }
             } else {
                 CompiledBlockVisual {
-                    top_material_layer: 0,
+                    layers: BlockMaterialLayers::default(),
                     tint: [1.0, 1.0, 1.0],
                     flat_color: def.color,
                 }
@@ -119,6 +116,79 @@ impl ContentCompiler {
             default_place,
             planet_core,
         ))
+    }
+
+    fn compile_block_visual(
+        key: &str,
+        color: [f32; 3],
+        raw: RawBlockVisual,
+        material_sets: &mut Vec<MaterialTextureSet>,
+    ) -> Result<CompiledBlockVisual, Vec<String>> {
+        let mut errors = Vec::new();
+        let mut layer_for = |face: &str, material: Option<&RawMaterialTextureSet>| -> u32 {
+            let Some(material) = material else {
+                errors.push(format!(
+                    "Block '{}': visual must define material for {} face",
+                    key, face
+                ));
+                return 0;
+            };
+            Self::material_layer(material, material_sets)
+        };
+
+        let layers = BlockMaterialLayers {
+            top: layer_for("top", raw.top.as_ref().or(raw.all.as_ref())),
+            bottom: layer_for("bottom", raw.bottom.as_ref().or(raw.all.as_ref())),
+            front: layer_for(
+                "front",
+                raw.front
+                    .as_ref()
+                    .or(raw.side.as_ref())
+                    .or(raw.all.as_ref()),
+            ),
+            back: layer_for(
+                "back",
+                raw.back.as_ref().or(raw.side.as_ref()).or(raw.all.as_ref()),
+            ),
+            left: layer_for(
+                "left",
+                raw.left.as_ref().or(raw.side.as_ref()).or(raw.all.as_ref()),
+            ),
+            right: layer_for(
+                "right",
+                raw.right
+                    .as_ref()
+                    .or(raw.side.as_ref())
+                    .or(raw.all.as_ref()),
+            ),
+        };
+
+        if errors.is_empty() {
+            Ok(CompiledBlockVisual {
+                layers,
+                tint: raw.tint,
+                flat_color: color,
+            })
+        } else {
+            Err(errors)
+        }
+    }
+
+    fn material_layer(
+        raw: &RawMaterialTextureSet,
+        material_sets: &mut Vec<MaterialTextureSet>,
+    ) -> u32 {
+        let material = MaterialTextureSet {
+            albedo: raw.albedo.0.clone(),
+            normal: raw.normal.0.clone(),
+            roughness: raw.roughness.0.clone(),
+        };
+        if let Some(index) = material_sets.iter().position(|m| m == &material) {
+            (index + 1) as u32
+        } else {
+            material_sets.push(material);
+            material_sets.len() as u32
+        }
     }
 
     /// Compile raw biome definitions into a `BiomeRegistry`.
@@ -314,5 +384,24 @@ mod tests {
         };
 
         assert!(err.iter().any(|e| e.contains("unknown surface_block")));
+    }
+
+    #[test]
+    fn core_pack_solid_blocks_have_all_faces_materialized() {
+        use crate::content::pack::PackLoader;
+        use std::path::Path;
+
+        let pack = PackLoader::load_from_dir(Path::new("packs/core")).expect("core pack");
+        let blocks = ContentCompiler::compile_blocks(pack.blocks).expect("blocks");
+
+        for block in blocks.blocks().iter().filter(|b| b.solid) {
+            let layers = block.visual.layers;
+            assert!(layers.top > 0, "{} missing top material", block.key);
+            assert!(layers.bottom > 0, "{} missing bottom material", block.key);
+            assert!(layers.front > 0, "{} missing front material", block.key);
+            assert!(layers.back > 0, "{} missing back material", block.key);
+            assert!(layers.left > 0, "{} missing left material", block.key);
+            assert!(layers.right > 0, "{} missing right material", block.key);
+        }
     }
 }

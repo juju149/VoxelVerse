@@ -5,10 +5,20 @@ RawBlockDef(
     hardness: 1.0,
     role: Some(default_place),
     visual: Some((
-        top: (
+        top: Some((
             albedo: "core:blocks/grass_top_albedo",
             normal: "core:blocks/grass_top_normal",
             roughness: "core:blocks/grass_top_roughness",
-        ),
+        )),
+        bottom: Some((
+            albedo: "core:blocks/dirt_all_albedo",
+            normal: "core:blocks/dirt_all_normal",
+            roughness: "core:blocks/dirt_all_roughness",
+        )),
+        side: Some((
+            albedo: "core:blocks/grass_side_albedo",
+            normal: "core:blocks/grass_side_normal",
+            roughness: "core:blocks/grass_side_roughness",
+        )),
     )),
 )

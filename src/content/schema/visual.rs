@@ -25,10 +25,26 @@ pub struct RawMaterialTextureSet {
 }
 
 /// Raw visual data for a block as written in pack files.
-/// V0 supports a single PBR-lite material on the top face.
+/// `all` covers every face. `side` covers front/back/left/right.
+/// Explicit face fields override broader fields.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBlockVisual {
-    pub top: RawMaterialTextureSet,
+    #[serde(default)]
+    pub all: Option<RawMaterialTextureSet>,
+    #[serde(default)]
+    pub top: Option<RawMaterialTextureSet>,
+    #[serde(default)]
+    pub bottom: Option<RawMaterialTextureSet>,
+    #[serde(default)]
+    pub side: Option<RawMaterialTextureSet>,
+    #[serde(default)]
+    pub front: Option<RawMaterialTextureSet>,
+    #[serde(default)]
+    pub back: Option<RawMaterialTextureSet>,
+    #[serde(default)]
+    pub left: Option<RawMaterialTextureSet>,
+    #[serde(default)]
+    pub right: Option<RawMaterialTextureSet>,
     #[serde(default = "default_tint")]
     pub tint: [f32; 3],
 }

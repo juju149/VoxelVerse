@@ -4,4 +4,11 @@ RawBlockDef(
     color: (0.22, 0.18, 0.16),
     hardness: 999.0,
     role: Some(planet_core),
+    visual: Some((
+        all: Some((
+            albedo: "core:blocks/core_all_albedo",
+            normal: "core:blocks/core_all_normal",
+            roughness: "core:blocks/core_all_roughness",
+        )),
+    )),
 )

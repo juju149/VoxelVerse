@@ -202,7 +202,7 @@ mod tests {
         let blocks = ContentCompiler::compile_blocks(pack.blocks).expect("blocks");
         let textures = TextureRegistry::load(Path::new("packs"), &blocks).expect("textures");
 
-        assert_eq!(textures.materials().len(), 2);
+        assert_eq!(textures.materials().len(), 10);
         assert_eq!(textures.tile_size(), 16);
     }
 
