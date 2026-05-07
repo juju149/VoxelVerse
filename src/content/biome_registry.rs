@@ -46,9 +46,11 @@ impl BiomeRegistry {
     }
 
     /// Get a biome by its compact runtime id.
-    /// Falls back to biome 0 if the id is out of range.
+    /// Unknown runtime IDs are engine bugs, not content fallbacks.
     pub fn biome(&self, id: u8) -> &CompiledBiome {
-        self.biomes.get(id as usize).unwrap_or(&self.biomes[0])
+        self.biomes
+            .get(id as usize)
+            .unwrap_or_else(|| panic!("Unknown biome runtime id {}", id))
     }
 
     pub fn biomes(&self) -> &[CompiledBiome] {

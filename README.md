@@ -78,3 +78,16 @@ $$
 
 *   **Discrete Collision Detection:**
     Wrote a custom **AABB** solver that checks for voxel occupancy by casting rays into the underlying math-based terrain grid.
+
+## Foundation Quality Gate
+
+Before adding rendering features such as real block textures, the foundation gate is:
+
+```powershell
+cargo fmt --check
+cargo clippy -- -D warnings
+cargo test
+cargo build
+```
+
+Rust source files must stay below 1000 lines, with 800 lines treated as the split-warning threshold.

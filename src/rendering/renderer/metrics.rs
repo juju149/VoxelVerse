@@ -11,6 +11,12 @@ impl<'a> Renderer<'a> {
             gpu_indices += mesh.num_inds as usize;
         }
 
+        let meshing_avg_ms = if self.completed_mesh_count == 0 {
+            0.0
+        } else {
+            self.completed_mesh_time_sum_ms / self.completed_mesh_count as f32
+        };
+
         RenderStats {
             visible_chunks,
             active_chunks: self.chunks.len(),
@@ -24,10 +30,11 @@ impl<'a> Renderer<'a> {
             // job/timing fields are zero-filled here; the caller may override them
             mesh_jobs_in_flight: self.pending_chunks.len(),
             lod_jobs_in_flight: self.pending_lods.len(),
-            uploads_this_frame: 0,
-            update_view_ms: 0.0,
-            meshing_avg_ms: 0.0,
-            meshing_max_ms: 0.0,
+            uploads_this_frame: self.scheduler_stats.uploaded_voxel
+                + self.scheduler_stats.uploaded_lod,
+            update_view_ms: self.update_view_ms,
+            meshing_avg_ms,
+            meshing_max_ms: self.completed_mesh_time_max_ms,
             render_world_ms: 0.0,
             render_ui_ms: 0.0,
         }

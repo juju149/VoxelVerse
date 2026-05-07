@@ -1,4 +1,4 @@
-use crate::content::schema::{RawBiomeDef, RawBlockDef};
+use crate::content::schema::{RawBiomeDef, RawBlockDef, RawPlanetDef};
 use std::path::Path;
 
 /// A loaded but uncompiled pack — raw definitions with their derived keys.
@@ -7,6 +7,7 @@ pub struct LoadedPack {
     pub namespace: String,
     pub blocks: Vec<(String, RawBlockDef)>,
     pub biomes: Vec<(String, RawBiomeDef)>,
+    pub planets: Vec<(String, RawPlanetDef)>,
 }
 
 pub struct PackLoader;
@@ -24,11 +25,13 @@ impl PackLoader {
 
         let blocks = Self::load_typed_dir::<RawBlockDef>(&pack_dir.join("blocks"), &namespace)?;
         let biomes = Self::load_typed_dir::<RawBiomeDef>(&pack_dir.join("biomes"), &namespace)?;
+        let planets = Self::load_typed_dir::<RawPlanetDef>(&pack_dir.join("planets"), &namespace)?;
 
         Ok(LoadedPack {
             namespace,
             blocks,
             biomes,
+            planets,
         })
     }
 

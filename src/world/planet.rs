@@ -1,6 +1,6 @@
-use crate::content::{BiomeRegistry, BlockRegistry};
+use crate::content::{BiomeRegistry, BlockRegistry, CompiledPlanet};
 use crate::generation::{terrain::PlanetTerrain, CoordSystem};
-use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId};
+use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use crate::world::{PlanetProfile, VoxelRuntime};
 use std::sync::Arc;
 
@@ -14,9 +14,27 @@ struct PlanetBlockIds {
 impl PlanetBlockIds {
     fn from_registry(registry: &BlockRegistry) -> Self {
         Self {
-            core: registry.lookup("core:core").unwrap_or(VoxelId::AIR),
+            core: registry.planet_core_voxel(),
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct VoxelEditResult {
+    pub changed: VoxelCoord,
+    pub dirty_chunks: Vec<SurfaceChunkKey>,
+}
+
+#[allow(dead_code)]
+pub trait VoxelRead {
+    fn resolution(&self) -> u32;
+    fn get_voxel(&self, coord: VoxelCoord) -> VoxelId;
+    fn exists(&self, coord: VoxelCoord) -> bool;
+}
+
+#[allow(dead_code)]
+pub trait VoxelWrite {
+    fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult;
 }
 
 #[derive(Clone)]
@@ -29,18 +47,18 @@ pub struct PlanetData {
     pub has_core: bool,
     pub terrain: PlanetTerrain,
     block_ids: PlanetBlockIds,
+    planet_def: CompiledPlanet,
     /// Seed stored so resize can regenerate terrain with the same seed.
     seed: u32,
 }
 
 impl PlanetData {
     pub fn new(
-        resolution: u32,
-        seed: u32,
+        planet_def: CompiledPlanet,
         registry: Arc<BlockRegistry>,
         biome_registry: Arc<BiomeRegistry>,
     ) -> Self {
-        let profile = PlanetProfile::with_seed(resolution, seed);
+        let profile = PlanetProfile::from_compiled(&planet_def);
         println!(
             "Generating terrain for resolution {}  (radius ≈ {})…",
             profile.resolution,
@@ -60,7 +78,8 @@ impl PlanetData {
             resolution: profile.resolution,
             has_core: true,
             terrain,
-            seed,
+            seed: profile.seed,
+            planet_def,
         }
     }
 
@@ -74,24 +93,29 @@ impl PlanetData {
         }
 
         self.voxels.clear();
-        self.profile = PlanetProfile::with_seed(self.resolution, self.seed);
+        self.planet_def = self.planet_def.with_resolution(self.resolution);
+        self.planet_def.seed = self.seed;
+        self.profile = PlanetProfile::from_compiled(&self.planet_def);
         self.resolution = self.profile.resolution;
 
         println!("Regenerating terrain for resolution {}…", self.resolution);
         self.terrain = PlanetTerrain::new(self.profile, &self.biomes);
     }
 
-    pub fn add_block(&mut self, coord: VoxelCoord) {
+    pub fn add_block(&mut self, coord: VoxelCoord) -> VoxelEditResult {
         let voxel = self.content.default_place_voxel();
-        self.set_voxel(coord, voxel);
+        self.set_voxel(coord, voxel)
     }
 
-    pub fn remove_block(&mut self, coord: VoxelCoord) {
+    pub fn remove_block(&mut self, coord: VoxelCoord) -> VoxelEditResult {
         if self.has_core && coord.layer < self.profile.core_layers {
-            return;
+            return VoxelEditResult {
+                changed: coord,
+                dirty_chunks: Vec::new(),
+            };
         }
 
-        self.set_voxel(coord, VoxelId::AIR);
+        self.set_voxel(coord, VoxelId::AIR)
     }
 
     pub fn get_voxel(&self, coord: VoxelCoord) -> VoxelId {
@@ -100,10 +124,14 @@ impl PlanetData {
             .unwrap_or_else(|| self.generated_voxel(coord))
     }
 
-    pub fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) {
+    pub fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult {
         let generated = self.generated_voxel(coord);
         let override_voxel = (voxel != generated).then_some(voxel);
         self.voxels.set_override(coord, override_voxel);
+        VoxelEditResult {
+            changed: coord,
+            dirty_chunks: Self::dirty_chunks_for_coord(self.resolution, coord),
+        }
     }
 
     pub fn exists(&self, coord: VoxelCoord) -> bool {
@@ -144,6 +172,54 @@ impl PlanetData {
         }
     }
 
+    fn dirty_chunks_for_coord(resolution: u32, coord: VoxelCoord) -> Vec<SurfaceChunkKey> {
+        if coord.u >= resolution || coord.v >= resolution {
+            return Vec::new();
+        }
+
+        let max_chunk = resolution.saturating_sub(1) / CHUNK_SIZE;
+        let u_idx = coord.u / CHUNK_SIZE;
+        let v_idx = coord.v / CHUNK_SIZE;
+        let mut keys = vec![SurfaceChunkKey {
+            face: coord.face,
+            u_idx,
+            v_idx,
+        }];
+
+        if coord.u.is_multiple_of(CHUNK_SIZE) && u_idx > 0 {
+            keys.push(SurfaceChunkKey {
+                face: coord.face,
+                u_idx: u_idx - 1,
+                v_idx,
+            });
+        }
+        if coord.u % CHUNK_SIZE == CHUNK_SIZE - 1 && u_idx < max_chunk {
+            keys.push(SurfaceChunkKey {
+                face: coord.face,
+                u_idx: u_idx + 1,
+                v_idx,
+            });
+        }
+        if coord.v.is_multiple_of(CHUNK_SIZE) && v_idx > 0 {
+            keys.push(SurfaceChunkKey {
+                face: coord.face,
+                u_idx,
+                v_idx: v_idx - 1,
+            });
+        }
+        if coord.v % CHUNK_SIZE == CHUNK_SIZE - 1 && v_idx < max_chunk {
+            keys.push(SurfaceChunkKey {
+                face: coord.face,
+                u_idx,
+                v_idx: v_idx + 1,
+            });
+        }
+
+        keys.sort_by_key(|k| (k.face, k.u_idx, k.v_idx));
+        keys.dedup_by_key(|k| (k.face, k.u_idx, k.v_idx));
+        keys
+    }
+
     pub fn surface_radius(&self, face: u8, u: u32, v: u32) -> f32 {
         let h = self.terrain.get_height(face, u, v);
         self.profile.layer_radius(h + 1)
@@ -156,5 +232,78 @@ impl PlanetData {
         let v = self.resolution / 2;
         let dir = CoordSystem::get_direction(4, u, v, self.resolution);
         dir * (self.surface_radius(4, u, v) + self.profile.spawn_clearance())
+    }
+}
+
+impl VoxelRead for PlanetData {
+    fn resolution(&self) -> u32 {
+        self.resolution
+    }
+
+    fn get_voxel(&self, coord: VoxelCoord) -> VoxelId {
+        PlanetData::get_voxel(self, coord)
+    }
+
+    fn exists(&self, coord: VoxelCoord) -> bool {
+        PlanetData::exists(self, coord)
+    }
+}
+
+impl VoxelWrite for PlanetData {
+    fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult {
+        PlanetData::set_voxel(self, coord, voxel)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PlanetData;
+    use crate::voxel::{SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
+
+    fn coord(u: u32, v: u32) -> VoxelCoord {
+        VoxelCoord {
+            face: 2,
+            layer: 8,
+            u,
+            v,
+        }
+    }
+
+    #[test]
+    fn dirty_chunks_include_only_current_chunk_for_interior_edit() {
+        let dirty = PlanetData::dirty_chunks_for_coord(128, coord(3, 4));
+        assert_eq!(
+            dirty,
+            vec![SurfaceChunkKey {
+                face: 2,
+                u_idx: 0,
+                v_idx: 0,
+            }]
+        );
+    }
+
+    #[test]
+    fn dirty_chunks_include_neighbor_only_on_chunk_border() {
+        let dirty = PlanetData::dirty_chunks_for_coord(128, coord(CHUNK_SIZE, CHUNK_SIZE - 1));
+        assert_eq!(
+            dirty,
+            vec![
+                SurfaceChunkKey {
+                    face: 2,
+                    u_idx: 0,
+                    v_idx: 0,
+                },
+                SurfaceChunkKey {
+                    face: 2,
+                    u_idx: 1,
+                    v_idx: 0,
+                },
+                SurfaceChunkKey {
+                    face: 2,
+                    u_idx: 1,
+                    v_idx: 1,
+                },
+            ]
+        );
     }
 }

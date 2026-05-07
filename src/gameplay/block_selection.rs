@@ -1,7 +1,7 @@
 use crate::generation::CoordSystem;
 use crate::math::Ray;
 use crate::voxel::VoxelCoord;
-use crate::world::PlanetData;
+use crate::world::VoxelRead;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BlockSelectionMode {
@@ -15,7 +15,7 @@ impl BlockSelection {
     pub fn trace(
         ray: Ray,
         reach: f32,
-        planet: &PlanetData,
+        planet: &impl VoxelRead,
         mode: BlockSelectionMode,
     ) -> Option<(VoxelCoord, f32)> {
         let mut distance = 0.0;
@@ -29,7 +29,7 @@ impl BlockSelection {
                 break;
             }
 
-            if let Some(id) = CoordSystem::pos_to_id(point, planet.resolution) {
+            if let Some(id) = CoordSystem::pos_to_id(point, planet.resolution()) {
                 let exists = planet.exists(id);
                 match mode {
                     BlockSelectionMode::HitSolid if exists => return Some((id, distance)),
@@ -65,7 +65,13 @@ mod tests {
         let registry = Arc::new(ContentCompiler::compile_blocks(pack.blocks).expect("blocks"));
         let biomes =
             Arc::new(ContentCompiler::compile_biomes(pack.biomes, &registry).expect("biomes"));
-        let planet = PlanetData::new(16, 42, registry, biomes);
+        let planet_def = ContentCompiler::compile_planets(pack.planets)
+            .expect("planets")
+            .into_iter()
+            .next()
+            .expect("planet")
+            .with_resolution(16);
+        let planet = PlanetData::new(planet_def, registry, biomes);
         let ray = Ray {
             origin: Vec3::new(0.0, 0.0, 10_000.0),
             direction: Vec3::Z,

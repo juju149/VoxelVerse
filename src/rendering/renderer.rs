@@ -5,6 +5,7 @@ use crate::math::Frustum;
 use crate::meshing::CpuMesh;
 use crate::rendering::lod_animation::LodAnimator;
 use crate::rendering::types::ChunkMesh;
+use crate::streaming::{MeshScheduler, SchedulerStats};
 use crate::voxel::{LodKey, SurfaceChunkKey, VoxelCoord};
 use crate::world::PlanetData;
 use bytemuck::{Pod, Zeroable};
@@ -104,8 +105,8 @@ pub struct Renderer<'a> {
     load_queue: Vec<SurfaceChunkKey>,
     player_chunk_pos: Option<SurfaceChunkKey>,
 
-    mesh_tx: Sender<(SurfaceChunkKey, CpuMesh)>,
-    mesh_rx: Receiver<(SurfaceChunkKey, CpuMesh)>,
+    mesh_tx: Sender<MeshJobResult<SurfaceChunkKey>>,
+    mesh_rx: Receiver<MeshJobResult<SurfaceChunkKey>>,
     pending_chunks: HashSet<SurfaceChunkKey>,
 
     /// Chunks invalidated by a player edit — dispatched before the normal load queue.
@@ -113,9 +114,16 @@ pub struct Renderer<'a> {
     /// In-flight dirty rebuild jobs (subset of pending_chunks — lets us skip the stale guard on receipt).
     pending_dirty: HashSet<SurfaceChunkKey>,
 
-    lod_tx: Sender<(LodKey, CpuMesh)>,
-    lod_rx: Receiver<(LodKey, CpuMesh)>,
+    lod_tx: Sender<MeshJobResult<LodKey>>,
+    lod_rx: Receiver<MeshJobResult<LodKey>>,
     pending_lods: HashSet<LodKey>,
+
+    scheduler: MeshScheduler,
+    scheduler_stats: SchedulerStats,
+    completed_mesh_time_sum_ms: f32,
+    completed_mesh_time_max_ms: f32,
+    completed_mesh_count: usize,
+    update_view_ms: f32,
 
     frame_stats: FrameStats,
 
@@ -137,6 +145,12 @@ struct QuadContext<'a> {
     player_id: Option<VoxelCoord>,
 }
 
+struct MeshJobResult<K> {
+    key: K,
+    mesh: CpuMesh,
+    elapsed_ms: f32,
+}
+
 mod debug_draw;
 mod lod_selection;
 mod metrics;
@@ -156,4 +170,18 @@ impl<'a> Renderer<'a> {
     }
 
     // QUADTREE LOGIC
+
+    fn reset_streaming_frame_stats(&mut self) {
+        self.scheduler_stats = SchedulerStats::default();
+        self.completed_mesh_time_sum_ms = 0.0;
+        self.completed_mesh_time_max_ms = 0.0;
+        self.completed_mesh_count = 0;
+        self.update_view_ms = 0.0;
+    }
+
+    fn record_mesh_time(&mut self, elapsed_ms: f32) {
+        self.completed_mesh_time_sum_ms += elapsed_ms;
+        self.completed_mesh_time_max_ms = self.completed_mesh_time_max_ms.max(elapsed_ms);
+        self.completed_mesh_count += 1;
+    }
 }

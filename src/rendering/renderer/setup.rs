@@ -5,6 +5,7 @@ use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
 use crate::rendering::texture_atlas::TextureAtlas;
 use crate::rendering::types::Vertex;
+use crate::streaming::{MeshScheduler, SchedulerBudget, SchedulerStats};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
 use wgpu::util::DeviceExt;
@@ -499,6 +500,12 @@ impl<'a> Renderer<'a> {
             lod_tx,
             lod_rx,
             pending_lods: HashSet::new(),
+            scheduler: MeshScheduler::new(SchedulerBudget::default()),
+            scheduler_stats: SchedulerStats::default(),
+            completed_mesh_time_sum_ms: 0.0,
+            completed_mesh_time_max_ms: 0.0,
+            completed_mesh_count: 0,
+            update_view_ms: 0.0,
 
             frame_stats: FrameStats::new(),
             atlas_bind,

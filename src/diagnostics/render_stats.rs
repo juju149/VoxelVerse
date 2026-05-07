@@ -51,11 +51,23 @@ impl RenderStats {
     }
 
     /// Single-string overlay suitable for the on-screen debug console.
-    pub fn debug_overlay(self, culling_status: &str, frame_time_ms: f32) -> String {
+    pub fn debug_overlay(
+        self,
+        culling_status: &str,
+        frame_time_ms: f32,
+        player_pos: [f32; 3],
+        target_voxel: Option<String>,
+    ) -> String {
+        let target = target_voxel.unwrap_or_else(|| "none".to_string());
         format!(
-            "Culling:  {culling}\nFrame:    {frame:.2} ms\nChunks:   {vc} / {ac}\nLODs:     {vl} / {al}\nQueue:    {qc}\nPending:  {pc} chunks / {pl} LODs\nJobs:     {mj} mesh / {lj} LOD\nUploads:  {up} this frame\nMesh ms:  avg {ma:.2} / max {mx:.2}\nGPU:      {gpu}",
+            "Culling:  {culling}\nFrame:    {frame:.2} ms\nView:     {view:.2} ms\nPlayer:   {px:.1}, {py:.1}, {pz:.1}\nTarget:   {target}\nChunks:   {vc} / {ac}\nLODs:     {vl} / {al}\nQueue:    {qc}\nPending:  {pc} chunks / {pl} LODs\nJobs:     {mj} mesh / {lj} LOD\nUploads:  {up} this frame\nMesh ms:  avg {ma:.2} / max {mx:.2}\nGPU:      {gpu}",
             culling = culling_status,
             frame = frame_time_ms,
+            view = self.update_view_ms,
+            px = player_pos[0],
+            py = player_pos[1],
+            pz = player_pos[2],
+            target = target,
             vc = self.visible_chunks,
             ac = self.active_chunks,
             vl = self.visible_lods,

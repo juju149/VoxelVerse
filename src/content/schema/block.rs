@@ -7,6 +7,8 @@ use serde::Deserialize;
 pub enum BlockRole {
     /// Used as the default block placed by the player before a hotbar system exists.
     DefaultPlace,
+    /// Used for deep planet layers. This replaces hardcoded block names in world generation.
+    PlanetCore,
 }
 
 /// Raw block definition as written in pack data files.

@@ -1,5 +1,5 @@
 use crate::voxel::VoxelCoord;
-use crate::world::PlanetData;
+use crate::world::{PlanetData, VoxelEditResult};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BlockActionIntent {
@@ -30,16 +30,10 @@ impl BlockInteraction {
         }
     }
 
-    pub fn apply(action: BlockAction, planet: &mut PlanetData) -> VoxelCoord {
+    pub fn apply(action: BlockAction, planet: &mut PlanetData) -> VoxelEditResult {
         match action {
-            BlockAction::Mine(id) => {
-                planet.remove_block(id);
-                id
-            }
-            BlockAction::Place(id) => {
-                planet.add_block(id);
-                id
-            }
+            BlockAction::Mine(id) => planet.remove_block(id),
+            BlockAction::Place(id) => planet.add_block(id),
         }
     }
 }

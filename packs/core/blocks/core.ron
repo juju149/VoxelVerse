@@ -3,4 +3,5 @@ RawBlockDef(
     solid: true,
     color: (0.22, 0.18, 0.16),
     hardness: 999.0,
+    role: Some(planet_core),
 )

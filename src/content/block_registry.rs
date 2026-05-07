@@ -50,6 +50,7 @@ pub struct BlockRegistry {
     blocks: Vec<CompiledBlock>,
     key_to_id: HashMap<String, VoxelId>,
     default_place: VoxelId,
+    planet_core: VoxelId,
 }
 
 impl BlockRegistry {
@@ -58,11 +59,13 @@ impl BlockRegistry {
         blocks: Vec<CompiledBlock>,
         key_to_id: HashMap<String, VoxelId>,
         default_place: VoxelId,
+        planet_core: VoxelId,
     ) -> Self {
         Self {
             blocks,
             key_to_id,
             default_place,
+            planet_core,
         }
     }
 
@@ -80,14 +83,21 @@ impl BlockRegistry {
         self.block(id).is_some_and(|b| b.solid)
     }
 
-    /// Returns the block's RGB color. Falls back to dirt-brown if the ID is unknown.
+    /// Returns the block's RGB color. Unknown runtime IDs are engine bugs, not content fallbacks.
     pub fn color(&self, id: VoxelId) -> [f32; 3] {
-        self.block(id).map(|b| b.color).unwrap_or([0.6, 0.4, 0.2])
+        self.block(id)
+            .unwrap_or_else(|| panic!("Unknown block runtime id {}", id.raw()))
+            .color
     }
 
     /// The block placed when the player uses the default slot.
     pub fn default_place_voxel(&self) -> VoxelId {
         self.default_place
+    }
+
+    /// Block used for protected deep planet layers.
+    pub fn planet_core_voxel(&self) -> VoxelId {
+        self.planet_core
     }
 
     /// Number of registered blocks (including air).

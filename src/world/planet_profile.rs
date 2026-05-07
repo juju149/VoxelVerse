@@ -1,3 +1,5 @@
+use crate::content::CompiledPlanet;
+
 #[derive(Clone, Copy, Debug)]
 pub struct PlanetProfile {
     pub resolution: u32,
@@ -9,6 +11,7 @@ pub struct PlanetProfile {
     /// Maximum terrain height offset in layers.  Stored as `i32` and used as
     /// `f32` amplitude — supports the i16 height storage (range up to 32767).
     pub max_terrain_offset: i32,
+    pub spawn_clearance_layers: f32,
     pub seed: u32,
 }
 
@@ -41,7 +44,29 @@ impl PlanetProfile {
             surface_radius,
             layer_height,
             max_terrain_offset,
+            spawn_clearance_layers: 8.0,
             seed,
+        }
+    }
+
+    pub fn from_compiled(def: &CompiledPlanet) -> Self {
+        let resolution = def.resolution.max(8);
+        let surface_layer = def.surface_layer.clamp(4, resolution - 1);
+        let core_layers = def.core_layers.min(surface_layer.saturating_sub(1)).max(1);
+        let surface_radius = resolution as f32 * 0.5;
+        let inner_radius = (surface_radius * def.inner_radius_fraction).max(2.0);
+        let layer_height = (surface_radius - inner_radius) / surface_layer.max(1) as f32;
+
+        Self {
+            resolution,
+            surface_layer,
+            core_layers,
+            inner_radius,
+            surface_radius,
+            layer_height,
+            max_terrain_offset: def.max_terrain_offset,
+            spawn_clearance_layers: def.spawn_clearance_layers,
+            seed: def.seed,
         }
     }
 
@@ -55,6 +80,7 @@ impl PlanetProfile {
     /// let resolution = PlanetProfile::procedural_resolution(0x4242_1234);
     /// assert!(resolution >= 10_000 && resolution <= 2_000_000);
     /// ```
+    #[allow(dead_code)]
     pub fn procedural_resolution(seed: u32) -> u32 {
         // Two LCG rounds to spread seed bits.
         let s = seed
@@ -100,7 +126,7 @@ impl PlanetProfile {
     }
 
     pub fn spawn_clearance(self) -> f32 {
-        self.layer_height * 8.0
+        self.layer_height * self.spawn_clearance_layers
     }
 }
 

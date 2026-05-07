@@ -435,7 +435,15 @@ impl<'a> Renderer<'a> {
                     "ACTIVE"
                 };
                 let stats = self.render_stats(rendered_chunks, rendered_lods);
-                let info = stats.debug_overlay(status, self.frame_stats.frame_time_ms());
+                let target = controller
+                    .cursor_id
+                    .map(|id| format!("f{} l{} u{} v{}", id.face, id.layer, id.u, id.v));
+                let info = stats.debug_overlay(
+                    status,
+                    self.frame_stats.frame_time_ms(),
+                    player.position.to_array(),
+                    target,
+                );
 
                 debug_buf.set_size(
                     &mut self.font_system,

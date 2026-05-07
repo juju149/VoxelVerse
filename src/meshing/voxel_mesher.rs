@@ -3,43 +3,67 @@ use crate::generation::CoordSystem;
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
 use crate::world::PlanetData;
 use glam::Vec3;
-use std::collections::HashSet;
+
+#[derive(Default)]
+struct CandidateBuffer {
+    coords: Vec<VoxelCoord>,
+}
+
+impl CandidateBuffer {
+    fn with_capacity(capacity: usize) -> Self {
+        Self {
+            coords: Vec::with_capacity(capacity),
+        }
+    }
+
+    fn push(&mut self, coord: VoxelCoord) {
+        self.coords.push(coord);
+    }
+
+    fn finish(mut self) -> Vec<VoxelCoord> {
+        self.coords
+            .sort_by_key(|id| (id.face, id.layer, id.u, id.v));
+        self.coords
+            .dedup_by_key(|id| (id.face, id.layer, id.u, id.v));
+        self.coords
+    }
+}
 
 impl MeshGen {
-    fn add_modified_candidates(id: VoxelCoord, candidates: &mut HashSet<VoxelCoord>, res: u32) {
-        candidates.insert(id);
+    fn add_modified_candidates(id: VoxelCoord, candidates: &mut CandidateBuffer, res: u32) {
+        candidates.push(id);
         if id.layer + 1 < res {
-            candidates.insert(VoxelCoord {
+            candidates.push(VoxelCoord {
                 layer: id.layer + 1,
                 ..id
             });
         }
         if id.layer > 0 {
-            candidates.insert(VoxelCoord {
+            candidates.push(VoxelCoord {
                 layer: id.layer - 1,
                 ..id
             });
         }
         if id.u > 0 {
-            candidates.insert(VoxelCoord { u: id.u - 1, ..id });
+            candidates.push(VoxelCoord { u: id.u - 1, ..id });
         }
         if id.u < res - 1 {
-            candidates.insert(VoxelCoord { u: id.u + 1, ..id });
+            candidates.push(VoxelCoord { u: id.u + 1, ..id });
         }
         if id.v > 0 {
-            candidates.insert(VoxelCoord { v: id.v - 1, ..id });
+            candidates.push(VoxelCoord { v: id.v - 1, ..id });
         }
         if id.v < res - 1 {
-            candidates.insert(VoxelCoord { v: id.v + 1, ..id });
+            candidates.push(VoxelCoord { v: id.v + 1, ..id });
         }
     }
 
     pub fn build_chunk(key: SurfaceChunkKey, data: &PlanetData) -> CpuMesh {
-        let mut verts = Vec::new();
-        let mut inds = Vec::new();
+        let mut verts = Vec::with_capacity((CHUNK_SIZE * CHUNK_SIZE * 4) as usize);
+        let mut inds = Vec::with_capacity((CHUNK_SIZE * CHUNK_SIZE * 6) as usize);
         let mut idx = 0u32;
         let res = data.resolution;
-        let mut candidates = HashSet::new();
+        let mut candidates = CandidateBuffer::with_capacity((CHUNK_SIZE * CHUNK_SIZE * 2) as usize);
 
         let u_start = key.u_idx * CHUNK_SIZE;
         let v_start = key.v_idx * CHUNK_SIZE;
@@ -68,7 +92,7 @@ impl MeshGen {
                 }
 
                 // always add the top surface block
-                candidates.insert(VoxelCoord {
+                candidates.push(VoxelCoord {
                     face: key.face,
                     layer: h,
                     u,
@@ -95,7 +119,7 @@ impl MeshGen {
                     let bottom = min_h.max(h.saturating_sub(20));
 
                     for l in (bottom + 1)..h {
-                        candidates.insert(VoxelCoord {
+                        candidates.push(VoxelCoord {
                             face: key.face,
                             layer: l,
                             u,
@@ -134,7 +158,7 @@ impl MeshGen {
         }
 
         // generate Mesh
-        for id in candidates {
+        for id in candidates.finish() {
             if id.u >= u_start && id.u < u_end && id.v >= v_start && id.v < v_end && data.exists(id)
             {
                 Self::add_voxel(id, data, &mut verts, &mut inds, &mut idx);
@@ -343,5 +367,47 @@ impl MeshGen {
         inds.push(*idx + 3);
         inds.push(*idx);
         *idx += 4;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CandidateBuffer, MeshGen};
+    use crate::voxel::VoxelCoord;
+
+    fn coord(layer: u32, u: u32, v: u32) -> VoxelCoord {
+        VoxelCoord {
+            face: 0,
+            layer,
+            u,
+            v,
+        }
+    }
+
+    #[test]
+    fn candidate_buffer_deduplicates_deterministically() {
+        let mut candidates = CandidateBuffer::default();
+        candidates.push(coord(2, 1, 1));
+        candidates.push(coord(1, 1, 1));
+        candidates.push(coord(2, 1, 1));
+
+        let ids = candidates.finish();
+        assert_eq!(ids, vec![coord(1, 1, 1), coord(2, 1, 1)]);
+    }
+
+    #[test]
+    fn modified_candidates_include_six_neighborhood_without_duplicates() {
+        let mut candidates = CandidateBuffer::default();
+        MeshGen::add_modified_candidates(coord(1, 1, 1), &mut candidates, 4);
+
+        let ids = candidates.finish();
+        assert_eq!(ids.len(), 7);
+        assert!(ids.contains(&coord(1, 1, 1)));
+        assert!(ids.contains(&coord(0, 1, 1)));
+        assert!(ids.contains(&coord(2, 1, 1)));
+        assert!(ids.contains(&coord(1, 0, 1)));
+        assert!(ids.contains(&coord(1, 2, 1)));
+        assert!(ids.contains(&coord(1, 1, 0)));
+        assert!(ids.contains(&coord(1, 1, 2)));
     }
 }

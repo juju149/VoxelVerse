@@ -1,4 +1,4 @@
-use super::{QuadContext, QuadNode, Renderer};
+use super::{MeshJobResult, QuadContext, QuadNode, Renderer};
 use crate::generation::CoordSystem;
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::AnyKey;
@@ -7,13 +7,11 @@ use crate::world::PlanetData;
 use glam::Vec3;
 use std::collections::HashSet;
 
-// --- per-frame streaming budgets ---
-const UPLOAD_LOD_PER_FRAME: usize = 8;
-const DISPATCH_LOD_PER_FRAME: usize = 10;
-const MAX_PENDING_LODS: usize = 24;
-
 impl<'a> Renderer<'a> {
     pub fn update_view(&mut self, player_pos: Vec3, planet: &PlanetData) {
+        let update_started = std::time::Instant::now();
+        self.reset_streaming_frame_stats();
+
         let res = planet.resolution;
         let player_id = CoordSystem::pos_to_id(player_pos, res);
         let logical_size = res.next_power_of_two();
@@ -44,15 +42,22 @@ impl<'a> Renderer<'a> {
 
         // 2. Receive completed LOD meshes.
         //    Only upload if the chunk is still needed — stale meshes are dropped.
-        let mut upload_count = 0;
-        while let Ok((key, mesh)) = self.lod_rx.try_recv() {
+        let mut uploaded_lods = 0;
+        while self.scheduler.can_upload_lod(uploaded_lods) {
+            let Ok(result) = self.lod_rx.try_recv() else {
+                break;
+            };
+            let MeshJobResult {
+                key,
+                mesh,
+                elapsed_ms,
+            } = result;
+            self.record_mesh_time(elapsed_ms);
             self.pending_lods.remove(&key);
             if required_lods.contains(&key) {
                 self.upload_lod_buffer(key, mesh);
-                upload_count += 1;
-                if upload_count >= UPLOAD_LOD_PER_FRAME {
-                    break;
-                }
+                uploaded_lods += 1;
+                self.scheduler_stats.uploaded_lod += 1;
             }
             // stale mesh: drop without uploading
         }
@@ -109,8 +114,10 @@ impl<'a> Renderer<'a> {
         // nearest first (smallest distance_sq at front)
         to_spawn.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        for (spawn_count, (key, _)) in to_spawn.into_iter().enumerate() {
-            if spawn_count >= DISPATCH_LOD_PER_FRAME || self.pending_lods.len() >= MAX_PENDING_LODS
+        for (key, _) in to_spawn {
+            if !self
+                .scheduler
+                .can_dispatch_lod(self.scheduler_stats.dispatched_lod, self.pending_lods.len())
             {
                 break;
             }
@@ -118,9 +125,16 @@ impl<'a> Renderer<'a> {
             let tx = self.lod_tx.clone();
             let p = planet.clone();
             rayon::spawn(move || {
+                let started = std::time::Instant::now();
                 let mesh = MeshGen::generate_lod_mesh(key, &p);
-                let _ = tx.send((key, mesh));
+                let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
+                let _ = tx.send(MeshJobResult {
+                    key,
+                    mesh,
+                    elapsed_ms,
+                });
             });
+            self.scheduler_stats.dispatched_lod += 1;
         }
 
         // 5. Evict voxel chunks no longer required and rebuild load queue.
@@ -157,6 +171,9 @@ impl<'a> Renderer<'a> {
         });
 
         self.process_load_queue(player_pos, planet);
+        self.scheduler_stats.pending_voxel = self.pending_chunks.len();
+        self.scheduler_stats.pending_lod = self.pending_lods.len();
+        self.update_view_ms = update_started.elapsed().as_secs_f32() * 1000.0;
     }
 
     fn process_quadtree(
