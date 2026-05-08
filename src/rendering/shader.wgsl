@@ -191,13 +191,16 @@ fn surface_basis(world_pos: vec3<f32>, uv: vec2<f32>, world_normal: vec3<f32>) -
     return SurfaceBasis(tangent, bitangent);
 }
 
-fn edge_weight(enabled: bool, distance_to_edge: f32, radius: f32) -> f32 {
+fn edge_amount(enabled: bool, distance_to_edge: f32, radius: f32) -> f32 {
     if (!enabled || radius <= 0.0001) {
         return 0.0;
     }
     let x = 1.0 - smoothstep(0.0, radius, distance_to_edge);
-    // Stronger bevel: cubic falloff with extra push
-    return x * x * (3.0 - 2.0 * x) * 1.8;
+    return x * x * (3.0 - 2.0 * x);
+}
+
+fn edge_weight(enabled: bool, distance_to_edge: f32, radius: f32) -> f32 {
+    return edge_amount(enabled, distance_to_edge, radius) * 1.35;
 }
 
 fn rounded_edge_normal(
@@ -223,6 +226,25 @@ fn rounded_edge_normal(
 
     let bend = basis.tangent * u_bend + basis.bitangent * v_bend;
     return normalize(world_normal + bend);
+}
+
+fn rounded_edge_amount(uv: vec2<f32>, edge_mask: u32, radius: f32) -> f32 {
+    let safe_radius = clamp(radius, 0.0, 0.50);
+
+    let min_u = (edge_mask & EDGE_MIN_U) != 0u;
+    let max_u = (edge_mask & EDGE_MAX_U) != 0u;
+    let min_v = (edge_mask & EDGE_MIN_V) != 0u;
+    let max_v = (edge_mask & EDGE_MAX_V) != 0u;
+
+    let u_amount = max(
+        edge_amount(min_u, uv.x, safe_radius),
+        edge_amount(max_u, 1.0 - uv.x, safe_radius)
+    );
+    let v_amount = max(
+        edge_amount(min_v, uv.y, safe_radius),
+        edge_amount(max_v, 1.0 - uv.y, safe_radius)
+    );
+    return max(u_amount, v_amount);
 }
 
 fn material_normal(world_normal: vec3<f32>, uv: vec2<f32>, layer: u32, basis: SurfaceBasis) -> vec3<f32> {
@@ -261,13 +283,15 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 
     let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(material_layer));
     let roughness = textureSample(t_roughness, s_material, in.uv, i32(material_layer)).r;
-    N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
     N = material_normal(N, in.uv, material_layer, basis);
+    N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
+    let bevel_amount = rounded_edge_amount(in.uv, edge_mask, local.params.y);
     let vert_color_linear = pow(in.color, vec3<f32>(2.2));
     
     // Apply Detail Noise (Grain)
     let noise = triplanar_detail(in.world_pos, N);
-    let albedo = vert_color_linear * albedo_sample.rgb * (1.0 + 0.025 * noise);
+    let bevel_contrast = mix(1.0, 0.88, bevel_amount);
+    let albedo = vert_color_linear * albedo_sample.rgb * (1.0 + 0.025 * noise) * bevel_contrast;
 
     // 3. Lighting Math
     let NdotL = max(dot(N, L) * 0.82 + 0.18, 0.0);
