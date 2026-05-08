@@ -7,8 +7,8 @@ use crate::content::{
     CompiledClimateAxis, CompiledCurve, CompiledFauna, CompiledFeaturePlacement,
     CompiledNoiseField, CompiledNoiseKind, CompiledNoiseRemap, CompiledOre, CompiledPlanet,
     CompiledProceduralBiome, CompiledProceduralPlanet, CompiledStructure, CompiledTerrainLayer,
-    CompiledTerrainLayerSet, CompiledVegetation, CompiledVisualDetail, CompiledVisualDetailItem,
-    ProceduralRegistry,
+    CompiledTerrainLayerSet, CompiledTreeShapeKind, CompiledVegetation, CompiledVisualDetail,
+    CompiledVisualDetailItem, ProceduralRegistry,
 };
 use crate::voxel::VoxelId;
 use std::collections::HashMap;
@@ -72,7 +72,9 @@ impl ContentCompiler {
             .biomes
             .iter()
             .enumerate()
-            .map(|(idx, (key, def))| compile_biome(idx, key, def, &field_map, blocks, &mut errors))
+            .map(|(idx, (key, def))| {
+                compile_biome(idx, key, def, &field_map, &biome_map, blocks, &mut errors)
+            })
             .collect();
 
         let climates = raw
@@ -117,6 +119,9 @@ impl ContentCompiler {
                                 humidity: normalized_range(s.humidity),
                                 roughness: normalized_range(s.roughness),
                                 weight: finite_positive(s.weight, 1.0),
+                                continentality: s.continentality.map(normalized_range),
+                                erosion: s.erosion.map(normalized_range),
+                                weirdness: s.weirdness.map(normalized_range),
                             },
                         )
                     })
@@ -242,6 +247,7 @@ fn compile_biome(
     key: &str,
     def: &RawBiomeProceduralDef,
     field_map: &HashMap<String, usize>,
+    biome_map: &HashMap<String, usize>,
     blocks: &BlockRegistry,
     errors: &mut Vec<String>,
 ) -> CompiledProceduralBiome {
@@ -277,6 +283,10 @@ fn compile_biome(
         },
         vegetation_tags: def.vegetation_tags.clone(),
         fauna_tags: def.fauna_tags.clone(),
+        edge_of: def
+            .edge_of
+            .as_ref()
+            .and_then(|b| resolve(biome_map, "procedural biome", key, b, errors)),
     }
 }
 
@@ -381,6 +391,8 @@ fn compile_vegetation(
             (lo.max(1), hi.max(lo).max(1))
         },
         trunk_lean_max: finite(def.stamp.trunk_lean_max, 0.12).clamp(0.0, 0.5),
+        shape_kind: CompiledTreeShapeKind::from(&def.stamp.shape_kind),
+        canopy_density: finite(def.stamp.canopy_density, 1.0).clamp(0.05, 1.0),
     })
 }
 
@@ -476,6 +488,7 @@ fn compile_placement(
         slope_max: def.slope_max.clamp(0.0, 1.0),
         density: def.density.clamp(0.0, 1.0),
         field: resolve(field_map, "field", owner, &def.field, errors)?,
+        biome_tags: def.biome_tags.clone(),
     })
 }
 

@@ -1,15 +1,15 @@
 RawBiomeProceduralDef(
-    display_name: "Temperate Plains",
+    display_name: "Plains",
     surface: (top: "core:grass_block", under: "core:dirt", depth: (1, 5)),
     terrain: (
-        base_height: -0.03,
-        amplitude: 0.34,
-        flatness: 0.62,
-        hill_field: "core:soft_hills",
+        base_height: -0.04,
+        amplitude: 0.22,
+        flatness: 0.74,
+        hill_field: "core:rolling_hills",
         ridge_field: None,
-        terrace_strength: 0.03,
+        terrace_strength: 0.02,
     ),
-    color_tint: (grass: (0.55, 0.78, 0.35), foliage: (0.42, 0.68, 0.28)),
-    vegetation_tags: ["temperate", "grassland"],
+    color_tint: (grass: (0.55, 0.84, 0.32), foliage: (0.46, 0.76, 0.30)),
+    vegetation_tags: ["plains", "grassland", "temperate"],
     fauna_tags: ["small_herbivore"],
 )

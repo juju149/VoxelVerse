@@ -103,6 +103,19 @@ pub struct RawBiomeSelectorDef {
     pub humidity: (f32, f32),
     pub roughness: (f32, f32),
     pub weight: f32,
+    /// Optional continentalness window. `None` = whole 0..1 range.
+    /// Lets a biome refuse to spawn near the coast (`(0.45, 1.0)`) or
+    /// only appear on it (`(0.0, 0.30)`).
+    #[serde(default)]
+    pub continentality: Option<(f32, f32)>,
+    /// Optional erosion window. Low erosion = jagged peaks; high erosion =
+    /// rolling/eroded relief.  Used to separate mountains from highlands.
+    #[serde(default)]
+    pub erosion: Option<(f32, f32)>,
+    /// Optional weirdness window. Drives sub-biome variants (e.g. flower
+    /// fields branch off plains in a positive weirdness band).
+    #[serde(default)]
+    pub weirdness: Option<(f32, f32)>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -145,6 +158,11 @@ pub struct RawBiomeProceduralDef {
     pub vegetation_tags: Vec<String>,
     #[serde(default)]
     pub fauna_tags: Vec<String>,
+    /// If set, this biome is a sub-biome that only spawns at the border of
+    /// `edge_of`.  Drives natural transitions like beaches between ocean and
+    /// land, or stony shores between mountain and water.
+    #[serde(default)]
+    pub edge_of: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -203,6 +221,37 @@ pub struct RawFeaturePlacementDef {
     pub slope_max: f32,
     pub density: f32,
     pub field: String,
+    /// Restrict placement to biomes whose `vegetation_tags` (or `fauna_tags`
+    /// for fauna placements) intersect this list.  Empty = no biome filter
+    /// (keeps backward compat with older packs).  `["*"]` is also "any".
+    #[serde(default)]
+    pub biome_tags: Vec<String>,
+}
+
+/// Silhouette family used by the tree stamper.
+///
+/// `BroadLeaf` is the original oak: rounded canopy, several lobes, ~half
+/// height of trunk visible.  Other variants change branch behaviour, canopy
+/// shape, and leaf density so a pack can describe spruces or acacias without
+/// needing brand-new stamping code.
+#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RawTreeShapeKind {
+    /// Rounded canopy of overlapping lobes — oaks, fruit trees.
+    #[default]
+    BroadLeaf,
+    /// Conifer cone: stacked discs of leaves shrinking toward the top, slim
+    /// straight trunk.  Spruce / fir / pine.
+    Conical,
+    /// Slim and tall with a small canopy on top — birch.
+    Tall,
+    /// Tall, narrow, leaves only at the top + occasional vines below — jungle.
+    JungleCanopy,
+    /// Two-segment trunk forking near the top into a flat, plate-like canopy
+    /// — acacia.
+    FlatTop,
+    /// 2×2 trunk with thick low-hanging dense canopy — dark oak / dark forest.
+    DenseDark,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -212,6 +261,15 @@ pub struct RawVegetationStampDef {
     pub leaves: String,
     pub height: (u32, u32),
     pub canopy_radius: (u32, u32),
+    /// Silhouette family (rounded oak, conical spruce, flat-top acacia…).
+    /// Defaults to `broad_leaf` so older packs keep their behaviour.
+    #[serde(default)]
+    pub shape_kind: RawTreeShapeKind,
+    /// 0..=1 fraction of leaf cells actually emitted by the canopy stamper.
+    /// `1.0` = full Minecraft-thick foliage, `0.5` = airy crown players can
+    /// peek and walk through.  Defaults to `1.0` for back-compat.
+    #[serde(default = "default_canopy_density")]
+    pub canopy_density: f32,
     /// Thickness of the trunk footprint (Chebyshev half-extent).
     /// `(1, 1)` = single column, `(1, 2)` = mostly thin trunks with occasional thick ones.
     #[serde(default = "default_trunk_thickness")]
@@ -258,6 +316,10 @@ fn default_canopy_lobe_count() -> (u32, u32) {
 
 fn default_trunk_lean_max() -> f32 {
     0.12
+}
+
+fn default_canopy_density() -> f32 {
+    1.0
 }
 
 #[derive(Debug, Clone, Deserialize)]

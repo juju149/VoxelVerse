@@ -1,0 +1,10 @@
+RawNoiseFieldDef(
+    kind: ridged,
+    frequency: 1.40,
+    amplitude: 1.0,
+    octaves: 4,
+    persistence: 0.45,
+    lacunarity: 2.0,
+    seed_salt: 2040,
+    remap: Some((in_min: 0.30, in_max: 0.90, out_min: 0.0, out_max: 1.0, curve: smoothstep)),
+)

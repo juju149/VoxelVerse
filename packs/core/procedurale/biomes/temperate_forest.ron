@@ -1,15 +1,15 @@
 RawBiomeProceduralDef(
-    display_name: "Temperate Forest",
+    display_name: "Temperate Oak Forest",
     surface: (top: "core:grass_block", under: "core:dirt", depth: (2, 6)),
     terrain: (
         base_height: 0.02,
-        amplitude: 0.46,
-        flatness: 0.40,
-        hill_field: "core:soft_hills",
+        amplitude: 0.40,
+        flatness: 0.46,
+        hill_field: "core:rolling_hills",
         ridge_field: None,
-        terrace_strength: 0.04,
+        terrace_strength: 0.03,
     ),
-    color_tint: (grass: (0.38, 0.68, 0.30), foliage: (0.22, 0.52, 0.24)),
-    vegetation_tags: ["temperate", "forest"],
+    color_tint: (grass: (0.36, 0.66, 0.28), foliage: (0.22, 0.52, 0.22)),
+    vegetation_tags: ["forest", "forest_oak", "temperate"],
     fauna_tags: ["small_herbivore"],
 )

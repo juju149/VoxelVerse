@@ -1,0 +1,27 @@
+// Spruce — conifer cone of stacked discs.  No branches; canopy_lobe_count
+// influences disc count.
+RawVegetationDef(
+    placement: (
+        surface_blocks: ["core:grass_block", "core:snow_block"],
+        slope_max: 0.55,
+        density: 0.055,
+        field: "core:spruce_scatter",
+        biome_tags: ["forest_spruce", "taiga"],
+    ),
+    stamp: (
+        kind: "procedural_tree",
+        shape_kind: conical,
+        trunk: "core:spruce_log",
+        leaves: "core:spruce_leaves",
+        height: (8, 14),
+        canopy_radius: (2, 4),
+        trunk_thickness: (1, 1),
+        branch_count: (0, 0),
+        branch_length: (1, 1),
+        canopy_vertical_squash: 0.50,
+        branch_slope: (0.0, 0.0),
+        canopy_lobe_count: (5, 9),
+        trunk_lean_max: 0.02,
+        canopy_density: 0.85,
+    ),
+)

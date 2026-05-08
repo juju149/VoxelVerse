@@ -4,6 +4,7 @@ RawVisualDetailDef(
         slope_max: 0.72,
         density: 0.34,
         field: "core:flower_noise",
+        biome_tags: ["plains", "grassland", "meadow", "forest"],
     ),
     details: [
         (block: "core:dandelion", weight: 1),

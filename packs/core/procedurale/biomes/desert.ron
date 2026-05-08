@@ -1,15 +1,15 @@
 RawBiomeProceduralDef(
-    display_name: "Red Desert",
+    display_name: "Desert",
     surface: (top: "core:red_sand", under: "core:red_sand", depth: (4, 12)),
     terrain: (
-        base_height: -0.06,
-        amplitude: 0.22,
-        flatness: 0.68,
-        hill_field: "core:soft_hills",
+        base_height: -0.05,
+        amplitude: 0.18,
+        flatness: 0.82,
+        hill_field: "core:dune_waves",
         ridge_field: None,
-        terrace_strength: 0.16,
+        terrace_strength: 0.08,
     ),
-    color_tint: (grass: (0.74, 0.58, 0.30), foliage: (0.52, 0.46, 0.22)),
-    vegetation_tags: ["hot", "dry"],
+    color_tint: (grass: (0.92, 0.78, 0.45), foliage: (0.78, 0.62, 0.35)),
+    vegetation_tags: ["desert", "hot", "dry"],
     fauna_tags: ["desert"],
 )

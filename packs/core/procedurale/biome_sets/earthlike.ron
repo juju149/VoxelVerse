@@ -1,10 +1,43 @@
+// 14-biome Minecraft-style climate space.
+//
+// Selection runs in normalized 6-D climate space (T, H, R, C, E, W).  Every
+// selector defines T/H/R windows; the optional axes carve sub-biomes
+// (e.g. dark forest = forest with low weirdness, mountain meadow = meadow
+// with high continentality).  The lower the `blend_radius`, the sharper the
+// transitions; 0.16 lets ~3-4 biomes blend at any borderline cell, which
+// gives natural-looking edges without mushy interiors.
 RawBiomeSetDef(
-    blend_radius: 0.28,
+    blend_radius: 0.16,
     selectors: [
-        (biome: "core:plains", temperature: (0.35, 0.78), humidity: (0.25, 0.72), roughness: (0.00, 0.42), weight: 1.0),
-        (biome: "core:temperate_forest", temperature: (0.30, 0.72), humidity: (0.55, 1.00), roughness: (0.05, 0.58), weight: 1.1),
-        (biome: "core:alpine", temperature: (0.05, 0.70), humidity: (0.15, 0.95), roughness: (0.42, 1.00), weight: 1.45),
-        (biome: "core:desert", temperature: (0.68, 1.00), humidity: (0.00, 0.34), roughness: (0.00, 0.62), weight: 1.0),
-        (biome: "core:tundra", temperature: (0.00, 0.34), humidity: (0.12, 0.86), roughness: (0.00, 0.78), weight: 1.0),
+        // -- Cold band (T < 0.30) -----------------------------------------
+        (biome: "core:tundra", temperature: (0.00, 0.18), humidity: (0.10, 0.55), roughness: (0.20, 0.95), weight: 1.0),
+        (biome: "core:snowy_plains", temperature: (0.00, 0.22), humidity: (0.10, 0.55), roughness: (0.00, 0.30), weight: 1.0),
+        (biome: "core:snowy_taiga", temperature: (0.05, 0.28), humidity: (0.45, 0.95), roughness: (0.05, 0.60), weight: 1.05),
+
+        // -- Cool band (T 0.20..0.45) -------------------------------------
+        (biome: "core:taiga", temperature: (0.22, 0.45), humidity: (0.45, 0.92), roughness: (0.10, 0.62), weight: 1.05),
+
+        // -- Temperate band (T 0.30..0.70) --------------------------------
+        (biome: "core:plains", temperature: (0.32, 0.65), humidity: (0.18, 0.55), roughness: (0.00, 0.32), weight: 1.0),
+        (biome: "core:temperate_forest", temperature: (0.32, 0.66), humidity: (0.50, 0.84), roughness: (0.05, 0.48), weight: 1.10,
+            weirdness: Some((0.0, 0.55))),
+        (biome: "core:birch_forest", temperature: (0.30, 0.62), humidity: (0.42, 0.74), roughness: (0.08, 0.55), weight: 1.05,
+            weirdness: Some((0.55, 1.0))),
+        (biome: "core:dark_forest", temperature: (0.30, 0.60), humidity: (0.66, 1.00), roughness: (0.08, 0.50), weight: 1.20),
+        (biome: "core:swamp", temperature: (0.48, 0.78), humidity: (0.70, 1.00), roughness: (0.00, 0.30), weight: 1.10,
+            continentality: Some((0.20, 0.65)),
+            erosion: Some((0.55, 1.0))),
+
+        // -- Warm/dry band (T 0.65..0.85) ---------------------------------
+        (biome: "core:savanna", temperature: (0.65, 0.85), humidity: (0.15, 0.45), roughness: (0.00, 0.42), weight: 1.0),
+
+        // -- Hot band (T > 0.78) ------------------------------------------
+        (biome: "core:desert", temperature: (0.78, 1.00), humidity: (0.00, 0.32), roughness: (0.00, 0.55), weight: 1.0),
+        (biome: "core:jungle", temperature: (0.70, 0.95), humidity: (0.65, 1.00), roughness: (0.05, 0.62), weight: 1.20),
+
+        // -- Mountain band (R > 0.55) -- highland variants over any temp --
+        (biome: "core:mountains_meadow", temperature: (0.30, 0.65), humidity: (0.30, 0.78), roughness: (0.55, 0.85), weight: 1.30,
+            continentality: Some((0.55, 1.0))),
+        (biome: "core:alpine", temperature: (0.05, 0.65), humidity: (0.10, 0.85), roughness: (0.78, 1.00), weight: 1.55),
     ],
 )

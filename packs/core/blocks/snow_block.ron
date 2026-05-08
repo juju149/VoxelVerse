@@ -1,0 +1,15 @@
+RawBlockDef(
+    display_name: "Snow Block",
+    solid: true,
+    color: (0.94, 0.96, 0.98),
+    hardness: 0.6,
+    role: Some(default_place),
+    visual: Some((
+        tint: (0.96, 0.99, 1.00),
+        all: Some((
+            albedo: "core:blocks/powder_snow/powder_snow_all_albedo",
+            normal: "core:blocks/powder_snow/powder_snow_all_normal",
+            roughness: "core:blocks/powder_snow/powder_snow_all_roughness",
+        )),
+    )),
+)

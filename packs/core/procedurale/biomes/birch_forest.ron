@@ -1,0 +1,15 @@
+RawBiomeProceduralDef(
+    display_name: "Birch Forest",
+    surface: (top: "core:grass_block", under: "core:dirt", depth: (2, 5)),
+    terrain: (
+        base_height: 0.01,
+        amplitude: 0.36,
+        flatness: 0.50,
+        hill_field: "core:rolling_hills",
+        ridge_field: None,
+        terrace_strength: 0.03,
+    ),
+    color_tint: (grass: (0.52, 0.78, 0.42), foliage: (0.46, 0.72, 0.40)),
+    vegetation_tags: ["forest", "forest_birch", "temperate"],
+    fauna_tags: ["small_herbivore"],
+)

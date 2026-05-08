@@ -1,0 +1,26 @@
+// Acacia — short fork-and-plate silhouette.  Sparse on savanna.
+RawVegetationDef(
+    placement: (
+        surface_blocks: ["core:grass_block"],
+        slope_max: 0.45,
+        density: 0.012,
+        field: "core:acacia_scatter",
+        biome_tags: ["savanna"],
+    ),
+    stamp: (
+        kind: "procedural_tree",
+        shape_kind: flat_top,
+        trunk: "core:acacia_log",
+        leaves: "core:acacia_leaves",
+        height: (5, 8),
+        canopy_radius: (3, 5),
+        trunk_thickness: (1, 1),
+        branch_count: (2, 3),
+        branch_length: (2, 4),
+        canopy_vertical_squash: 0.30,
+        branch_slope: (0.55, 1.10),
+        canopy_lobe_count: (2, 3),
+        trunk_lean_max: 0.06,
+        canopy_density: 0.85,
+    ),
+)

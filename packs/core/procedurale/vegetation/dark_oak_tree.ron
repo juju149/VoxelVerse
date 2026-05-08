@@ -1,0 +1,26 @@
+// Dark oak — chunky 2-thick trunk, dense low canopy.  Grows on podzol.
+RawVegetationDef(
+    placement: (
+        surface_blocks: ["core:podzol", "core:grass_block"],
+        slope_max: 0.50,
+        density: 0.080,
+        field: "core:dark_oak_scatter",
+        biome_tags: ["forest_dark"],
+    ),
+    stamp: (
+        kind: "procedural_tree",
+        shape_kind: dense_dark,
+        trunk: "core:dark_oak_log",
+        leaves: "core:dark_oak_leaves",
+        height: (6, 9),
+        canopy_radius: (3, 5),
+        trunk_thickness: (2, 2),
+        branch_count: (2, 4),
+        branch_length: (1, 2),
+        canopy_vertical_squash: 0.65,
+        branch_slope: (0.10, 0.45),
+        canopy_lobe_count: (4, 6),
+        trunk_lean_max: 0.06,
+        canopy_density: 0.95,
+    ),
+)

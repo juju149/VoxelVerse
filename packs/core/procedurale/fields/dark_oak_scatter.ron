@@ -1,0 +1,10 @@
+RawNoiseFieldDef(
+    kind: perlin,
+    frequency: 3.0,
+    amplitude: 1.0,
+    octaves: 4,
+    persistence: 0.58,
+    lacunarity: 2.0,
+    seed_salt: 6051,
+    remap: Some((in_min: 0.20, in_max: 0.80, out_min: 0.4, out_max: 1.0, curve: smoothstep)),
+)

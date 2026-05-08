@@ -1,0 +1,9 @@
+RawNoiseFieldDef(
+    kind: perlin,
+    frequency: 3.8,
+    amplitude: 1.0,
+    octaves: 5,
+    persistence: 0.58,
+    lacunarity: 2.0,
+    seed_salt: 6031,
+)

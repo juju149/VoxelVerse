@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::content::schema::{RawCurve, RawNoiseKind};
+use crate::content::schema::{RawCurve, RawNoiseKind, RawTreeShapeKind};
 use crate::content::CompiledPlanet;
 use crate::voxel::VoxelId;
 
@@ -87,6 +87,11 @@ pub struct CompiledBiomeSelector {
     pub humidity: (f32, f32),
     pub roughness: (f32, f32),
     pub weight: f32,
+    /// Optional climate windows. `None` means "no constraint on this axis".
+    /// When present, behaves like `temperature`/`humidity`/`roughness`.
+    pub continentality: Option<(f32, f32)>,
+    pub erosion: Option<(f32, f32)>,
+    pub weirdness: Option<(f32, f32)>,
 }
 
 #[derive(Clone, Debug)]
@@ -129,6 +134,9 @@ pub struct CompiledProceduralBiome {
     pub color_tint: CompiledBiomeColorTint,
     pub vegetation_tags: Vec<String>,
     pub fauna_tags: Vec<String>,
+    /// If set, this is a sub-biome appearing only at the border of the
+    /// referenced biome (resolved index).  Used for beaches, stony shores…
+    pub edge_of: Option<usize>,
 }
 
 #[derive(Clone, Debug)]
@@ -183,6 +191,55 @@ pub struct CompiledFeaturePlacement {
     pub slope_max: f32,
     pub density: f32,
     pub field: usize,
+    /// Biome tag whitelist.  Empty = match everything; otherwise the placement
+    /// only fires in biomes whose `vegetation_tags` (or `fauna_tags` for
+    /// fauna) intersect this set.  `*` is treated as "any".
+    pub biome_tags: Vec<String>,
+}
+
+impl CompiledFeaturePlacement {
+    /// True iff this placement is allowed in `biome` based on its `biome_tags`
+    /// whitelist.  Empty whitelist (or `["*"]`) means "any biome".
+    /// The tags are matched against the biome's `vegetation_tags` plus its
+    /// `fauna_tags` so a single declarative list works for both.
+    pub fn allowed_in_biome(&self, biome: &CompiledProceduralBiome) -> bool {
+        if self.biome_tags.is_empty() {
+            return true;
+        }
+        if self.biome_tags.iter().any(|t| t == "*") {
+            return true;
+        }
+        self.biome_tags.iter().any(|tag| {
+            biome.vegetation_tags.iter().any(|vt| vt == tag)
+                || biome.fauna_tags.iter().any(|ft| ft == tag)
+        })
+    }
+}
+
+/// Mirrors [`RawTreeShapeKind`].  Plumbed into the bakery so each tree picks
+/// the right silhouette family at stamp time.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CompiledTreeShapeKind {
+    #[default]
+    BroadLeaf,
+    Conical,
+    Tall,
+    JungleCanopy,
+    FlatTop,
+    DenseDark,
+}
+
+impl From<&RawTreeShapeKind> for CompiledTreeShapeKind {
+    fn from(value: &RawTreeShapeKind) -> Self {
+        match value {
+            RawTreeShapeKind::BroadLeaf => Self::BroadLeaf,
+            RawTreeShapeKind::Conical => Self::Conical,
+            RawTreeShapeKind::Tall => Self::Tall,
+            RawTreeShapeKind::JungleCanopy => Self::JungleCanopy,
+            RawTreeShapeKind::FlatTop => Self::FlatTop,
+            RawTreeShapeKind::DenseDark => Self::DenseDark,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -204,6 +261,10 @@ pub struct CompiledVegetation {
     pub canopy_lobe_count: (u32, u32),
     /// Max trunk lean as a fraction of tree height.
     pub trunk_lean_max: f32,
+    /// Silhouette family — drives which `TreeShape::compute_*` path runs.
+    pub shape_kind: CompiledTreeShapeKind,
+    /// 0..=1 keep-rate for canopy leaf voxels (lower = airier).
+    pub canopy_density: f32,
 }
 
 #[derive(Clone, Debug)]
