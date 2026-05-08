@@ -193,6 +193,11 @@ pub struct CompiledVegetation {
     pub leaves: VoxelId,
     pub height: (u32, u32),
     pub canopy_radius: (u32, u32),
+    pub trunk_thickness: (u32, u32),
+    pub branch_count: (u32, u32),
+    pub branch_length: (u32, u32),
+    /// Vertical squash factor for the canopy ellipsoid.
+    pub canopy_vertical_squash: f32,
 }
 
 #[derive(Clone, Debug)]

@@ -22,14 +22,18 @@ pub fn run() {
     grab_cursor(&window);
 
     let mut renderer = pollster::block_on(Renderer::new(&window, &content.textures));
+    renderer.render_loading(0.0, "Initialisation planète");
     let mut controller = Controller::new();
     let mut player = Player::new();
-    let mut planet = PlanetData::new(
+    let mut planet = PlanetData::new_with_progress(
         content.planet,
         content.blocks,
         content.procedural,
         content.procedural_planet_index,
+        |progress, message| renderer.render_loading(progress, message),
     );
+    renderer.render_loading(1.0, "Monde prêt");
+    renderer.window.set_title("voxelverse");
     let mut console = create_console();
 
     player.spawn(planet.spawn_position());
@@ -272,6 +276,28 @@ fn handle_pressed_key(
         renderer.force_reload_all(planet, player.position);
         renderer.log_memory(planet);
         renderer.window.request_redraw();
+        return;
+    }
+
+    // Quality hotkeys — pure renderer-side toggles, no chunk reload required.
+    match key {
+        PhysicalKey::Code(KeyCode::F5) => {
+            renderer.quality.triplanar_grain = !renderer.quality.triplanar_grain;
+            println!(
+                "[quality] triplanar grain = {}",
+                renderer.quality.triplanar_grain
+            );
+        }
+        PhysicalKey::Code(KeyCode::F6) => {
+            use crate::rendering::PcfQuality;
+            renderer.quality.pcf = match renderer.quality.pcf {
+                PcfQuality::Low => PcfQuality::Medium,
+                PcfQuality::Medium => PcfQuality::High,
+                PcfQuality::High => PcfQuality::Low,
+            };
+            println!("[quality] PCF = {:?}", renderer.quality.pcf);
+        }
+        _ => {}
     }
 }
 

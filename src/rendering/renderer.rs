@@ -4,6 +4,7 @@ use crate::diagnostics::FrameStats;
 use crate::math::Frustum;
 use crate::meshing::CpuMesh;
 use crate::rendering::lod_animation::LodAnimator;
+use crate::rendering::quality::QualitySettings;
 use crate::rendering::types::ChunkMesh;
 use crate::streaming::{MeshScheduler, SchedulerStats};
 use crate::voxel::{LodKey, SurfaceChunkKey, VoxelCoord};
@@ -124,8 +125,12 @@ pub struct Renderer<'a> {
     completed_mesh_time_max_ms: f32,
     completed_mesh_count: usize,
     update_view_ms: f32,
+    last_render_ms: f32,
 
     frame_stats: FrameStats,
+
+    // --- QUALITY ---
+    pub quality: QualitySettings,
 
     // --- ATLAS ---
     atlas_bind: wgpu::BindGroup,

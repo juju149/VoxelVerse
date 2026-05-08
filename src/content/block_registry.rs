@@ -1,5 +1,23 @@
+use crate::content::schema::RawBlockShape;
 use crate::voxel::VoxelId;
 use std::collections::HashMap;
+
+/// Geometric shape used to dispatch the mesher.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BlockShape {
+    #[default]
+    Cube,
+    CrossPlane,
+}
+
+impl From<RawBlockShape> for BlockShape {
+    fn from(value: RawBlockShape) -> Self {
+        match value {
+            RawBlockShape::Cube => Self::Cube,
+            RawBlockShape::CrossPlane => Self::CrossPlane,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MaterialTextureSet {
@@ -28,6 +46,8 @@ pub struct CompiledBlockVisual {
     pub tint: [f32; 3],
     /// RGB flat color fallback used when no atlas is present.
     pub flat_color: [f32; 3],
+    /// Mesh dispatch shape.
+    pub shape: BlockShape,
 }
 
 impl Default for CompiledBlockVisual {
@@ -36,6 +56,7 @@ impl Default for CompiledBlockVisual {
             layers: BlockMaterialLayers::default(),
             tint: [1.0; 3],
             flat_color: [1.0, 0.0, 1.0],
+            shape: BlockShape::Cube,
         }
     }
 }
@@ -102,6 +123,27 @@ impl BlockRegistry {
 
     pub fn is_solid(&self, id: VoxelId) -> bool {
         self.block(id).is_some_and(|b| b.solid)
+    }
+
+    /// Whether the block fully fills its 1×1×1 voxel cell. Cross-planes and
+    /// air do not — used by the mesher to decide if neighbour faces are occluded.
+    pub fn is_opaque_cube(&self, id: VoxelId) -> bool {
+        if id == VoxelId::AIR {
+            return false;
+        }
+        self.block(id)
+            .is_some_and(|b| b.solid && b.visual.shape == BlockShape::Cube)
+    }
+
+    /// Anything that is not air should be visited by the mesher (cross-planes
+    /// included), even if not solid for collision purposes.
+    pub fn is_renderable(&self, id: VoxelId) -> bool {
+        id != VoxelId::AIR
+    }
+
+    #[allow(dead_code)]
+    pub fn shape(&self, id: VoxelId) -> BlockShape {
+        self.block(id).map(|b| b.visual.shape).unwrap_or_default()
     }
 
     /// Returns the block's RGB color. Unknown runtime IDs are engine bugs, not content fallbacks.

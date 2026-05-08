@@ -8,7 +8,7 @@ mod planet_registry;
 mod procedural_registry;
 mod texture_registry;
 
-pub use block_registry::{BlockRegistry, MaterialTextureSet};
+pub use block_registry::{BlockRegistry, BlockShape, MaterialTextureSet};
 pub use materials::TerrainPalette;
 pub use planet_registry::CompiledPlanet;
 pub use procedural_registry::*;

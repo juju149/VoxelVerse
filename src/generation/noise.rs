@@ -20,6 +20,7 @@ pub struct NoiseSettings {
     pub offset: Vec3,
 }
 
+#[derive(Clone)]
 pub(crate) struct NoiseGenerator {
     perm: [u8; 512],
 }

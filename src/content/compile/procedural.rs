@@ -367,7 +367,17 @@ fn compile_vegetation(
         leaves: resolve_block(blocks, key, &def.stamp.leaves, errors)?,
         height: normalized_u32_range(def.stamp.height),
         canopy_radius: normalized_u32_range(def.stamp.canopy_radius),
+        trunk_thickness: clamp_thickness(def.stamp.trunk_thickness),
+        branch_count: normalized_u32_range(def.stamp.branch_count),
+        branch_length: normalized_u32_range(def.stamp.branch_length),
+        canopy_vertical_squash: finite_positive(def.stamp.canopy_vertical_squash, 0.85)
+            .clamp(0.2, 3.0),
     })
+}
+
+fn clamp_thickness(range: (u32, u32)) -> (u32, u32) {
+    let (a, b) = normalized_u32_range(range);
+    (a.max(1).min(4), b.max(1).min(4))
 }
 
 fn compile_structure(

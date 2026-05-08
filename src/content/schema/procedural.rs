@@ -212,6 +212,31 @@ pub struct RawVegetationStampDef {
     pub leaves: String,
     pub height: (u32, u32),
     pub canopy_radius: (u32, u32),
+    /// Thickness of the trunk footprint (Chebyshev half-extent).
+    /// `(1, 1)` = single column, `(1, 2)` = mostly thin trunks with occasional thick ones.
+    #[serde(default = "default_trunk_thickness")]
+    pub trunk_thickness: (u32, u32),
+    /// Number of horizontal branch voxels reaching out from the upper trunk.
+    #[serde(default)]
+    pub branch_count: (u32, u32),
+    /// Maximum horizontal length of each branch in voxels.
+    #[serde(default = "default_branch_length")]
+    pub branch_length: (u32, u32),
+    /// Vertical squash for the canopy ellipsoid. `1.0` = sphere, `<1.0` = oblate, `>1.0` = prolate.
+    #[serde(default = "default_canopy_squash")]
+    pub canopy_vertical_squash: f32,
+}
+
+fn default_trunk_thickness() -> (u32, u32) {
+    (1, 1)
+}
+
+fn default_branch_length() -> (u32, u32) {
+    (1, 2)
+}
+
+fn default_canopy_squash() -> f32 {
+    0.85
 }
 
 #[derive(Debug, Clone, Deserialize)]

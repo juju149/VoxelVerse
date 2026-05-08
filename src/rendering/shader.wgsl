@@ -90,47 +90,38 @@ fn vs_main(in: VertexIn) -> VertexOut {
 
 // --- SHADOW ENGINE (Gaussian PCF) ---
 
-fn fetch_shadow_accurate(shadow_pos: vec3<f32>, NdotL: f32) -> f32 {
+fn fetch_shadow_accurate(shadow_pos: vec3<f32>, NdotL: f32, pcf_radius: i32) -> f32 {
     // 1. Cull outside cascade
     if (shadow_pos.z > 1.0 || shadow_pos.x < 0.0 || shadow_pos.x > 1.0 || shadow_pos.y < 0.0 || shadow_pos.y > 1.0) {
         return 1.0;
     }
 
-    // 2. Slope-Scaled Bias
-    // Steeper angles need more bias to prevent acne.
-    // Base bias matches the texel size of a 4096 map covering ~120 units.
+    // 2. Slope-Scaled Bias — steeper angles need more bias to avoid acne.
     let bias = max(0.0005 * (1.0 - NdotL), 0.0001);
     let current_depth = shadow_pos.z - bias;
 
     let tex_dim = vec2<f32>(textureDimensions(t_shadow));
     let texel_size = 1.0 / tex_dim.x;
 
-    // 3. 5x5 Gaussian Weighted PCF
-    // We sample a grid, but center samples matter more.
+    // 3. Gaussian-weighted PCF.  Radius is dynamic so the engine can dial
+    //    quality up or down without recompiling: 1 = 3x3, 2 = 5x5, 3 = 7x7.
+    let r = max(pcf_radius, 0);
     var shadow_sum = 0.0;
     var total_weight = 0.0;
-
-    // Gaussian weights for range -2 to +2
-    // [0.05, 0.25, 0.4, 0.25, 0.05] roughly
-    
-    for (var x = -1.0; x <= 1.0; x += 1.0) {
-        for (var y = -1.0; y <= 1.0; y += 1.0) {
-            // Calculate weight based on distance from center (Gaussian-ish)
-            let dist_sq = x*x + y*y;
-            let weight = exp(-dist_sq * 1.5); // Gaussian Falloff
-
+    for (var x: i32 = -r; x <= r; x++) {
+        for (var y: i32 = -r; y <= r; y++) {
+            let dist_sq = f32(x*x + y*y);
+            let weight = exp(-dist_sq * 1.5);
             let val = textureSampleCompare(
-                t_shadow, 
-                s_shadow, 
-                shadow_pos.xy + vec2<f32>(x, y) * texel_size, 
+                t_shadow,
+                s_shadow,
+                shadow_pos.xy + vec2<f32>(f32(x), f32(y)) * texel_size,
                 current_depth
             );
-            
             shadow_sum += val * weight;
             total_weight += weight;
         }
     }
-
     return shadow_sum / total_weight;
 }
 
@@ -141,6 +132,7 @@ const EDGE_MIN_U = 1u;
 const EDGE_MAX_U = 2u;
 const EDGE_MIN_V = 4u;
 const EDGE_MAX_V = 8u;
+const FLAG_ALPHA_TEST = 0x00100000u; // bit 20 — set by cross-plane foliage
 
 struct SurfaceBasis {
     tangent: vec3<f32>,
@@ -276,28 +268,45 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let L = normalize(global.sun_dir.xyz);
     let V = normalize(global.camera_pos.xyz - in.world_pos);
 
+    // Decode runtime quality knobs packed into camera_pos.w
+    //   bit 0      = triplanar grain enable
+    //   bits 1..2  = pcf radius level (0/1/2 → 3x3/5x5/7x7)
+    let quality_bits   = u32(global.camera_pos.w);
+    let triplanar_on   = (quality_bits & 1u) != 0u;
+    let pcf_radius     = i32(((quality_bits >> 1u) & 3u) + 1u);
+
     // 2. Material Setup
     let material_layer = in.packed_tex_index & MATERIAL_INDEX_MASK;
     let edge_mask = (in.packed_tex_index >> 16u) & 0xFu;
     let basis = surface_basis(in.world_pos, in.uv, N);
 
     let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(material_layer));
+    // Alpha test only when the geometry opted in (cross-plane foliage).
+    // Cube blocks may carry partial alpha in their albedo (e.g. fancy leaves)
+    // and must stay fully opaque outside any dedicated transparency pass.
+    if ((in.packed_tex_index & FLAG_ALPHA_TEST) != 0u && albedo_sample.a < 0.5) {
+        discard;
+    }
     let roughness = textureSample(t_roughness, s_material, in.uv, i32(material_layer)).r;
     N = material_normal(N, in.uv, material_layer, basis);
     N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
     let bevel_amount = rounded_edge_amount(in.uv, edge_mask, local.params.y);
     let vert_color_linear = pow(in.color, vec3<f32>(2.2));
     
-    // Apply Detail Noise (Grain)
-    let noise = triplanar_detail(in.world_pos, N);
+    // Detail grain — gated behind the triplanar quality flag.  3 sin() per
+    // fragment is non-trivial on weak GPUs, so it's optional.
     let bevel_contrast = mix(1.0, 0.88, bevel_amount);
-    let albedo = vert_color_linear * albedo_sample.rgb * (1.0 + 0.025 * noise) * bevel_contrast;
+    var albedo = vert_color_linear * albedo_sample.rgb * bevel_contrast;
+    if (triplanar_on) {
+        let noise = triplanar_detail(in.world_pos, N);
+        albedo = albedo * (1.0 + 0.025 * noise);
+    }
 
     // 3. Lighting Math
     let NdotL = max(dot(N, L) * 0.82 + 0.18, 0.0);
-    
+
     // Shadow Map
-    let shadow_raw = fetch_shadow_accurate(in.shadow_pos, NdotL);
+    let shadow_raw = fetch_shadow_accurate(in.shadow_pos, NdotL, pcf_radius);
     // Smooth transition shadow
     let shadow = mix(1.0 - SHADOW_OPACITY, 1.0, shadow_raw);
 

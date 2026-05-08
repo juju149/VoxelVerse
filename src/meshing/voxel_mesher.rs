@@ -1,8 +1,53 @@
-use super::{ambient_occlusion, pack_material_edges, CpuMesh, CpuVertex, FaceEdgeMask, MeshGen};
-use crate::generation::CoordSystem;
-use crate::voxel::{SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
+use super::{
+    ambient_occlusion, pack_material_edges, pack_material_flags, CpuMesh, CpuVertex, FaceEdgeMask,
+    MeshGen, FLAG_ALPHA_TEST,
+};
+use crate::content::BlockShape;
+use crate::generation::{ChunkFeatureMap, CoordSystem};
+use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use crate::world::PlanetData;
 use glam::Vec3;
+
+/// Read-only voxel accessor used during meshing.
+///
+/// `PlanetData::get_voxel` works but resolves above-surface cells through the
+/// expensive tree-neighbourhood scan. The mesher already paid for that scan
+/// once via [`PlanetData::bake_chunk_features`]; this struct lets us reuse the
+/// resulting map and short-circuit every above-surface lookup to an O(1)
+/// hash-map probe.
+struct ChunkAccessor<'a> {
+    data: &'a PlanetData,
+    features: &'a ChunkFeatureMap,
+}
+
+impl<'a> ChunkAccessor<'a> {
+    fn new(data: &'a PlanetData, features: &'a ChunkFeatureMap) -> Self {
+        Self { data, features }
+    }
+
+    fn voxel_id(&self, coord: VoxelCoord) -> VoxelId {
+        let res = self.data.resolution;
+        if coord.u >= res || coord.v >= res || coord.layer >= res {
+            return VoxelId::AIR;
+        }
+        if let Some(v) = self.data.voxels.get_override(coord) {
+            return v;
+        }
+        let surface_h = self.data.terrain.get_height(coord.face, coord.u, coord.v);
+        if coord.layer > surface_h {
+            return self.features.get(coord).unwrap_or(VoxelId::AIR);
+        }
+        self.data.get_voxel(coord)
+    }
+
+    fn has_renderable(&self, coord: VoxelCoord) -> bool {
+        self.data.content.is_renderable(self.voxel_id(coord))
+    }
+
+    fn is_opaque_cube(&self, coord: VoxelCoord) -> bool {
+        self.data.content.is_opaque_cube(self.voxel_id(coord))
+    }
+}
 
 #[derive(Default)]
 struct CandidateBuffer {
@@ -67,20 +112,18 @@ impl MeshGen {
 
         let u_start = key.u_idx * CHUNK_SIZE;
         let v_start = key.v_idx * CHUNK_SIZE;
-        // Ensure we don't iterate past resolution even if key exists
         let u_end = (u_start + CHUNK_SIZE).min(res);
         let v_end = (v_start + CHUNK_SIZE).min(res);
 
-        // natural Surface (with slope filling)
-        // need to check neighbors to see how far down the cliff goes.
-        // if a neighbor is lower than us, we must generate the blocks between our height and theirs.
+        // Bake all tree + visual-detail voxels for this chunk + a 1-voxel margin
+        // (face culling needs to see across the chunk edge).
+        let feature_map = data.bake_chunk_features(key, 1);
+        let accessor = ChunkAccessor::new(data, &feature_map);
 
-        // safely get height from the terrain map
         let get_h = |f, u, v| -> u32 {
             if u >= res || v >= res {
                 return 0;
             }
-            // using 0 here means "very deep", so we might generate extra mesh at face edges, which is safer than holes.
             data.terrain.get_height(f, u, v)
         };
 
@@ -91,7 +134,7 @@ impl MeshGen {
                     continue;
                 }
 
-                // always add the top surface block
+                // Always add the top surface block
                 candidates.push(VoxelCoord {
                     face: key.face,
                     layer: h,
@@ -99,9 +142,8 @@ impl MeshGen {
                     v,
                 });
 
-                // check immediate neighbors to find the lowest exposed point
+                // Cliff fill: if a neighbour is lower, expose blocks down to it.
                 let mut min_h = h;
-
                 if u > 0 {
                     min_h = min_h.min(get_h(key.face, u - 1, v));
                 }
@@ -114,10 +156,8 @@ impl MeshGen {
                 if v < res - 1 {
                     min_h = min_h.min(get_h(key.face, u, v + 1));
                 }
-
                 if min_h < h {
                     let bottom = min_h.max(h.saturating_sub(20));
-
                     for l in (bottom + 1)..h {
                         candidates.push(VoxelCoord {
                             face: key.face,
@@ -127,6 +167,19 @@ impl MeshGen {
                         });
                     }
                 }
+            }
+        }
+
+        // Pull every above-surface feature inside the chunk straight from the
+        // baked map — replaces the previous 32-layer probe loop.
+        for &coord in feature_map.blocks.keys() {
+            if coord.face == key.face
+                && coord.u >= u_start
+                && coord.u < u_end
+                && coord.v >= v_start
+                && coord.v < v_end
+            {
+                candidates.push(coord);
             }
         }
 
@@ -157,11 +210,14 @@ impl MeshGen {
             }
         }
 
-        // generate Mesh
         for id in candidates.finish() {
-            if id.u >= u_start && id.u < u_end && id.v >= v_start && id.v < v_end && data.exists(id)
+            if id.u >= u_start
+                && id.u < u_end
+                && id.v >= v_start
+                && id.v < v_end
+                && accessor.has_renderable(id)
             {
-                Self::add_voxel(id, data, &mut verts, &mut inds, &mut idx);
+                Self::add_voxel(id, &accessor, &mut verts, &mut inds, &mut idx);
             }
         }
         CpuMesh::new(verts, inds)
@@ -169,20 +225,36 @@ impl MeshGen {
 
     fn add_voxel(
         id: VoxelCoord,
-        data: &PlanetData,
+        accessor: &ChunkAccessor,
         verts: &mut Vec<CpuVertex>,
         inds: &mut Vec<u32>,
         idx: &mut u32,
     ) {
+        let voxel_id = accessor.voxel_id(id);
+        let visual = accessor.data.content.visual(voxel_id);
+        match visual.shape {
+            BlockShape::CrossPlane => Self::add_cross_plane_voxel(id, accessor, verts, inds, idx),
+            BlockShape::Cube => Self::add_cube_voxel(id, accessor, verts, inds, idx),
+        }
+    }
+
+    fn add_cube_voxel(
+        id: VoxelCoord,
+        accessor: &ChunkAccessor,
+        verts: &mut Vec<CpuVertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+    ) {
+        let data = accessor.data;
         let res = data.resolution;
 
-        // neighbor existence check
+        // Neighbour cube-occlusion check (cross-plane neighbours never occlude).
         let check = |d_face: u8, d_layer: i32, d_u: i32, d_v: i32| -> bool {
             let l = id.layer as i32 + d_layer;
             let u = id.u as i32 + d_u;
             let v = id.v as i32 + d_v;
             if l >= 0 && u >= 0 && u < res as i32 && v >= 0 && v < res as i32 {
-                return data.exists(VoxelCoord {
+                return accessor.is_opaque_cube(VoxelCoord {
                     face: d_face,
                     layer: l as u32,
                     u: u as u32,
@@ -224,7 +296,7 @@ impl MeshGen {
             light_val = 1.0;
         }
 
-        let voxel_id = data.get_voxel(id);
+        let voxel_id = accessor.voxel_id(id);
         let visual = data.content.visual(voxel_id);
         let mut fallback_color = data.content.color(voxel_id);
 
@@ -401,6 +473,59 @@ impl MeshGen {
                 true,
             );
         }
+    }
+
+    /// Mesh a Minecraft-style flora block: two diagonal vertical planes forming
+    /// an X-shape inside the unit voxel.  Each plane is emitted twice (front +
+    /// back winding) so lighting is correct from both sides without relying on
+    /// face culling.
+    fn add_cross_plane_voxel(
+        id: VoxelCoord,
+        accessor: &ChunkAccessor,
+        verts: &mut Vec<CpuVertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+    ) {
+        let data = accessor.data;
+        let voxel_id = accessor.voxel_id(id);
+        let visual = data.content.visual(voxel_id);
+        let layer_index = visual.layers.top;
+        let tint = visual.tint;
+        let color = [tint[0], tint[1], tint[2]];
+
+        let p = |u_off: u32, v_off: u32, l_off: u32| {
+            CoordSystem::get_vertex_pos(
+                id.face,
+                id.u + u_off,
+                id.v + v_off,
+                id.layer + l_off,
+                data.profile,
+            )
+        };
+
+        // Diagonal A: from (u=0, v=0) to (u=1, v=1) — vertical strip along that diagonal.
+        let a_b0 = p(0, 0, 0);
+        let a_b1 = p(1, 1, 0);
+        let a_t1 = p(1, 1, 1);
+        let a_t0 = p(0, 0, 1);
+        // Diagonal B: from (u=1, v=0) to (u=0, v=1).
+        let b_b0 = p(1, 0, 0);
+        let b_b1 = p(0, 1, 0);
+        let b_t1 = p(0, 1, 1);
+        let b_t0 = p(1, 0, 1);
+
+        let packed =
+            pack_material_flags(layer_index, FaceEdgeMask::default(), FLAG_ALPHA_TEST);
+        let colors = [color, color, color, color];
+
+        // flip_v=true so the texture's top row maps to the top of the voxel —
+        // matches the convention used by cube side faces.
+        // Plane A — both windings.
+        Self::quad(verts, inds, idx, [a_b0, a_b1, a_t1, a_t0], colors, false, packed, false, true);
+        Self::quad(verts, inds, idx, [a_b1, a_b0, a_t0, a_t1], colors, false, packed, true, true);
+        // Plane B — both windings.
+        Self::quad(verts, inds, idx, [b_b0, b_b1, b_t1, b_t0], colors, false, packed, false, true);
+        Self::quad(verts, inds, idx, [b_b1, b_b0, b_t0, b_t1], colors, false, packed, true, true);
     }
 
     fn quad(

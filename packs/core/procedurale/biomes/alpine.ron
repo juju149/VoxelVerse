@@ -3,11 +3,11 @@ RawBiomeProceduralDef(
     surface: (top: "core:andesite", under: "core:andesite", depth: (1, 10)),
     terrain: (
         base_height: 0.18,
-        amplitude: 0.92,
+        amplitude: 1.25,
         flatness: 0.08,
         hill_field: "core:soft_hills",
         ridge_field: Some("core:mountain_ridges"),
-        terrace_strength: 0.10,
+        terrace_strength: 0.06,
     ),
     color_tint: (grass: (0.45, 0.58, 0.42), foliage: (0.30, 0.45, 0.28)),
     vegetation_tags: ["cold", "rocky"],

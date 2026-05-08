@@ -24,11 +24,24 @@ pub struct RawMaterialTextureSet {
     pub roughness: TextureRef,
 }
 
+/// Geometric shape of a block. Determines which mesh path the mesher uses.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RawBlockShape {
+    /// Standard 1×1×1 voxel cube.
+    #[default]
+    Cube,
+    /// Two diagonal alpha-tested planes forming an X — Minecraft-style flora.
+    CrossPlane,
+}
+
 /// Raw visual data for a block as written in pack files.
 /// `all` covers every face. `side` covers front/back/left/right.
 /// Explicit face fields override broader fields.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBlockVisual {
+    #[serde(default)]
+    pub shape: RawBlockShape,
     #[serde(default)]
     pub all: Option<RawMaterialTextureSet>,
     #[serde(default)]

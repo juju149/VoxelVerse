@@ -35,7 +35,7 @@ impl<'a> Renderer<'a> {
             update_view_ms: self.update_view_ms,
             meshing_avg_ms,
             meshing_max_ms: self.completed_mesh_time_max_ms,
-            render_world_ms: 0.0,
+            render_world_ms: self.last_render_ms,
             render_ui_ms: 0.0,
         }
     }

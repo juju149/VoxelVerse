@@ -4,4 +4,4 @@ pub mod visual;
 
 pub use block::{BlockRole, RawBlockDef};
 pub use procedural::*;
-pub use visual::{RawBlockVisual, RawMaterialTextureSet};
+pub use visual::{RawBlockShape, RawBlockVisual, RawMaterialTextureSet};

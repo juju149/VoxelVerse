@@ -60,10 +60,11 @@ impl RenderStats {
     ) -> String {
         let target = target_voxel.unwrap_or_else(|| "none".to_string());
         format!(
-            "Culling:  {culling}\nFrame:    {frame:.2} ms\nView:     {view:.2} ms\nPlayer:   {px:.1}, {py:.1}, {pz:.1}\nTarget:   {target}\nChunks:   {vc} / {ac}\nLODs:     {vl} / {al}\nQueue:    {qc}\nPending:  {pc} chunks / {pl} LODs\nJobs:     {mj} mesh / {lj} LOD\nUploads:  {up} this frame\nMesh ms:  avg {ma:.2} / max {mx:.2}\nGPU:      {gpu}",
+            "Culling:  {culling}\nFrame:    {frame:.2} ms\nView:     {view:.2} ms\nRender:   {render:.2} ms\nPlayer:   {px:.1}, {py:.1}, {pz:.1}\nTarget:   {target}\nChunks:   {vc} / {ac}\nLODs:     {vl} / {al}\nQueue:    {qc}\nPending:  {pc} chunks / {pl} LODs\nJobs:     {mj} mesh / {lj} LOD\nUploads:  {up} this frame\nMesh ms:  avg {ma:.2} / max {mx:.2}\nGPU:      {gpu}",
             culling = culling_status,
             frame = frame_time_ms,
             view = self.update_view_ms,
+            render = self.render_world_ms,
             px = player_pos[0],
             py = player_pos[1],
             pz = player_pos[2],

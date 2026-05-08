@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build *)",
+      "Bash(cargo test *)",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate_leaf_textures.ps1 -Presets oak_leaves)"
+    ]
+  }
+}

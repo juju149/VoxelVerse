@@ -7,6 +7,6 @@ mod rounded_edges;
 mod voxel_mesher;
 
 pub use cpu_mesh::{CpuMesh, CpuVertex};
-pub use rounded_edges::{pack_material_edges, FaceEdgeMask};
+pub use rounded_edges::{pack_material_edges, pack_material_flags, FaceEdgeMask, FLAG_ALPHA_TEST};
 
 pub struct MeshGen;

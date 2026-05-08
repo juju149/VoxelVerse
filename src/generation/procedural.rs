@@ -14,7 +14,7 @@ use glam::Vec3;
 use rayon::prelude::*;
 use std::sync::Arc;
 
-const MAX_SURFACE_FIELD_RES: u32 = 2048;
+const MAX_SURFACE_FIELD_RES: u32 = 1024;
 const MAX_BIOME_WEIGHTS: usize = 4;
 
 #[derive(Clone, Debug)]
@@ -72,6 +72,7 @@ pub struct ProceduralPlanetTerrain {
     planet_index: usize,
     heights: Arc<Vec<i16>>,
     primary_biomes: Arc<Vec<u8>>,
+    noise_generators: Arc<Vec<NoiseGenerator>>,
     field_res: u32,
     voxel_res: u32,
     surface_layer: u32,
@@ -83,36 +84,61 @@ impl ProceduralPlanetTerrain {
         registry: Arc<ProceduralRegistry>,
         planet_index: usize,
     ) -> Self {
+        Self::new_with_progress(profile, registry, planet_index, |_, _| {})
+    }
+
+    pub fn new_with_progress(
+        profile: PlanetProfile,
+        registry: Arc<ProceduralRegistry>,
+        planet_index: usize,
+        mut progress: impl FnMut(f32, &str),
+    ) -> Self {
         let field_res = profile.resolution.min(MAX_SURFACE_FIELD_RES);
         let size = (6 * field_res * field_res) as usize;
         let planet = &registry.planets[planet_index];
+        let noise_generators: Arc<Vec<NoiseGenerator>> = Arc::new(
+            registry
+                .fields
+                .iter()
+                .map(|field| NoiseGenerator::new(planet.base.seed.wrapping_add(field.seed_salt)))
+                .collect(),
+        );
 
         let mut heights = vec![0i16; size];
         let mut primary_biomes = vec![0u8; size];
 
-        heights
-            .par_iter_mut()
-            .zip(primary_biomes.par_iter_mut())
-            .enumerate()
-            .for_each(|(idx, (height_out, biome_out))| {
-                let face_area = (field_res * field_res) as usize;
-                let face = (idx / face_area) as u8;
-                let rem = idx % face_area;
-                let v = (rem / field_res as usize) as u32;
-                let u = (rem % field_res as usize) as u32;
-                let dir = CoordSystem::get_direction(face, u, v, field_res);
-                let sample = sample_surface_fields(&registry, planet, dir);
-                let (height, primary) = resolve_height(&registry, planet, profile, dir, &sample);
-                *height_out = (height as i32 - profile.surface_layer as i32)
-                    .clamp(i16::MIN as i32, i16::MAX as i32) as i16;
-                *biome_out = primary.min(u8::MAX as usize) as u8;
-            });
+        progress(0.05, "Préparation des champs procéduraux");
+        let face_area = (field_res * field_res) as usize;
+        for face in 0..6usize {
+            let start = face * face_area;
+            let end = start + face_area;
+            heights[start..end]
+                .par_iter_mut()
+                .zip(primary_biomes[start..end].par_iter_mut())
+                .enumerate()
+                .for_each(|(rem, (height_out, biome_out))| {
+                    let v = (rem / field_res as usize) as u32;
+                    let u = (rem % field_res as usize) as u32;
+                    let dir = CoordSystem::get_direction(face as u8, u, v, field_res);
+                    let sample = sample_surface_fields(&registry, &noise_generators, planet, dir);
+                    let (height, primary) =
+                        resolve_height(&registry, &noise_generators, planet, profile, dir, &sample);
+                    *height_out = (height as i32 - profile.surface_layer as i32)
+                        .clamp(i16::MIN as i32, i16::MAX as i32)
+                        as i16;
+                    *biome_out = primary.min(u8::MAX as usize) as u8;
+                });
+            let pct = 0.05 + ((face + 1) as f32 / 6.0) * 0.90;
+            progress(pct, "Génération terrain, climat et biomes");
+        }
+        progress(0.98, "Finalisation planète");
 
         Self {
             registry,
             planet_index,
             heights: Arc::new(heights),
             primary_biomes: Arc::new(primary_biomes),
+            noise_generators,
             field_res,
             voxel_res: profile.resolution,
             surface_layer: profile.surface_layer,
@@ -153,19 +179,15 @@ impl ProceduralPlanetTerrain {
     }
 
     pub fn surface_sample(&self, face: u8, u: u32, v: u32) -> SurfaceSample {
-        let dir = CoordSystem::get_direction(face, u, v, self.voxel_res);
-        let planet = self.planet();
-        let fields = sample_surface_fields(&self.registry, planet, dir);
         let height = self.get_height(face, u, v);
         let primary_biome = self.get_biome_id(face, u, v) as usize;
-        let biome_weights = resolve_biome_weights(&self.registry, planet, fields).0;
         SurfaceSample {
             height,
             primary_biome,
-            biome_weights,
-            temperature: fields.temperature,
-            humidity: fields.humidity,
-            roughness: fields.roughness,
+            biome_weights: Vec::new(),
+            temperature: 0.0,
+            humidity: 0.0,
+            roughness: 0.0,
         }
     }
 
@@ -221,6 +243,22 @@ impl ProceduralPlanetTerrain {
         (biome.surface.top, biome.surface.under)
     }
 
+    pub fn registry(&self) -> &ProceduralRegistry {
+        &self.registry
+    }
+
+    pub fn planet_index(&self) -> usize {
+        self.planet_index
+    }
+
+    pub fn voxel_res(&self) -> u32 {
+        self.voxel_res
+    }
+
+    pub(crate) fn feature_hit_pub(&self, field: usize, face: u8, u: u32, v: u32, density: f32) -> bool {
+        self.feature_hit(field, face, u, v, density)
+    }
+
     fn resolve_voxel(&self, ctx: &GeneratedVoxelContext, profile: PlanetProfile) -> VoxelId {
         if self.is_cave(ctx) {
             return VoxelId::AIR;
@@ -247,6 +285,15 @@ impl ProceduralPlanetTerrain {
         let above = (-ctx.depth_from_surface) as u32;
         let top = self.registry.biome(ctx.surface.primary_biome).surface.top;
 
+        // Walk every vegetation entry the planet uses; the first tree (planted in
+        // the local neighborhood) that claims this voxel wins.
+        for veg_idx in &self.planet().vegetation_sets {
+            let veg = &self.registry.vegetation[*veg_idx];
+            if let Some(block) = self.tree_voxel_at(ctx, veg) {
+                return block;
+            }
+        }
+
         if above == 1 {
             for detail_idx in &self.planet().visual_detail_sets {
                 let detail = &self.registry.visual_details[*detail_idx];
@@ -268,29 +315,136 @@ impl ProceduralPlanetTerrain {
             }
         }
 
-        for veg_idx in &self.planet().vegetation_sets {
-            let veg = &self.registry.vegetation[*veg_idx];
-            if !veg.placement.surface_blocks.contains(&top)
-                || !self.feature_hit(
-                    veg.placement.field,
-                    ctx.face,
-                    ctx.u,
-                    ctx.v,
-                    veg.placement.density,
-                )
-            {
-                continue;
+        VoxelId::AIR
+    }
+
+    /// Return the tree voxel (trunk / branch / leaf) occupying this cell, if any
+    /// tree planted within the neighborhood reaches it.
+    ///
+    /// Each candidate planting column (`pu`, `pv`) within
+    /// `(trunk_thickness + canopy_radius)` of the current column is tested
+    /// independently — first match wins, so density and tree size dictate
+    /// whether two crowns can fight for the same voxel.
+    fn tree_voxel_at(
+        &self,
+        ctx: &GeneratedVoxelContext,
+        veg: &crate::content::CompiledVegetation,
+    ) -> Option<VoxelId> {
+        let res = self.voxel_res as i32;
+        let max_thickness = veg.trunk_thickness.1.max(1) as i32;
+        let max_canopy_radius = veg.canopy_radius.1 as i32;
+        let scan_radius = max_thickness + max_canopy_radius;
+
+        for du in -scan_radius..=scan_radius {
+            for dv in -scan_radius..=scan_radius {
+                let pu_i = ctx.u as i32 + du;
+                let pv_i = ctx.v as i32 + dv;
+                if pu_i < 0 || pv_i < 0 || pu_i >= res || pv_i >= res {
+                    continue;
+                }
+                let pu = pu_i as u32;
+                let pv = pv_i as u32;
+
+                // The candidate column must itself be valid soil for this vegetation.
+                let plant_top =
+                    self.registry.biome(self.get_biome_id(ctx.face, pu, pv) as usize).surface.top;
+                if !veg.placement.surface_blocks.contains(&plant_top) {
+                    continue;
+                }
+                if !self.feature_hit(veg.placement.field, ctx.face, pu, pv, veg.placement.density) {
+                    continue;
+                }
+
+                if let Some(block) = self.evaluate_tree_at(ctx, veg, pu, pv) {
+                    return Some(block);
+                }
             }
-            let height = range_pick(veg.height, hash4(ctx.face, ctx.u, ctx.v, 33));
-            if (1..=height).contains(&above) {
-                return veg.trunk;
-            }
-            if above <= height + veg.canopy_radius.1 {
-                return veg.leaves;
+        }
+        None
+    }
+
+    /// Evaluate whether the current voxel falls inside the trunk, a branch,
+    /// or the canopy of a tree planted at column (`pu`, `pv`).
+    fn evaluate_tree_at(
+        &self,
+        ctx: &GeneratedVoxelContext,
+        veg: &crate::content::CompiledVegetation,
+        pu: u32,
+        pv: u32,
+    ) -> Option<VoxelId> {
+        let plant_height = self.get_height(ctx.face, pu, pv);
+        let height = range_pick(veg.height, hash4(ctx.face, pu, pv, 33));
+        let thickness = range_pick(veg.trunk_thickness, hash4(ctx.face, pu, pv, 35)).max(1);
+        let canopy_r = range_pick(veg.canopy_radius, hash4(ctx.face, pu, pv, 34));
+        let branch_count = range_pick(veg.branch_count, hash4(ctx.face, pu, pv, 36));
+
+        let trunk_top_layer = plant_height + height;
+        let layer = ctx.layer;
+        let du = ctx.u as i32 - pu as i32;
+        let dv = ctx.v as i32 - pv as i32;
+        let half = thickness as i32 / 2;
+        let in_trunk_footprint =
+            du >= -half && du < (thickness as i32 - half) && dv >= -half && dv < (thickness as i32 - half);
+
+        // Trunk: solid column from (plant_height + 1) up to (plant_height + height).
+        if in_trunk_footprint && layer > plant_height && layer <= trunk_top_layer {
+            return Some(veg.trunk);
+        }
+
+        // Branches: short horizontal log spurs in the upper third of the trunk.
+        if branch_count > 0 && height >= 3 {
+            let branch_band_start = plant_height + (height * 2 / 3).max(1);
+            let branch_band_end = trunk_top_layer.saturating_sub(1);
+            if layer >= branch_band_start && layer <= branch_band_end {
+                let max_len = range_pick(veg.branch_length, hash4(ctx.face, pu, pv, 37)).max(1);
+                for i in 0..branch_count {
+                    let h = hash4(ctx.face, pu, pv, 41 + i);
+                    let dir = h & 0b11; // 0..=3
+                    let len = 1 + (h >> 2) % max_len;
+                    let layer_off = (h >> 6) % (branch_band_end - branch_band_start + 1);
+                    let branch_layer = branch_band_start + layer_off;
+                    if layer != branch_layer {
+                        continue;
+                    }
+                    let (axis_du, axis_dv): (i32, i32) = match dir {
+                        0 => (1, 0),
+                        1 => (-1, 0),
+                        2 => (0, 1),
+                        _ => (0, -1),
+                    };
+                    for step in 1..=(len as i32) {
+                        let bu = axis_du * step;
+                        let bv = axis_dv * step;
+                        if du == bu && dv == bv {
+                            return Some(veg.trunk);
+                        }
+                    }
+                }
             }
         }
 
-        VoxelId::AIR
+        // Canopy: vertical-squashed ellipsoid centered slightly above the trunk top.
+        if layer >= plant_height && canopy_r > 0 {
+            let cx = pu as f32 + 0.5;
+            let cy = pv as f32 + 0.5;
+            // Pull the canopy center down by ~1 so it surrounds the upper trunk
+            // instead of sitting purely above it — keeps leaves visible from below.
+            let cz = trunk_top_layer as f32 - 0.5;
+            let dx = ctx.u as f32 + 0.5 - cx;
+            let dy = ctx.v as f32 + 0.5 - cy;
+            let dz_raw = layer as f32 + 0.5 - cz;
+            let squash = veg.canopy_vertical_squash.max(0.1);
+            let dz = dz_raw / squash;
+            let r = canopy_r as f32;
+            // Slight per-voxel jitter so the canopy is not a perfect lattice ball.
+            let jitter = (hash4(ctx.face, ctx.u, ctx.v, 51) as f32 / u32::MAX as f32) * 0.45;
+            let dist_sq = dx * dx + dy * dy + dz * dz;
+            if dist_sq <= r * r + jitter && layer > plant_height {
+                return Some(veg.leaves);
+            }
+        }
+
+        None
     }
 
     fn layer_block(&self, ctx: &GeneratedVoxelContext, profile: PlanetProfile) -> Option<VoxelId> {
@@ -431,14 +585,12 @@ impl ProceduralPlanetTerrain {
     }
 
     fn feature_hit(&self, field: usize, face: u8, u: u32, v: u32, density: f32) -> bool {
-        let dir = CoordSystem::get_direction(face, u, v, self.voxel_res);
-        let field_value = self.sample_field(field, dir);
-        let jitter = hash4(face, u, v, field as u32) as f32 / u32::MAX as f32;
-        field_value * density.clamp(0.0, 1.0) > jitter
+        let roll = hash4(face, u, v, field as u32) as f32 / u32::MAX as f32;
+        roll < density.clamp(0.0, 1.0)
     }
 
     fn sample_field(&self, field: usize, pos: Vec3) -> f32 {
-        sample_noise_field(&self.registry, self.planet().base.seed, field, pos, 0)
+        sample_noise_field(&self.registry, &self.noise_generators, field, pos, 0)
     }
 
     fn index(&self, face: u8, u: u32, v: u32) -> usize {
@@ -468,34 +620,17 @@ struct SurfaceFields {
 
 fn sample_surface_fields(
     registry: &ProceduralRegistry,
+    generators: &[NoiseGenerator],
     planet: &CompiledProceduralPlanet,
     dir: Vec3,
 ) -> SurfaceFields {
     let climate = &registry.climates[planet.climate];
     let latitude = dir.y.abs();
-    let temperature = sample_axis(
-        registry,
-        planet.base.seed,
-        &climate.temperature,
-        dir,
-        latitude,
-    );
-    let humidity = sample_axis(registry, planet.base.seed, &climate.humidity, dir, latitude);
-    let continentality = sample_axis(
-        registry,
-        planet.base.seed,
-        &climate.continentality,
-        dir,
-        latitude,
-    );
-    let erosion = sample_axis(registry, planet.base.seed, &climate.erosion, dir, latitude);
-    let weirdness = sample_axis(
-        registry,
-        planet.base.seed,
-        &climate.weirdness,
-        dir,
-        latitude,
-    );
+    let temperature = sample_axis(registry, generators, &climate.temperature, dir, latitude);
+    let humidity = sample_axis(registry, generators, &climate.humidity, dir, latitude);
+    let continentality = sample_axis(registry, generators, &climate.continentality, dir, latitude);
+    let erosion = sample_axis(registry, generators, &climate.erosion, dir, latitude);
+    let weirdness = sample_axis(registry, generators, &climate.weirdness, dir, latitude);
     let roughness = ((1.0 - erosion) * 0.65 + weirdness * 0.35).clamp(0.0, 1.0);
     SurfaceFields {
         temperature,
@@ -509,20 +644,21 @@ fn sample_surface_fields(
 
 fn sample_axis(
     registry: &ProceduralRegistry,
-    seed: u32,
+    generators: &[NoiseGenerator],
     axis: &crate::content::CompiledClimateAxis,
     dir: Vec3,
     latitude: f32,
 ) -> f32 {
     let mut value = 0.5 + (1.0 - latitude - 0.5) * axis.latitude_bias + axis.ocean_bias;
     for (field, weight) in &axis.fields {
-        value += (sample_noise_field(registry, seed, *field, dir, 0) - 0.5) * *weight;
+        value += (sample_noise_field(registry, generators, *field, dir, 0) - 0.5) * *weight;
     }
     value.clamp(0.0, 1.0)
 }
 
 fn resolve_height(
     registry: &ProceduralRegistry,
+    generators: &[NoiseGenerator],
     planet: &CompiledProceduralPlanet,
     profile: PlanetProfile,
     dir: Vec3,
@@ -532,13 +668,12 @@ fn resolve_height(
     let mut height_offset = 0.0;
     for weight in &weights {
         let biome = registry.biome(weight.biome);
-        let hill = sample_noise_field(registry, planet.base.seed, biome.terrain.hill_field, dir, 0)
-            * 2.0
-            - 1.0;
+        let hill =
+            sample_noise_field(registry, generators, biome.terrain.hill_field, dir, 0) * 2.0 - 1.0;
         let ridge = biome
             .terrain
             .ridge_field
-            .map(|field| sample_noise_field(registry, planet.base.seed, field, dir, 0) * 2.0 - 1.0)
+            .map(|field| sample_noise_field(registry, generators, field, dir, 0) * 2.0 - 1.0)
             .unwrap_or(0.0);
         let flat = 1.0 - biome.terrain.flatness;
         let mut local = biome.terrain.base_height
@@ -620,7 +755,7 @@ fn resolve_biome_weights(
 
 fn sample_noise_field(
     registry: &ProceduralRegistry,
-    seed: u32,
+    generators: &[NoiseGenerator],
     field_idx: usize,
     pos: Vec3,
     depth: u32,
@@ -633,15 +768,18 @@ fn sample_noise_field(
     let mut sample_pos = pos;
     if let Some((warp_idx, strength)) = field.domain_warp {
         if depth < 4 {
-            let warp =
-                sample_noise_field(registry, seed, warp_idx, pos + Vec3::splat(13.7), depth + 1)
-                    * 2.0
-                    - 1.0;
+            let warp = sample_noise_field(
+                registry,
+                generators,
+                warp_idx,
+                pos + Vec3::splat(13.7),
+                depth + 1,
+            ) * 2.0
+                - 1.0;
             sample_pos += Vec3::new(warp, warp * 0.73, warp * 1.37) * strength;
         }
     }
 
-    let gen = NoiseGenerator::new(seed.wrapping_add(field.seed_salt));
     let noise_type = match field.kind {
         CompiledNoiseKind::Ridged | CompiledNoiseKind::Cellular => NoiseType::Ridged,
         _ => NoiseType::Perlin,
@@ -655,7 +793,7 @@ fn sample_noise_field(
         lacunarity: field.lacunarity,
         offset: Vec3::ZERO,
     };
-    let mut value = gen.compute(sample_pos, &settings) * field.amplitude;
+    let mut value = generators[field_idx].compute(sample_pos, &settings) * field.amplitude;
     if let Some(remap) = &field.remap {
         let denom = (remap.in_max - remap.in_min).abs().max(0.0001);
         let mut t = ((value - remap.in_min) / denom).clamp(0.0, 1.0);
@@ -671,18 +809,7 @@ fn weighted_detail(
     items: &[crate::content::CompiledVisualDetailItem],
     roll: u32,
 ) -> Option<VoxelId> {
-    let total = items.iter().map(|i| i.weight).sum::<u32>();
-    if total == 0 {
-        return None;
-    }
-    let mut pick = roll % total;
-    for item in items {
-        if pick < item.weight {
-            return Some(item.block);
-        }
-        pick -= item.weight;
-    }
-    None
+    crate::generation::features::weighted_detail(items, roll)
 }
 
 fn range_distance(value: f32, range: (f32, f32)) -> f32 {
@@ -696,20 +823,9 @@ fn range_distance(value: f32, range: (f32, f32)) -> f32 {
 }
 
 fn range_pick(range: (u32, u32), roll: u32) -> u32 {
-    if range.0 == range.1 {
-        range.0
-    } else {
-        range.0 + roll % (range.1 - range.0 + 1)
-    }
+    crate::generation::features::range_pick(range, roll)
 }
 
 fn hash4(face: u8, u: u32, v: u32, salt: u32) -> u32 {
-    let mut x = salt ^ (face as u32).wrapping_mul(0x9E37_79B9);
-    x ^= u.wrapping_mul(0x85EB_CA6B).rotate_left(13);
-    x ^= v.wrapping_mul(0xC2B2_AE35).rotate_right(7);
-    x ^= x >> 16;
-    x = x.wrapping_mul(0x7FEB_352D);
-    x ^= x >> 15;
-    x = x.wrapping_mul(0x846C_A68B);
-    x ^ (x >> 16)
+    crate::generation::features::hash4(face, u, v, salt)
 }

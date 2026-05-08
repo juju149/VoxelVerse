@@ -533,8 +533,10 @@ impl<'a> Renderer<'a> {
             completed_mesh_time_max_ms: 0.0,
             completed_mesh_count: 0,
             update_view_ms: 0.0,
+            last_render_ms: 0.0,
 
             frame_stats: FrameStats::new(),
+            quality: crate::rendering::quality::QualitySettings::default(),
             atlas_bind,
         }
     }

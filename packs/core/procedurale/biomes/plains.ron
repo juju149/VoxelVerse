@@ -3,8 +3,8 @@ RawBiomeProceduralDef(
     surface: (top: "core:grass_block", under: "core:dirt", depth: (1, 5)),
     terrain: (
         base_height: -0.03,
-        amplitude: 0.24,
-        flatness: 0.76,
+        amplitude: 0.34,
+        flatness: 0.62,
         hill_field: "core:soft_hills",
         ridge_field: None,
         terrace_strength: 0.03,

@@ -3,7 +3,7 @@ RawBiomeSetDef(
     selectors: [
         (biome: "core:plains", temperature: (0.35, 0.78), humidity: (0.25, 0.72), roughness: (0.00, 0.42), weight: 1.0),
         (biome: "core:temperate_forest", temperature: (0.30, 0.72), humidity: (0.55, 1.00), roughness: (0.05, 0.58), weight: 1.1),
-        (biome: "core:alpine", temperature: (0.05, 0.62), humidity: (0.20, 0.95), roughness: (0.58, 1.00), weight: 1.25),
+        (biome: "core:alpine", temperature: (0.05, 0.70), humidity: (0.15, 0.95), roughness: (0.42, 1.00), weight: 1.45),
         (biome: "core:desert", temperature: (0.68, 1.00), humidity: (0.00, 0.34), roughness: (0.00, 0.62), weight: 1.0),
         (biome: "core:tundra", temperature: (0.00, 0.34), humidity: (0.12, 0.86), roughness: (0.00, 0.78), weight: 1.0),
     ],

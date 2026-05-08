@@ -1,5 +1,6 @@
 use crate::content::block_registry::{
-    BlockMaterialLayers, BlockRegistry, CompiledBlock, CompiledBlockVisual, MaterialTextureSet,
+    BlockMaterialLayers, BlockRegistry, BlockShape, CompiledBlock, CompiledBlockVisual,
+    MaterialTextureSet,
 };
 use crate::content::schema::{BlockRole, RawBlockDef, RawBlockVisual, RawMaterialTextureSet};
 use crate::voxel::VoxelId;
@@ -65,6 +66,7 @@ impl ContentCompiler {
                             layers: BlockMaterialLayers::default(),
                             tint: [1.0, 1.0, 1.0],
                             flat_color: def.color,
+                            shape: BlockShape::Cube,
                         }
                     }
                 }
@@ -73,6 +75,7 @@ impl ContentCompiler {
                     layers: BlockMaterialLayers::default(),
                     tint: [1.0, 1.0, 1.0],
                     flat_color: def.color,
+                    shape: BlockShape::Cube,
                 }
             };
 
@@ -121,8 +124,14 @@ impl ContentCompiler {
         material_sets: &mut Vec<MaterialTextureSet>,
     ) -> Result<CompiledBlockVisual, Vec<String>> {
         let mut errors = Vec::new();
+        let shape = BlockShape::from(raw.shape);
         let mut layer_for = |face: &str, material: Option<&RawMaterialTextureSet>| -> u32 {
             let Some(material) = material else {
+                // Cross-planes only need the `all` layer; missing per-face materials are
+                // expected and must not error out.
+                if shape == BlockShape::CrossPlane {
+                    return 0;
+                }
                 errors.push(format!(
                     "Block '{}': visual must define material for {} face",
                     key, face
@@ -164,6 +173,7 @@ impl ContentCompiler {
                 layers,
                 tint: raw.tint,
                 flat_color: color,
+                shape,
             })
         } else {
             Err(errors)

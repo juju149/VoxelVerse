@@ -1,5 +1,7 @@
 use crate::content::{BlockRegistry, CompiledPlanet, ProceduralRegistry};
-use crate::generation::{procedural::ProceduralPlanetTerrain, CoordSystem};
+use crate::generation::{
+    bake_for_chunk, procedural::ProceduralPlanetTerrain, ChunkFeatureMap, CoordSystem,
+};
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use crate::world::{PlanetProfile, VoxelRuntime};
 use std::sync::Arc;
@@ -55,19 +57,40 @@ pub struct PlanetData {
 }
 
 impl PlanetData {
+    #[allow(dead_code)]
     pub fn new(
         planet_def: CompiledPlanet,
         registry: Arc<BlockRegistry>,
         procedural: Arc<ProceduralRegistry>,
         procedural_planet_index: usize,
     ) -> Self {
+        Self::new_with_progress(
+            planet_def,
+            registry,
+            procedural,
+            procedural_planet_index,
+            |_, _| {},
+        )
+    }
+
+    pub fn new_with_progress(
+        planet_def: CompiledPlanet,
+        registry: Arc<BlockRegistry>,
+        procedural: Arc<ProceduralRegistry>,
+        procedural_planet_index: usize,
+        progress: impl FnMut(f32, &str),
+    ) -> Self {
         let profile = PlanetProfile::from_compiled(&planet_def);
         println!(
             "Generating terrain for resolution {}  (voxel {} m, radius ≈ {:.1} m)…",
             profile.resolution, profile.voxel_size_meters, profile.surface_radius
         );
-        let terrain =
-            ProceduralPlanetTerrain::new(profile, procedural.clone(), procedural_planet_index);
+        let terrain = ProceduralPlanetTerrain::new_with_progress(
+            profile,
+            procedural.clone(),
+            procedural_planet_index,
+            progress,
+        );
         println!("Terrain generation complete.");
 
         let block_ids = PlanetBlockIds::from_registry(&registry);
@@ -144,6 +167,13 @@ impl PlanetData {
 
     pub fn exists(&self, coord: VoxelCoord) -> bool {
         self.content.is_solid(self.get_voxel(coord))
+    }
+
+    /// Bake a full chunk's tree + visual-detail voxels into a sparse map.
+    /// The mesher uses this so it never has to re-scan tree neighbourhoods
+    /// at the per-voxel level.
+    pub fn bake_chunk_features(&self, key: SurfaceChunkKey, margin: u32) -> ChunkFeatureMap {
+        bake_for_chunk(&self.terrain, key.face, key.u_idx, key.v_idx, margin)
     }
 
     pub fn modified_voxels_in_chunk_column(
