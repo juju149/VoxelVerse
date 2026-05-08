@@ -222,7 +222,7 @@ impl<'a> Renderer<'a> {
             lod_factor = 18.0;
         }
 
-        let split_distance = node_radius_world * lod_factor;
+        let split_distance = node_radius_world * lod_factor * self.lod_distance_scale;
         let is_smallest = size <= CHUNK_SIZE;
 
         if dist < split_distance && !is_smallest {

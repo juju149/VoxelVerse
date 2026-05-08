@@ -108,10 +108,37 @@ impl ContentCompiler {
             return Err(errors);
         }
 
+        // One representative color per atlas layer. Layer 0 is the neutral
+        // fallback tile; layers 1..=material_sets.len() correspond to each
+        // distinct material set. We fill the array by walking the blocks: the
+        // first block that references a layer wins (deterministic since blocks
+        // are sorted alphabetically). Any layer left unclaimed keeps white.
+        let mut material_colors: Vec<[f32; 4]> = vec![[1.0, 1.0, 1.0, 1.0]; material_sets.len() + 1];
+        for block in &blocks {
+            let layers = [
+                block.visual.layers.top,
+                block.visual.layers.bottom,
+                block.visual.layers.front,
+                block.visual.layers.back,
+                block.visual.layers.left,
+                block.visual.layers.right,
+            ];
+            for layer in layers {
+                let idx = layer as usize;
+                if idx == 0 || idx >= material_colors.len() {
+                    continue;
+                }
+                if material_colors[idx] == [1.0, 1.0, 1.0, 1.0] {
+                    material_colors[idx] = [block.color[0], block.color[1], block.color[2], 1.0];
+                }
+            }
+        }
+
         Ok(BlockRegistry::new(
             blocks,
             key_to_id,
             material_sets,
+            material_colors,
             default_place,
             planet_core,
         ))

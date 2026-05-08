@@ -84,6 +84,11 @@ pub struct BlockRegistry {
     blocks: Vec<CompiledBlock>,
     key_to_id: HashMap<String, VoxelId>,
     material_sets: Vec<MaterialTextureSet>,
+    /// One RGBA color per atlas layer (length = material_sets.len() + 1).
+    /// Index 0 is the fallback layer (white). Index L+1 is the representative
+    /// flat color of `material_sets[L]` — taken from the first block that uses
+    /// that material. Consumed by the renderer's color-only debug toggle.
+    material_colors: Vec<[f32; 4]>,
     default_place: VoxelId,
     planet_core: VoxelId,
 }
@@ -94,6 +99,7 @@ impl BlockRegistry {
         blocks: Vec<CompiledBlock>,
         key_to_id: HashMap<String, VoxelId>,
         material_sets: Vec<MaterialTextureSet>,
+        material_colors: Vec<[f32; 4]>,
         default_place: VoxelId,
         planet_core: VoxelId,
     ) -> Self {
@@ -101,6 +107,7 @@ impl BlockRegistry {
             blocks,
             key_to_id,
             material_sets,
+            material_colors,
             default_place,
             planet_core,
         }
@@ -162,6 +169,12 @@ impl BlockRegistry {
 
     pub fn material_sets(&self) -> &[MaterialTextureSet] {
         &self.material_sets
+    }
+
+    /// Per-atlas-layer flat colors. Same indexing as `material_layer` packed
+    /// in vertex `tex_index` (layer 0 = fallback, layer L+1 = material L).
+    pub fn material_colors(&self) -> &[[f32; 4]] {
+        &self.material_colors
     }
 
     /// The block placed when the player uses the default slot.

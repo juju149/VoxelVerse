@@ -3,7 +3,13 @@
     "allow": [
       "Bash(cargo build *)",
       "Bash(cargo test *)",
-      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate_leaf_textures.ps1 -Presets oak_leaves)"
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File tools/generate_leaf_textures.ps1 -Presets oak_leaves)",
+      "Bash(cargo check *)",
+      "Bash(grep -r \"Fn,\" ~/.cargo/registry/src/*/winit-*/src/keyboard.rs 2>/dev/null | head -5)",
+      "Read(//c/Users/julie/.cargo/registry/src/**)",
+      "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\VoxelVerse\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(head -50)"
     ]
   }
 }

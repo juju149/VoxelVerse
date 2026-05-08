@@ -31,6 +31,9 @@ pub struct QualitySettings {
     pub triplanar_grain: bool,
     /// Shadow PCF kernel size.
     pub pcf: PcfQuality,
+    /// Bypass texture sampling and shade with each block's flat base color.
+    /// Used to A/B-compare textured vs. flat-color rendering performance.
+    pub color_only_mode: bool,
 }
 
 impl Default for QualitySettings {
@@ -39,15 +42,18 @@ impl Default for QualitySettings {
         Self {
             triplanar_grain: false,
             pcf: PcfQuality::Low,
+            color_only_mode: false,
         }
     }
 }
 
 impl QualitySettings {
     /// Pack settings into a single f32 written to `global.cam_pos.w`.
-    /// Bit 0 = triplanar; bits 1-2 = pcf level.
+    /// Bit 0 = triplanar; bits 1-2 = pcf level; bit 3 = color-only mode.
     pub fn pack(self) -> f32 {
-        let bits = (self.triplanar_grain as u32) | (self.pcf.level_bits() << 1);
+        let bits = (self.triplanar_grain as u32)
+            | (self.pcf.level_bits() << 1)
+            | ((self.color_only_mode as u32) << 3);
         bits as f32
     }
 }

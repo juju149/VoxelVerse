@@ -3,9 +3,10 @@ use crate::content::TextureRegistry;
 use crate::diagnostics::{FrameStats, SystemDiagnostics};
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::LodAnimator;
+use crate::rendering::perf_profile::{PerfProfile, PerfTier};
 use crate::rendering::texture_atlas::TextureAtlas;
 use crate::rendering::types::Vertex;
-use crate::streaming::{MeshScheduler, SchedulerBudget, SchedulerStats};
+use crate::streaming::{MeshScheduler, SchedulerStats};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
 use wgpu::util::DeviceExt;
@@ -13,7 +14,11 @@ use wgpu::PresentMode;
 use winit::window::Window;
 
 impl<'a> Renderer<'a> {
-    pub async fn new(window: &'a Window, textures: &TextureRegistry) -> Self {
+    pub async fn new(
+        window: &'a Window,
+        textures: &TextureRegistry,
+        material_colors: &[[f32; 4]],
+    ) -> Self {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window).unwrap();
 
@@ -27,7 +32,14 @@ impl<'a> Renderer<'a> {
             .unwrap();
 
         // log GPU info
-        SystemDiagnostics::log_gpu(&adapter.get_info());
+        let adapter_info = adapter.get_info();
+        SystemDiagnostics::log_gpu(&adapter_info);
+
+        // Detect hardware tier and derive every render-side knob from it.
+        // Honours the VV_PERF env override.
+        let perf_tier = PerfTier::resolve(&adapter_info);
+        let perf = PerfProfile::for_tier(perf_tier);
+        perf.print();
 
         let target_buffer_size: u64 = 8 * 1024 * 1024 * 1024;
         let mut limits = adapter.limits();
@@ -74,7 +86,7 @@ impl<'a> Renderer<'a> {
 
         let text_resources = Self::create_text_resources(&device, &queue, config.format);
 
-        let shadow_map = Self::create_shadow_map(&device);
+        let shadow_map = Self::create_shadow_map(&device, perf.shadow_map_size);
 
         let global_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -164,10 +176,37 @@ impl<'a> Renderer<'a> {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
 
         let atlas = TextureAtlas::new(&device, &queue, textures);
+
+        // Per-atlas-layer flat color buffer for the color-only debug toggle.
+        // Always at least one entry so wgpu doesn't reject a zero-sized binding.
+        let mut color_data: Vec<[f32; 4]> = if material_colors.is_empty() {
+            vec![[1.0, 1.0, 1.0, 1.0]]
+        } else {
+            material_colors.to_vec()
+        };
+        // Pad to a multiple of vec4 stride (already is — kept explicit).
+        if color_data.is_empty() {
+            color_data.push([1.0, 1.0, 1.0, 1.0]);
+        }
+        let material_color_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Material Flat Colors"),
+            contents: bytemuck::cast_slice(&color_data),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        });
         let atlas_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Atlas Bind Group"),
             layout: &atlas_layout,
@@ -187,6 +226,10 @@ impl<'a> Renderer<'a> {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::Sampler(&atlas.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: material_color_buf.as_entire_binding(),
                 },
             ],
         });
@@ -527,7 +570,7 @@ impl<'a> Renderer<'a> {
             lod_tx,
             lod_rx,
             pending_lods: HashSet::new(),
-            scheduler: MeshScheduler::new(SchedulerBudget::default()),
+            scheduler: MeshScheduler::new(perf.scheduler),
             scheduler_stats: SchedulerStats::default(),
             completed_mesh_time_sum_ms: 0.0,
             completed_mesh_time_max_ms: 0.0,
@@ -536,7 +579,10 @@ impl<'a> Renderer<'a> {
             last_render_ms: 0.0,
 
             frame_stats: FrameStats::new(),
-            quality: crate::rendering::quality::QualitySettings::default(),
+            quality: perf.quality,
+            perf_tier,
+            shadow_map_size: perf.shadow_map_size,
+            lod_distance_scale: perf.lod_distance_scale,
             atlas_bind,
         }
     }

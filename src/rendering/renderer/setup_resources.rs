@@ -42,8 +42,7 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    pub(super) fn create_shadow_map(device: &wgpu::Device) -> ShadowMapResources {
-        let shadow_size = 4096;
+    pub(super) fn create_shadow_map(device: &wgpu::Device, shadow_size: u32) -> ShadowMapResources {
         let shadow_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Shadow Map"),
             size: wgpu::Extent3d {

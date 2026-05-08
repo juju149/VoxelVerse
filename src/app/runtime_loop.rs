@@ -21,7 +21,11 @@ pub fn run() {
     let window = create_window(&event_loop);
     grab_cursor(&window);
 
-    let mut renderer = pollster::block_on(Renderer::new(&window, &content.textures));
+    let mut renderer = pollster::block_on(Renderer::new(
+        &window,
+        &content.textures,
+        content.blocks.material_colors(),
+    ));
     renderer.render_loading(0.0, "Initialisation planète");
     let mut controller = Controller::new();
     let mut player = Player::new();
@@ -281,6 +285,18 @@ fn handle_pressed_key(
 
     // Quality hotkeys — pure renderer-side toggles, no chunk reload required.
     match key {
+        PhysicalKey::Code(KeyCode::F3) | PhysicalKey::Code(KeyCode::Fn) => {
+            renderer.quality.color_only_mode = !renderer.quality.color_only_mode;
+            println!(
+                "[quality] color-only mode = {} (textures {})",
+                renderer.quality.color_only_mode,
+                if renderer.quality.color_only_mode {
+                    "OFF"
+                } else {
+                    "ON"
+                }
+            );
+        }
         PhysicalKey::Code(KeyCode::F5) => {
             renderer.quality.triplanar_grain = !renderer.quality.triplanar_grain;
             println!(

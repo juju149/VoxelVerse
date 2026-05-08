@@ -173,8 +173,7 @@ impl<'a> Renderer<'a> {
         // texel Snapping
         // project the center position into light space, snap it to a pixel,
         // and then offset the view matrix by the difference.
-        let shadow_map_size = 4096.0;
-        let texel_size = (2.0 * proj_size) / shadow_map_size;
+        let texel_size = (2.0 * proj_size) / self.shadow_map_size as f32;
 
         let shadow_origin = sun_view.transform_point3(center);
         let snapped_x = (shadow_origin.x / texel_size).round() * texel_size;
@@ -220,6 +219,45 @@ impl<'a> Renderer<'a> {
 
         let cam_pos = controller.get_camera_pos(player);
         let frustum = Frustum::from_matrix(mvp);
+
+        // Build a separate frustum from the sun's light-space matrix so the
+        // shadow pass culls against the *sun*'s 60-unit ortho box, not the
+        // (much larger) camera frustum.  Without this, the shadow pass redraws
+        // hundreds of chunks that don't even contribute to the shadow map.
+        let sun_frustum = Frustum::from_matrix(light_view_proj);
+
+        // Horizon (back-of-planet) test for spherical planets centred at the
+        // world origin.  Returns `true` when the chunk's bounding sphere is
+        // fully past the geometric horizon — guaranteed invisible because the
+        // planet body itself occludes it.  Conservative: skipped when the
+        // camera is inside / very close to the surface.
+        let surface_radius = planet.profile.surface_radius;
+        let cam_dist = cam_pos.length();
+        let horizon_active = cam_dist > surface_radius * 1.001;
+        let cos_horizon = if horizon_active {
+            surface_radius / cam_dist
+        } else {
+            -1.0
+        };
+        let cam_dir = if cam_dist > 1e-3 {
+            cam_pos / cam_dist
+        } else {
+            glam::Vec3::Y
+        };
+        let behind_horizon = |center: glam::Vec3, radius: f32| -> bool {
+            if !horizon_active {
+                return false;
+            }
+            let dist = center.length();
+            if dist < 1e-3 {
+                return false;
+            }
+            let cos_angle = cam_dir.dot(center) / dist;
+            // Subtract chunk angular radius (×1.5 safety) so we never cull a
+            // chunk whose silhouette could still poke above the horizon.
+            let angular_radius = radius / dist;
+            cos_angle < cos_horizon - 1.5 * angular_radius
+        };
 
         // 1. update main global uni
         let global_data = GlobalUniform {
@@ -323,7 +361,10 @@ impl<'a> Renderer<'a> {
             shadow_pass.set_bind_group(2, &self.atlas_bind, &[]);
 
             for mesh in self.chunks.values() {
-                if frustum.intersects_sphere(mesh.center, mesh.radius) {
+                if behind_horizon(mesh.center, mesh.radius) {
+                    continue;
+                }
+                if sun_frustum.intersects_sphere(mesh.center, mesh.radius) {
                     shadow_pass.set_bind_group(1, &mesh.bind_group, &[]);
                     shadow_pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
                     shadow_pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
@@ -331,7 +372,10 @@ impl<'a> Renderer<'a> {
                 }
             }
             for mesh in self.lod_chunks.values() {
-                if frustum.intersects_sphere(mesh.center, mesh.radius) {
+                if behind_horizon(mesh.center, mesh.radius) {
+                    continue;
+                }
+                if sun_frustum.intersects_sphere(mesh.center, mesh.radius) {
                     shadow_pass.set_bind_group(1, &mesh.bind_group, &[]);
                     shadow_pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
                     shadow_pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
@@ -382,6 +426,9 @@ impl<'a> Renderer<'a> {
 
             // DRAW LOD CHUNKS
             for mesh in self.lod_chunks.values() {
+                if behind_horizon(mesh.center, mesh.radius) {
+                    continue;
+                }
                 if cull_frustum.intersects_sphere(mesh.center, mesh.radius) {
                     rendered_lods += 1; // Count
                     pass.set_bind_group(1, &mesh.bind_group, &[]);
@@ -393,6 +440,9 @@ impl<'a> Renderer<'a> {
 
             // DRAW VOXEL CHUNKS
             for mesh in self.chunks.values() {
+                if behind_horizon(mesh.center, mesh.radius) {
+                    continue;
+                }
                 if cull_frustum.intersects_sphere(mesh.center, mesh.radius) {
                     rendered_chunks += 1; // Count
                     pass.set_bind_group(1, &mesh.bind_group, &[]);

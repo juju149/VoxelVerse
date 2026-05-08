@@ -20,6 +20,9 @@ struct Local {
 @group(2) @binding(1) var t_normal: texture_2d_array<f32>;
 @group(2) @binding(2) var t_roughness: texture_2d_array<f32>;
 @group(2) @binding(3) var s_material: sampler;
+// One vec4 per atlas layer — flat per-block color used by the Fn debug toggle
+// to skip texture sampling entirely (perf A/B comparison vs. textured mode).
+@group(2) @binding(4) var<storage, read> material_colors: array<vec4<f32>>;
 
 // --- CONSTANTS ---
 const SUN_COLOR       = vec3<f32>(1.25, 1.12, 0.82);
@@ -271,33 +274,49 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     // Decode runtime quality knobs packed into camera_pos.w
     //   bit 0      = triplanar grain enable
     //   bits 1..2  = pcf radius level (0/1/2 → 3x3/5x5/7x7)
+    //   bit 3      = color-only mode (skip texture sampling entirely)
     let quality_bits   = u32(global.camera_pos.w);
     let triplanar_on   = (quality_bits & 1u) != 0u;
     let pcf_radius     = i32(((quality_bits >> 1u) & 3u) + 1u);
+    let color_only     = (quality_bits & 8u) != 0u;
 
     // 2. Material Setup
     let material_layer = in.packed_tex_index & MATERIAL_INDEX_MASK;
     let edge_mask = (in.packed_tex_index >> 16u) & 0xFu;
     let basis = surface_basis(in.world_pos, in.uv, N);
 
-    let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(material_layer));
-    // Alpha test only when the geometry opted in (cross-plane foliage).
-    // Cube blocks may carry partial alpha in their albedo (e.g. fancy leaves)
-    // and must stay fully opaque outside any dedicated transparency pass.
-    if ((in.packed_tex_index & FLAG_ALPHA_TEST) != 0u && albedo_sample.a < 0.5) {
-        discard;
+    var albedo_rgb: vec3<f32>;
+    var roughness: f32;
+    if (color_only) {
+        // Cheap path: one storage-buffer fetch, no texture sampling, no
+        // normal-map perturbation. The vertex `in.color` already carries
+        // AO × skylight tint, so we keep it as a multiplier.
+        albedo_rgb = material_colors[material_layer].rgb;
+        roughness = 0.7;
+        // Cross-plane foliage opted into alpha test — without textures we
+        // have no per-pixel mask, so render the cards as opaque rectangles.
+        N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
+    } else {
+        let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(material_layer));
+        // Alpha test only when the geometry opted in (cross-plane foliage).
+        // Cube blocks may carry partial alpha in their albedo (e.g. fancy leaves)
+        // and must stay fully opaque outside any dedicated transparency pass.
+        if ((in.packed_tex_index & FLAG_ALPHA_TEST) != 0u && albedo_sample.a < 0.5) {
+            discard;
+        }
+        roughness = textureSample(t_roughness, s_material, in.uv, i32(material_layer)).r;
+        N = material_normal(N, in.uv, material_layer, basis);
+        N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
+        albedo_rgb = albedo_sample.rgb;
     }
-    let roughness = textureSample(t_roughness, s_material, in.uv, i32(material_layer)).r;
-    N = material_normal(N, in.uv, material_layer, basis);
-    N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
     let bevel_amount = rounded_edge_amount(in.uv, edge_mask, local.params.y);
     let vert_color_linear = pow(in.color, vec3<f32>(2.2));
-    
+
     // Detail grain — gated behind the triplanar quality flag.  3 sin() per
     // fragment is non-trivial on weak GPUs, so it's optional.
     let bevel_contrast = mix(1.0, 0.88, bevel_amount);
-    var albedo = vert_color_linear * albedo_sample.rgb * bevel_contrast;
-    if (triplanar_on) {
+    var albedo = vert_color_linear * albedo_rgb * bevel_contrast;
+    if (triplanar_on && !color_only) {
         let noise = triplanar_detail(in.world_pos, N);
         albedo = albedo * (1.0 + 0.025 * noise);
     }
