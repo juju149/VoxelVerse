@@ -290,6 +290,8 @@ impl MeshGen {
                 ],
                 true,
                 pack_material_edges(layer, edges),
+                false,
+                false,
             );
         }
 
@@ -310,6 +312,8 @@ impl MeshGen {
                 [c, c, c, c],
                 true,
                 pack_material_edges(layer, edges),
+                false,
+                true, // v is flipped when viewed from below
             );
         }
 
@@ -318,8 +322,8 @@ impl MeshGen {
             let edges = FaceEdgeMask {
                 min_u: !has_left,
                 max_u: !has_right,
-                min_v: !has_btm,
-                max_v: !has_top,
+                min_v: !has_top,
+                max_v: !has_btm,
             };
             let c = face_color(layer, 0.8);
             Self::quad(
@@ -330,6 +334,8 @@ impl MeshGen {
                 [c, c, c, c],
                 false,
                 pack_material_edges(layer, edges),
+                false,
+                true,
             );
         }
         if !has_back {
@@ -345,10 +351,12 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                [o_tl, o_tr, i_tr, i_tl],
+                [i_tl, i_tr, o_tr, o_tl],
                 [c, c, c, c],
                 false,
                 pack_material_edges(layer, edges),
+                false,
+                true,
             );
         }
         if !has_left {
@@ -356,18 +364,20 @@ impl MeshGen {
             let edges = FaceEdgeMask {
                 min_u: !has_back,
                 max_u: !has_front,
-                min_v: !has_btm,
-                max_v: !has_top,
+                min_v: !has_top,
+                max_v: !has_btm,
             };
             let c = face_color(layer, 0.8);
             Self::quad(
                 verts,
                 inds,
                 idx,
-                [i_tl, i_bl, o_bl, o_tl],
+                [i_bl, i_tl, o_tl, o_bl],
                 [c, c, c, c],
                 false,
                 pack_material_edges(layer, edges),
+                false,
+                true,
             );
         }
         if !has_right {
@@ -375,8 +385,8 @@ impl MeshGen {
             let edges = FaceEdgeMask {
                 min_u: !has_front,
                 max_u: !has_back,
-                min_v: !has_btm,
-                max_v: !has_top,
+                min_v: !has_top,
+                max_v: !has_btm,
             };
             let c = face_color(layer, 0.8);
             Self::quad(
@@ -387,6 +397,8 @@ impl MeshGen {
                 [c, c, c, c],
                 false,
                 pack_material_edges(layer, edges),
+                false,
+                true,
             );
         }
     }
@@ -399,9 +411,16 @@ impl MeshGen {
         colors: [[f32; 3]; 4],
         force_radial: bool,
         packed_tex_index: u32,
+        flip_u: bool,
+        flip_v: bool,
     ) {
         // UV corners: (0,0) bl, (1,0) br, (1,1) tr, (0,1) tl
-        let uvs: [[f32; 2]; 4] = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+        // flip_u mirrors horizontally, flip_v mirrors vertically.
+        let u0 = if flip_u { 1.0_f32 } else { 0.0_f32 };
+        let u1 = if flip_u { 0.0_f32 } else { 1.0_f32 };
+        let v0 = if flip_v { 1.0_f32 } else { 0.0_f32 };
+        let v1 = if flip_v { 0.0_f32 } else { 1.0_f32 };
+        let uvs: [[f32; 2]; 4] = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
 
         let normal = if force_radial {
             let center = (pos[0] + pos[1] + pos[2] + pos[3]) * 0.25;
@@ -437,6 +456,7 @@ impl MeshGen {
 mod tests {
     use super::{CandidateBuffer, MeshGen};
     use crate::voxel::VoxelCoord;
+    use glam::Vec3;
 
     fn coord(layer: u32, u: u32, v: u32) -> VoxelCoord {
         VoxelCoord {
@@ -472,5 +492,35 @@ mod tests {
         assert!(ids.contains(&coord(1, 2, 1)));
         assert!(ids.contains(&coord(1, 1, 0)));
         assert!(ids.contains(&coord(1, 1, 2)));
+    }
+
+    #[test]
+    fn quad_flip_v_maps_texture_top_to_last_edge() {
+        let mut verts = Vec::new();
+        let mut inds = Vec::new();
+        let mut idx = 0;
+        MeshGen::quad(
+            &mut verts,
+            &mut inds,
+            &mut idx,
+            [
+                Vec3::new(0.0, 0.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(1.0, 1.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
+            ],
+            [[1.0, 1.0, 1.0]; 4],
+            false,
+            0,
+            false,
+            true,
+        );
+
+        assert_eq!(
+            verts.iter().map(|v| v.uv).collect::<Vec<_>>(),
+            [[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0],]
+        );
+        assert_eq!(inds, [0, 1, 2, 2, 3, 0]);
+        assert_eq!(idx, 4);
     }
 }

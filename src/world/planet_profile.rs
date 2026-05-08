@@ -58,7 +58,7 @@ impl PlanetProfile {
             surface_layer,
             core_layers,
             voxel_size_meters,
-            edge_rounding_radius_voxels: 0.18,
+            edge_rounding_radius_voxels: 0.42,
             inner_radius,
             surface_radius,
             layer_height,

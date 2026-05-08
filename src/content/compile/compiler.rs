@@ -291,10 +291,10 @@ impl ContentCompiler {
                 ));
             }
             if !def.edge_rounding_radius_voxels.is_finite()
-                || !(0.0..=0.45).contains(&def.edge_rounding_radius_voxels)
+                || !(0.0..=0.50).contains(&def.edge_rounding_radius_voxels)
             {
                 errors.push(format!(
-                    "Planet '{}': edge_rounding_radius_voxels must be in 0.0..=0.45",
+                    "Planet '{}': edge_rounding_radius_voxels must be in 0.0..=0.50",
                     key
                 ));
             }

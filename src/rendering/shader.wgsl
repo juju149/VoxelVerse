@@ -196,7 +196,8 @@ fn edge_weight(enabled: bool, distance_to_edge: f32, radius: f32) -> f32 {
         return 0.0;
     }
     let x = 1.0 - smoothstep(0.0, radius, distance_to_edge);
-    return x * x * (3.0 - 2.0 * x);
+    // Stronger bevel: cubic falloff with extra push
+    return x * x * (3.0 - 2.0 * x) * 1.8;
 }
 
 fn rounded_edge_normal(
@@ -206,7 +207,7 @@ fn rounded_edge_normal(
     radius: f32,
     basis: SurfaceBasis,
 ) -> vec3<f32> {
-    let safe_radius = clamp(radius, 0.0, 0.45);
+    let safe_radius = clamp(radius, 0.0, 0.50);
 
     let min_u = (edge_mask & EDGE_MIN_U) != 0u;
     let max_u = (edge_mask & EDGE_MAX_U) != 0u;
