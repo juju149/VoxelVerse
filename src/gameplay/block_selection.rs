@@ -64,15 +64,18 @@ mod tests {
         let pack = PackLoader::load_from_dir(std::path::Path::new("packs/core"))
             .expect("packs/core must exist for tests");
         let registry = Arc::new(ContentCompiler::compile_blocks(pack.blocks).expect("blocks"));
-        let biomes =
-            Arc::new(ContentCompiler::compile_biomes(pack.biomes, &registry).expect("biomes"));
-        let planet_def = ContentCompiler::compile_planets(pack.planets)
-            .expect("planets")
-            .into_iter()
-            .next()
-            .expect("planet")
+        let procedural_pack =
+            PackLoader::load_procedural_from_dir(std::path::Path::new("packs/core"))
+                .expect("procedural pack");
+        let procedural = Arc::new(
+            ContentCompiler::compile_procedural(procedural_pack, &registry).expect("procedural"),
+        );
+        let planet_def = procedural
+            .first_planet()
+            .expect("procedural planet")
+            .base
             .with_resolution(16);
-        let planet = PlanetData::new(planet_def, registry, biomes);
+        let planet = PlanetData::new(planet_def, registry, procedural, 0);
         let ray = Ray {
             origin: Vec3::new(0.0, 0.0, 10_000.0),
             direction: Vec3::Z,

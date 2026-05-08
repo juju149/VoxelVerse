@@ -1,9 +1,7 @@
-mod biome;
 mod block;
-mod planet;
+mod procedural;
 pub mod visual;
 
-pub use biome::RawBiomeDef;
 pub use block::{BlockRole, RawBlockDef};
-pub use planet::RawPlanetDef;
+pub use procedural::*;
 pub use visual::{RawBlockVisual, RawMaterialTextureSet};

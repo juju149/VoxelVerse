@@ -1,8 +1,7 @@
-pub mod terrain;
+pub mod procedural;
 
 pub(crate) mod noise;
 
-mod biome_map;
 mod coord;
 
 pub use coord::CoordSystem;

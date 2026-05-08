@@ -1,0 +1,7 @@
+RawCaveDef(
+    carvers: [
+        (kind: "worm", field: "core:cave_worms", threshold: 0.78, radius: (2, 8), depth: (18, 260)),
+        (kind: "chamber", field: "core:cave_chambers", threshold: 0.90, radius: (6, 24), depth: (70, 340)),
+    ],
+    surface_break_chance: 0.03,
+)

@@ -1,0 +1,20 @@
+RawClimateDef(
+    temperature: (
+        latitude_bias: 1.0,
+        fields: [("core:temperature_jitter", 0.14)],
+        ocean_bias: 0.0,
+    ),
+    humidity: (
+        fields: [("core:humidity", 0.85), ("core:continentality", -0.18)],
+        ocean_bias: 0.08,
+    ),
+    continentality: (
+        fields: [("core:continentality", 1.0)],
+    ),
+    erosion: (
+        fields: [("core:erosion", 1.0)],
+    ),
+    weirdness: (
+        fields: [("core:weirdness", 1.0)],
+    ),
+)

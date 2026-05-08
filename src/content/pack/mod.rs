@@ -1,3 +1,3 @@
 mod loader;
 
-pub use loader::PackLoader;
+pub use loader::{PackLoader, RawProceduralPack};

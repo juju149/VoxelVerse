@@ -1,0 +1,10 @@
+RawNoiseFieldDef(
+    kind: perlin,
+    frequency: 2.4,
+    amplitude: 1.0,
+    octaves: 6,
+    persistence: 0.52,
+    lacunarity: 2.0,
+    seed_salt: 2001,
+    domain_warp: Some((field: "core:warp_large", strength: 0.28)),
+)

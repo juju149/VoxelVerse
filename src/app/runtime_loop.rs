@@ -24,7 +24,12 @@ pub fn run() {
     let mut renderer = pollster::block_on(Renderer::new(&window, &content.textures));
     let mut controller = Controller::new();
     let mut player = Player::new();
-    let mut planet = PlanetData::new(content.planet, content.blocks, content.biomes);
+    let mut planet = PlanetData::new(
+        content.planet,
+        content.blocks,
+        content.procedural,
+        content.procedural_planet_index,
+    );
     let mut console = create_console();
 
     player.spawn(planet.spawn_position());

@@ -1,0 +1,15 @@
+RawBiomeProceduralDef(
+    display_name: "Temperate Forest",
+    surface: (top: "core:grass_block", under: "core:dirt", depth: (2, 6)),
+    terrain: (
+        base_height: 0.02,
+        amplitude: 0.34,
+        flatness: 0.52,
+        hill_field: "core:soft_hills",
+        ridge_field: None,
+        terrace_strength: 0.04,
+    ),
+    color_tint: (grass: (0.38, 0.68, 0.30), foliage: (0.22, 0.52, 0.24)),
+    vegetation_tags: ["temperate", "forest"],
+    fauna_tags: ["small_herbivore"],
+)

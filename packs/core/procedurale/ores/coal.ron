@@ -1,0 +1,9 @@
+RawOreDef(
+    block: "core:coal_ore",
+    replace: ["core:smooth_stone", "core:deepslate", "core:andesite"],
+    depth: (12, 180),
+    density: 0.065,
+    vein_size: (4, 18),
+    field: "core:coal_veins",
+    biome_tags: ["*"],
+)

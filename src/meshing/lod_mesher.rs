@@ -66,19 +66,15 @@ impl MeshGen {
                 let color = if is_core {
                     TerrainPalette::LOD_CORE
                 } else {
-                    // Look up the biome at this surface point and use its actual block colors.
-                    // This makes deserts yellow, arctic ice white-blue, tundra grey, etc.
                     let bu = (key.x + offset_u).min(data.resolution.saturating_sub(1));
                     let bv = (key.y + offset_v).min(data.resolution.saturating_sub(1));
-                    let biome_id = data.terrain.get_biome_id(key.face, bu, bv);
-                    let biome = data.biomes.biome(biome_id);
+                    let (surface_block, subsurface_block) =
+                        data.terrain.lod_surface_blocks(key.face, bu, bv);
 
                     if slope < 0.82 {
-                        // Steep face → subsurface block color (stone, gravel, bare rock).
-                        data.content.color(biome.subsurface_block)
+                        data.content.color(subsurface_block)
                     } else {
-                        // Gently sloped → surface block color (grass, snow, sand, ice…).
-                        data.content.color(biome.surface_block)
+                        data.content.color(surface_block)
                     }
                 };
 

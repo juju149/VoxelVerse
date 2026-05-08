@@ -76,21 +76,6 @@ impl NoiseGenerator {
         }
     }
 
-    /// Domain-warped sample: offsets the sample position by two independent
-    /// Perlin samples before reading the main noise.  Produces swirled,
-    /// organic shapes suited to mountain-chain outlines.
-    pub(crate) fn domain_warp(&self, pos: Vec3, settings: &NoiseSettings, warp_scale: f32) -> f32 {
-        let warp_s = NoiseSettings {
-            amplitude: 1.0,
-            octaves: 2,
-            ..*settings
-        };
-        let wx = self.compute(pos + Vec3::new(1.7, 9.2, 5.3), &warp_s) * 2.0 - 1.0;
-        let wy = self.compute(pos + Vec3::new(8.3, 2.8, 1.1), &warp_s) * 2.0 - 1.0;
-        let wz = self.compute(pos + Vec3::new(3.1, 6.7, 4.4), &warp_s) * 2.0 - 1.0;
-        self.compute(pos + Vec3::new(wx, wy, wz) * warp_scale, settings)
-    }
-
     fn perlin(&self, pos: Vec3) -> f32 {
         let x = pos.x.floor();
         let y = pos.y.floor();

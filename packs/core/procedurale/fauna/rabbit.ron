@@ -1,0 +1,13 @@
+RawFaunaDef(
+    entity: "core:rabbit",
+    spawn: (
+        biome_tags: ["grassland", "forest"],
+        density: 0.03,
+        group_size: (1, 4),
+        light: (0.4, 1.0),
+    ),
+    runtime: (
+        despawn_distance: 160,
+        sim_distance: 64,
+    ),
+)

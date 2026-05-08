@@ -1,0 +1,8 @@
+RawTerrainLayerSetDef(
+    layers: [
+        (name: "topsoil", block: "core:dirt", depth: Some((1, 5)), biomes: ["*"]),
+        (name: "sediment", block: "core:smooth_stone", depth: Some((6, 120)), biomes: ["*"], noise_variation: Some("core:sediment_bands")),
+        (name: "deep_crust", block: "core:deepslate", depth: Some((121, 9999)), biomes: ["*"]),
+        (name: "core_shell", block: "core:core", depth_from_center: Some((0, 6)), biomes: ["*"]),
+    ],
+)

@@ -1,13 +1,30 @@
-use crate::content::schema::{RawBiomeDef, RawBlockDef, RawPlanetDef};
+use crate::content::schema::{
+    RawBiomeProceduralDef, RawBiomeSetDef, RawBlockDef, RawCaveDef, RawClimateDef, RawFaunaDef,
+    RawNoiseFieldDef, RawOreDef, RawPlanetProceduralDef, RawStructureDef, RawTerrainLayerSetDef,
+    RawVegetationDef, RawVisualDetailDef,
+};
 use std::path::Path;
 
 /// A loaded but uncompiled pack — raw definitions with their derived keys.
 #[allow(dead_code)]
 pub struct LoadedPack {
-    pub namespace: String,
     pub blocks: Vec<(String, RawBlockDef)>,
-    pub biomes: Vec<(String, RawBiomeDef)>,
-    pub planets: Vec<(String, RawPlanetDef)>,
+}
+
+#[derive(Default)]
+pub struct RawProceduralPack {
+    pub planets: Vec<(String, RawPlanetProceduralDef)>,
+    pub fields: Vec<(String, RawNoiseFieldDef)>,
+    pub climates: Vec<(String, RawClimateDef)>,
+    pub biome_sets: Vec<(String, RawBiomeSetDef)>,
+    pub biomes: Vec<(String, RawBiomeProceduralDef)>,
+    pub terrain_layers: Vec<(String, RawTerrainLayerSetDef)>,
+    pub ores: Vec<(String, RawOreDef)>,
+    pub caves: Vec<(String, RawCaveDef)>,
+    pub vegetation: Vec<(String, RawVegetationDef)>,
+    pub structures: Vec<(String, RawStructureDef)>,
+    pub fauna: Vec<(String, RawFaunaDef)>,
+    pub visual_details: Vec<(String, RawVisualDetailDef)>,
 }
 
 pub struct PackLoader;
@@ -15,7 +32,7 @@ pub struct PackLoader;
 impl PackLoader {
     /// Load a pack from a directory on disk.
     /// The namespace is derived from the directory name (e.g. `packs/core` → `core`).
-    /// Each `.ron` file in `blocks/` becomes `namespace:stem`, same for `biomes/`.
+    /// Each `.ron` file in `blocks/` becomes `namespace:stem`.
     pub fn load_from_dir(pack_dir: &Path) -> Result<LoadedPack, String> {
         let namespace = pack_dir
             .file_name()
@@ -24,14 +41,55 @@ impl PackLoader {
             .to_string();
 
         let blocks = Self::load_typed_dir::<RawBlockDef>(&pack_dir.join("blocks"), &namespace)?;
-        let biomes = Self::load_typed_dir::<RawBiomeDef>(&pack_dir.join("biomes"), &namespace)?;
-        let planets = Self::load_typed_dir::<RawPlanetDef>(&pack_dir.join("planets"), &namespace)?;
+        Ok(LoadedPack { blocks })
+    }
 
-        Ok(LoadedPack {
-            namespace,
-            blocks,
-            biomes,
-            planets,
+    pub fn load_procedural_from_dir(pack_dir: &Path) -> Result<RawProceduralPack, String> {
+        let namespace = pack_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| format!("Invalid pack directory path: {}", pack_dir.display()))?
+            .to_string();
+
+        let root = pack_dir.join("procedurale");
+        if !root.exists() {
+            return Ok(RawProceduralPack::default());
+        }
+
+        Ok(RawProceduralPack {
+            planets: Self::load_typed_dir::<RawPlanetProceduralDef>(
+                &root.join("planets"),
+                &namespace,
+            )?,
+            fields: Self::load_typed_dir::<RawNoiseFieldDef>(&root.join("fields"), &namespace)?,
+            climates: Self::load_typed_dir::<RawClimateDef>(&root.join("climates"), &namespace)?,
+            biome_sets: Self::load_typed_dir::<RawBiomeSetDef>(
+                &root.join("biome_sets"),
+                &namespace,
+            )?,
+            biomes: Self::load_typed_dir::<RawBiomeProceduralDef>(
+                &root.join("biomes"),
+                &namespace,
+            )?,
+            terrain_layers: Self::load_typed_dir::<RawTerrainLayerSetDef>(
+                &root.join("terrain_layers"),
+                &namespace,
+            )?,
+            ores: Self::load_typed_dir::<RawOreDef>(&root.join("ores"), &namespace)?,
+            caves: Self::load_typed_dir::<RawCaveDef>(&root.join("caves"), &namespace)?,
+            vegetation: Self::load_typed_dir::<RawVegetationDef>(
+                &root.join("vegetation"),
+                &namespace,
+            )?,
+            structures: Self::load_typed_dir::<RawStructureDef>(
+                &root.join("structures"),
+                &namespace,
+            )?,
+            fauna: Self::load_typed_dir::<RawFaunaDef>(&root.join("fauna"), &namespace)?,
+            visual_details: Self::load_typed_dir::<RawVisualDetailDef>(
+                &root.join("visual_details"),
+                &namespace,
+            )?,
         })
     }
 

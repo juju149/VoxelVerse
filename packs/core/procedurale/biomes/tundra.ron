@@ -1,0 +1,15 @@
+RawBiomeProceduralDef(
+    display_name: "Polar Tundra",
+    surface: (top: "core:powder_snow", under: "core:dirt", depth: (2, 5)),
+    terrain: (
+        base_height: 0.03,
+        amplitude: 0.36,
+        flatness: 0.44,
+        hill_field: "core:soft_hills",
+        ridge_field: Some("core:mountain_ridges"),
+        terrace_strength: 0.08,
+    ),
+    color_tint: (grass: (0.72, 0.78, 0.72), foliage: (0.50, 0.58, 0.50)),
+    vegetation_tags: ["cold", "sparse"],
+    fauna_tags: ["cold"],
+)

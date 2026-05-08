@@ -1,5 +1,5 @@
-use crate::content::{BiomeRegistry, BlockRegistry, CompiledPlanet};
-use crate::generation::{terrain::PlanetTerrain, CoordSystem};
+use crate::content::{BlockRegistry, CompiledPlanet, ProceduralRegistry};
+use crate::generation::{procedural::ProceduralPlanetTerrain, CoordSystem};
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use crate::world::{PlanetProfile, VoxelRuntime};
 use std::sync::Arc;
@@ -42,11 +42,12 @@ pub trait VoxelWrite {
 pub struct PlanetData {
     pub voxels: VoxelRuntime,
     pub content: Arc<BlockRegistry>,
-    pub biomes: Arc<BiomeRegistry>,
+    pub procedural: Arc<ProceduralRegistry>,
+    pub procedural_planet_index: usize,
     pub profile: PlanetProfile,
     pub resolution: u32,
     pub has_core: bool,
-    pub terrain: PlanetTerrain,
+    pub terrain: ProceduralPlanetTerrain,
     block_ids: PlanetBlockIds,
     planet_def: CompiledPlanet,
     /// Seed stored so resize can regenerate terrain with the same seed.
@@ -57,14 +58,16 @@ impl PlanetData {
     pub fn new(
         planet_def: CompiledPlanet,
         registry: Arc<BlockRegistry>,
-        biome_registry: Arc<BiomeRegistry>,
+        procedural: Arc<ProceduralRegistry>,
+        procedural_planet_index: usize,
     ) -> Self {
         let profile = PlanetProfile::from_compiled(&planet_def);
         println!(
             "Generating terrain for resolution {}  (voxel {} m, radius ≈ {:.1} m)…",
             profile.resolution, profile.voxel_size_meters, profile.surface_radius
         );
-        let terrain = PlanetTerrain::new(profile, &biome_registry);
+        let terrain =
+            ProceduralPlanetTerrain::new(profile, procedural.clone(), procedural_planet_index);
         println!("Terrain generation complete.");
 
         let block_ids = PlanetBlockIds::from_registry(&registry);
@@ -73,7 +76,8 @@ impl PlanetData {
             voxels: VoxelRuntime::new(),
             block_ids,
             content: registry,
-            biomes: biome_registry,
+            procedural,
+            procedural_planet_index,
             profile,
             resolution: profile.resolution,
             has_core: true,
@@ -99,7 +103,11 @@ impl PlanetData {
         self.resolution = self.profile.resolution;
 
         println!("Regenerating terrain for resolution {}…", self.resolution);
-        self.terrain = PlanetTerrain::new(self.profile, &self.biomes);
+        self.terrain = ProceduralPlanetTerrain::new(
+            self.profile,
+            self.procedural.clone(),
+            self.procedural_planet_index,
+        );
     }
 
     pub fn add_block(&mut self, coord: VoxelCoord) -> VoxelEditResult {
@@ -155,20 +163,10 @@ impl PlanetData {
             return VoxelId::AIR;
         }
 
-        let height = self.terrain.get_height(coord.face, coord.u, coord.v);
-        if coord.layer > height {
-            VoxelId::AIR
-        } else if self.has_core && coord.layer < self.profile.core_layers {
+        if self.has_core && coord.layer < self.profile.core_layers {
             self.block_ids.core
         } else {
-            // Surface and subsurface blocks come from the biome at this location.
-            let biome_id = self.terrain.get_biome_id(coord.face, coord.u, coord.v);
-            let biome = self.biomes.biome(biome_id);
-            if coord.layer == height {
-                biome.surface_block
-            } else {
-                biome.subsurface_block
-            }
+            self.terrain.voxel_at(coord, self.profile)
         }
     }
 

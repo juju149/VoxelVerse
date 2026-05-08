@@ -1,11 +1,12 @@
-use crate::content::{compile::ContentCompiler, pack::PackLoader, BiomeRegistry, BlockRegistry};
-use crate::content::{CompiledPlanet, TextureRegistry};
+use crate::content::{compile::ContentCompiler, pack::PackLoader, BlockRegistry};
+use crate::content::{CompiledPlanet, ProceduralRegistry, TextureRegistry};
 use std::path::Path;
 use std::sync::Arc;
 
 pub struct LoadedCoreContent {
     pub blocks: Arc<BlockRegistry>,
-    pub biomes: Arc<BiomeRegistry>,
+    pub procedural: Arc<ProceduralRegistry>,
+    pub procedural_planet_index: usize,
     pub textures: Arc<TextureRegistry>,
     pub planet: CompiledPlanet,
 }
@@ -22,26 +23,23 @@ pub fn load_core_content() -> LoadedCoreContent {
         panic!("Block compilation failed; see errors above.");
     });
 
-    let compiled_biomes = ContentCompiler::compile_biomes(pack.biomes, &compiled_blocks)
+    let procedural_pack = PackLoader::load_procedural_from_dir(Path::new("packs/core"))
+        .unwrap_or_else(|e| {
+            panic!("Failed to load packs/core/procedurale: {}", e);
+        });
+    let procedural = ContentCompiler::compile_procedural(procedural_pack, &compiled_blocks)
         .unwrap_or_else(|errors| {
             for e in &errors {
-                eprintln!("[content error] {}", e);
+                eprintln!("[procedural content error] {}", e);
             }
-            panic!("Biome compilation failed; see errors above.");
+            panic!("Procedural compilation failed; see errors above.");
         });
-
-    let compiled_planets =
-        ContentCompiler::compile_planets(pack.planets).unwrap_or_else(|errors| {
-            for e in &errors {
-                eprintln!("[content error] {}", e);
-            }
-            panic!("Planet compilation failed; see errors above.");
-        });
-
-    let planet = compiled_planets
-        .into_iter()
-        .next()
-        .expect("compile_planets guarantees at least one planet");
+    let procedural_planet_index = 0;
+    let planet = procedural
+        .first_planet()
+        .expect("compile_procedural guarantees at least one planet")
+        .base
+        .clone();
 
     let texture_registry = TextureRegistry::load(Path::new("packs"), &compiled_blocks)
         .unwrap_or_else(|errors| {
@@ -52,9 +50,9 @@ pub fn load_core_content() -> LoadedCoreContent {
         });
 
     println!(
-        "Loaded {} blocks, {} biomes, {} material layers, planet '{}' ({}) from pack 'core'.",
+        "Loaded {} blocks, {} procedural biomes, {} material layers, planet '{}' ({}) from pack 'core'.",
         compiled_blocks.block_count(),
-        compiled_biomes.biome_count(),
+        procedural.biomes.len(),
         texture_registry.materials().len(),
         planet.key,
         planet.display_name,
@@ -62,7 +60,8 @@ pub fn load_core_content() -> LoadedCoreContent {
 
     LoadedCoreContent {
         blocks: Arc::new(compiled_blocks),
-        biomes: Arc::new(compiled_biomes),
+        procedural: Arc::new(procedural),
+        procedural_planet_index,
         textures: Arc::new(texture_registry),
         planet,
     }

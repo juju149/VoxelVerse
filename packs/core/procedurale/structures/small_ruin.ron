@@ -1,0 +1,11 @@
+RawStructureDef(
+    placement: (
+        density: 0.002,
+        min_spacing: 96,
+        biomes: ["core:plains", "core:temperate_forest"],
+        slope_max: 0.35,
+    ),
+    footprint_radius: 10,
+    priority: 50,
+    stamp: "core:small_ruin_template",
+)

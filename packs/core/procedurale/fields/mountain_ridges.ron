@@ -1,0 +1,10 @@
+RawNoiseFieldDef(
+    kind: ridged,
+    frequency: 1.65,
+    amplitude: 1.0,
+    octaves: 5,
+    persistence: 0.48,
+    lacunarity: 2.0,
+    seed_salt: 2002,
+    domain_warp: Some((field: "core:warp_large", strength: 0.36)),
+)
