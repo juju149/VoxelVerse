@@ -8,6 +8,7 @@ members = [
     "crates/vv-pack-loader",
     "crates/vv-voxel",
 ]
+exclude = ["apps/voxelverse-studio/src-tauri"]
 resolver = "2"
 
 [workspace.package]
