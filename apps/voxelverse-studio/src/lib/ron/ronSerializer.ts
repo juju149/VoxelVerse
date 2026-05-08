@@ -69,7 +69,7 @@ export function serializeMaterialFace(material: MaterialFaceDef) {
   return `MaterialFaceDef(
     id: ${q(material.id)},
     display_name: ${q(material.displayName)},
-    material_kind: ${q(material.materialKind)},
+    category: ${q(material.category)},
     resolution_preview: ${material.resolutionPreview},
     seed: ${material.seed},
 ${serializeBlueprint(material)}
@@ -109,18 +109,23 @@ ${params}
 )`;
 }
 
-function materialRefs(block: BlockDef) {
-  const refs = block.render.materials;
-  return [
-    refs.all ? `        all: Some(MaterialFaceRef(${q(refs.all)})),` : "        all: None,",
-    refs.top ? `        top: Some(MaterialFaceRef(${q(refs.top)})),` : "        top: None,",
-    refs.side ? `        side: Some(MaterialFaceRef(${q(refs.side)})),` : "        side: None,",
-    refs.bottom ? `        bottom: Some(MaterialFaceRef(${q(refs.bottom)})),` : "        bottom: None,",
-    refs.north ? `        north: Some(MaterialFaceRef(${q(refs.north)})),` : "        north: None,",
-    refs.south ? `        south: Some(MaterialFaceRef(${q(refs.south)})),` : "        south: None,",
-    refs.east ? `        east: Some(MaterialFaceRef(${q(refs.east)})),` : "        east: None,",
-    refs.west ? `        west: Some(MaterialFaceRef(${q(refs.west)})),` : "        west: None,",
-  ].join("\n");
+/**
+ * Derives a baked texture ref path from a material face ID.
+ * e.g. "core:terrain/grass_top" → "core:baked/terrain/grass_top_albedo"
+ */
+function bakedRef(materialId: string, channel: "albedo" | "normal" | "roughness") {
+  const [namespace, path] = materialId.split(":");
+  if (!namespace || !path) return `${q(`${materialId}_${channel}`)}`;
+  return q(`${namespace}:baked/${path}_${channel}`);
+}
+
+function visualFace(materialId: string | undefined) {
+  if (!materialId) return "None";
+  return `Some((
+            albedo: ${bakedRef(materialId, "albedo")},
+            normal: ${bakedRef(materialId, "normal")},
+            roughness: ${bakedRef(materialId, "roughness")},
+        ))`;
 }
 
 export function serializeBlock(block: BlockDef) {
@@ -128,37 +133,50 @@ export function serializeBlock(block: BlockDef) {
     return block.rawRonOverride;
   }
 
-  const tags = block.tags.map(q).join(", ");
-  const drops = block.gameplay.drops.map(q).join(", ");
-  const tint = block.render.tint ? `Some(${q(block.render.tint)})` : "None";
+  const refs = block.render.materials;
+  // Resolve per-face material IDs ("all" overrides individual faces).
+  const top = refs.top ?? refs.all;
+  const bottom = refs.bottom ?? refs.all;
+  const side = refs.side ?? refs.all;
+  const north = refs.north ?? side;
+  const south = refs.south ?? side;
+  const east = refs.east ?? side;
+  const west = refs.west ?? side;
 
-  return `BlockDef(
-    id: ${q(block.id)},
+  const solid = block.geometry.collisionShape === "solid_cube";
+  const [cr, cg, cb] = block.color;
+  const shape = block.geometry.kind === "cross_plant" ? "cross_plane" : "cube";
+  const drops = block.gameplay.drops.map(q).join(", ");
+  const tags = block.tags.map(q).join(", ");
+
+  // Emit RawBlockDef — the format the engine reads directly.
+  // Gameplay extras (drops, tags, seed) follow in a comment block so
+  // no information is lost for the future compiler.
+  return `RawBlockDef(
     display_name: ${q(block.displayName)},
-    seed: ${block.seed},
-    geometry: (
-        kind: ${block.geometry.kind},
-        collision_shape: ${block.geometry.collisionShape},
-        custom_model: ${block.geometry.customModel ? `Some(${q(block.geometry.customModel)})` : "None"},
-    ),
-    render: (
-        materials: (
-${materialRefs(block)}
-        ),
-        tint: ${tint},
-        ambient_occlusion: ${block.render.ambientOcclusion},
-        transparent: ${block.render.transparent},
-        cull_faces: ${block.render.cullFaces},
-        light_emission: ${block.render.lightEmission},
-    ),
-    gameplay: (
-        walk_through: ${block.gameplay.walkThrough},
-        hardness: ${block.gameplay.hardness},
-        break_speed_preset: ${block.gameplay.breakSpeedPreset.replace("-", "_")},
-        drops: [${drops}],
-    ),
-    tags: [${tags}],
-)`;
+    solid: ${solid},
+    color: (${cr.toFixed(3)}, ${cg.toFixed(3)}, ${cb.toFixed(3)}),
+    hardness: ${block.gameplay.hardness},
+    visual: Some((
+        shape: ${shape},
+        top: ${visualFace(top)},
+        bottom: ${visualFace(bottom)},
+        side: ${visualFace(side)},
+        north: ${visualFace(north)},
+        south: ${visualFace(south)},
+        east: ${visualFace(east)},
+        west: ${visualFace(west)},
+    )),
+)
+// --- Studio metadata (not parsed by the engine) ---
+// id: ${q(block.id)}
+// seed: ${block.seed}
+// break_speed: ${block.gameplay.breakSpeedPreset}
+// walk_through: ${block.gameplay.walkThrough}
+// light_emission: ${block.render.lightEmission}
+// drops: [${drops}]
+// tags: [${tags}]
+`;
 }
 
 export function serializePack(project: PackProject) {

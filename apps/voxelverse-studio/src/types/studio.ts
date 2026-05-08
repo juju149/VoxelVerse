@@ -2,15 +2,13 @@ export type StudioRoute = "materials" | "blocks";
 
 export type ItemStatus = "valid" | "warning" | "error" | "dirty";
 
-export type MaterialKind =
-  | "grass_top"
-  | "grass_side"
-  | "dirt_base"
-  | "stone_base"
-  | "sand_base"
-  | "wood_rings"
-  | "custom";
+/** Determines which view is shown inside the material editor panel. */
+export type MaterialEditorMode = "simple" | "advanced";
 
+/**
+ * Internal style hint used only by the template system when bootstrapping a
+ * new material from a preset. Not stored on MaterialFaceDef.
+ */
 export type MaterialStylePreset =
   | "soft_natural"
   | "clean_stylized"
@@ -145,7 +143,8 @@ export type ProceduralMaterialRecipe = {
 export type MaterialFaceDef = {
   id: string;
   displayName: string;
-  materialKind: MaterialKind;
+  /** Free-form category string, e.g. "terrain", "stone", "wood", "custom". */
+  category: string;
   resolutionPreview: number;
   seed: number;
   blueprint: MaterialBlueprint;
@@ -202,6 +201,8 @@ export type BlockDef = {
   id: string;
   displayName: string;
   seed: number;
+  /** RGB color in 0–1 range used for distant LOD rendering. */
+  color: [number, number, number];
   geometry: BlockGeometry;
   render: BlockRender;
   gameplay: BlockGameplay;
@@ -216,7 +217,8 @@ export type ValidationFixKind =
   | "use-dirt-bottom"
   | "clamp-hardness"
   | "clamp-seed"
-  | "assign-all-material";
+  | "assign-all-material"
+  | "add-lod-color";
 
 export type ValidationIssue = {
   id: string;
@@ -235,7 +237,7 @@ export type SeedPolicy = {
 };
 
 export type PackProject = {
-  schemaVersion: 4;
+  schemaVersion: 5;
   id: string;
   namespace: string;
   name: string;
@@ -249,10 +251,13 @@ export type PackProject = {
   lastSavedAt?: string;
 };
 
-export type MaterialPresetChoice = {
-  kind: MaterialKind;
+/** Metadata for a built-in material template shown in the template gallery. */
+export type MaterialTemplate = {
+  /** Stable key used to look up the preset recipe (internal to materialPresets). */
+  templateKey: string;
   label: string;
   description: string;
+  category: string;
 };
 
 export type BlockTemplate = {

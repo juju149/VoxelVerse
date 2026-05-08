@@ -11,6 +11,16 @@ import { Slider } from "../ui/slider";
 import { Switch } from "../ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
+function rgbToHex(color: [number, number, number]): string {
+  const ch = (v: number) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, "0");
+  return `#${ch(color[0])}${ch(color[1])}${ch(color[2])}`;
+}
+
+function hexToRgb01(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.replace("#", ""), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
 type BlockBuilderProps = {
   block: BlockDef;
   materials: MaterialFaceDef[];
@@ -185,6 +195,22 @@ export function BlockBuilder({ block, materials, onChange }: BlockBuilderProps) 
             />
             <Field label="Block seed">
               <Input type="number" value={block.seed} onChange={(event) => update({ seed: Number(event.target.value) })} />
+            </Field>
+            <Field label="LOD Color (RGB 0–1)">
+              <div className="flex gap-2">
+                <Input
+                  type="color"
+                  className="w-14 p-1"
+                  value={rgbToHex(block.color)}
+                  onChange={(event) => update({ color: hexToRgb01(event.target.value) })}
+                />
+                <Input
+                  value={block.color.map((v) => v.toFixed(3)).join(", ")}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Used for distant LOD rendering. Click the swatch to change.</p>
             </Field>
             <Field label="Raw .ron">
               <textarea

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   addEdge,
   Background,
@@ -14,10 +14,11 @@ import {
   type Edge,
   type Node,
   type NodeProps,
+  type OnNodesChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
-import type { MaterialBlueprintNode, MaterialBlueprintNodeKind, MaterialFaceDef, ParamValue } from "../../types/studio";
+import type { MaterialBlueprintNode, MaterialBlueprintNodeKind, MaterialEditorMode, MaterialFaceDef, ParamValue } from "../../types/studio";
 import { compileRecipeFromBlueprint, createBlueprintNode } from "../../lib/blueprint/materialBlueprint";
 import { cn } from "../../lib/cn";
 import { Button } from "../ui/button";
@@ -30,6 +31,8 @@ import { Switch } from "../ui/switch";
 type MaterialBlueprintEditorProps = {
   material: MaterialFaceDef;
   onChange: (material: MaterialFaceDef, message?: string) => void;
+  /** Initial editor mode; defaults to "simple" for new empty materials. */
+  initialMode?: MaterialEditorMode;
 };
 
 type BlueprintNodeData = {
@@ -39,13 +42,14 @@ type BlueprintNodeData = {
 
 const nodeTypes = { materialNode: MaterialNode };
 
-export function MaterialBlueprintEditor({ material, onChange }: MaterialBlueprintEditorProps) {
+export function MaterialBlueprintEditor({ material, onChange, initialMode = "advanced" }: MaterialBlueprintEditorProps) {
   const initialNodes = useMemo(() => toFlowNodes(material.blueprint.nodes), [material.blueprint.nodes]);
   const initialEdges = useMemo(() => toFlowEdges(material.blueprint.links), [material.blueprint.links]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedId, setSelectedId] = useState(material.blueprint.nodes[0]?.id ?? "");
   const [menu, setMenu] = useState<{ x: number; y: number; flowX: number; flowY: number } | null>(null);
+  const [editorMode, setEditorMode] = useState<MaterialEditorMode>(initialMode);
 
   useEffect(() => setNodes(toFlowNodes(material.blueprint.nodes)), [material.blueprint.nodes, setNodes]);
   useEffect(() => setEdges(toFlowEdges(material.blueprint.links)), [material.blueprint.links, setEdges]);
@@ -104,15 +108,255 @@ export function MaterialBlueprintEditor({ material, onChange }: MaterialBlueprin
   }
 
   return (
+    <div className="space-y-3">
+      {/* Mode toggle */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">
+          {editorMode === "simple"
+            ? "Key parameters only — switch to Advanced for the full graph."
+            : "Full node graph — right-click canvas to add nodes."}
+        </div>
+        <div className="flex shrink-0 gap-1 rounded-md border p-0.5">
+          {(["simple", "advanced"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setEditorMode(mode)}
+              className={cn(
+                "rounded px-3 py-1 text-xs font-medium transition-colors capitalize",
+                editorMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {editorMode === "simple" ? (
+        <SimpleModePanel material={material} onChange={onChange} />
+      ) : (
+        <AdvancedGraphPanel
+          material={material}
+          onChange={onChange}
+          nodes={nodes}
+          edges={edges}
+          setNodes={setNodes}
+          setEdges={setEdges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          selectedId={selectedId}
+          setSelectedId={setSelectedId}
+          menu={menu}
+          setMenu={setMenu}
+          commitBlueprint={commitBlueprint}
+          selected={selected}
+          deleteSelectedNode={deleteSelectedNode}
+          addNode={addNode}
+          updateNode={updateNode}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Simple Mode — key parameters without the graph
+// ---------------------------------------------------------------------------
+
+function SimpleModePanel({
+  material,
+  onChange,
+}: {
+  material: MaterialFaceDef;
+  onChange: (material: MaterialFaceDef, message?: string) => void;
+}) {
+  const recipe = material.recipe;
+
+  function setRecipeField<K extends keyof typeof recipe>(field: K, value: (typeof recipe)[K]) {
+    const nextRecipe = { ...recipe, [field]: value };
+    onChange(
+      { ...material, recipe: nextRecipe, rawRonOverride: undefined, previewVersion: material.previewVersion + 1 },
+      "Parameter updated",
+    );
+  }
+
+  const palette = material.blueprint.nodes.find((n) => n.kind === "palette");
+  const surface = material.blueprint.nodes.find((n) => n.kind === "surface");
+  const variation = material.blueprint.nodes.find((n) => n.kind === "variation");
+  const patterns = material.blueprint.nodes.filter((n) => n.kind === "pattern");
+
+  function setPaletteColor(field: "baseColor" | "shadowColor" | "highlightColor", value: string) {
+    const next = {
+      ...recipe,
+      [field]: value,
+    };
+    const updated: MaterialFaceDef = {
+      ...material,
+      recipe: next,
+      blueprint: {
+        ...material.blueprint,
+        nodes: material.blueprint.nodes.map((n) =>
+          n.kind === "palette" ? { ...n, params: { ...n.params, [field]: value } } : n,
+        ),
+      },
+      rawRonOverride: undefined,
+      previewVersion: material.previewVersion + 1,
+    };
+    onChange(updated, "Color updated");
+  }
+
+  void palette; void surface; void variation; void patterns;
+
+  return (
+    <div className="grid gap-5 rounded-lg border bg-card p-5">
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Colors</h3>
+        <ColorParam label="Base color" value={recipe.baseColor} onChange={(v) => setPaletteColor("baseColor", v)} />
+        <ColorParam label="Shadow color" value={recipe.shadowColor} onChange={(v) => setPaletteColor("shadowColor", v)} />
+        <ColorParam label="Highlight color" value={recipe.highlightColor} onChange={(v) => setPaletteColor("highlightColor", v)} />
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Patterns</h3>
+        {recipe.patternLayers.length === 0 ? (
+          <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+            No pattern layers yet. Switch to Advanced mode to add nodes.
+          </p>
+        ) : (
+          recipe.patternLayers.map((layer, i) => (
+            <div key={layer.id} className="rounded-md border bg-background/55 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-xs font-medium capitalize">{layer.kind.replace(/_/g, " ")} (layer {i + 1})</span>
+                <Switch
+                  checked={layer.enabled}
+                  onCheckedChange={(checked) => {
+                    const next = recipe.patternLayers.map((l, idx) => idx === i ? { ...l, enabled: checked } : l);
+                    setRecipeField("patternLayers", next);
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Strength</Label>
+                  <span className="text-xs text-muted-foreground">{layer.strength.toFixed(2)}</span>
+                </div>
+                <Slider
+                  min={0} max={1} step={0.01} value={layer.strength}
+                  onChange={(e) => {
+                    const next = recipe.patternLayers.map((l, idx) =>
+                      idx === i ? { ...l, strength: Number(e.currentTarget.value) } : l,
+                    );
+                    setRecipeField("patternLayers", next);
+                  }}
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Surface</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1 text-xs">
+              <Label>Roughness</Label>
+              <span className="text-muted-foreground">{recipe.surface.roughness.toFixed(2)}</span>
+            </div>
+            <Slider min={0} max={1} step={0.01} value={recipe.surface.roughness}
+              onChange={(e) => setRecipeField("surface", { ...recipe.surface, roughness: Number(e.currentTarget.value) })}
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1 text-xs">
+              <Label>Saturation</Label>
+              <span className="text-muted-foreground">{recipe.stylization.saturation.toFixed(2)}</span>
+            </div>
+            <Slider min={0} max={1.6} step={0.01} value={recipe.stylization.saturation}
+              onChange={(e) => setRecipeField("stylization", { ...recipe.stylization, saturation: Number(e.currentTarget.value) })}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Variation</h3>
+        <Switch
+          checked={recipe.variation.enabled}
+          onCheckedChange={(checked) => setRecipeField("variation", { ...recipe.variation, enabled: checked })}
+          label="Per-block variation"
+        />
+        {recipe.variation.enabled && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1 text-xs">
+              <Label>Strength</Label>
+              <span className="text-muted-foreground">{recipe.variation.perBlockStrength.toFixed(2)}</span>
+            </div>
+            <Slider min={0} max={0.5} step={0.01} value={recipe.variation.perBlockStrength}
+              onChange={(e) => setRecipeField("variation", { ...recipe.variation, perBlockStrength: Number(e.currentTarget.value) })}
+            />
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Advanced mode — full graph editor (extracted from former single component)
+// ---------------------------------------------------------------------------
+
+function AdvancedGraphPanel({
+  material, onChange,
+  nodes, edges, setNodes, setEdges, onNodesChange, onEdgesChange,
+  selectedId, setSelectedId, menu, setMenu,
+  commitBlueprint, selected, deleteSelectedNode, addNode, updateNode,
+}: {
+  material: MaterialFaceDef;
+  onChange: (material: MaterialFaceDef, message?: string) => void;
+  nodes: Node<BlueprintNodeData>[];
+  edges: Edge[];
+  setNodes: Dispatch<SetStateAction<Node<BlueprintNodeData>[]>>;
+  setEdges: ReturnType<typeof useEdgesState>[1];
+  onNodesChange: OnNodesChange<Node<BlueprintNodeData>>;
+  onEdgesChange: ReturnType<typeof useEdgesState>[2];
+  selectedId: string;
+  setSelectedId: (id: string) => void;
+  menu: { x: number; y: number; flowX: number; flowY: number } | null;
+  setMenu: (m: { x: number; y: number; flowX: number; flowY: number } | null) => void;
+  commitBlueprint: (nodes: MaterialBlueprintNode[], links?: MaterialFaceDef["blueprint"]["links"], message?: string) => void;
+  selected: MaterialBlueprintNode | undefined;
+  deleteSelectedNode: () => void;
+  addNode: (kind: MaterialBlueprintNodeKind) => void;
+  updateNode: (node: MaterialBlueprintNode) => void;
+}) {
+  const onConnect = useCallback((connection: Connection) => {
+    const edgeId = `${connection.source}-${connection.target}-${Date.now()}`;
+    const nextEdge: Edge = {
+      ...connection,
+      id: edgeId,
+      animated: true,
+      markerEnd: { type: MarkerType.ArrowClosed },
+      style: { stroke: "#8b5cf6", strokeWidth: 2 },
+    };
+    setEdges((current) => addEdge(nextEdge, current));
+    commitBlueprint(material.blueprint.nodes, [
+      ...material.blueprint.links,
+      { id: edgeId, from: `${connection.source}.out`, to: `${connection.target}.in` },
+    ], "Blueprint link added");
+  }, [commitBlueprint, material.blueprint.links, material.blueprint.nodes, setEdges]);
+
+  void onChange;
+
+  return (
     <div className="grid h-full min-h-[720px] grid-cols-[minmax(0,1fr)_320px] overflow-hidden rounded-md border bg-[#0b0d12]">
       <div className="relative min-h-0">
         <ReactFlow
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
-          onNodesChange={(changes) => {
-            onNodesChange(changes);
-          }}
+          onNodesChange={(changes) => { onNodesChange(changes); }}
           onNodeDragStop={(_, node) => {
             commitBlueprint(material.blueprint.nodes.map((item) => item.id === node.id ? { ...item, position: node.position } : item), material.blueprint.links, "Blueprint node moved");
           }}
@@ -129,10 +373,7 @@ export function MaterialBlueprintEditor({ material, onChange }: MaterialBlueprin
             const bounds = target.getBoundingClientRect();
             setMenu({ x: event.clientX - bounds.left, y: event.clientY - bounds.top, flowX: event.clientX - bounds.left, flowY: event.clientY - bounds.top });
           }}
-          fitView
-          panOnDrag
-          zoomOnScroll
-          selectionOnDrag
+          fitView panOnDrag zoomOnScroll selectionOnDrag
           proOptions={{ hideAttribution: true }}
         >
           <Background color="#252a34" gap={24} size={1} />

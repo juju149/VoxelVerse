@@ -1,17 +1,20 @@
 import { useState } from "react";
-import type { MaterialFaceDef, MaterialKind, MaterialStylePreset, PackProject } from "../types/studio";
+import type { MaterialFaceDef, PackProject } from "../types/studio";
 import { MaterialBlueprintEditor } from "../components/materials/MaterialBlueprintEditor";
 import { MaterialLibrary } from "../components/materials/MaterialLibrary";
 import { MaterialPreview } from "../components/materials/MaterialPreview";
 import { MaterialRonEditor } from "../components/materials/MaterialRonEditor";
-import { MaterialWizard } from "../components/materials/MaterialWizard";
+import { MaterialTemplateGallery } from "../components/materials/MaterialTemplateGallery";
 import { Button } from "../components/ui/button";
 
 type MaterialsPageProps = {
   project: PackProject;
   selectedMaterial: MaterialFaceDef;
   onSelectMaterial: (id: string) => void;
-  onCreateMaterial: (kind: MaterialKind, style: MaterialStylePreset) => void;
+  /** Create a blank material with no pattern layers. */
+  onCreateEmpty: () => void;
+  /** Create a material from a template key. */
+  onCreateFromTemplate: (templateKey: string) => void;
   onUpdateMaterial: (material: MaterialFaceDef, message?: string) => void;
 };
 
@@ -21,10 +24,11 @@ export function MaterialsPage({
   project,
   selectedMaterial,
   onSelectMaterial,
-  onCreateMaterial,
+  onCreateEmpty,
+  onCreateFromTemplate,
   onUpdateMaterial,
 }: MaterialsPageProps) {
-  const [wizardOpen, setWizardOpen] = useState(false);
+  const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("look");
 
   return (
@@ -33,33 +37,39 @@ export function MaterialsPage({
         materials={project.materials}
         selectedId={selectedMaterial.id}
         onSelect={onSelectMaterial}
-        onNew={() => setWizardOpen(true)}
-        onQuickCreate={(kind) => onCreateMaterial(kind, "soft_natural")}
+        onNew={onCreateEmpty}
+        onNewFromTemplate={() => setTemplateGalleryOpen(true)}
       />
 
       <div className="min-h-0 overflow-hidden rounded-lg border bg-card">
         <div className="flex items-center justify-between gap-4 border-b p-3">
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">{selectedMaterial.displayName}</div>
-            <div className="truncate text-xs text-muted-foreground">{selectedMaterial.id} procedural material recipe</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {selectedMaterial.id} · {selectedMaterial.category}
+            </div>
           </div>
           <div className="flex w-56 shrink-0 gap-2">
-          {(["look", "ron"] as const).map((item) => (
-            <Button
-              key={item}
-              variant={tab === item ? "secondary" : "ghost"}
-              size="sm"
-              className="flex-1 capitalize"
-              onClick={() => setTab(item)}
-            >
-              {item === "ron" ? "RON" : "Look"}
-            </Button>
-          ))}
+            {(["look", "ron"] as const).map((item) => (
+              <Button
+                key={item}
+                variant={tab === item ? "secondary" : "ghost"}
+                size="sm"
+                className="flex-1 capitalize"
+                onClick={() => setTab(item)}
+              >
+                {item === "ron" ? "RON" : "Look"}
+              </Button>
+            ))}
           </div>
         </div>
         <div className="h-[calc(100%-65px)] overflow-auto p-5">
           {tab === "look" ? (
-            <MaterialBlueprintEditor material={selectedMaterial} onChange={onUpdateMaterial} />
+            <MaterialBlueprintEditor
+              material={selectedMaterial}
+              onChange={onUpdateMaterial}
+              initialMode={selectedMaterial.category === "custom" && selectedMaterial.recipe.patternLayers.length === 0 ? "simple" : "advanced"}
+            />
           ) : (
             <MaterialRonEditor material={selectedMaterial} onChange={onUpdateMaterial} />
           )}
@@ -82,12 +92,12 @@ export function MaterialsPage({
         />
       </div>
 
-      <MaterialWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        onCreate={(kind, style) => {
-          onCreateMaterial(kind, style);
-          setWizardOpen(false);
+      <MaterialTemplateGallery
+        open={templateGalleryOpen}
+        onClose={() => setTemplateGalleryOpen(false)}
+        onSelect={(templateKey) => {
+          onCreateFromTemplate(templateKey);
+          setTemplateGalleryOpen(false);
         }}
       />
     </div>

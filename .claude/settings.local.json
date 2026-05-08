@@ -9,7 +9,9 @@
       "Read(//c/Users/julie/.cargo/registry/src/**)",
       "Bash(Get-ChildItem -Path \"c:\\\\DEV\\\\projects\\\\Voxel\\\\VoxelVerse\" -Directory)",
       "Bash(Select-Object Name)",
-      "PowerShell(head -50)"
+      "PowerShell(head -50)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)"
     ]
   }
 }

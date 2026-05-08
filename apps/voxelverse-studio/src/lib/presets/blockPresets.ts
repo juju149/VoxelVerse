@@ -19,6 +19,7 @@ export function createBlockFromPreset(kind: BlockKind, materials: FaceMaterialRe
     id: `${namespace}:${id}`,
     displayName: name,
     seed: randomSeed(),
+    color: [0.5, 0.5, 0.5],
     geometry: {
       kind,
       collisionShape: kind === "cube" ? "solid_cube" : kind === "cross_plant" ? "cross" : kind === "liquid" ? "fluid" : "partial",

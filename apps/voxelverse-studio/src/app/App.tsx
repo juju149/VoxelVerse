@@ -3,7 +3,7 @@ import { AppShell } from "../components/layout/AppShell";
 import { MaterialsPage } from "../pages/MaterialsPage";
 import { BlocksPage } from "../pages/BlocksPage";
 import { initialProject } from "../data/initialProject";
-import { createMaterialFromPreset } from "../lib/presets/materialPresets";
+import { createEmptyMaterial, createMaterialFromTemplateKey } from "../lib/presets/materialPresets";
 import { createBlockFromPreset } from "../lib/presets/blockPresets";
 import { exportProjectFiles } from "../lib/ron/ronSerializer";
 import { randomSeed } from "../lib/procedural/seed";
@@ -13,27 +13,51 @@ import type {
   BlockKind,
   FaceMaterialRefs,
   MaterialFaceDef,
-  MaterialKind,
-  MaterialStylePreset,
   PackProject,
   StudioRoute,
   ValidationIssue,
 } from "../types/studio";
 
-const storageKey = "voxelverse-studio-project-v4";
+const storageKey = "voxelverse-studio-project-v5";
+
+function migrateV4toV5(raw: Record<string, unknown>): PackProject {
+  // v4 → v5: MaterialFaceDef.materialKind → category, BlockDef gains color
+  const materials = (raw.materials as MaterialFaceDef[]).map((m) => {
+    const any = m as MaterialFaceDef & { materialKind?: string };
+    return {
+      ...m,
+      category: any.category ?? any.materialKind ?? "custom",
+      materialKind: undefined,
+    };
+  });
+  const blocks = (raw.blocks as BlockDef[]).map((b) => ({
+    ...b,
+    color: (b as BlockDef & { color?: [number, number, number] }).color ?? [0.5, 0.5, 0.5],
+  }));
+  return { ...(raw as unknown as PackProject), schemaVersion: 5, materials, blocks };
+}
 
 function loadProject(): PackProject {
-  const saved = window.localStorage.getItem(storageKey);
+  // Try v5 first, then attempt migration from v4.
+  const saved = window.localStorage.getItem(storageKey)
+    ?? window.localStorage.getItem("voxelverse-studio-project-v4");
   if (!saved) {
     return initialProject;
   }
   try {
-    const parsed = JSON.parse(saved) as PackProject;
-    if (parsed.schemaVersion !== 4 || !Array.isArray(parsed.materials) || !Array.isArray(parsed.blocks)) {
-      window.localStorage.removeItem(storageKey);
+    const parsed = JSON.parse(saved) as Record<string, unknown>;
+    if (!Array.isArray(parsed.materials) || !Array.isArray(parsed.blocks)) {
       return initialProject;
     }
-    return { ...parsed, validationIssues: validatePack(parsed) };
+    if ((parsed.schemaVersion as number) === 4) {
+      const migrated = migrateV4toV5(parsed);
+      return { ...migrated, validationIssues: validatePack(migrated) };
+    }
+    if ((parsed.schemaVersion as number) !== 5) {
+      return initialProject;
+    }
+    const project = parsed as unknown as PackProject;
+    return { ...project, validationIssues: validatePack(project) };
   } catch {
     return initialProject;
   }
@@ -96,11 +120,20 @@ export function App() {
     }
   }
 
-  function createMaterial(kind: MaterialKind, style: MaterialStylePreset) {
-    const material = createMaterialFromPreset(kind, style, project.namespace);
+  function addMaterialToProject(material: MaterialFaceDef, message: string) {
     const unique = ensureUniqueMaterialId(material, project.materials);
-    updateProject({ ...project, materials: [...project.materials, unique] }, "Material created");
+    updateProject({ ...project, materials: [...project.materials, unique] }, message);
     setSelectedMaterialId(unique.id);
+  }
+
+  function createEmpty() {
+    addMaterialToProject(createEmptyMaterial(project.namespace), "Blank material created");
+  }
+
+  function createFromTemplate(templateKey: string) {
+    const material = createMaterialFromTemplateKey(templateKey, project.namespace);
+    if (!material) return;
+    addMaterialToProject(material, `Material created from template "${templateKey}"`);
   }
 
   function createBlock(kind: BlockKind, faces: FaceMaterialRefs) {
@@ -201,7 +234,8 @@ export function App() {
           project={project}
           selectedMaterial={selectedMaterial}
           onSelectMaterial={setSelectedMaterialId}
-          onCreateMaterial={createMaterial}
+          onCreateEmpty={createEmpty}
+          onCreateFromTemplate={createFromTemplate}
           onUpdateMaterial={updateMaterial}
         />
       ) : (
