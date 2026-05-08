@@ -1,0 +1,20 @@
+[package]
+name = "voxelverse-game"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vv-diagnostics = { path = "../../crates/vv-diagnostics" }
+vv-math = { path = "../../crates/vv-math" }
+vv-pack-compiler = { path = "../../crates/vv-pack-compiler" }
+vv-pack-loader = { path = "../../crates/vv-pack-loader" }
+vv-voxel = { path = "../../crates/vv-voxel" }
+
+bytemuck.workspace = true
+glam.workspace = true
+glyphon.workspace = true
+pollster.workspace = true
+rayon.workspace = true
+sysinfo.workspace = true
+wgpu.workspace = true
+winit.workspace = true

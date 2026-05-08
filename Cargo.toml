@@ -1,19 +1,28 @@
-[package]
-name = "voxelverse"
+[workspace]
+members = [
+    "apps/voxelverse-game",
+    "crates/vv-content-schema",
+    "crates/vv-diagnostics",
+    "crates/vv-math",
+    "crates/vv-pack-compiler",
+    "crates/vv-pack-loader",
+    "crates/vv-voxel",
+]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-winit = "0.29"
-wgpu = "0.19"
-pollster = "0.3"
+[workspace.dependencies]
 bytemuck = { version = "1.14", features = ["derive"] }
 glam = "0.25"
-rayon = "1.8"
 glyphon = "0.5"
-sysinfo = "0.30"
-serde = { version = "1", features = ["derive"] }
-ron = "0.8"
 png = "0.17"
-
-
+pollster = "0.3"
+rayon = "1.8"
+ron = "0.8"
+serde = { version = "1", features = ["derive"] }
+sysinfo = "0.30"
+wgpu = "0.19"
+winit = "0.29"

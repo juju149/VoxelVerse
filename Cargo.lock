@@ -1835,21 +1835,68 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "voxelverse"
+name = "voxelverse-game"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
  "glam",
  "glyphon",
- "png",
  "pollster",
  "rayon",
- "ron",
- "serde",
  "sysinfo",
+ "vv-diagnostics",
+ "vv-math",
+ "vv-pack-compiler",
+ "vv-pack-loader",
+ "vv-voxel",
  "wgpu",
  "winit",
 ]
+
+[[package]]
+name = "vv-content-schema"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "vv-diagnostics"
+version = "0.1.0"
+dependencies = [
+ "sysinfo",
+ "wgpu",
+]
+
+[[package]]
+name = "vv-math"
+version = "0.1.0"
+dependencies = [
+ "glam",
+]
+
+[[package]]
+name = "vv-pack-compiler"
+version = "0.1.0"
+dependencies = [
+ "png",
+ "vv-content-schema",
+ "vv-pack-loader",
+ "vv-voxel",
+]
+
+[[package]]
+name = "vv-pack-loader"
+version = "0.1.0"
+dependencies = [
+ "ron",
+ "serde",
+ "vv-content-schema",
+]
+
+[[package]]
+name = "vv-voxel"
+version = "0.1.0"
 
 [[package]]
 name = "walkdir"

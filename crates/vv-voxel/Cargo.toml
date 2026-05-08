@@ -1,0 +1,4 @@
+[package]
+name = "vv-voxel"
+version.workspace = true
+edition.workspace = true

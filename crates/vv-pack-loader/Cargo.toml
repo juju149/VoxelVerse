@@ -1,0 +1,10 @@
+[package]
+name = "vv-pack-loader"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vv-content-schema = { path = "../vv-content-schema" }
+
+ron.workspace = true
+serde.workspace = true

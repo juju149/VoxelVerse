@@ -1,0 +1,8 @@
+[package]
+name = "vv-diagnostics"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sysinfo.workspace = true
+wgpu.workspace = true

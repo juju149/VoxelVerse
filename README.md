@@ -79,15 +79,29 @@ $$
 *   **Discrete Collision Detection:**
     Wrote a custom **AABB** solver that checks for voxel occupancy by casting rays into the underlying math-based terrain grid.
 
+## Workspace Layout
+
+VoxelVerse is now a Rust workspace:
+
+- `apps/voxelverse-game`: playable runtime app.
+- `crates/vv-voxel`: compact voxel IDs, coordinates, chunk keys, and voxel chunk storage.
+- `crates/vv-math`: pure math used by world, rendering, and gameplay.
+- `crates/vv-content-schema`: raw `.ron` content schemas.
+- `crates/vv-pack-loader`: pack discovery and `.ron` parsing.
+- `crates/vv-pack-compiler`: validation, reference resolution, runtime registries, and texture decoding.
+- `crates/vv-diagnostics`: shared frame/render/system counters.
+- `assets/packs/core`: source pack data and final renderer PNG assets.
+
+See `docs/ARCHITECTURE.md`, `docs/CONTENT_PIPELINE.md`, and `docs/MODDING.md` before changing pack or engine boundaries.
+
 ## Foundation Quality Gate
 
 Before adding rendering features such as real block textures, the foundation gate is:
 
 ```powershell
-cargo fmt --check
-cargo clippy -- -D warnings
-cargo test
-cargo build
+cargo fmt --all --check
+cargo test --workspace
+cargo build --workspace
 ```
 
 Rust source files must stay below 1000 lines, with 800 lines treated as the split-warning threshold.

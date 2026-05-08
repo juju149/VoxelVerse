@@ -1,0 +1,11 @@
+[package]
+name = "vv-pack-compiler"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vv-content-schema = { path = "../vv-content-schema" }
+vv-pack-loader = { path = "../vv-pack-loader" }
+vv-voxel = { path = "../vv-voxel" }
+
+png.workspace = true
