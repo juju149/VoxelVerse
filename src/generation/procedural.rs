@@ -16,6 +16,9 @@ use std::sync::Arc;
 
 const MAX_SURFACE_FIELD_RES: u32 = 1024;
 const MAX_BIOME_WEIGHTS: usize = 4;
+/// Reference voxel size (in metres) the procedural RON pack is authored against.
+/// Every voxel-count field assumes this baseline; runtime scales relative to it.
+pub(crate) const WORLD_SCALE_BASELINE_METERS: f32 = 1.0;
 
 #[derive(Clone, Debug)]
 pub struct BiomeWeight {
@@ -255,8 +258,26 @@ impl ProceduralPlanetTerrain {
         self.voxel_res
     }
 
+    /// Multiplier applied to every voxel-counted quantity authored in the
+    /// procedural pack so that physical world size stays constant when
+    /// `voxel_size_meters` shrinks.  RON values are written assuming a 1 m
+    /// baseline; at 0.5 m voxels this returns 2.0 → trees, soil layers, ore
+    /// veins all double in voxel count but keep their physical dimensions.
+    pub fn voxel_scale(&self) -> f32 {
+        WORLD_SCALE_BASELINE_METERS / self.planet().base.voxel_size_meters.max(0.0001)
+    }
+
     pub(crate) fn feature_hit_pub(&self, field: usize, face: u8, u: u32, v: u32, density: f32) -> bool {
         self.feature_hit(field, face, u, v, density)
+    }
+
+    /// Density compensation: `feature_hit` runs once per `(u, v)` cell.  When
+    /// voxels shrink the cell grid densifies quadratically, so authored
+    /// per-cell densities must shrink by the same factor to preserve the
+    /// physical "trees per m²" the pack writer intended.
+    pub fn density_scale(&self) -> f32 {
+        let voxel_m = self.planet().base.voxel_size_meters.max(0.0001);
+        (voxel_m / WORLD_SCALE_BASELINE_METERS).powi(2)
     }
 
     fn resolve_voxel(&self, ctx: &GeneratedVoxelContext, profile: PlanetProfile) -> VoxelId {
@@ -264,10 +285,12 @@ impl ProceduralPlanetTerrain {
             return VoxelId::AIR;
         }
 
+        let scale = self.voxel_scale();
         let biome = self.registry.biome(ctx.surface.primary_biome);
+        let surface_depth = crate::generation::features::scale_range(biome.surface.depth, scale);
         let mut block = if ctx.depth_from_surface == 0 {
             biome.surface.top
-        } else if ctx.depth_from_surface as u32 <= biome.surface.depth.1 {
+        } else if ctx.depth_from_surface as u32 <= surface_depth.1 {
             biome.surface.under
         } else {
             self.layer_block(ctx, profile)
@@ -303,7 +326,7 @@ impl ProceduralPlanetTerrain {
                         ctx.face,
                         ctx.u,
                         ctx.v,
-                        detail.placement.density,
+                        detail.placement.density * self.density_scale(),
                     )
                 {
                     if let Some(block) =
@@ -331,9 +354,17 @@ impl ProceduralPlanetTerrain {
         veg: &crate::content::CompiledVegetation,
     ) -> Option<VoxelId> {
         let res = self.voxel_res as i32;
-        let max_thickness = veg.trunk_thickness.1.max(1) as i32;
-        let max_canopy_radius = veg.canopy_radius.1 as i32;
-        let scan_radius = max_thickness + max_canopy_radius;
+        let scale = self.voxel_scale();
+        // The natural-shaped tree can reach beyond the trunk thickness via
+        // canopy lobes and branches.  Use a conservative bound based on the
+        // authored ranges + a margin for branch length / lean.
+        let max_thickness =
+            crate::generation::features::scale_range(veg.trunk_thickness, scale).1.max(1) as i32;
+        let max_canopy =
+            crate::generation::features::scale_range(veg.canopy_radius, scale).1 as i32;
+        let max_branch =
+            crate::generation::features::scale_range(veg.branch_length, scale).1 as i32;
+        let scan_radius = max_thickness + max_canopy.max(max_branch) + 2;
 
         for du in -scan_radius..=scan_radius {
             for dv in -scan_radius..=scan_radius {
@@ -345,13 +376,24 @@ impl ProceduralPlanetTerrain {
                 let pu = pu_i as u32;
                 let pv = pv_i as u32;
 
-                // The candidate column must itself be valid soil for this vegetation.
                 let plant_top =
                     self.registry.biome(self.get_biome_id(ctx.face, pu, pv) as usize).surface.top;
                 if !veg.placement.surface_blocks.contains(&plant_top) {
                     continue;
                 }
-                if !self.feature_hit(veg.placement.field, ctx.face, pu, pv, veg.placement.density) {
+                // Slope filter: mirrors is_planted in the baked path.
+                if veg.placement.slope_max > 0.0 {
+                    let res_u = self.voxel_res;
+                    let h0 = self.get_height(ctx.face, pu, pv) as i32;
+                    let h1 = self.get_height(ctx.face, (pu + 1).min(res_u - 1), pv) as i32;
+                    let h2 = self.get_height(ctx.face, pu, (pv + 1).min(res_u - 1)) as i32;
+                    let slope = (((h1 - h0).pow(2) + (h2 - h0).pow(2)) as f32).sqrt();
+                    if slope > veg.placement.slope_max {
+                        continue;
+                    }
+                }
+                let density = veg.placement.density * self.density_scale();
+                if !self.feature_hit(veg.placement.field, ctx.face, pu, pv, density) {
                     continue;
                 }
 
@@ -363,8 +405,9 @@ impl ProceduralPlanetTerrain {
         None
     }
 
-    /// Evaluate whether the current voxel falls inside the trunk, a branch,
-    /// or the canopy of a tree planted at column (`pu`, `pv`).
+    /// Evaluate whether the current voxel belongs to a tree planted at column
+    /// (`pu`, `pv`).  Delegates to [`TreeShape`] so this slow path agrees
+    /// exactly with what the chunk bakery would write into the feature map.
     fn evaluate_tree_at(
         &self,
         ctx: &GeneratedVoxelContext,
@@ -373,78 +416,11 @@ impl ProceduralPlanetTerrain {
         pv: u32,
     ) -> Option<VoxelId> {
         let plant_height = self.get_height(ctx.face, pu, pv);
-        let height = range_pick(veg.height, hash4(ctx.face, pu, pv, 33));
-        let thickness = range_pick(veg.trunk_thickness, hash4(ctx.face, pu, pv, 35)).max(1);
-        let canopy_r = range_pick(veg.canopy_radius, hash4(ctx.face, pu, pv, 34));
-        let branch_count = range_pick(veg.branch_count, hash4(ctx.face, pu, pv, 36));
-
-        let trunk_top_layer = plant_height + height;
-        let layer = ctx.layer;
-        let du = ctx.u as i32 - pu as i32;
-        let dv = ctx.v as i32 - pv as i32;
-        let half = thickness as i32 / 2;
-        let in_trunk_footprint =
-            du >= -half && du < (thickness as i32 - half) && dv >= -half && dv < (thickness as i32 - half);
-
-        // Trunk: solid column from (plant_height + 1) up to (plant_height + height).
-        if in_trunk_footprint && layer > plant_height && layer <= trunk_top_layer {
-            return Some(veg.trunk);
-        }
-
-        // Branches: short horizontal log spurs in the upper third of the trunk.
-        if branch_count > 0 && height >= 3 {
-            let branch_band_start = plant_height + (height * 2 / 3).max(1);
-            let branch_band_end = trunk_top_layer.saturating_sub(1);
-            if layer >= branch_band_start && layer <= branch_band_end {
-                let max_len = range_pick(veg.branch_length, hash4(ctx.face, pu, pv, 37)).max(1);
-                for i in 0..branch_count {
-                    let h = hash4(ctx.face, pu, pv, 41 + i);
-                    let dir = h & 0b11; // 0..=3
-                    let len = 1 + (h >> 2) % max_len;
-                    let layer_off = (h >> 6) % (branch_band_end - branch_band_start + 1);
-                    let branch_layer = branch_band_start + layer_off;
-                    if layer != branch_layer {
-                        continue;
-                    }
-                    let (axis_du, axis_dv): (i32, i32) = match dir {
-                        0 => (1, 0),
-                        1 => (-1, 0),
-                        2 => (0, 1),
-                        _ => (0, -1),
-                    };
-                    for step in 1..=(len as i32) {
-                        let bu = axis_du * step;
-                        let bv = axis_dv * step;
-                        if du == bu && dv == bv {
-                            return Some(veg.trunk);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Canopy: vertical-squashed ellipsoid centered slightly above the trunk top.
-        if layer >= plant_height && canopy_r > 0 {
-            let cx = pu as f32 + 0.5;
-            let cy = pv as f32 + 0.5;
-            // Pull the canopy center down by ~1 so it surrounds the upper trunk
-            // instead of sitting purely above it — keeps leaves visible from below.
-            let cz = trunk_top_layer as f32 - 0.5;
-            let dx = ctx.u as f32 + 0.5 - cx;
-            let dy = ctx.v as f32 + 0.5 - cy;
-            let dz_raw = layer as f32 + 0.5 - cz;
-            let squash = veg.canopy_vertical_squash.max(0.1);
-            let dz = dz_raw / squash;
-            let r = canopy_r as f32;
-            // Slight per-voxel jitter so the canopy is not a perfect lattice ball.
-            let jitter = (hash4(ctx.face, ctx.u, ctx.v, 51) as f32 / u32::MAX as f32) * 0.45;
-            let dist_sq = dx * dx + dy * dy + dz * dz;
-            if dist_sq <= r * r + jitter && layer > plant_height {
-                return Some(veg.leaves);
-            }
-        }
-
-        None
+        let scale = self.voxel_scale();
+        let shape = crate::generation::features::TreeShape::compute(
+            veg, ctx.face, pu, pv, plant_height, scale,
+        );
+        shape.voxel_at(ctx.u as i32, ctx.layer as i32, ctx.v as i32)
     }
 
     fn layer_block(&self, ctx: &GeneratedVoxelContext, profile: PlanetProfile) -> Option<VoxelId> {
@@ -454,13 +430,16 @@ impl ProceduralPlanetTerrain {
             if !biome_ok {
                 continue;
             }
-            let depth_ok = layer.depth.is_some_and(|(min, max)| {
+            let scale = self.voxel_scale();
+            let depth_ok = layer.depth.is_some_and(|range| {
+                let (min, max) = crate::generation::features::scale_range(range, scale);
                 (ctx.depth_from_surface as u32) >= min && (ctx.depth_from_surface as u32) <= max
             });
             let center_depth = profile.core_layers.saturating_sub(ctx.layer);
-            let center_ok = layer
-                .depth_from_center
-                .is_some_and(|(min, max)| center_depth >= min && center_depth <= max);
+            let center_ok = layer.depth_from_center.is_some_and(|range| {
+                let (min, max) = crate::generation::features::scale_range(range, scale);
+                center_depth >= min && center_depth <= max
+            });
             if depth_ok || center_ok {
                 return Some(layer.block);
             }
@@ -472,9 +451,11 @@ impl ProceduralPlanetTerrain {
         let planet = self.planet();
         let biome = self.registry.biome(ctx.surface.primary_biome);
         let depth = ctx.depth_from_surface.max(0) as u32;
+        let scale = self.voxel_scale();
         for ore_idx in &planet.ore_sets {
             let ore = &self.registry.ores[*ore_idx];
-            if depth < ore.depth.0 || depth > ore.depth.1 || !ore.replace.contains(&current) {
+            let ore_depth = crate::generation::features::scale_range(ore.depth, scale);
+            if depth < ore_depth.0 || depth > ore_depth.1 || !ore.replace.contains(&current) {
                 continue;
             }
             let tag_ok = ore.biome_tags.iter().any(|t| t == "*")
@@ -495,14 +476,20 @@ impl ProceduralPlanetTerrain {
     }
 
     fn is_cave(&self, ctx: &GeneratedVoxelContext) -> bool {
-        if ctx.depth_from_surface <= 4 {
+        let scale = self.voxel_scale();
+        // 4-voxel cap-thickness scales with the grid so the surface skin keeps
+        // the same physical thickness regardless of voxel resolution.
+        let cap_thickness =
+            crate::generation::features::scale_count(4, scale).max(1) as i32;
+        if ctx.depth_from_surface <= cap_thickness {
             return false;
         }
         for cave_idx in &self.planet().caves {
             let cave = &self.registry.caves[*cave_idx];
             for carver in &cave.carvers {
                 let depth = ctx.depth_from_surface as u32;
-                if depth < carver.depth.0 || depth > carver.depth.1 {
+                let cd = crate::generation::features::scale_range(carver.depth, scale);
+                if depth < cd.0 || depth > cd.1 {
                     continue;
                 }
                 let n = self.sample_field(
@@ -585,8 +572,15 @@ impl ProceduralPlanetTerrain {
     }
 
     fn feature_hit(&self, field: usize, face: u8, u: u32, v: u32, density: f32) -> bool {
-        let roll = hash4(face, u, v, field as u32) as f32 / u32::MAX as f32;
-        roll < density.clamp(0.0, 1.0)
+        // Sample the scatter field as a spatial density envelope: high-noise areas
+        // become denser clusters (forests), low-noise areas become clearings.
+        let dir = CoordSystem::get_direction(face, u, v, self.voxel_res);
+        let cluster = sample_noise_field(&self.registry, &self.noise_generators, field, dir, 0);
+        // cluster 0..1 → density × 0..2 so the average density stays on target
+        // (average cluster ≈ 0.5 × 2 = 1.0 × density).
+        let effective = (density * cluster * 2.0).clamp(0.0, 1.0);
+        let roll = hash4(face, u, v, field as u32 ^ 0xA5B6_C7D8) as f32 / u32::MAX as f32;
+        roll < effective
     }
 
     fn sample_field(&self, field: usize, pos: Vec3) -> f32 {
@@ -689,8 +683,10 @@ fn resolve_height(
     let macro_shape =
         (fields.continentality - 0.5) * 0.40 - fields.erosion * 0.18 + fields.weirdness * 0.08;
     height_offset += macro_shape;
+    // `profile.max_terrain_offset` is already scaled by the profile builder so
+    // mountains keep their authored physical relief regardless of voxel size.
     let layer = profile.surface_layer as i32
-        + (height_offset * planet.base.max_terrain_offset as f32).round() as i32;
+        + (height_offset * profile.max_terrain_offset as f32).round() as i32;
     let min_layer = profile.core_layers.saturating_add(2) as i32;
     let max_layer = profile.resolution.saturating_sub(3) as i32;
     (layer.clamp(min_layer, max_layer) as u32, primary)

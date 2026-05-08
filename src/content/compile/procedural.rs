@@ -372,6 +372,15 @@ fn compile_vegetation(
         branch_length: normalized_u32_range(def.stamp.branch_length),
         canopy_vertical_squash: finite_positive(def.stamp.canopy_vertical_squash, 0.85)
             .clamp(0.2, 3.0),
+        branch_slope: (
+            finite(def.stamp.branch_slope.0, 0.25).clamp(0.0, 3.0),
+            finite(def.stamp.branch_slope.1, 0.80).clamp(0.0, 3.0),
+        ),
+        canopy_lobe_count: {
+            let (lo, hi) = normalized_u32_range(def.stamp.canopy_lobe_count);
+            (lo.max(1), hi.max(lo).max(1))
+        },
+        trunk_lean_max: finite(def.stamp.trunk_lean_max, 0.12).clamp(0.0, 0.5),
     })
 }
 

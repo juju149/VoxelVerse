@@ -225,6 +225,15 @@ pub struct RawVegetationStampDef {
     /// Vertical squash for the canopy ellipsoid. `1.0` = sphere, `<1.0` = oblate, `>1.0` = prolate.
     #[serde(default = "default_canopy_squash")]
     pub canopy_vertical_squash: f32,
+    /// Upward slope range (rise/run) for branches. `(0.25, 0.80)` gives natural oak angles.
+    #[serde(default = "default_branch_slope")]
+    pub branch_slope: (f32, f32),
+    /// Number of overlapping canopy lobes. More lobes → fuller canopy.
+    #[serde(default = "default_canopy_lobe_count")]
+    pub canopy_lobe_count: (u32, u32),
+    /// Max trunk lean as a fraction of tree height. `0.0` = straight, `0.15` = natural.
+    #[serde(default = "default_trunk_lean_max")]
+    pub trunk_lean_max: f32,
 }
 
 fn default_trunk_thickness() -> (u32, u32) {
@@ -237,6 +246,18 @@ fn default_branch_length() -> (u32, u32) {
 
 fn default_canopy_squash() -> f32 {
     0.85
+}
+
+fn default_branch_slope() -> (f32, f32) {
+    (0.25, 0.80)
+}
+
+fn default_canopy_lobe_count() -> (u32, u32) {
+    (3, 6)
+}
+
+fn default_trunk_lean_max() -> f32 {
+    0.12
 }
 
 #[derive(Debug, Clone, Deserialize)]

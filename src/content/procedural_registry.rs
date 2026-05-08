@@ -198,6 +198,12 @@ pub struct CompiledVegetation {
     pub branch_length: (u32, u32),
     /// Vertical squash factor for the canopy ellipsoid.
     pub canopy_vertical_squash: f32,
+    /// Branch slope range (rise per horizontal voxel).
+    pub branch_slope: (f32, f32),
+    /// Number of overlapping canopy lobes.
+    pub canopy_lobe_count: (u32, u32),
+    /// Max trunk lean as a fraction of tree height.
+    pub trunk_lean_max: f32,
 }
 
 #[derive(Clone, Debug)]

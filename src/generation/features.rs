@@ -22,7 +22,9 @@ use crate::content::{
 };
 use crate::generation::procedural::ProceduralPlanetTerrain;
 use crate::voxel::{VoxelCoord, VoxelId, CHUNK_SIZE};
+use glam::Vec3;
 use std::collections::HashMap;
+use std::f32::consts::TAU;
 
 /// Sparse map of feature-driven voxels covering one chunk + a small margin
 /// for face-culling neighbour lookups.
@@ -56,6 +58,14 @@ impl<'a> FeatureBakery<'a> {
             registry,
             planet,
         }
+    }
+
+    fn voxel_scale(&self) -> f32 {
+        self.terrain.voxel_scale()
+    }
+
+    fn density_scale(&self) -> f32 {
+        self.terrain.density_scale()
     }
 
     /// Bake every tree + visual-detail voxel that overlaps the rectangle
@@ -123,12 +133,22 @@ impl<'a> FeatureBakery<'a> {
     }
 
     fn max_veg_radius(&self) -> u32 {
+        // Trees can reach beyond their plant column via canopy lobes (offset
+        // up to canopy_r * 0.55 + lobe_r up to canopy_r * 1.0 ≈ 1.55× canopy_r),
+        // branches with arbitrary angles, and a small horizontal lean.  Keep a
+        // conservative bound so the bakery never misses an overhanging voxel.
+        let scale = self.voxel_scale();
         self.planet
             .vegetation_sets
             .iter()
             .map(|i| {
                 let v = &self.registry.vegetation[*i];
-                v.canopy_radius.1 + v.trunk_thickness.1.max(1) + v.branch_length.1
+                let canopy = scale_range(v.canopy_radius, scale).1;
+                let thickness = scale_range(v.trunk_thickness, scale).1.max(1);
+                let branch = scale_range(v.branch_length, scale).1;
+                let canopy_reach = ((canopy as f32) * 1.6).ceil() as u32;
+                let branch_reach = branch + 2;
+                canopy_reach.max(branch_reach) + thickness + 2
             })
             .max()
             .unwrap_or(0)
@@ -143,8 +163,21 @@ impl<'a> FeatureBakery<'a> {
         if !veg.placement.surface_blocks.contains(&top) {
             return false;
         }
+        // Slope filter: skip steep terrain if slope_max is set.
+        if veg.placement.slope_max > 0.0 {
+            let res = self.terrain.voxel_res();
+            let h0 = self.terrain.get_height(face, pu, pv) as i32;
+            let h1 = self.terrain.get_height(face, (pu + 1).min(res - 1), pv) as i32;
+            let h2 = self.terrain.get_height(face, pu, (pv + 1).min(res - 1)) as i32;
+            let slope = (((h1 - h0).pow(2) + (h2 - h0).pow(2)) as f32).sqrt();
+            if slope > veg.placement.slope_max {
+                return false;
+            }
+        }
+        // density is authored "per 1 m² cell"; rescale for the active grid.
+        let density = veg.placement.density * self.density_scale();
         self.terrain
-            .feature_hit_pub(veg.placement.field, face, pu, pv, veg.placement.density)
+            .feature_hit_pub(veg.placement.field, face, pu, pv, density)
     }
 
     fn detail_block_at(
@@ -162,13 +195,11 @@ impl<'a> FeatureBakery<'a> {
         if !detail.placement.surface_blocks.contains(&top) {
             return None;
         }
-        if !self.terrain.feature_hit_pub(
-            detail.placement.field,
-            face,
-            u,
-            v,
-            detail.placement.density,
-        ) {
+        let density = detail.placement.density * self.density_scale();
+        if !self
+            .terrain
+            .feature_hit_pub(detail.placement.field, face, u, v, density)
+        {
             return None;
         }
         weighted_detail(&detail.details, hash4(face, u, v, 17))
@@ -189,12 +220,16 @@ impl<'a> FeatureBakery<'a> {
         chunk_v_hi: u32,
         map: &mut ChunkFeatureMap,
     ) {
-        let geom = TreeGeometry::compute(veg, face, pu, pv, self.terrain.get_height(face, pu, pv));
-
+        let scale = self.voxel_scale();
+        let plant_height = self.terrain.get_height(face, pu, pv);
+        let shape = TreeShape::compute(veg, face, pu, pv, plant_height, scale);
         let res = self.terrain.voxel_res();
-        let half = geom.thickness as i32 / 2;
 
-        let mut emit = |u: u32, v: u32, layer: u32, block: VoxelId| {
+        let mut emit = |u: i32, layer: i32, v: i32, block: VoxelId| {
+            if u < 0 || layer < 0 || v < 0 {
+                return;
+            }
+            let (u, layer, v) = (u as u32, layer as u32, v as u32);
             if u < chunk_u_lo
                 || u >= chunk_u_hi
                 || v < chunk_v_lo
@@ -205,131 +240,465 @@ impl<'a> FeatureBakery<'a> {
             {
                 return;
             }
-            let coord = VoxelCoord {
-                face,
-                layer,
-                u,
-                v,
-            };
+            let coord = VoxelCoord { face, layer, u, v };
             map.blocks.entry(coord).or_insert(block);
             if layer + 1 > map.max_layer_exclusive {
                 map.max_layer_exclusive = layer + 1;
             }
         };
 
-        // Trunk
-        let footprint_u_lo = (pu as i32) - half;
-        let footprint_v_lo = (pv as i32) - half;
-        let footprint_u_hi = (pu as i32) - half + geom.thickness as i32;
-        let footprint_v_hi = (pv as i32) - half + geom.thickness as i32;
-        for tu in footprint_u_lo..footprint_u_hi {
-            for tv in footprint_v_lo..footprint_v_hi {
-                if tu < 0 || tv < 0 {
-                    continue;
-                }
-                for layer in (geom.plant_height + 1)..=geom.trunk_top_layer {
-                    emit(tu as u32, tv as u32, layer, veg.trunk);
-                }
-            }
-        }
-
-        // Branches
-        if geom.branch_count > 0 && geom.height >= 3 {
-            let branch_band_start = geom.plant_height + (geom.height * 2 / 3).max(1);
-            let branch_band_end = geom.trunk_top_layer.saturating_sub(1);
-            if branch_band_end >= branch_band_start {
-                let max_len = range_pick(veg.branch_length, hash4(face, pu, pv, 37)).max(1);
-                let band_span = branch_band_end - branch_band_start + 1;
-                for i in 0..geom.branch_count {
-                    let h = hash4(face, pu, pv, 41 + i);
-                    let dir = h & 0b11;
-                    let len = 1 + (h >> 2) % max_len;
-                    let layer_off = (h >> 6) % band_span;
-                    let branch_layer = branch_band_start + layer_off;
-                    let (axis_du, axis_dv): (i32, i32) = match dir {
-                        0 => (1, 0),
-                        1 => (-1, 0),
-                        2 => (0, 1),
-                        _ => (0, -1),
-                    };
-                    for step in 1..=(len as i32) {
-                        let bu = pu as i32 + axis_du * step;
-                        let bv = pv as i32 + axis_dv * step;
-                        if bu < 0 || bv < 0 {
-                            continue;
-                        }
-                        emit(bu as u32, bv as u32, branch_layer, veg.trunk);
-                    }
-                }
-            }
-        }
-
-        // Canopy ellipsoid
-        if geom.canopy_radius > 0 {
-            let r = geom.canopy_radius as i32;
-            let squash = veg.canopy_vertical_squash.max(0.1);
-            let cx = pu as f32 + 0.5;
-            let cy = pv as f32 + 0.5;
-            let cz = geom.trunk_top_layer as f32 - 0.5;
-            for du in -r..=r {
-                for dv in -r..=r {
-                    let cu = pu as i32 + du;
-                    let cv = pv as i32 + dv;
-                    if cu < 0 || cv < 0 {
-                        continue;
-                    }
-                    let cu_u = cu as u32;
-                    let cv_u = cv as u32;
-                    if cu_u >= res || cv_u >= res {
-                        continue;
-                    }
-                    let layer_lo = (geom.plant_height + 1).max(geom.trunk_top_layer.saturating_sub(r as u32));
-                    let layer_hi = (geom.trunk_top_layer + r as u32).min(res.saturating_sub(1));
-                    let voxel_jitter =
-                        (hash4(face, cu_u, cv_u, 51) as f32 / u32::MAX as f32) * 0.45;
-                    for layer in layer_lo..=layer_hi {
-                        let dx = cu_u as f32 + 0.5 - cx;
-                        let dy = cv_u as f32 + 0.5 - cy;
-                        let dz = (layer as f32 + 0.5 - cz) / squash;
-                        let dist_sq = dx * dx + dy * dy + dz * dz;
-                        if dist_sq <= (geom.canopy_radius as f32) * (geom.canopy_radius as f32)
-                            + voxel_jitter
-                        {
-                            emit(cu_u, cv_u, layer, veg.leaves);
-                        }
-                    }
-                }
-            }
-        }
+        shape.stamp(&mut emit);
     }
 }
 
-/// Cached deterministic geometry for one planted tree.
-#[derive(Clone, Copy)]
-pub struct TreeGeometry {
-    pub plant_height: u32,
-    pub height: u32,
-    pub thickness: u32,
-    pub canopy_radius: u32,
-    pub branch_count: u32,
-    pub trunk_top_layer: u32,
+// ---------------------------------------------------------------------------
+// Tree shape — natural-looking generation with full per-tree randomness.
+// ---------------------------------------------------------------------------
+
+/// One blob in the canopy.  A canopy is a union of overlapping lobes whose
+/// boundary is jittered per-voxel — never a pure sphere.
+#[derive(Clone, Copy, Debug)]
+pub struct CanopyLobe {
+    pub center: Vec3, // x = u + 0.5, y = layer + 0.5, z = v + 0.5
+    pub radius: f32,
+    pub jitter_seed: u32,
 }
 
-impl TreeGeometry {
-    pub fn compute(veg: &CompiledVegetation, face: u8, pu: u32, pv: u32, plant_height: u32) -> Self {
-        let height = range_pick(veg.height, hash4(face, pu, pv, 33));
-        let thickness = range_pick(veg.trunk_thickness, hash4(face, pu, pv, 35)).max(1);
-        let canopy_radius = range_pick(veg.canopy_radius, hash4(face, pu, pv, 34));
+/// One branch growing out of the trunk with an arbitrary horizontal angle and
+/// a slight upward slope.  May carry a small canopy lobe at its tip.
+#[derive(Clone, Copy, Debug)]
+pub struct Branch {
+    pub start: Vec3,
+    pub direction: Vec3, // unit-ish: (cos θ, slope_y, sin θ)
+    pub length: f32,
+    pub thickness: f32,
+    pub tip: Option<CanopyLobe>,
+}
+
+/// Full per-tree shape.  Computed once (deterministically from `(face, pu, pv)`
+/// + a per-tree seed) so the bakery and the slow path always agree.
+#[derive(Clone, Debug)]
+pub struct TreeShape {
+    pub plant_height: u32,
+    pub trunk_top_layer: u32,
+    pub height: u32,
+
+    pub trunk_block: VoxelId,
+    pub leaves_block: VoxelId,
+
+    /// Pivot at the base of the trunk (centre of the planted column).
+    pub trunk_pivot: Vec3,
+    /// Horizontal lean at the very top (curves quadratically along height).
+    pub trunk_lean: (f32, f32),
+    pub trunk_base_radius: f32,
+    pub trunk_top_radius: f32,
+    /// Per-voxel boundary jitter scaler for the trunk (0..=1 fraction of r²).
+    pub trunk_seed: u32,
+
+    pub branches: Vec<Branch>,
+    pub lobes: Vec<CanopyLobe>,
+}
+
+impl TreeShape {
+    pub fn compute(
+        veg: &CompiledVegetation,
+        face: u8,
+        pu: u32,
+        pv: u32,
+        plant_height: u32,
+        scale: f32,
+    ) -> Self {
+        // -- per-tree seeds & dimensions ------------------------------------
+        let height =
+            range_pick(scale_range(veg.height, scale), hash4(face, pu, pv, 33)).max(2);
+        let thickness = range_pick(
+            scale_range(veg.trunk_thickness, scale),
+            hash4(face, pu, pv, 35),
+        )
+        .max(1) as f32;
+        let canopy_radius = range_pick(
+            scale_range(veg.canopy_radius, scale),
+            hash4(face, pu, pv, 34),
+        ) as f32;
         let branch_count = range_pick(veg.branch_count, hash4(face, pu, pv, 36));
+        let branch_len_max =
+            range_pick(scale_range(veg.branch_length, scale), hash4(face, pu, pv, 37))
+                .max(1) as f32;
+        let trunk_seed = hash4(face, pu, pv, 0xA17EE5);
+
+        let trunk_top_layer = plant_height + height;
+        let pivot = Vec3::new(pu as f32 + 0.5, plant_height as f32 + 0.5, pv as f32 + 0.5);
+
+        // -- trunk lean: data-driven max lean fraction of tree height -------
+        let lean_max = (height as f32) * veg.trunk_lean_max;
+        let lean_theta = hash01(face, pu, pv, 71) * TAU;
+        let lean_amount = hash01(face, pu, pv, 72) * lean_max;
+        let trunk_lean = (lean_theta.cos() * lean_amount, lean_theta.sin() * lean_amount);
+
+        // Tapering: the top is narrower than the base. Always at least 0.5 v.
+        let trunk_base_radius = (thickness * 0.5).max(0.5);
+        let trunk_top_radius = (trunk_base_radius * 0.6).max(0.5);
+
+        // -- branches at arbitrary angles -----------------------------------
+        let mut branches = Vec::with_capacity(branch_count as usize);
+        if branch_count > 0 && height >= 3 {
+            let band_start = plant_height as f32 + (height as f32) * 0.55;
+            let band_end = trunk_top_layer as f32 - 0.5;
+            for i in 0..branch_count {
+                let h = hash4(face, pu, pv, 401 + i);
+                let theta = hash01_u32(h, 0) * TAU;
+                let raw_len = (1.5 + hash01_u32(h, 1) * (branch_len_max + 1.0)).min(branch_len_max + 2.0);
+                let layer_t = hash01_u32(h, 2);
+                let start_layer = band_start + layer_t * (band_end - band_start).max(0.0);
+                // Data-driven branch slope range (rise per horizontal voxel).
+                let slope_lo = veg.branch_slope.0;
+                let slope = slope_lo + hash01_u32(h, 3) * (veg.branch_slope.1 - slope_lo).max(0.0);
+                // Branch starts at the trunk surface, not at the centerline.
+                let dir_xz = Vec3::new(theta.cos(), 0.0, theta.sin());
+                let trunk_r_at_start = trunk_radius_at(
+                    start_layer,
+                    plant_height as f32,
+                    height as f32,
+                    trunk_base_radius,
+                    trunk_top_radius,
+                );
+                let start = Vec3::new(
+                    pivot.x + dir_xz.x * trunk_r_at_start * 0.6,
+                    start_layer,
+                    pivot.z + dir_xz.z * trunk_r_at_start * 0.6,
+                );
+                let direction = Vec3::new(dir_xz.x, slope, dir_xz.z).normalize_or_zero();
+                let thickness = (trunk_top_radius * 0.55).max(0.5);
+
+                // Tip lobe: a soft leaf cluster at the end of the branch.
+                let tip = Some(CanopyLobe {
+                    center: start + direction * raw_len,
+                    radius: (canopy_radius * 0.35 + hash01_u32(h, 4) * canopy_radius * 0.35).max(1.2),
+                    jitter_seed: h ^ 0xBEEF,
+                });
+                branches.push(Branch {
+                    start,
+                    direction,
+                    length: raw_len,
+                    thickness,
+                    tip,
+                });
+            }
+        }
+
+        // -- canopy lobes: data-driven count around the trunk top ----------
+        let mut lobes = Vec::new();
+        if canopy_radius > 0.0 {
+            let n_lobes_seed = hash4(face, pu, pv, 0x10BE);
+            let (lobe_min, lobe_max) = veg.canopy_lobe_count;
+            let lobe_range = (lobe_max.saturating_sub(lobe_min) + 1).max(1);
+            let n_lobes = lobe_min + n_lobes_seed % lobe_range;
+            let canopy_anchor = Vec3::new(
+                pivot.x + trunk_lean.0,
+                trunk_top_layer as f32 - 0.25,
+                pivot.z + trunk_lean.1,
+            );
+            for i in 0..n_lobes {
+                let h = hash4(face, pu, pv, 0x501E + i);
+                let theta = hash01_u32(h, 0) * TAU;
+                let r_off = hash01_u32(h, 1) * canopy_radius * 0.55;
+                let y_off = (hash01_u32(h, 2) - 0.35) * canopy_radius * veg.canopy_vertical_squash.max(0.3);
+                let lobe_r = canopy_radius * (0.45 + hash01_u32(h, 3) * 0.55);
+                let center = canopy_anchor
+                    + Vec3::new(
+                        theta.cos() * r_off,
+                        y_off,
+                        theta.sin() * r_off,
+                    );
+                lobes.push(CanopyLobe {
+                    center,
+                    radius: lobe_r.max(1.5),
+                    jitter_seed: h ^ 0xCAFE,
+                });
+            }
+        }
+
         Self {
             plant_height,
+            trunk_top_layer,
             height,
-            thickness,
-            canopy_radius,
-            branch_count,
-            trunk_top_layer: plant_height + height,
+            trunk_block: veg.trunk,
+            leaves_block: veg.leaves,
+            trunk_pivot: pivot,
+            trunk_lean,
+            trunk_base_radius,
+            trunk_top_radius,
+            trunk_seed,
+            branches,
+            lobes,
         }
     }
+
+    /// Furthest a single tree can reach horizontally from its plant column.
+    /// Used by the bakery to size its neighbourhood scan.
+    #[allow(dead_code)]
+    pub fn horizontal_reach(&self) -> f32 {
+        let lean = (self.trunk_lean.0.powi(2) + self.trunk_lean.1.powi(2)).sqrt();
+        let canopy = self
+            .lobes
+            .iter()
+            .map(|l| {
+                let dx = l.center.x - self.trunk_pivot.x;
+                let dz = l.center.z - self.trunk_pivot.z;
+                (dx * dx + dz * dz).sqrt() + l.radius
+            })
+            .fold(0.0_f32, f32::max);
+        let branch = self
+            .branches
+            .iter()
+            .map(|b| b.length + b.tip.map(|t| t.radius).unwrap_or(0.0))
+            .fold(0.0_f32, f32::max);
+        lean + canopy.max(branch).max(self.trunk_base_radius)
+    }
+
+    #[allow(dead_code)]
+    pub fn vertical_reach_above(&self) -> f32 {
+        let canopy = self
+            .lobes
+            .iter()
+            .map(|l| (l.center.y + l.radius) - self.plant_height as f32)
+            .fold(self.height as f32, f32::max);
+        let branch = self
+            .branches
+            .iter()
+            .map(|b| b.start.y + b.direction.y * b.length + 1.5)
+            .map(|y| y - self.plant_height as f32)
+            .fold(canopy, f32::max);
+        branch
+    }
+
+    /// Walk every voxel that belongs to this tree and forward it to `emit`.
+    /// The bakery uses this to populate the chunk feature map.
+    pub fn stamp(&self, emit: &mut dyn FnMut(i32, i32, i32, VoxelId)) {
+        // Trunk: layer-by-layer disc with lean, taper, and per-voxel jitter.
+        for layer in (self.plant_height + 1)..=self.trunk_top_layer {
+            let t = (layer - self.plant_height) as f32 / self.height.max(1) as f32;
+            let cx = self.trunk_pivot.x + self.trunk_lean.0 * t * t;
+            let cz = self.trunk_pivot.z + self.trunk_lean.1 * t * t;
+            let r = trunk_radius_at(
+                layer as f32,
+                self.plant_height as f32,
+                self.height as f32,
+                self.trunk_base_radius,
+                self.trunk_top_radius,
+            );
+            stamp_disc(cx, cz, layer as i32, r, self.trunk_seed ^ layer, self.trunk_block, emit);
+        }
+
+        // Branches: trunk-block voxels stepped along the branch direction.
+        for (bi, branch) in self.branches.iter().enumerate() {
+            let steps = (branch.length.max(1.0).ceil()) as i32;
+            for s in 1..=steps {
+                let p = branch.start + branch.direction * (s as f32);
+                let r = branch.thickness * (1.0 - 0.4 * (s as f32 / steps as f32));
+                stamp_disc(
+                    p.x,
+                    p.z,
+                    p.y.round() as i32,
+                    r.max(0.55),
+                    (self.trunk_seed ^ 0x1234).wrapping_add((bi as u32).wrapping_mul(7919) + s as u32),
+                    self.trunk_block,
+                    emit,
+                );
+            }
+            if let Some(tip) = branch.tip {
+                stamp_lobe(tip, self.leaves_block, emit);
+            }
+        }
+
+        // Canopy: union of jittered lobes.
+        for lobe in &self.lobes {
+            stamp_lobe(*lobe, self.leaves_block, emit);
+        }
+    }
+
+    /// Test whether the voxel at `(u, layer, v)` belongs to this tree.
+    /// Mirrors `stamp` exactly so the slow path agrees with the baked map.
+    pub fn voxel_at(&self, u: i32, layer: i32, v: i32) -> Option<VoxelId> {
+        // Trunk
+        if (layer as u32) > self.plant_height && (layer as u32) <= self.trunk_top_layer {
+            let l = layer as u32;
+            let t = (l - self.plant_height) as f32 / self.height.max(1) as f32;
+            let cx = self.trunk_pivot.x + self.trunk_lean.0 * t * t;
+            let cz = self.trunk_pivot.z + self.trunk_lean.1 * t * t;
+            let r = trunk_radius_at(
+                layer as f32,
+                self.plant_height as f32,
+                self.height as f32,
+                self.trunk_base_radius,
+                self.trunk_top_radius,
+            );
+            if disc_contains(u, v, cx, cz, r, self.trunk_seed ^ l) {
+                return Some(self.trunk_block);
+            }
+        }
+        // Branches
+        for (bi, branch) in self.branches.iter().enumerate() {
+            let steps = (branch.length.max(1.0).ceil()) as i32;
+            for s in 1..=steps {
+                let p = branch.start + branch.direction * (s as f32);
+                let r = (branch.thickness * (1.0 - 0.4 * (s as f32 / steps as f32))).max(0.55);
+                if (p.y.round() as i32) == layer
+                    && disc_contains(
+                        u,
+                        v,
+                        p.x,
+                        p.z,
+                        r,
+                        (self.trunk_seed ^ 0x1234)
+                            .wrapping_add((bi as u32).wrapping_mul(7919) + s as u32),
+                    )
+                {
+                    return Some(self.trunk_block);
+                }
+            }
+            if let Some(tip) = branch.tip {
+                if lobe_contains(tip, u, layer, v) {
+                    return Some(self.leaves_block);
+                }
+            }
+        }
+        // Canopy
+        for lobe in &self.lobes {
+            if lobe_contains(*lobe, u, layer, v) {
+                return Some(self.leaves_block);
+            }
+        }
+        None
+    }
+}
+
+// ---- shape primitives -----------------------------------------------------
+
+fn trunk_radius_at(
+    layer: f32,
+    plant_height: f32,
+    total_height: f32,
+    base_r: f32,
+    top_r: f32,
+) -> f32 {
+    let h = total_height.max(0.001);
+    let t = ((layer - plant_height) / h).clamp(0.0, 1.0);
+    // Slight bulge near the base for natural taper (square-root falloff).
+    let bulge = (1.0 - t).sqrt();
+    top_r + (base_r - top_r) * bulge
+}
+
+fn stamp_disc(
+    cx: f32,
+    cz: f32,
+    layer: i32,
+    r: f32,
+    seed: u32,
+    block: VoxelId,
+    emit: &mut dyn FnMut(i32, i32, i32, VoxelId),
+) {
+    let r2 = r * r;
+    let bound = r.ceil() as i32 + 1;
+    let bx = cx.floor() as i32;
+    let bz = cz.floor() as i32;
+    for du in -bound..=bound {
+        for dv in -bound..=bound {
+            let u = bx + du;
+            let v = bz + dv;
+            let dx = u as f32 + 0.5 - cx;
+            let dz = v as f32 + 0.5 - cz;
+            let d2 = dx * dx + dz * dz;
+            // Boundary jitter: ±0.45 v² perturbation breaks the perfect circle.
+            let j = (hash01_u32(seed, ((du as u32) << 16) ^ (dv as u32 & 0xFFFF)) - 0.5) * 0.45;
+            if d2 <= r2 + j {
+                emit(u, layer, v, block);
+            }
+        }
+    }
+}
+
+fn disc_contains(u: i32, v: i32, cx: f32, cz: f32, r: f32, seed: u32) -> bool {
+    let dx = u as f32 + 0.5 - cx;
+    let dz = v as f32 + 0.5 - cz;
+    let d2 = dx * dx + dz * dz;
+    let bx = cx.floor() as i32;
+    let bz = cz.floor() as i32;
+    let du = u - bx;
+    let dv = v - bz;
+    let j = (hash01_u32(seed, ((du as u32) << 16) ^ (dv as u32 & 0xFFFF)) - 0.5) * 0.45;
+    d2 <= r * r + j
+}
+
+fn stamp_lobe(
+    lobe: CanopyLobe,
+    block: VoxelId,
+    emit: &mut dyn FnMut(i32, i32, i32, VoxelId),
+) {
+    let r = lobe.radius;
+    let r2 = r * r;
+    let bound = r.ceil() as i32 + 1;
+    let bx = lobe.center.x.floor() as i32;
+    let by = lobe.center.y.floor() as i32;
+    let bz = lobe.center.z.floor() as i32;
+    for du in -bound..=bound {
+        for dl in -bound..=bound {
+            for dv in -bound..=bound {
+                let u = bx + du;
+                let l = by + dl;
+                let v = bz + dv;
+                let dx = u as f32 + 0.5 - lobe.center.x;
+                let dy = l as f32 + 0.5 - lobe.center.y;
+                let dz = v as f32 + 0.5 - lobe.center.z;
+                let d2 = dx * dx + dy * dy + dz * dz;
+                // Boundary jitter scales with r² so big lobes get bigger nibbles.
+                let j = (hash01_u32(
+                    lobe.jitter_seed,
+                    ((du as u32) << 20) ^ ((dl as u32) << 10) ^ (dv as u32 & 0x3FF),
+                ) - 0.5)
+                    * r2
+                    * 0.40;
+                if d2 <= r2 + j {
+                    emit(u, l, v, block);
+                }
+            }
+        }
+    }
+}
+
+fn lobe_contains(lobe: CanopyLobe, u: i32, layer: i32, v: i32) -> bool {
+    let dx = u as f32 + 0.5 - lobe.center.x;
+    let dy = layer as f32 + 0.5 - lobe.center.y;
+    let dz = v as f32 + 0.5 - lobe.center.z;
+    let d2 = dx * dx + dy * dy + dz * dz;
+    let bx = lobe.center.x.floor() as i32;
+    let by = lobe.center.y.floor() as i32;
+    let bz = lobe.center.z.floor() as i32;
+    let du = u - bx;
+    let dl = layer - by;
+    let dv = v - bz;
+    let r2 = lobe.radius * lobe.radius;
+    let j = (hash01_u32(
+        lobe.jitter_seed,
+        ((du as u32) << 20) ^ ((dl as u32) << 10) ^ (dv as u32 & 0x3FF),
+    ) - 0.5)
+        * r2
+        * 0.40;
+    d2 <= r2 + j
+}
+
+fn hash01(face: u8, u: u32, v: u32, salt: u32) -> f32 {
+    hash4(face, u, v, salt) as f32 / u32::MAX as f32
+}
+
+fn hash01_u32(base: u32, salt: u32) -> f32 {
+    let mut x = base ^ salt.wrapping_mul(0x9E37_79B9);
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7FEB_352D);
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x846C_A68B);
+    x ^= x >> 16;
+    x as f32 / u32::MAX as f32
 }
 
 // ---- Hash + range primitives shared with procedural.rs --------------------
@@ -351,6 +720,20 @@ pub fn range_pick(range: (u32, u32), roll: u32) -> u32 {
     } else {
         range.0 + roll % (range.1 - range.0 + 1)
     }
+}
+
+/// Multiply both range endpoints by a floating-point scale and clamp to a sane
+/// minimum.  Used to translate authored "voxels at 1 m baseline" into the
+/// active planet's voxel grid.
+pub fn scale_range(range: (u32, u32), scale: f32) -> (u32, u32) {
+    let lo = ((range.0 as f32) * scale).round().max(0.0) as u32;
+    let hi = ((range.1 as f32) * scale).round().max(lo as f32) as u32;
+    (lo, hi)
+}
+
+/// Same idea for single counts (e.g. `core_layers`, `surface_layer`).
+pub fn scale_count(value: u32, scale: f32) -> u32 {
+    ((value as f32) * scale).round().max(0.0) as u32
 }
 
 pub fn weighted_detail(

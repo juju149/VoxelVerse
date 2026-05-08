@@ -70,11 +70,22 @@ impl PlanetProfile {
     }
 
     pub fn from_compiled(def: &CompiledPlanet) -> Self {
-        let resolution = def.resolution.max(8);
-        let surface_layer = def.surface_layer.clamp(4, resolution - 1);
-        let core_layers = def.core_layers.min(surface_layer.saturating_sub(1)).max(1);
         debug_assert!(def.voxel_size_meters.is_finite() && def.voxel_size_meters > 0.0);
         let voxel_size_meters = def.voxel_size_meters;
+        // Authored RON values use a 1 m voxel baseline.  When the active grid
+        // shrinks below 1 m we multiply layer counts so the planet keeps the
+        // same physical radius, shell thickness, and core depth — only voxel
+        // density (and therefore detail) goes up.
+        let scale = (1.0_f32 / voxel_size_meters.max(0.0001)).max(1.0);
+        let resolution = ((def.resolution as f32) * scale).round() as u32;
+        let resolution = resolution.max(8);
+        let surface_layer = ((def.surface_layer as f32) * scale).round() as u32;
+        let surface_layer = surface_layer.clamp(4, resolution - 1);
+        let core_layers_raw = ((def.core_layers as f32) * scale).round() as u32;
+        let core_layers = core_layers_raw.min(surface_layer.saturating_sub(1)).max(1);
+        let max_terrain_offset =
+            ((def.max_terrain_offset as f32) * scale).round() as i32;
+
         let (inner_radius, surface_radius, layer_height) =
             radii_from_layers(surface_layer, voxel_size_meters, def.inner_radius_fraction);
 
@@ -87,7 +98,7 @@ impl PlanetProfile {
             inner_radius,
             surface_radius,
             layer_height,
-            max_terrain_offset: def.max_terrain_offset,
+            max_terrain_offset,
             spawn_clearance_layers: def.spawn_clearance_layers,
             seed: def.seed,
         }
