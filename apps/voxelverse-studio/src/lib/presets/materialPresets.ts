@@ -6,6 +6,7 @@ import type {
   ProceduralMaterialRecipe,
 } from "../../types/studio";
 import { createBlueprintFromRecipe } from "../blueprint/materialBlueprint";
+import { createDefaultGraph, createGraphForTemplate } from "../graph/graphFactory";
 import { randomSeed } from "../procedural/seed";
 
 // MaterialKind is an internal implementation detail of the template system.
@@ -417,6 +418,7 @@ export function createEmptyMaterial(namespace = "core", displayName = "New Mater
     category: "custom",
     resolutionPreview: 128,
     seed: randomSeed(),
+    graph: createDefaultGraph("#888888"),
     blueprint: createBlueprintFromRecipe(recipe),
     recipe,
     status: "valid",
@@ -430,7 +432,9 @@ export function createEmptyMaterial(namespace = "core", displayName = "New Mater
  */
 export function createMaterialFromTemplateKey(templateKey: string, namespace = "core"): MaterialFaceDef | null {
   if (templateKey in KIND_CATEGORY) {
-    return createMaterialFromPreset(templateKey as MaterialKind, "soft_natural", namespace);
+    const material = createMaterialFromPreset(templateKey as MaterialKind, "soft_natural", namespace);
+    material.graph = createGraphForTemplate(templateKey);
+    return material;
   }
   return null;
 }

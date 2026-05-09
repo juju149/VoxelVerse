@@ -1,4 +1,4 @@
-import type { BlockDef, ExportFile, MaterialFaceDef, MaterialParam, MaterialPatternLayer, PackProject } from "../../types/studio";
+import type { BlockDef, ExportFile, MaterialFaceDef, MaterialParam, MaterialPatternLayer, PackProject, ProceduralGraph } from "../../types/studio";
 
 function q(value: string) {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -58,10 +58,62 @@ ${links}
     ),`;
 }
 
+// ---------------------------------------------------------------------------
+// ProceduralGraph serializer (Phase 2)
+// ---------------------------------------------------------------------------
+
+function serializeParamValue(value: string | number | boolean): string {
+  if (typeof value === "string") return q(value);
+  if (typeof value === "boolean") return String(value);
+  return String(value);
+}
+
+export function serializeGraph(graph: ProceduralGraph): string {
+  const nodes = graph.nodes.map((node) => {
+    const paramsStr = Object.entries(node.params)
+      .map(([k, v]) => `            ${k}: ${serializeParamValue(v)}`)
+      .join(",\n");
+    const exposedStr = node.exposedParams.map(q).join(", ");
+    return `        GraphNode(
+            id: ${q(node.id)},
+            kind: ${node.kind},
+            position: (${Math.round(node.position.x)}, ${Math.round(node.position.y)}),
+            params: {
+${paramsStr}
+            },
+            exposed_params: [${exposedStr}],
+        )`;
+  }).join(",\n");
+
+  const conns = graph.connections.map((c) => `        GraphConnection(
+            id: ${q(c.id)},
+            from: ${q(`${c.fromNode}.${c.fromPort}`)},
+            to: ${q(`${c.toNode}.${c.toPort}`)},
+        )`).join(",\n");
+
+  return `ProceduralGraph(
+    version: ${graph.version},
+    nodes: [
+${nodes}
+    ],
+    connections: [
+${conns}
+    ],
+)`;
+}
+
+// ---------------------------------------------------------------------------
+// MaterialFaceDef serializer
+// ---------------------------------------------------------------------------
+
 export function serializeMaterialFace(material: MaterialFaceDef) {
   if (material.rawRonOverride?.trim()) {
     return material.rawRonOverride;
   }
+
+  const graphSection = material.graph
+    ? `\n    graph: Some(${serializeGraph(material.graph).replace(/\n/g, "\n    ")}),`
+    : "\n    graph: None,";
 
   const params = material.recipe.params.map(serializeParam).join(",\n");
   const layers = material.recipe.patternLayers.map(serializeLayer).join(",\n");
@@ -71,7 +123,7 @@ export function serializeMaterialFace(material: MaterialFaceDef) {
     display_name: ${q(material.displayName)},
     category: ${q(material.category)},
     resolution_preview: ${material.resolutionPreview},
-    seed: ${material.seed},
+    seed: ${material.seed},${graphSection}
 ${serializeBlueprint(material)}
     recipe: ProceduralMaterialRecipe(
         style: ${material.recipe.style},
@@ -203,9 +255,19 @@ function blockPath(block: BlockDef) {
 }
 
 export function exportProjectFiles(project: PackProject): ExportFile[] {
+  const graphFiles: ExportFile[] = project.materials
+    .filter((m) => m.graph)
+    .map((m) => ({ path: graphPath(m), content: serializeGraph(m.graph!) }));
+
   return [
     { path: "pack.ron", content: serializePack(project) },
     ...project.materials.map((material) => ({ path: materialPath(material), content: serializeMaterialFace(material) })),
+    ...graphFiles,
     ...project.blocks.map((block) => ({ path: blockPath(block), content: serializeBlock(block) })),
   ];
+}
+
+function graphPath(material: MaterialFaceDef): string {
+  const [namespace, path = "unknown"] = material.id.split(":");
+  return `packs/${namespace}/graphs/${path}.ron`;
 }

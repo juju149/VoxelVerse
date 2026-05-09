@@ -17,9 +17,11 @@ import {
   type OnNodesChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Plus, SlidersHorizontal, Trash2 } from "lucide-react";
-import type { MaterialBlueprintNode, MaterialBlueprintNodeKind, MaterialEditorMode, MaterialFaceDef, ParamValue } from "../../types/studio";
+import { AlertTriangle, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
+import type { GraphConnection, GraphNode, GraphNodeKind, MaterialBlueprintNode, MaterialBlueprintNodeKind, MaterialEditorMode, MaterialFaceDef, ParamValue, ProceduralGraph } from "../../types/studio";
 import { compileRecipeFromBlueprint, createBlueprintNode } from "../../lib/blueprint/materialBlueprint";
+import { getNodeDef, NODE_CATEGORIES, NODES_BY_CATEGORY } from "../../lib/graph/nodeDefs";
+import { validateGraph, type GraphError } from "../../lib/graph/graphValidator";
 import { cn } from "../../lib/cn";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -135,6 +137,11 @@ export function MaterialBlueprintEditor({ material, onChange, initialMode = "adv
 
       {editorMode === "simple" ? (
         <SimpleModePanel material={material} onChange={onChange} />
+      ) : material.graph ? (
+        <ProceduralGraphPanel
+          material={material}
+          onChange={onChange}
+        />
       ) : (
         <AdvancedGraphPanel
           material={material}
@@ -161,8 +168,363 @@ export function MaterialBlueprintEditor({ material, onChange, initialMode = "adv
 }
 
 // ---------------------------------------------------------------------------
+// ProceduralGraph panel — real typed node graph (Phase 2)
+// ---------------------------------------------------------------------------
+
+type GraphNodeData = { label: string; kind: GraphNodeKind; color: string };
+const graphNodeTypes = { graphNode: GraphNodeComponent };
+
+function graphNodesToFlow(nodes: GraphNode[]): Node<GraphNodeData>[] {
+  return nodes.map((n) => {
+    const def = getNodeDef(n.kind);
+    return {
+      id: n.id,
+      type: "graphNode",
+      position: n.position,
+      data: { label: n.label ?? def?.label ?? n.kind, kind: n.kind, color: def?.color ?? "#475569" },
+    };
+  });
+}
+
+function graphConnectionsToFlow(connections: GraphConnection[]): Edge[] {
+  return connections.map((c) => ({
+    id: c.id,
+    source: c.fromNode,
+    sourceHandle: c.fromPort,
+    target: c.toNode,
+    targetHandle: c.toPort,
+    animated: true,
+    markerEnd: { type: MarkerType.ArrowClosed },
+    style: { stroke: "#8b5cf6", strokeWidth: 2 },
+  }));
+}
+
+function ProceduralGraphPanel({
+  material,
+  onChange,
+}: {
+  material: MaterialFaceDef;
+  onChange: (material: MaterialFaceDef, message?: string) => void;
+}) {
+  const graph = material.graph!;
+  const initialNodes = useMemo(() => graphNodesToFlow(graph.nodes), [graph.nodes]);
+  const initialEdges = useMemo(() => graphConnectionsToFlow(graph.connections), [graph.connections]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; flowX: number; flowY: number } | null>(null);
+  const errors = useMemo(() => validateGraph(graph), [graph]);
+
+  useEffect(() => setNodes(graphNodesToFlow(graph.nodes)), [graph.nodes, setNodes]);
+  useEffect(() => setEdges(graphConnectionsToFlow(graph.connections)), [graph.connections, setEdges]);
+
+  const selected = graph.nodes.find((n) => n.id === selectedId) ?? null;
+
+  function commitGraph(nextGraph: ProceduralGraph, message = "Graph updated") {
+    onChange({ ...material, graph: nextGraph, previewVersion: material.previewVersion + 1 }, message);
+  }
+
+  const onConnect = useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target || !connection.sourceHandle || !connection.targetHandle) return;
+    const connId = `${connection.source}-${connection.sourceHandle}-${connection.target}-${connection.targetHandle}-${Date.now()}`;
+    const nextConn: GraphConnection = {
+      id: connId,
+      fromNode: connection.source,
+      fromPort: connection.sourceHandle,
+      toNode: connection.target,
+      toPort: connection.targetHandle,
+    };
+    setEdges((curr) => addEdge({ ...connection, id: connId, animated: true, markerEnd: { type: MarkerType.ArrowClosed }, style: { stroke: "#8b5cf6", strokeWidth: 2 } }, curr));
+    commitGraph({ ...graph, connections: [...graph.connections, nextConn] }, "Connection added");
+  }, [graph, commitGraph, setEdges]);
+
+  function updateGraphNode(node: GraphNode) {
+    commitGraph({ ...graph, nodes: graph.nodes.map((n) => n.id === node.id ? node : node) }, "Node params updated");
+  }
+
+  function deleteSelectedNode() {
+    if (!selectedId) return;
+    const node = graph.nodes.find((n) => n.id === selectedId);
+    if (!node || node.kind === "material_output") return;
+    commitGraph({
+      ...graph,
+      nodes: graph.nodes.filter((n) => n.id !== selectedId),
+      connections: graph.connections.filter((c) => c.fromNode !== selectedId && c.toNode !== selectedId),
+    }, "Node removed");
+    setSelectedId(null);
+  }
+
+  function addGraphNode(kind: GraphNodeKind) {
+    if (!menu) return;
+    const def = getNodeDef(kind);
+    const defaultParams: Record<string, ParamValue> = {};
+    for (const p of def?.params ?? []) defaultParams[p.name] = p.default;
+    const newNode: GraphNode = {
+      id: `${kind}_${Date.now()}`,
+      kind,
+      position: { x: menu.flowX, y: menu.flowY },
+      params: defaultParams,
+      exposedParams: (def?.params ?? []).filter((p) => p.exposed).map((p) => p.name),
+    };
+    commitGraph({ ...graph, nodes: [...graph.nodes, newNode] }, `${def?.label ?? kind} node added`);
+    setSelectedId(newNode.id);
+    setMenu(null);
+  }
+
+  return (
+    <div className="space-y-2">
+      {errors.length > 0 && (
+        <div className="space-y-1">
+          {errors.map((err, i) => (
+            <div key={i} className={cn("flex items-start gap-2 rounded-md border px-3 py-2 text-xs", err.severity === "error" ? "border-red-500/30 bg-red-500/10 text-red-400" : "border-yellow-500/30 bg-yellow-500/10 text-yellow-400")}>
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {err.message}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="grid h-full min-h-[720px] grid-cols-[minmax(0,1fr)_320px] overflow-hidden rounded-md border bg-[#0b0d12]">
+        <div className="relative min-h-0">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={graphNodeTypes}
+            onNodesChange={(changes) => { onNodesChange(changes); }}
+            onNodeDragStop={(_, node) => {
+              commitGraph({ ...graph, nodes: graph.nodes.map((n) => n.id === node.id ? { ...n, position: node.position } : n) }, "Node moved");
+            }}
+            onEdgesChange={(changes) => {
+              onEdgesChange(changes);
+              // Remove deleted edges from graph state
+              const deleted = changes.filter((c) => c.type === "remove").map((c) => c.id);
+              if (deleted.length > 0) {
+                commitGraph({ ...graph, connections: graph.connections.filter((c) => !deleted.includes(c.id)) }, "Connection removed");
+              }
+            }}
+            onConnect={onConnect}
+            onNodeClick={(_, node) => setSelectedId(node.id)}
+            onPaneContextMenu={(event) => {
+              event.preventDefault();
+              const target = event.currentTarget as HTMLElement;
+              const bounds = target.getBoundingClientRect();
+              setMenu({ x: event.clientX - bounds.left, y: event.clientY - bounds.top, flowX: event.clientX - bounds.left, flowY: event.clientY - bounds.top });
+            }}
+            onPaneClick={() => setMenu(null)}
+            fitView panOnDrag zoomOnScroll
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background color="#252a34" gap={24} size={1} />
+            <MiniMap pannable zoomable />
+            <Controls />
+          </ReactFlow>
+          {menu && (
+            <div className="absolute z-20 min-w-[200px] rounded-lg border bg-card p-2 shadow-2xl" style={{ left: menu.x, top: menu.y }}>
+              <div className="mb-1 px-2 py-1 text-xs font-medium text-muted-foreground">Add node</div>
+              {NODE_CATEGORIES.filter((cat) => cat !== "output").map((cat) => (
+                <div key={cat}>
+                  <div className="px-2 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{cat}</div>
+                  {NODES_BY_CATEGORY[cat].map((def) => (
+                    <button key={def.kind} type="button" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted" onClick={() => addGraphNode(def.kind)}>
+                      <span className="h-2 w-2 rounded-sm shrink-0" style={{ backgroundColor: def.color }} />
+                      {def.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <aside className="min-h-0 overflow-auto border-l bg-card/95 p-4">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold">Node Parameters</div>
+              <div className="text-xs text-muted-foreground">Right-click canvas to add nodes.</div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={deleteSelectedNode} disabled={!selected || selected.kind === "material_output"}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          {selected ? (
+            <GraphNodeInspector node={selected} onChange={updateGraphNode} />
+          ) : (
+            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Select a node to edit its parameters.</div>
+          )}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function GraphNodeComponent({ data, selected }: NodeProps<Node<GraphNodeData>>) {
+  const def = getNodeDef(data.kind);
+  return (
+    <div className={cn("min-w-[180px] overflow-hidden rounded-md border bg-[#11151c] shadow-xl", selected ? "border-amber-400" : "border-slate-700")}>
+      <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white" style={{ backgroundColor: data.color }}>
+        <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{data.label}</span>
+      </div>
+      <div className="relative space-y-1.5 px-3 py-2 text-xs text-slate-300">
+        {(def?.inputs ?? []).map((port) => (
+          <div key={port.name} className="flex items-center gap-2">
+            <Handle type="target" position={Position.Left} id={port.name} style={{ top: "auto", position: "relative", transform: "none" }} className="!relative !h-2.5 !w-2.5 !border-slate-900 !bg-cyan-400" />
+            <span className="text-slate-400">{port.label}</span>
+          </div>
+        ))}
+        {(def?.outputs ?? []).map((port) => (
+          <div key={port.name} className="flex items-center justify-end gap-2">
+            <span className="text-slate-400">{port.label}</span>
+            <Handle type="source" position={Position.Right} id={port.name} style={{ top: "auto", position: "relative", transform: "none" }} className="!relative !h-2.5 !w-2.5 !border-slate-900 !bg-violet-400" />
+          </div>
+        ))}
+        {def?.inputs.length === 0 && def?.outputs.length === 0 && (
+          <div className="text-slate-500 italic">Output (sink)</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GraphNodeInspector({ node, onChange }: { node: GraphNode; onChange: (node: GraphNode) => void }) {
+  const def = getNodeDef(node.kind);
+  if (!def) return <div className="text-xs text-muted-foreground">Unknown node kind: {node.kind}</div>;
+
+  function setParam(name: string, value: ParamValue) {
+    onChange({ ...node, params: { ...node.params, [name]: value } });
+  }
+
+  function toggleExposed(name: string) {
+    const exposed = node.exposedParams.includes(name)
+      ? node.exposedParams.filter((p) => p !== name)
+      : [...node.exposedParams, name];
+    onChange({ ...node, exposedParams: exposed });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Label</Label>
+        <Input value={node.label ?? def.label} onChange={(e) => onChange({ ...node, label: e.target.value })} />
+      </div>
+      {def.params.map((param) => (
+        <div key={param.name} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label>{param.label}</Label>
+            <button type="button" title="Toggle Simple Mode visibility" onClick={() => toggleExposed(param.name)} className={cn("rounded px-1.5 py-0.5 text-[10px]", node.exposedParams.includes(param.name) ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground")}>
+              {node.exposedParams.includes(param.name) ? "Exposed" : "Hidden"}
+            </button>
+          </div>
+          {param.type === "Color" && (
+            <div className="flex gap-2">
+              <Input type="color" className="w-14 p-1" value={String(node.params[param.name] ?? param.default)} onChange={(e) => setParam(param.name, e.target.value)} />
+              <Input value={String(node.params[param.name] ?? param.default)} onChange={(e) => setParam(param.name, e.target.value)} />
+            </div>
+          )}
+          {param.type === "Float" && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{param.min ?? 0}</span>
+                <span className="font-mono">{Number(node.params[param.name] ?? param.default).toFixed((param.step ?? 0.01) >= 1 ? 0 : 2)}</span>
+                <span>{param.max ?? 1}</span>
+              </div>
+              <Slider min={param.min ?? 0} max={param.max ?? 1} step={param.step ?? 0.01} value={Number(node.params[param.name] ?? param.default)} onChange={(e) => setParam(param.name, Number(e.currentTarget.value))} />
+            </div>
+          )}
+          {param.type === "Bool" && (
+            <Switch checked={Boolean(node.params[param.name] ?? param.default)} onCheckedChange={(checked) => setParam(param.name, checked)} label={param.label} />
+          )}
+          {param.type === "Select" && param.options && (
+            <Select value={String(node.params[param.name] ?? param.default)} onChange={(e) => setParam(param.name, e.target.value)}>
+              {param.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+            </Select>
+          )}
+        </div>
+      ))}
+      {def.kind === "material_output" && (
+        <div className="rounded-md border bg-background/60 p-3 text-xs text-muted-foreground">
+          The graph evaluates all connected upstream nodes and writes the result as albedo + roughness textures.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Simple Mode — key parameters without the graph
 // ---------------------------------------------------------------------------
+
+/** Simple Mode when material.graph is present — shows exposed params from nodes. */
+function GraphSimpleModePanel({
+  material,
+  onChange,
+}: {
+  material: MaterialFaceDef;
+  onChange: (material: MaterialFaceDef, message?: string) => void;
+}) {
+  const graph = material.graph!;
+
+  const exposedEntries: Array<{ node: GraphNode; paramName: string; label: string }> = [];
+  for (const node of graph.nodes) {
+    const def = getNodeDef(node.kind);
+    for (const paramName of node.exposedParams) {
+      const paramDef = def?.params.find((p) => p.name === paramName);
+      if (paramDef) {
+        exposedEntries.push({ node, paramName, label: paramDef.exposedLabel ?? paramDef.label });
+      }
+    }
+  }
+
+  function setNodeParam(nodeId: string, paramName: string, value: ParamValue) {
+    const nextGraph: ProceduralGraph = {
+      ...graph,
+      nodes: graph.nodes.map((n) => n.id === nodeId ? { ...n, params: { ...n.params, [paramName]: value } } : n),
+    };
+    onChange({ ...material, graph: nextGraph, previewVersion: material.previewVersion + 1 }, "Parameter updated");
+  }
+
+  if (exposedEntries.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
+        No parameters exposed yet. Switch to Advanced mode, select a node, and mark params as Exposed.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 rounded-lg border bg-card p-5">
+      {exposedEntries.map(({ node, paramName, label }) => {
+        const def = getNodeDef(node.kind);
+        const paramDef = def?.params.find((p) => p.name === paramName);
+        if (!paramDef) return null;
+        const value = node.params[paramName] ?? paramDef.default;
+
+        return (
+          <div key={`${node.id}-${paramName}`} className="space-y-2">
+            <Label>{label}</Label>
+            {paramDef.type === "Color" && (
+              <div className="flex gap-2">
+                <Input type="color" className="w-14 p-1" value={String(value)} onChange={(e) => setNodeParam(node.id, paramName, e.target.value)} />
+                <Input value={String(value)} onChange={(e) => setNodeParam(node.id, paramName, e.target.value)} />
+              </div>
+            )}
+            {paramDef.type === "Float" && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{paramDef.min ?? 0}</span>
+                  <span className="font-mono">{Number(value).toFixed((paramDef.step ?? 0.01) >= 1 ? 0 : 2)}</span>
+                  <span>{paramDef.max ?? 1}</span>
+                </div>
+                <Slider min={paramDef.min ?? 0} max={paramDef.max ?? 1} step={paramDef.step ?? 0.01} value={Number(value)} onChange={(e) => setNodeParam(node.id, paramName, Number(e.currentTarget.value))} />
+              </div>
+            )}
+            {paramDef.type === "Bool" && (
+              <Switch checked={Boolean(value)} onCheckedChange={(checked) => setNodeParam(node.id, paramName, checked)} label={label} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function SimpleModePanel({
   material,
@@ -171,6 +533,12 @@ function SimpleModePanel({
   material: MaterialFaceDef;
   onChange: (material: MaterialFaceDef, message?: string) => void;
 }) {
+  // Phase 2: if graph is present, show exposed params from graph nodes
+  if (material.graph) {
+    return <GraphSimpleModePanel material={material} onChange={onChange} />;
+  }
+
+  // Legacy: use recipe fields directly
   const recipe = material.recipe;
 
   function setRecipeField<K extends keyof typeof recipe>(field: K, value: (typeof recipe)[K]) {

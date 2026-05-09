@@ -14,11 +14,31 @@ import {
 } from "./color";
 import { fbm, organicCells, smoothStep } from "./noise";
 import { hashString, seededRandom } from "./seed";
+import { evaluateGraphDataUrl } from "../graph/graphEvaluator";
 
 type PreviewOptions = {
   seedOverride?: number;
   size?: number;
 };
+
+/**
+ * Generates a preview PNG data URL for the given material.
+ * When the material has a `graph`, the graph evaluator is used.
+ * Otherwise falls back to the legacy recipe evaluator.
+ */
+export function generateMaterialPreviewDataUrl(material: MaterialFaceDef, options: PreviewOptions = {}) {
+  if (material.graph && material.graph.nodes.length > 0) {
+    return evaluateGraphDataUrl(material.graph, {
+      seedOverride: options.seedOverride ?? material.seed,
+      size: options.size ?? material.resolutionPreview,
+    });
+  }
+  return generateRecipePreviewDataUrl(material, options);
+}
+
+// ---------------------------------------------------------------------------
+// Legacy recipe evaluator (used when material.graph is absent)
+// ---------------------------------------------------------------------------
 
 type SamplePoint = {
   u: number;
@@ -43,7 +63,7 @@ function writePixel(data: Uint8ClampedArray, index: number, color: Rgb) {
   data[index + 3] = 255;
 }
 
-export function generateMaterialPreviewDataUrl(material: MaterialFaceDef, options: PreviewOptions = {}) {
+function generateRecipePreviewDataUrl(material: MaterialFaceDef, options: PreviewOptions = {}) {
   const size = options.size ?? material.resolutionPreview;
   const canvas = document.createElement("canvas");
   canvas.width = size;

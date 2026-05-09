@@ -101,6 +101,57 @@ export type MaterialStylization = {
   microDetail: number;
 };
 
+// ---------------------------------------------------------------------------
+// Phase 2 — ProceduralGraph: typed node graph with real evaluation
+// ---------------------------------------------------------------------------
+
+/** Every node kind supported by the graph evaluator. */
+export type GraphNodeKind =
+  // Input
+  | "color" | "float"
+  // Pattern (→ Mask 0..1)
+  | "noise_fbm" | "voronoi" | "stripes" | "rings" | "dots" | "flat"
+  // Shape (→ Mask)
+  | "gradient" | "band" | "edge_mask"
+  // Warp
+  | "domain_warp"
+  // Blend (→ Color)
+  | "blend_mix" | "blend_multiply" | "blend_screen" | "blend_overlay"
+  // Adjust
+  | "remap" | "contrast_adjust" | "colorize" | "quantize"
+  // Output (sink)
+  | "material_output";
+
+export type GraphNode = {
+  id: string;
+  kind: GraphNodeKind;
+  /** Optional display label override. */
+  label?: string;
+  position: { x: number; y: number };
+  /** Node-specific param values keyed by param name. */
+  params: Record<string, ParamValue>;
+  /** Param names that are surfaced in Simple Mode. */
+  exposedParams: string[];
+};
+
+export type GraphConnection = {
+  id: string;
+  fromNode: string;
+  fromPort: string;
+  toNode: string;
+  toPort: string;
+};
+
+export type ProceduralGraph = {
+  version: 1;
+  nodes: GraphNode[];
+  connections: GraphConnection[];
+};
+
+// ---------------------------------------------------------------------------
+// Legacy blueprint types (kept for backward compat with v5 recipe materials)
+// ---------------------------------------------------------------------------
+
 export type MaterialBlueprintNodeKind =
   | "palette"
   | "pattern"
@@ -147,6 +198,12 @@ export type MaterialFaceDef = {
   category: string;
   resolutionPreview: number;
   seed: number;
+  /**
+   * Phase 2: typed node graph — source of truth when present.
+   * When set, the graph evaluator drives the canvas preview.
+   * When absent, the legacy recipe evaluator is used (backward compat).
+   */
+  graph?: ProceduralGraph;
   blueprint: MaterialBlueprint;
   recipe: ProceduralMaterialRecipe;
   status: ItemStatus;
