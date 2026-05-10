@@ -672,7 +672,9 @@ mod tests {
     fn core_pack_procedural_compiles_from_current_schema() {
         let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
         let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");
-        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials).expect("blocks");
+        let index = crate::ContentIndex::build(&pack);
+        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials, &index)
+            .expect("blocks");
         let procedural_pack =
             PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
         let procedural =

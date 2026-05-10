@@ -2,6 +2,7 @@ use crate::block_registry::{
     BlockMaterialLayers, BlockRegistry, BlockShape, CompiledBlock, CompiledBlockVisual,
     MaterialTextureSet,
 };
+use crate::content_index::ContentIndex;
 use std::collections::HashMap;
 use vv_content_schema::{
     BlockRole, ContentRef, RawBlockDef, RawBlockMaterials, RawBlockVisual, RawMaterialDef,
@@ -21,6 +22,7 @@ impl ContentCompiler {
     pub fn compile_blocks(
         mut raw: Vec<(String, RawBlockDef)>,
         materials: Vec<(String, RawMaterialDef)>,
+        index: &ContentIndex,
     ) -> Result<BlockRegistry, Vec<String>> {
         let mut errors = Vec::new();
         let material_map: HashMap<String, RawMaterialDef> = materials.into_iter().collect();
@@ -63,6 +65,14 @@ impl ContentCompiler {
             if def.runtime.role == Some(BlockRole::PlanetCore) && planet_core.replace(id).is_some() {
                 errors.push("Only one block may declare role = \"planet_core\".".into());
             }
+
+            // Strict reference validation. New checks land here as their
+            // target domains gain real defs (audio: step 3, tags/tools: later).
+            index.require(
+                &def.gameplay.drops,
+                &format!("block '{}' gameplay.drops", key),
+                &mut errors,
+            );
 
             let color = category_color(&def.category);
             let visual = match Self::compile_block_visual(
@@ -302,6 +312,10 @@ mod tests {
         }
     }
 
+    fn synthetic_index() -> crate::ContentIndex {
+        crate::ContentIndex::from_keys(["core:loot/blocks/empty"])
+    }
+
     #[test]
     fn block_compilation_requires_planet_core_role() {
         let mut air = block(None);
@@ -312,6 +326,7 @@ mod tests {
                 ("core:block/terrain/stone".to_string(), block(None)),
             ],
             Vec::new(),
+            &synthetic_index(),
         ) {
             Ok(_) => panic!("missing planet core should be rejected"),
             Err(err) => err,
@@ -321,13 +336,38 @@ mod tests {
     }
 
     #[test]
+    fn block_compilation_rejects_dangling_drops() {
+        let mut air = block(None);
+        air.runtime.reserved_id = Some(0);
+        let mut stone = block(Some(BlockRole::PlanetCore));
+        stone.gameplay.drops = ContentRef("core:loot/blocks/does_not_exist".to_string());
+        let err = match ContentCompiler::compile_blocks(
+            vec![
+                ("core:block/air/air".to_string(), air),
+                ("core:block/terrain/stone".to_string(), stone),
+            ],
+            Vec::new(),
+            &synthetic_index(),
+        ) {
+            Ok(_) => panic!("dangling drops ref should be rejected"),
+            Err(err) => err,
+        };
+        assert!(
+            err.iter().any(|e| e.contains("dangling reference") && e.contains("does_not_exist")),
+            "expected dangling-reference error, got: {err:?}"
+        );
+    }
+
+    #[test]
     fn core_pack_solid_blocks_have_all_faces_materialized() {
         use std::path::Path;
         use vv_pack_loader::PackLoader;
 
         let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
         let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");
-        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials).expect("blocks");
+        let index = crate::ContentIndex::build(&pack);
+        let blocks =
+            ContentCompiler::compile_blocks(pack.blocks, pack.materials, &index).expect("blocks");
 
         for block in blocks.blocks().iter().filter(|b| b.solid) {
             let layers = block.visual.layers;

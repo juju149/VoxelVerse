@@ -236,7 +236,9 @@ mod tests {
     fn core_pack_texture_registry_loads_grass_top_material() {
         let pack_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs");
         let pack = PackLoader::load_from_dir(&pack_root.join("core")).expect("core pack");
-        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials).expect("blocks");
+        let index = crate::ContentIndex::build(&pack);
+        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials, &index)
+            .expect("blocks");
         let textures = TextureRegistry::load(&pack_root, &blocks).expect("textures");
 
         assert!(textures.materials().len() > 10);
