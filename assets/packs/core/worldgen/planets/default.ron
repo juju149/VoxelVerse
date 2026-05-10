@@ -1,6 +1,6 @@
 RawPlanetProceduralDef(
     display_name: "Default Living Planet",
-    seed: 1111626292,
+    seed: 2,
     resolution: 10000,
     surface_layer: 5000,
     voxel_size_meters: 0.5,
