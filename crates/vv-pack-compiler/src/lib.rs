@@ -8,8 +8,8 @@ mod procedural_registry;
 mod texture_registry;
 
 pub use block_registry::{
-    BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, BlockShape,
-    CompiledBlock, CompiledBlockModel, CompiledCollision, CompiledMesh, MaterialTextureSet,
+    BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, CompiledBlock,
+    CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, MaterialTextureSet,
 };
 pub use compiler::ContentCompiler;
 pub use content_index::ContentIndex;

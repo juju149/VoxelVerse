@@ -227,7 +227,6 @@ impl ContentCompiler {
                         layers: BlockMaterialLayers::default(),
                         tint: [1.0, 1.0, 1.0],
                         flat_color: color,
-                        shape: model.shape(),
                         model_id,
                     }
                 }
@@ -343,7 +342,6 @@ impl ContentCompiler {
                     layers: BlockMaterialLayers::default(),
                     tint: [1.0, 1.0, 1.0],
                     flat_color: color,
-                    shape: model.shape(),
                     model_id,
                 });
             } else {
@@ -440,7 +438,6 @@ impl ContentCompiler {
             layers,
             tint: [1.0, 1.0, 1.0],
             flat_color: color,
-            shape: model.shape(),
             model_id,
         })
     }

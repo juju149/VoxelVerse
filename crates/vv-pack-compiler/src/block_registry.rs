@@ -1,20 +1,6 @@
 use std::collections::HashMap;
 use vv_voxel::VoxelId;
 
-/// Geometric shape used to dispatch the mesher.
-///
-/// Derived from a block's `RawBlockMesh`: cube and cube_column meshes both
-/// produce `Cube` (the mesher renders them identically — material layer
-/// mapping handles the end/side variation), cross_plane produces
-/// `CrossPlane`, and `none` meshes (air-like blocks) keep `Cube` because
-/// they are never visited by the mesher (`is_renderable` filters them out).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum BlockShape {
-    #[default]
-    Cube,
-    CrossPlane,
-}
-
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct MaterialTextureSet {
     pub albedo: String,
@@ -89,12 +75,13 @@ pub struct CompiledBlockModel {
 }
 
 impl CompiledBlockModel {
-    /// The shape the mesher dispatches on for this model.
-    pub fn shape(&self) -> BlockShape {
-        match self.mesh {
-            CompiledMesh::CrossPlane => BlockShape::CrossPlane,
-            _ => BlockShape::Cube,
-        }
+    /// True for meshes that fully fill their unit cell (used for
+    /// neighbour-occlusion in the mesher).
+    pub fn is_full_cube(&self) -> bool {
+        matches!(
+            self.mesh,
+            CompiledMesh::Cube { .. } | CompiledMesh::CubeColumn { .. }
+        )
     }
 }
 
@@ -135,6 +122,10 @@ impl BlockModelRegistry {
 }
 
 /// Resolved visual representation used at runtime.
+///
+/// All geometry/collision questions go through the `BlockModelRegistry`
+/// keyed by `model_id`. There is no shape cache — the model is the single
+/// source of truth.
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub struct CompiledBlockVisual {
@@ -144,10 +135,7 @@ pub struct CompiledBlockVisual {
     pub tint: [f32; 3],
     /// RGB flat color fallback used when no atlas is present.
     pub flat_color: [f32; 3],
-    /// Mesh dispatch shape (cached from the model).
-    pub shape: BlockShape,
-    /// Reference into the `BlockModelRegistry`. The model is the source of
-    /// truth for geometry and collision; `shape` is a denormalised cache.
+    /// Reference into the `BlockModelRegistry`.
     pub model_id: BlockModelId,
 }
 
@@ -157,7 +145,6 @@ impl Default for CompiledBlockVisual {
             layers: BlockMaterialLayers::default(),
             tint: [1.0; 3],
             flat_color: [1.0, 0.0, 1.0],
-            shape: BlockShape::Cube,
             model_id: BlockModelId(0),
         }
     }
@@ -235,17 +222,28 @@ impl BlockRegistry {
         if id == VoxelId::AIR {
             return false;
         }
-        self.block(id)
-            .is_some_and(|b| b.solid && b.visual.shape == BlockShape::Cube)
+        let Some(block) = self.block(id) else {
+            return false;
+        };
+        if !block.solid {
+            return false;
+        }
+        self.models
+            .get(block.visual.model_id)
+            .is_some_and(|m| m.is_full_cube())
     }
 
     pub fn is_renderable(&self, id: VoxelId) -> bool {
         id != VoxelId::AIR
     }
 
-    #[allow(dead_code)]
-    pub fn shape(&self, id: VoxelId) -> BlockShape {
-        self.block(id).map(|b| b.visual.shape).unwrap_or_default()
+    /// Resolve the compiled model behind a runtime `VoxelId`. Panics on
+    /// unknown ids (engine bug, not a content issue).
+    pub fn model_of(&self, id: VoxelId) -> &CompiledBlockModel {
+        let visual = self.visual(id);
+        self.models
+            .get(visual.model_id)
+            .unwrap_or_else(|| panic!("Block runtime id {} references unknown model", id.raw()))
     }
 
     pub fn color(&self, id: VoxelId) -> [f32; 3] {

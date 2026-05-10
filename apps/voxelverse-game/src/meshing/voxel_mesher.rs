@@ -2,7 +2,7 @@ use super::{
     ambient_occlusion, pack_material_edges, pack_material_flags, CpuMesh, CpuVertex, FaceEdgeMask,
     MeshGen, FLAG_ALPHA_TEST,
 };
-use crate::content::BlockShape;
+use crate::content::CompiledMesh;
 use crate::generation::{ChunkFeatureMap, CoordSystem};
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use crate::world::PlanetData;
@@ -231,10 +231,20 @@ impl MeshGen {
         idx: &mut u32,
     ) {
         let voxel_id = accessor.voxel_id(id);
-        let visual = accessor.data.content.visual(voxel_id);
-        match visual.shape {
-            BlockShape::CrossPlane => Self::add_cross_plane_voxel(id, accessor, verts, inds, idx),
-            BlockShape::Cube => Self::add_cube_voxel(id, accessor, verts, inds, idx),
+        let model = accessor.data.content.model_of(voxel_id);
+        match &model.mesh {
+            CompiledMesh::CrossPlane => {
+                Self::add_cross_plane_voxel(id, accessor, verts, inds, idx)
+            }
+            CompiledMesh::Cube { .. } | CompiledMesh::CubeColumn { .. } => {
+                Self::add_cube_voxel(id, accessor, verts, inds, idx)
+            }
+            CompiledMesh::None => {
+                // Air-like blocks with no geometry; the candidate buffer
+                // already filters them via `is_renderable`, so reaching
+                // here means an engine bug rather than benign content.
+                debug_assert!(false, "mesher visited a None-mesh block");
+            }
         }
     }
 
