@@ -148,6 +148,7 @@ impl<'a> Renderer<'a> {
             let Some(key) = self.load_queue.pop() else {
                 break;
             };
+            self.load_queue_set.remove(&key);
             if self.chunks.contains_key(&key) || self.pending_chunks.contains(&key) {
                 continue;
             }
@@ -173,11 +174,14 @@ impl<'a> Renderer<'a> {
         self.chunks.clear();
         self.lod_chunks.clear();
         self.load_queue.clear();
+        self.load_queue_set.clear();
         self.pending_chunks.clear();
         self.pending_dirty.clear();
         self.pending_lods.clear();
         self.dirty_chunks.clear();
         self.player_chunk_pos = None;
+        self.required_voxels.clear();
+        self.required_lods.clear();
         self.update_view(player_pos, planet);
     }
 

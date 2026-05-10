@@ -27,6 +27,8 @@ impl<'a> Renderer<'a> {
             pending_lods: self.pending_lods.len(),
             gpu_vertices,
             gpu_indices,
+            draw_calls: self.last_draw_calls,
+            shadow_draw_calls: self.last_shadow_draw_calls,
             // job/timing fields are zero-filled here; the caller may override them
             mesh_jobs_in_flight: self.pending_chunks.len(),
             lod_jobs_in_flight: self.pending_lods.len(),

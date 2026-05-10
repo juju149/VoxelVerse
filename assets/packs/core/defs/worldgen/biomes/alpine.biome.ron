@@ -1,8 +1,8 @@
 ﻿BiomeDef(
     display_name: "Alpine Heights",
     surface: (
-        top: "core:block/terrain/stone",
-        under: "core:block/terrain/deepslate",
+        top: "core:block/terrain/snow",
+        under: "core:block/terrain/stone",
         depth_voxels: (1, 4),
         slope_override: Some((above_degrees: 30, top: "core:block/terrain/stone")),
     ),

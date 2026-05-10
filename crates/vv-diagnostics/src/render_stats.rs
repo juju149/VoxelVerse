@@ -18,6 +18,8 @@ pub struct RenderStats {
     pub pending_lods: usize,
     pub gpu_vertices: usize,
     pub gpu_indices: usize,
+    pub draw_calls: usize,
+    pub shadow_draw_calls: usize,
 
     // --- job counters (updated each frame) ---
     pub mesh_jobs_in_flight: usize,
@@ -60,7 +62,7 @@ impl RenderStats {
     ) -> String {
         let target = target_voxel.unwrap_or_else(|| "none".to_string());
         format!(
-            "Culling:  {culling}\nFrame:    {frame:.2} ms\nView:     {view:.2} ms\nRender:   {render:.2} ms\nPlayer:   {px:.1}, {py:.1}, {pz:.1}\nTarget:   {target}\nChunks:   {vc} / {ac}\nLODs:     {vl} / {al}\nQueue:    {qc}\nPending:  {pc} chunks / {pl} LODs\nJobs:     {mj} mesh / {lj} LOD\nUploads:  {up} this frame\nMesh ms:  avg {ma:.2} / max {mx:.2}\nGPU:      {gpu}",
+            "Culling:  {culling}\nFrame:    {frame:.2} ms\nView:     {view:.2} ms\nRender:   {render:.2} ms\nPlayer:   {px:.1}, {py:.1}, {pz:.1}\nTarget:   {target}\nChunks:   {vc} / {ac}\nLODs:     {vl} / {al}\nDraws:    {draws} main / {shadow} shadow\nQueue:    {qc}\nPending:  {pc} chunks / {pl} LODs\nJobs:     {mj} mesh / {lj} LOD\nUploads:  {up} this frame\nMesh ms:  avg {ma:.2} / max {mx:.2}\nGPU:      {gpu}",
             culling = culling_status,
             frame = frame_time_ms,
             view = self.update_view_ms,
@@ -73,6 +75,8 @@ impl RenderStats {
             ac = self.active_chunks,
             vl = self.visible_lods,
             al = self.active_lods,
+            draws = self.draw_calls,
+            shadow = self.shadow_draw_calls,
             qc = self.queued_chunks,
             pc = self.pending_chunks,
             pl = self.pending_lods,

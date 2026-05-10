@@ -216,6 +216,8 @@ impl<'a> Renderer<'a> {
         // debug Stats
         let mut rendered_lods = 0;
         let mut rendered_chunks = 0;
+        let mut main_draw_calls = 0usize;
+        let mut shadow_draw_calls = 0usize;
 
         let cam_pos = controller.get_camera_pos(player);
         let frustum = Frustum::from_matrix(mvp);
@@ -369,6 +371,7 @@ impl<'a> Renderer<'a> {
                     shadow_pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
                     shadow_pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
                     shadow_pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
+                    shadow_draw_calls += 1;
                 }
             }
             for mesh in self.lod_chunks.values() {
@@ -380,6 +383,7 @@ impl<'a> Renderer<'a> {
                     shadow_pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
                     shadow_pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
                     shadow_pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
+                    shadow_draw_calls += 1;
                 }
             }
         }
@@ -435,6 +439,7 @@ impl<'a> Renderer<'a> {
                     pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
                     pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
+                    main_draw_calls += 1;
                 }
             }
 
@@ -449,6 +454,7 @@ impl<'a> Renderer<'a> {
                     pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
                     pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
+                    main_draw_calls += 1;
                 }
             }
 
@@ -459,6 +465,7 @@ impl<'a> Renderer<'a> {
                     pass.set_vertex_buffer(0, state.mesh.v_buf.slice(..));
                     pass.set_index_buffer(state.mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..state.mesh.num_inds, 0, 0..1);
+                    main_draw_calls += 1;
                 }
             }
 
@@ -472,6 +479,7 @@ impl<'a> Renderer<'a> {
                 pass.set_vertex_buffer(0, self.player_v_buf.slice(..));
                 pass.set_index_buffer(self.player_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.player_inds, 0, 0..1);
+                main_draw_calls += 1;
             }
 
             if self.collision_inds > 0 {
@@ -481,6 +489,7 @@ impl<'a> Renderer<'a> {
                 pass.set_vertex_buffer(0, self.collision_v_buf.slice(..));
                 pass.set_index_buffer(self.collision_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.collision_inds, 0, 0..1);
+                main_draw_calls += 1;
             }
 
             if self.cursor_inds > 0 {
@@ -490,6 +499,7 @@ impl<'a> Renderer<'a> {
                 pass.set_vertex_buffer(0, self.cursor_v_buf.slice(..));
                 pass.set_index_buffer(self.cursor_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.cursor_inds, 0, 0..1);
+                main_draw_calls += 1;
             }
 
             if controller.first_person {
@@ -499,6 +509,7 @@ impl<'a> Renderer<'a> {
                 pass.set_vertex_buffer(0, self.cross_v_buf.slice(..));
                 pass.set_index_buffer(self.cross_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.cross_inds, 0, 0..1);
+                main_draw_calls += 1;
             }
 
             if self.console_inds > 0 {
@@ -508,8 +519,12 @@ impl<'a> Renderer<'a> {
                 pass.set_vertex_buffer(0, self.console_v_buf.slice(..));
                 pass.set_index_buffer(self.console_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.console_inds, 0, 0..1);
+                main_draw_calls += 1;
             }
         }
+
+        self.last_draw_calls = main_draw_calls;
+        self.last_shadow_draw_calls = shadow_draw_calls;
 
         self.frame_stats.tick();
 

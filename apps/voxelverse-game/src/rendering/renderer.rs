@@ -104,7 +104,10 @@ pub struct Renderer<'a> {
 
     // --- THREADING ---
     load_queue: Vec<SurfaceChunkKey>,
+    load_queue_set: HashSet<SurfaceChunkKey>,
     player_chunk_pos: Option<SurfaceChunkKey>,
+    required_voxels: HashSet<SurfaceChunkKey>,
+    required_lods: HashSet<LodKey>,
 
     mesh_tx: Sender<MeshJobResult<SurfaceChunkKey>>,
     mesh_rx: Receiver<MeshJobResult<SurfaceChunkKey>>,
@@ -126,6 +129,8 @@ pub struct Renderer<'a> {
     completed_mesh_count: usize,
     update_view_ms: f32,
     last_render_ms: f32,
+    last_draw_calls: usize,
+    last_shadow_draw_calls: usize,
 
     frame_stats: FrameStats,
 
