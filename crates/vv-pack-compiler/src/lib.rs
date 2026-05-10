@@ -7,7 +7,10 @@ mod procedural;
 mod procedural_registry;
 mod texture_registry;
 
-pub use block_registry::{BlockRegistry, BlockShape, MaterialTextureSet};
+pub use block_registry::{
+    BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, BlockShape,
+    CompiledBlock, CompiledBlockModel, CompiledCollision, CompiledMesh, MaterialTextureSet,
+};
 pub use compiler::ContentCompiler;
 pub use content_index::ContentIndex;
 pub use materials::TerrainPalette;

@@ -6,6 +6,7 @@ use vv_content_schema::*;
 pub struct LoadedPack {
     pub manifest: RawPackManifest,
     pub blocks: Vec<(String, RawBlockDef)>,
+    pub block_models: Vec<(String, RawBlockModelDef)>,
     pub materials: Vec<(String, RawMaterialDef)>,
     pub items: Vec<(String, RawItemDef)>,
     pub entities: Vec<(String, RawEntityDef)>,
@@ -68,6 +69,7 @@ impl PackLoader {
         Ok(LoadedPack {
             manifest,
             blocks: load_typed_tree(&defs.join("blocks"), &defs, &namespace)?,
+            block_models: load_typed_tree(&defs.join("block_models"), &defs, &namespace)?,
             materials: load_typed_tree(&defs.join("materials"), &defs, &namespace)?,
             items: load_typed_tree(&defs.join("items"), &defs, &namespace)?,
             entities: load_typed_tree(&defs.join("entities"), &defs, &namespace)?,
@@ -235,6 +237,7 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
     let dirs = &parts[1..parts.len() - 1];
     let id_path = match root {
         "blocks" => join_domain("block", dirs, &stem),
+        "block_models" => join_domain("block_model", dirs, &stem),
         "materials" => join_domain("material", dirs, &stem),
         "items" => join_domain("item", &singular_item_dirs(dirs), &stem),
         "entities" => join_domain("entity", dirs, &stem),

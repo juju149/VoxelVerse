@@ -1,21 +1,28 @@
-﻿BlockDef(
+BlockDef(
+    format_version: 1,
+    model: "core:block_model/soft_cube",
     display_name: "Powder Snow",
     category: "terrain",
     physical: (
         solid: true,
         opaque: false,
-        collision: soft_cube,
+
         hardness: 0.2,
         blast_resistance: 0.6,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-        shape: cube,
+
         render: alpha_test,
-        materials: All("core:material/blocks/powder_snow/powder_snow_all"),
-        ambient_occlusion: true,
-        casts_shadow: true,
+        materials: {
+            "py": "core:material/blocks/powder_snow/powder_snow_all",
+            "ny": "core:material/blocks/powder_snow/powder_snow_all",
+            "pz": "core:material/blocks/powder_snow/powder_snow_all",
+            "nz": "core:material/blocks/powder_snow/powder_snow_all",
+            "px": "core:material/blocks/powder_snow/powder_snow_all",
+            "nx": "core:material/blocks/powder_snow/powder_snow_all",
+        },
     ),
     gameplay: (
         preferred_tool: Some("core:tag/item/tool/shovel"),

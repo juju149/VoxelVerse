@@ -1,21 +1,23 @@
-﻿BlockDef(
+BlockDef(
+    format_version: 1,
+    model: "core:block_model/cross_plane",
     display_name: "Short Grass",
     category: "flora",
     physical: (
         solid: false,
         opaque: false,
-        collision: none,
+
         hardness: 0.0,
         blast_resistance: 0,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-        shape: cross_plane,
+
         render: alpha_test,
-        materials: All("core:material/blocks/short_grass/short_grass_all"),
-        ambient_occlusion: true,
-        casts_shadow: true,
+        materials: {
+            "plane": "core:material/blocks/short_grass/short_grass_all",
+        },
     ),
     gameplay: (
         preferred_tool: None,

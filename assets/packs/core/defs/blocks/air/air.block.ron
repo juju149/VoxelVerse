@@ -1,21 +1,21 @@
-﻿BlockDef(
+BlockDef(
+    format_version: 1,
+    model: "core:block_model/air",
     display_name: "Air",
     category: "air",
     physical: (
         solid: false,
         opaque: false,
-        collision: none,
+
         hardness: 0.0,
         blast_resistance: 0,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-        shape: none,
+
         render: invisible,
-        materials: None,
-        ambient_occlusion: true,
-        casts_shadow: true,
+        materials: {},
     ),
     gameplay: (
         preferred_tool: None,

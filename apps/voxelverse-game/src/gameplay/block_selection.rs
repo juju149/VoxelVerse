@@ -66,8 +66,10 @@ mod tests {
         let pack = PackLoader::load_from_dir(&core_pack_dir)
             .expect("assets/packs/core must exist for tests");
         let index = vv_pack_compiler::ContentIndex::build(&pack);
+        let models = ContentCompiler::compile_block_models(pack.block_models).expect("block_models");
         let registry = Arc::new(
-            ContentCompiler::compile_blocks(pack.blocks, pack.materials, &index).expect("blocks"),
+            ContentCompiler::compile_blocks(pack.blocks, pack.materials, models, &index)
+                .expect("blocks"),
         );
         let procedural_pack =
             PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");

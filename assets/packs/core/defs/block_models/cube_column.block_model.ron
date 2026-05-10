@@ -1,0 +1,12 @@
+BlockModelDef(
+    format_version: 1,
+    display_name: "Vertical column (axial caps + lateral sides)",
+    // Two slots: `end` for the two axial caps (default Y-axis = top/bottom),
+    // `side` for the four lateral faces. Future axis state will rotate the
+    // mapping without authoring extra layers.
+    mesh: cube_column(
+        face_layers: ["end", "side"],
+        ambient_occlusion: true,
+    ),
+    collision: full_cube,
+)

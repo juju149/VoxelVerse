@@ -1,21 +1,28 @@
-﻿BlockDef(
+BlockDef(
+    format_version: 1,
+    model: "core:block_model/leaf_block",
     display_name: "Acacia Leaves",
     category: "natural/leaves",
     physical: (
         solid: true,
         opaque: false,
-        collision: leaf_volume,
+
         hardness: 0.25,
         blast_resistance: 0.75,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-        shape: cube,
+
         render: alpha_test,
-        materials: All("core:material/blocks/oak_leaves/oak_leaves_all"),
-        ambient_occlusion: true,
-        casts_shadow: true,
+        materials: {
+            "py": "core:material/blocks/oak_leaves/oak_leaves_all",
+            "ny": "core:material/blocks/oak_leaves/oak_leaves_all",
+            "pz": "core:material/blocks/oak_leaves/oak_leaves_all",
+            "nz": "core:material/blocks/oak_leaves/oak_leaves_all",
+            "px": "core:material/blocks/oak_leaves/oak_leaves_all",
+            "nx": "core:material/blocks/oak_leaves/oak_leaves_all",
+        },
     ),
     gameplay: (
         preferred_tool: Some("core:tag/item/tool/shears"),

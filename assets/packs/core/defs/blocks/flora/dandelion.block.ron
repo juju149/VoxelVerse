@@ -1,21 +1,23 @@
-﻿BlockDef(
+BlockDef(
+    format_version: 1,
+    model: "core:block_model/cross_plane",
     display_name: "Dandelion",
     category: "flora",
     physical: (
         solid: false,
         opaque: false,
-        collision: none,
+
         hardness: 0.0,
         blast_resistance: 0,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-        shape: cross_plane,
+
         render: alpha_test,
-        materials: All("core:material/blocks/dandelion/dandelion_all"),
-        ambient_occlusion: true,
-        casts_shadow: true,
+        materials: {
+            "plane": "core:material/blocks/dandelion/dandelion_all",
+        },
     ),
     gameplay: (
         preferred_tool: None,

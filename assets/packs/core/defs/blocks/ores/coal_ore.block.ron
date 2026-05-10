@@ -1,21 +1,28 @@
-﻿BlockDef(
+BlockDef(
+    format_version: 1,
+    model: "core:block_model/cube",
     display_name: "Coal Ore",
     category: "ore",
     physical: (
         solid: true,
         opaque: true,
-        collision: full_cube,
+
         hardness: 2.0,
         blast_resistance: 6,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-        shape: cube,
+
         render: opaque,
-        materials: All("core:material/blocks/coal_ore/coal_ore_all"),
-        ambient_occlusion: true,
-        casts_shadow: true,
+        materials: {
+            "py": "core:material/blocks/coal_ore/coal_ore_all",
+            "ny": "core:material/blocks/coal_ore/coal_ore_all",
+            "pz": "core:material/blocks/coal_ore/coal_ore_all",
+            "nz": "core:material/blocks/coal_ore/coal_ore_all",
+            "px": "core:material/blocks/coal_ore/coal_ore_all",
+            "nx": "core:material/blocks/coal_ore/coal_ore_all",
+        },
     ),
     gameplay: (
         preferred_tool: Some("core:tag/item/tool/pickaxe"),

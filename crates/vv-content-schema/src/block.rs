@@ -1,20 +1,12 @@
-use crate::{ContentRef, RawBlockMaterials, RawBlockShape, RawRenderMode};
+use crate::{ContentRef, RawRenderMode};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BlockRole {
     DefaultPlace,
     PlanetCore,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum RawBlockCollision {
-    None,
-    FullCube,
-    SoftCube,
-    LeafVolume,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
@@ -27,20 +19,24 @@ pub enum RawBlockPlacement {
 pub struct RawBlockPhysicalDef {
     pub solid: bool,
     pub opaque: bool,
-    pub collision: RawBlockCollision,
     pub hardness: f32,
     pub blast_resistance: f32,
     pub friction: f32,
     pub restitution: f32,
 }
 
+/// Per-block visual override. Geometry, AO, and collision now live on the
+/// referenced `RawBlockModelDef`. The block keeps the render mode and the
+/// resolved face-layer material map.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBlockVisual {
-    pub shape: RawBlockShape,
     pub render: RawRenderMode,
-    pub materials: RawBlockMaterials,
-    pub ambient_occlusion: bool,
-    pub casts_shadow: bool,
+    /// Map from `face_layer` slot name → material `ContentRef`.
+    /// The compiler validates that the keys match the referenced model's
+    /// `face_layers()` exactly — no missing slot, no extra slot.
+    /// For invisible blocks (air-like) the map is empty.
+    #[serde(default)]
+    pub materials: HashMap<String, ContentRef>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -86,8 +82,12 @@ pub struct RawBlockSimulationDef {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBlockDef {
+    pub format_version: u32,
     pub display_name: String,
     pub category: String,
+    /// Reference to a `RawBlockModelDef` (e.g. `core:block_model/cube`).
+    /// Provides geometry, face-layer slot names, and collision.
+    pub model: ContentRef,
     pub physical: RawBlockPhysicalDef,
     pub visual: RawBlockVisual,
     pub gameplay: RawBlockGameplayDef,

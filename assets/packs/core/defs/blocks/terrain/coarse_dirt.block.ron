@@ -1,21 +1,28 @@
-﻿BlockDef(
+BlockDef(
+    format_version: 1,
+    model: "core:block_model/cube",
     display_name: "Coarse Dirt",
     category: "terrain",
     physical: (
         solid: true,
         opaque: true,
-        collision: full_cube,
+
         hardness: 0.65,
         blast_resistance: 1.95,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-        shape: cube,
+
         render: opaque,
-        materials: All("core:material/blocks/dirt/dirt_all"),
-        ambient_occlusion: true,
-        casts_shadow: true,
+        materials: {
+            "py": "core:material/blocks/dirt/dirt_all",
+            "ny": "core:material/blocks/dirt/dirt_all",
+            "pz": "core:material/blocks/dirt/dirt_all",
+            "nz": "core:material/blocks/dirt/dirt_all",
+            "px": "core:material/blocks/dirt/dirt_all",
+            "nx": "core:material/blocks/dirt/dirt_all",
+        },
     ),
     gameplay: (
         preferred_tool: Some("core:tag/item/tool/shovel"),

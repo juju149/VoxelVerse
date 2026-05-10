@@ -30,8 +30,15 @@ pub fn load_core_content() -> LoadedCoreContent {
     });
 
     let content_index = vv_pack_compiler::ContentIndex::build(&pack);
+    let compiled_models =
+        ContentCompiler::compile_block_models(pack.block_models).unwrap_or_else(|errors| {
+            for e in &errors {
+                eprintln!("[content error] {}", e);
+            }
+            panic!("Block model compilation failed; see errors above.");
+        });
     let compiled_blocks =
-        ContentCompiler::compile_blocks(pack.blocks, pack.materials, &content_index)
+        ContentCompiler::compile_blocks(pack.blocks, pack.materials, compiled_models, &content_index)
             .unwrap_or_else(|errors| {
                 for e in &errors {
                     eprintln!("[content error] {}", e);

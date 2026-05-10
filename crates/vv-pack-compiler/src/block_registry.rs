@@ -1,23 +1,18 @@
 use std::collections::HashMap;
-use vv_content_schema::RawBlockShape;
 use vv_voxel::VoxelId;
 
 /// Geometric shape used to dispatch the mesher.
+///
+/// Derived from a block's `RawBlockMesh`: cube and cube_column meshes both
+/// produce `Cube` (the mesher renders them identically — material layer
+/// mapping handles the end/side variation), cross_plane produces
+/// `CrossPlane`, and `none` meshes (air-like blocks) keep `Cube` because
+/// they are never visited by the mesher (`is_renderable` filters them out).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum BlockShape {
     #[default]
     Cube,
     CrossPlane,
-}
-
-impl From<RawBlockShape> for BlockShape {
-    fn from(value: RawBlockShape) -> Self {
-        match value {
-            RawBlockShape::None => Self::Cube,
-            RawBlockShape::Cube => Self::Cube,
-            RawBlockShape::CrossPlane => Self::CrossPlane,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -27,6 +22,16 @@ pub struct MaterialTextureSet {
     pub roughness: String,
 }
 
+/// Material atlas indices per cube face, in renderer-axis order.
+///
+/// The compiler resolves a block's `materials` map into these slots based
+/// on the referenced model's mesh kind:
+/// - `Cube`: `top = materials["py"]`, `bottom = materials["ny"]`,
+///   `front = materials["pz"]`, `back = materials["nz"]`,
+///   `right = materials["px"]`, `left = materials["nx"]`.
+/// - `CubeColumn` (default Y-axis): top/bottom = `end`, others = `side`.
+/// - `CrossPlane`: all six slots replicate `plane` for compatibility with
+///   the existing mesher; only one slot is actually consumed at draw time.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct BlockMaterialLayers {
     pub top: u32,
@@ -35,6 +40,98 @@ pub struct BlockMaterialLayers {
     pub back: u32,
     pub left: u32,
     pub right: u32,
+}
+
+/// Dense identifier of a `CompiledBlockModel` in the `BlockModelRegistry`.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct BlockModelId(u32);
+
+impl BlockModelId {
+    pub fn raw(self) -> u32 {
+        self.0
+    }
+
+    pub(crate) fn from_raw(id: u32) -> Self {
+        Self(id)
+    }
+}
+
+/// Compiled mesh kind, retained on the model for future state transforms
+/// and mesher inspection. The mesher currently dispatches on
+/// `CompiledBlockVisual::shape` for performance — this enum will become the
+/// single source of truth in a later sprint step.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CompiledMesh {
+    None,
+    Cube { ambient_occlusion: bool },
+    CubeColumn { ambient_occlusion: bool },
+    CrossPlane,
+}
+
+/// Compiled collision shape attached to a model.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompiledCollision {
+    None,
+    FullCube,
+    SoftCube,
+    LeafVolume,
+}
+
+#[derive(Clone, Debug)]
+pub struct CompiledBlockModel {
+    pub id: BlockModelId,
+    pub key: String,
+    pub mesh: CompiledMesh,
+    pub collision: CompiledCollision,
+    /// Stable face-layer slot names declared by the model — the contract that
+    /// referencing blocks must satisfy in their `materials` map.
+    pub face_layers: Vec<String>,
+}
+
+impl CompiledBlockModel {
+    /// The shape the mesher dispatches on for this model.
+    pub fn shape(&self) -> BlockShape {
+        match self.mesh {
+            CompiledMesh::CrossPlane => BlockShape::CrossPlane,
+            _ => BlockShape::Cube,
+        }
+    }
+}
+
+/// Registry of all compiled block models. Indexed densely by `BlockModelId`.
+pub struct BlockModelRegistry {
+    models: Vec<CompiledBlockModel>,
+    key_to_id: HashMap<String, BlockModelId>,
+}
+
+impl BlockModelRegistry {
+    pub(crate) fn new(models: Vec<CompiledBlockModel>) -> Self {
+        let key_to_id = models
+            .iter()
+            .map(|m| (m.key.clone(), m.id))
+            .collect::<HashMap<_, _>>();
+        Self { models, key_to_id }
+    }
+
+    pub fn lookup(&self, key: &str) -> Option<BlockModelId> {
+        self.key_to_id.get(key).copied()
+    }
+
+    pub fn get(&self, id: BlockModelId) -> Option<&CompiledBlockModel> {
+        self.models.get(id.raw() as usize)
+    }
+
+    pub fn models(&self) -> &[CompiledBlockModel] {
+        &self.models
+    }
+
+    pub fn len(&self) -> usize {
+        self.models.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.models.is_empty()
+    }
 }
 
 /// Resolved visual representation used at runtime.
@@ -47,8 +144,11 @@ pub struct CompiledBlockVisual {
     pub tint: [f32; 3],
     /// RGB flat color fallback used when no atlas is present.
     pub flat_color: [f32; 3],
-    /// Mesh dispatch shape.
+    /// Mesh dispatch shape (cached from the model).
     pub shape: BlockShape,
+    /// Reference into the `BlockModelRegistry`. The model is the source of
+    /// truth for geometry and collision; `shape` is a denormalised cache.
+    pub model_id: BlockModelId,
 }
 
 impl Default for CompiledBlockVisual {
@@ -58,6 +158,7 @@ impl Default for CompiledBlockVisual {
             tint: [1.0; 3],
             flat_color: [1.0, 0.0, 1.0],
             shape: BlockShape::Cube,
+            model_id: BlockModelId(0),
         }
     }
 }
@@ -85,13 +186,10 @@ pub struct BlockRegistry {
     blocks: Vec<CompiledBlock>,
     key_to_id: HashMap<String, VoxelId>,
     material_sets: Vec<MaterialTextureSet>,
-    /// One RGBA color per atlas layer (length = material_sets.len() + 1).
-    /// Index 0 is the fallback layer (white). Index L+1 is the representative
-    /// flat color of `material_sets[L]` — taken from the first block that uses
-    /// that material. Consumed by the renderer's color-only debug toggle.
     material_colors: Vec<[f32; 4]>,
     default_place: VoxelId,
     planet_core: VoxelId,
+    models: BlockModelRegistry,
 }
 
 impl BlockRegistry {
@@ -103,6 +201,7 @@ impl BlockRegistry {
         material_colors: Vec<[f32; 4]>,
         default_place: VoxelId,
         planet_core: VoxelId,
+        models: BlockModelRegistry,
     ) -> Self {
         Self {
             blocks,
@@ -111,15 +210,14 @@ impl BlockRegistry {
             material_colors,
             default_place,
             planet_core,
+            models,
         }
     }
 
-    /// Look up a block ID by its namespaced key (e.g. `"core:dirt"`).
     pub fn lookup(&self, key: &str) -> Option<VoxelId> {
         self.key_to_id.get(key).copied()
     }
 
-    /// Get the compiled definition for a runtime ID.
     pub fn block(&self, id: VoxelId) -> Option<&CompiledBlock> {
         self.blocks.get(id.raw() as usize)
     }
@@ -133,8 +231,6 @@ impl BlockRegistry {
         self.block(id).is_some_and(|b| b.solid)
     }
 
-    /// Whether the block fully fills its 1×1×1 voxel cell. Cross-planes and
-    /// air do not — used by the mesher to decide if neighbour faces are occluded.
     pub fn is_opaque_cube(&self, id: VoxelId) -> bool {
         if id == VoxelId::AIR {
             return false;
@@ -143,8 +239,6 @@ impl BlockRegistry {
             .is_some_and(|b| b.solid && b.visual.shape == BlockShape::Cube)
     }
 
-    /// Anything that is not air should be visited by the mesher (cross-planes
-    /// included), even if not solid for collision purposes.
     pub fn is_renderable(&self, id: VoxelId) -> bool {
         id != VoxelId::AIR
     }
@@ -154,7 +248,6 @@ impl BlockRegistry {
         self.block(id).map(|b| b.visual.shape).unwrap_or_default()
     }
 
-    /// Returns the block's RGB color. Unknown runtime IDs are engine bugs, not content fallbacks.
     pub fn color(&self, id: VoxelId) -> [f32; 3] {
         self.block(id)
             .unwrap_or_else(|| panic!("Unknown block runtime id {}", id.raw()))
@@ -172,24 +265,23 @@ impl BlockRegistry {
         &self.material_sets
     }
 
-    /// Per-atlas-layer flat colors. Same indexing as `material_layer` packed
-    /// in vertex `tex_index` (layer 0 = fallback, layer L+1 = material L).
     pub fn material_colors(&self) -> &[[f32; 4]] {
         &self.material_colors
     }
 
-    /// The block placed when the player uses the default slot.
     pub fn default_place_voxel(&self) -> VoxelId {
         self.default_place
     }
 
-    /// Block used for protected deep planet layers.
     pub fn planet_core_voxel(&self) -> VoxelId {
         self.planet_core
     }
 
-    /// Number of registered blocks (including air).
     pub fn block_count(&self) -> usize {
         self.blocks.len()
+    }
+
+    pub fn models(&self) -> &BlockModelRegistry {
+        &self.models
     }
 }

@@ -1,0 +1,6 @@
+BlockModelDef(
+    format_version: 1,
+    display_name: "Air (no geometry)",
+    mesh: none,
+    collision: none,
+)

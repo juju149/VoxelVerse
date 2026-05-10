@@ -26,42 +26,11 @@ pub struct RawMaterialTextureSet {
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
-pub enum RawBlockShape {
-    None,
-    #[default]
-    Cube,
-    CrossPlane,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
-#[serde(rename_all = "snake_case")]
 pub enum RawRenderMode {
     Invisible,
     #[default]
     Opaque,
     AlphaTest,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawBlockFaceMaterials {
-    pub top: ContentRef,
-    pub sides: ContentRef,
-    pub bottom: ContentRef,
-    #[serde(default)]
-    pub front: Option<ContentRef>,
-    #[serde(default)]
-    pub back: Option<ContentRef>,
-    #[serde(default)]
-    pub left: Option<ContentRef>,
-    #[serde(default)]
-    pub right: Option<ContentRef>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub enum RawBlockMaterials {
-    None,
-    All(ContentRef),
-    Faces(RawBlockFaceMaterials),
 }
 
 #[derive(Debug, Clone, Deserialize)]

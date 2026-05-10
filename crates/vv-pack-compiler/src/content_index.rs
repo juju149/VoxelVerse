@@ -7,6 +7,7 @@
 //!
 //! Domains currently indexed:
 //!  - `core:block/...`       (block defs)
+//!  - `core:block_model/...` (block model defs)
 //!  - `core:material/...`    (material defs)
 //!  - `core:item/...`        (item defs)
 //!  - `core:entity/...`      (entity defs)
@@ -39,6 +40,9 @@ impl ContentIndex {
         let mut keys = HashSet::new();
 
         for (k, _) in &pack.blocks {
+            keys.insert(k.clone());
+        }
+        for (k, _) in &pack.block_models {
             keys.insert(k.clone());
         }
         for (k, _) in &pack.materials {

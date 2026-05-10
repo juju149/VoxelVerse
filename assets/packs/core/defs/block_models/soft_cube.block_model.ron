@@ -1,0 +1,9 @@
+BlockModelDef(
+    format_version: 1,
+    display_name: "Soft cube (full cube mesh, soft-cube collision)",
+    mesh: cube(
+        face_layers: ["py", "ny", "pz", "nz", "px", "nx"],
+        ambient_occlusion: true,
+    ),
+    collision: soft_cube,
+)

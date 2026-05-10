@@ -1,4 +1,5 @@
 mod block;
+mod block_model;
 mod catalog;
 mod entity;
 mod generated;
@@ -10,6 +11,7 @@ mod version;
 pub mod visual;
 
 pub use block::*;
+pub use block_model::*;
 pub use catalog::*;
 pub use entity::*;
 pub use generated::*;
@@ -19,6 +21,5 @@ pub use props::*;
 pub use sound::*;
 pub use version::*;
 pub use visual::{
-    ContentRef, RawBlockMaterials, RawBlockShape, RawMaterialDef, RawMaterialTextureSet,
-    RawRenderMode, TextureRef,
+    ContentRef, RawMaterialDef, RawMaterialTextureSet, RawRenderMode, TextureRef,
 };
