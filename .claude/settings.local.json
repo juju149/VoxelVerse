@@ -30,7 +30,9 @@
       "Bash(Select-Object -ExpandProperty Name)",
       "Bash(Get-ChildItem -Path \"C:\\\\DEV\\\\projects\\\\Voxel\\\\VoxelVerse\\\\assets\\\\packs\\\\core\\\\defs\\\\worldgen\\\\\" -Recurse -Filter \"*.ron\" | Select-Object -ExpandProperty FullName)",
       "Bash(find /mnt/c/DEV/projects/Voxel/VoxelVerse/assets/packs/core/defs/worldgen -name \"*.ron\" -type f | head -50)",
-      "Read(//mnt/c/DEV/projects/Voxel/VoxelVerse/assets/packs/core/defs/**)"
+      "Read(//mnt/c/DEV/projects/Voxel/VoxelVerse/assets/packs/core/defs/**)",
+      "Bash(cargo fmt *)",
+      "Bash(cargo clippy *)"
     ]
   }
 }

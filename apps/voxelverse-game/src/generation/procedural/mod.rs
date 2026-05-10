@@ -28,11 +28,12 @@ mod noise_sampler;
 mod voxel_resolver;
 
 use crate::content::{CompiledProceduralPlanet, ProceduralRegistry};
+use crate::generation::diagnostics::WorldgenStats;
 use crate::generation::{noise::NoiseGenerator, CoordSystem};
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use crate::world::PlanetProfile;
 use glam::Vec3;
-use rayon::prelude::*;
+use std::sync::atomic::{AtomicI16, AtomicU8, Ordering};
 use std::sync::Arc;
 
 pub(super) const MAX_SURFACE_FIELD_RES: u32 = 1024;
@@ -43,20 +44,38 @@ pub(super) const MAX_BIOME_WEIGHTS: usize = 4;
 /// relative to it.
 pub(crate) const WORLD_SCALE_BASELINE_METERS: f32 = 1.0;
 
-#[derive(Clone, Debug)]
+/// Sentinel marking "this cell has not been computed yet" in the lazy
+/// surface cache.  i16::MAX is well outside any realistic height delta
+/// (max ≈ ±800 voxels even on giant planets).
+const UNCOMPUTED_HEIGHT: i16 = i16::MAX;
+
+/// Sentinel for the lazy primary-biome cache.  No pack ever reaches 255
+/// biomes (compile clamps `id` to u8 with the assumption < 100 biomes).
+const UNCOMPUTED_BIOME: u8 = u8::MAX;
+
+#[derive(Clone, Copy, Debug, Default)]
 pub struct BiomeWeight {
-    pub biome: usize,
+    pub biome: u16,
     pub weight: f32,
 }
 
-#[derive(Clone, Debug)]
+/// Surface sample carried through the per-voxel pipeline.  `biome_weights`
+/// is an inline fixed-size buffer — no `Vec` allocation in the hot path.
+#[derive(Clone, Copy, Debug)]
 pub struct SurfaceSample {
     pub height: u32,
     pub primary_biome: usize,
-    pub biome_weights: Vec<BiomeWeight>,
+    pub biome_weights: [BiomeWeight; MAX_BIOME_WEIGHTS],
+    pub weight_count: u8,
     pub temperature: f32,
     pub humidity: f32,
     pub roughness: f32,
+}
+
+impl SurfaceSample {
+    pub fn weights(&self) -> &[BiomeWeight] {
+        &self.biome_weights[..self.weight_count as usize]
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -102,16 +121,42 @@ pub struct PropStamp {
     pub rotation: u8,
 }
 
-#[derive(Clone)]
+/// Procedural terrain — chunks are generated on demand, never pre-baked.
+///
+/// The surface height and primary biome for every `(face, u_field, v_field)`
+/// cell are stored in atomic arrays initialised to sentinel values.  The
+/// first lookup of a cell computes the sample and writes it back; subsequent
+/// lookups are a single atomic load.  Two threads racing on the same cell
+/// will independently compute the deterministic sample and store the same
+/// result — no lock needed.
 pub struct ProceduralPlanetTerrain {
     pub(super) registry: Arc<ProceduralRegistry>,
     pub(super) planet_index: usize,
-    pub(super) heights: Arc<Vec<i16>>,
-    pub(super) primary_biomes: Arc<Vec<u8>>,
+    pub(super) heights: Arc<Vec<AtomicI16>>,
+    pub(super) primary_biomes: Arc<Vec<AtomicU8>>,
     pub(super) noise_generators: Arc<Vec<NoiseGenerator>>,
     pub(super) field_res: u32,
     pub(super) voxel_res: u32,
     pub(super) surface_layer: u32,
+    pub(super) profile: PlanetProfile,
+    pub(super) stats: Arc<WorldgenStats>,
+}
+
+impl Clone for ProceduralPlanetTerrain {
+    fn clone(&self) -> Self {
+        Self {
+            registry: self.registry.clone(),
+            planet_index: self.planet_index,
+            heights: self.heights.clone(),
+            primary_biomes: self.primary_biomes.clone(),
+            noise_generators: self.noise_generators.clone(),
+            field_res: self.field_res,
+            voxel_res: self.voxel_res,
+            surface_layer: self.surface_layer,
+            profile: self.profile,
+            stats: self.stats.clone(),
+        }
+    }
 }
 
 impl ProceduralPlanetTerrain {
@@ -129,6 +174,9 @@ impl ProceduralPlanetTerrain {
         planet_index: usize,
         mut progress: impl FnMut(f32, &str),
     ) -> Self {
+        // The lazy surface cache means startup does no per-voxel work — chunk
+        // generation is now fully on-demand.  We still emit a progress beat
+        // so the loading screen draws once.
         let field_res = profile.resolution.min(MAX_SURFACE_FIELD_RES);
         let size = (6 * field_res * field_res) as usize;
         let planet = &registry.planets[planet_index];
@@ -140,41 +188,15 @@ impl ProceduralPlanetTerrain {
                 .collect(),
         );
 
-        let mut heights = vec![0i16; size];
-        let mut primary_biomes = vec![0u8; size];
+        progress(0.30, "Préparation de la pipeline procédurale paresseuse");
 
-        progress(0.05, "Préparation des champs procéduraux");
-        let face_area = (field_res * field_res) as usize;
-        for face in 0..6usize {
-            let start = face * face_area;
-            let end = start + face_area;
-            heights[start..end]
-                .par_iter_mut()
-                .zip(primary_biomes[start..end].par_iter_mut())
-                .enumerate()
-                .for_each(|(rem, (height_out, biome_out))| {
-                    let v = (rem / field_res as usize) as u32;
-                    let u = (rem % field_res as usize) as u32;
-                    let dir = CoordSystem::get_direction(face as u8, u, v, field_res);
-                    let sample =
-                        climate::sample_surface_fields(&registry, &noise_generators, planet, dir);
-                    let (height, primary) = height::resolve_height(
-                        &registry,
-                        &noise_generators,
-                        planet,
-                        profile,
-                        dir,
-                        &sample,
-                    );
-                    *height_out = (height as i32 - profile.surface_layer as i32)
-                        .clamp(i16::MIN as i32, i16::MAX as i32)
-                        as i16;
-                    *biome_out = primary.min(u8::MAX as usize) as u8;
-                });
-            let pct = 0.05 + ((face + 1) as f32 / 6.0) * 0.90;
-            progress(pct, "Génération terrain, climat et biomes");
-        }
-        progress(0.98, "Finalisation planète");
+        let heights: Vec<AtomicI16> = (0..size)
+            .map(|_| AtomicI16::new(UNCOMPUTED_HEIGHT))
+            .collect();
+        let primary_biomes: Vec<AtomicU8> =
+            (0..size).map(|_| AtomicU8::new(UNCOMPUTED_BIOME)).collect();
+
+        progress(0.95, "Cache surface alloué — génération à la volée");
 
         Self {
             registry,
@@ -185,7 +207,49 @@ impl ProceduralPlanetTerrain {
             field_res,
             voxel_res: profile.resolution,
             surface_layer: profile.surface_layer,
+            profile,
+            stats: Arc::new(WorldgenStats::default()),
         }
+    }
+
+    /// Read-only handle to the live worldgen telemetry counters.  Used by
+    /// the diagnostics overlay; safe to share across threads.
+    pub fn stats(&self) -> &Arc<WorldgenStats> {
+        &self.stats
+    }
+
+    /// Lazily resolve one cell of the surface cache.  Idempotent: races
+    /// between threads converge on the same deterministic sample.
+    fn ensure_cell(&self, face: u8, u_field: u32, v_field: u32) -> (i16, u8) {
+        let idx = self.index(face, u_field, v_field);
+        let cached_h = self.heights[idx].load(Ordering::Relaxed);
+        if cached_h != UNCOMPUTED_HEIGHT {
+            let cached_b = self.primary_biomes[idx].load(Ordering::Relaxed);
+            if cached_b != UNCOMPUTED_BIOME {
+                self.stats.record_cell_hit();
+                return (cached_h, cached_b);
+            }
+        }
+
+        self.stats.record_cell_miss();
+        let planet = &self.registry.planets[self.planet_index];
+        let dir = CoordSystem::get_direction(face, u_field, v_field, self.field_res);
+        let fields =
+            climate::sample_surface_fields(&self.registry, &self.noise_generators, planet, dir);
+        let (height, primary) = height::resolve_height(
+            &self.registry,
+            &self.noise_generators,
+            planet,
+            self.profile,
+            dir,
+            &fields,
+        );
+        let h_i16 = (height as i32 - self.profile.surface_layer as i32)
+            .clamp((i16::MIN + 1) as i32, (i16::MAX - 1) as i32) as i16;
+        let b_u8 = primary.min((u8::MAX - 1) as usize) as u8;
+        self.heights[idx].store(h_i16, Ordering::Relaxed);
+        self.primary_biomes[idx].store(b_u8, Ordering::Relaxed);
+        (h_i16, b_u8)
     }
 
     pub fn planet(&self) -> &CompiledProceduralPlanet {
@@ -204,33 +268,69 @@ impl ProceduralPlanetTerrain {
         let fu = hu - u0 as f32;
         let fv = hv - v0 as f32;
 
-        let h00 = self.heights[self.index(face, u0, v0)] as f32;
-        let h10 = self.heights[self.index(face, u1, v0)] as f32;
-        let h01 = self.heights[self.index(face, u0, v1)] as f32;
-        let h11 = self.heights[self.index(face, u1, v1)] as f32;
-        let h = h00 * (1.0 - fu) * (1.0 - fv)
-            + h10 * fu * (1.0 - fv)
-            + h01 * (1.0 - fu) * fv
-            + h11 * fu * fv;
+        let (h00, _) = self.ensure_cell(face, u0, v0);
+        let (h10, _) = self.ensure_cell(face, u1, v0);
+        let (h01, _) = self.ensure_cell(face, u0, v1);
+        let (h11, _) = self.ensure_cell(face, u1, v1);
+        let h = h00 as f32 * (1.0 - fu) * (1.0 - fv)
+            + h10 as f32 * fu * (1.0 - fv)
+            + h01 as f32 * (1.0 - fu) * fv
+            + h11 as f32 * fu * fv;
 
         (self.surface_layer as i32 + h.round() as i32).max(0) as u32
     }
 
     pub fn get_biome_id(&self, face: u8, u: u32, v: u32) -> u8 {
         let (u_h, v_h) = self.surface_coords(u, v);
-        self.primary_biomes[self.index(face, u_h, v_h)]
+        let (_, b) = self.ensure_cell(face, u_h, v_h);
+        b
     }
 
     pub fn surface_sample(&self, face: u8, u: u32, v: u32) -> SurfaceSample {
+        // Fast path — uses the cached primary biome and bilinear-interpolated
+        // height.  Weights are deferred to `surface_sample_with_weights`
+        // (callers that need them pay the climate-resampling cost explicitly).
         let height = self.get_height(face, u, v);
         let primary_biome = self.get_biome_id(face, u, v) as usize;
+        let mut weights = [BiomeWeight::default(); MAX_BIOME_WEIGHTS];
+        weights[0] = BiomeWeight {
+            biome: primary_biome as u16,
+            weight: 1.0,
+        };
         SurfaceSample {
             height,
             primary_biome,
-            biome_weights: Vec::new(),
+            biome_weights: weights,
+            weight_count: 1,
             temperature: 0.0,
             humidity: 0.0,
             roughness: 0.0,
+        }
+    }
+
+    /// Full surface sample with continuous biome blend weights.  Re-samples
+    /// the climate fields at the exact `(u, v)` because the per-cell cache
+    /// only stores the primary biome — weighted blends drive feature density
+    /// feathering and per-biome height curve mixing.  Skip this path on the
+    /// per-voxel hot loop; use the cheap `surface_sample` instead.
+    pub fn surface_sample_with_weights(&self, face: u8, u: u32, v: u32) -> SurfaceSample {
+        let height = self.get_height(face, u, v);
+        let planet = &self.registry.planets[self.planet_index];
+        let (u_h, v_h) = self.surface_coords(u, v);
+        let dir = CoordSystem::get_direction(face, u_h, v_h, self.field_res);
+        let fields =
+            climate::sample_surface_fields(&self.registry, &self.noise_generators, planet, dir);
+        let mut weights = [BiomeWeight::default(); MAX_BIOME_WEIGHTS];
+        let (count, primary) =
+            biome_select::resolve_biome_weights_into(&self.registry, planet, fields, &mut weights);
+        SurfaceSample {
+            height,
+            primary_biome: primary,
+            biome_weights: weights,
+            weight_count: count,
+            temperature: fields.temperature,
+            humidity: fields.humidity,
+            roughness: fields.roughness,
         }
     }
 
@@ -263,126 +363,147 @@ impl ProceduralPlanetTerrain {
         let v0 = key.v_idx * CHUNK_SIZE;
         let u1 = (u0 + CHUNK_SIZE).min(self.voxel_res);
         let v1 = (v0 + CHUNK_SIZE).min(self.voxel_res);
+        let voxel_scale = self.voxel_scale();
+        let budget = planet.streaming.feature_budget_per_chunk as usize;
 
-        for u in u0..u1 {
-            for v in v0..v1 {
-                let surface = self.surface_sample(key.face, u, v);
-                let coord = VoxelCoord {
-                    face: key.face,
-                    layer: surface.height.saturating_add(1),
-                    u,
-                    v,
-                };
-                self.push_vegetation(planet, coord, &surface, &mut stamps);
+        for veg_idx in &planet.vegetation_sets {
+            if budget > 0 && stamps.len() >= budget {
+                break;
             }
+            let veg = &self.registry.vegetation[*veg_idx];
+            crate::generation::placement::for_each_candidate(
+                &veg.placement,
+                key.face,
+                u0,
+                u1,
+                v0,
+                v1,
+                voxel_scale,
+                |candidate| {
+                    if budget > 0 && stamps.len() >= budget {
+                        return;
+                    }
+                    let surface = self.surface_sample(key.face, candidate.pu, candidate.pv);
+                    let biome = self.registry.biome(surface.primary_biome);
+                    if !veg.placement.allowed_in_biome(biome) {
+                        self.stats.record_reject();
+                        return;
+                    }
+                    if !veg.placement.surface_blocks.contains(&biome.surface.top) {
+                        self.stats.record_reject();
+                        return;
+                    }
+                    if !self.placement_density_hit(&veg.placement, key.face, &candidate) {
+                        return;
+                    }
+                    let coord = VoxelCoord {
+                        face: key.face,
+                        layer: surface.height.saturating_add(1),
+                        u: candidate.pu,
+                        v: candidate.pv,
+                    };
+                    let h = range_pick(veg.height, candidate.seed);
+                    let r = range_pick(veg.canopy_radius, candidate.seed.rotate_left(11));
+                    stamps.push(FeatureStamp::Tree {
+                        coord,
+                        trunk: veg.trunk,
+                        leaves: veg.leaves,
+                        height: h,
+                        canopy_radius: r,
+                        priority: 30,
+                    });
+                    self.stats.record_feature();
+                },
+            );
         }
 
         stamps
     }
 
     /// Return the vox prop instances that should appear in the given chunk.
-    /// Props are procedurally derived (deterministic) and are NOT stored in the
-    /// voxel grid — this is the authoritative placement query.
+    /// Props are procedurally derived (deterministic) and are NOT stored in
+    /// the voxel grid — this is the authoritative placement query.
     ///
-    /// # Algorithm — jittered sparse grid
+    /// # Algorithm — data-driven sub-cell jitter
     ///
-    /// Instead of testing every `(u, v)` voxel column (which creates visible
-    /// grid lines), the chunk is divided into `CELL × CELL` voxel cells.
-    /// For each cell a single candidate column is chosen by hashing the cell
-    /// coordinates into a 2-D jitter offset.  This gives:
-    ///
-    /// * **Natural distribution** — candidates are never perfectly aligned.
-    /// * **~10× fewer surface_sample calls** (32² → (32/CELL)²).
-    /// * **Controllable density** — cell size drives the maximum density cap;
-    ///   the scatter's RON density is a 0..1 probability gate on top.
+    /// Each prop scatter declares its own `min_spacing_voxels` in the RON
+    /// pack.  Candidates are emitted on a world-aligned cell grid sized by
+    /// that spacing, then jittered into sub-cell positions by a
+    /// deterministic hash.  Cells are world-aligned so two adjacent chunks
+    /// agree on every candidate — no chunk-edge prop seam.
     pub fn props_for_chunk(&self, key: SurfaceChunkKey) -> Vec<PropStamp> {
         let planet = self.planet();
-
-        // Cell size in voxels.  3 → max ~115 candidates per chunk.
-        // Larger = sparser but more natural.  Must be ≥ 1.
-        const CELL: u32 = 3;
 
         let u0 = key.u_idx * CHUNK_SIZE;
         let v0 = key.v_idx * CHUNK_SIZE;
         let u1 = (u0 + CHUNK_SIZE).min(self.voxel_res);
         let v1 = (v0 + CHUNK_SIZE).min(self.voxel_res);
 
-        // Number of cells that fit in this chunk (may be less at planet edge).
-        let cells_u = (u1 - u0).div_ceil(CELL);
-        let cells_v = (v1 - v0).div_ceil(CELL);
+        let voxel_scale = self.voxel_scale();
+        let budget = planet.streaming.feature_budget_per_chunk as usize;
+        let mut props = Vec::new();
+        let mut emitted_at: Vec<(u32, u32)> = Vec::new(); // for one-prop-per-column
 
-        let mut props = Vec::with_capacity((cells_u * cells_v) as usize);
-
-        for cu in 0..cells_u {
-            for cv in 0..cells_v {
-                // Cell origin in world voxel coords.
-                let cell_u0 = u0 + cu * CELL;
-                let cell_v0 = v0 + cv * CELL;
-
-                // Hash-driven jitter: pick a random column inside this cell.
-                // Scramble with Knuth/Fibonacci primes BEFORE hashing so that
-                // cells spaced exactly CELL=3 apart don't produce correlated
-                // modulo residues.  XOR-ing U and V inputs prevents diagonal
-                // mirroring.
-                let su =
-                    cell_u0.wrapping_mul(2_654_435_761u32) ^ cell_v0.wrapping_mul(805_459_861u32);
-                let sv =
-                    cell_v0.wrapping_mul(2_246_822_519u32) ^ cell_u0.wrapping_mul(1_013_904_223u32);
-                let ju = hash4(key.face, su, sv, 0x1F2E_3D4C) % CELL.min(u1 - cell_u0);
-                let jv = hash4(key.face, su ^ 0xDEAD_C0DE, sv ^ 0xBEEF_1234, 0xABCD_EF01)
-                    % CELL.min(v1 - cell_v0);
-
-                let u = cell_u0 + ju;
-                let v = cell_v0 + jv;
-
-                // Clamp to valid range (shouldn't be needed but be safe).
-                if u >= u1 || v >= v1 {
-                    continue;
-                }
-
-                let surface = self.surface_sample(key.face, u, v);
-                let biome = self.registry.biome(surface.primary_biome);
-                let top = biome.surface.top;
-
-                for scatter_idx in &planet.vox_prop_scatters {
-                    let scatter = &self.registry.vox_prop_scatters[*scatter_idx];
-                    if !scatter.placement.allowed_in_biome(biome) {
-                        continue;
-                    }
-                    if !scatter.placement.surface_blocks.contains(&top) {
-                        continue;
-                    }
-                    // The density gate uses the jittered (u,v) so clusters and
-                    // clearings from the noise field are still respected.
-                    // Note: density_scale() is NOT applied here — the cell size
-                    // already controls physical density independently of voxel
-                    // resolution.  RON density values are direct 0..1 per-cell
-                    // probabilities (average, before noise modulation).
-                    if self.feature_hit(
-                        scatter.placement.field,
-                        key.face,
-                        u,
-                        v,
-                        scatter.placement.density,
-                    ) {
-                        let hash = hash4(key.face, u, v, 0xDEAD_BEEF);
-                        if let Some(variant) = scatter.pick_variant(hash) {
-                            let rotation = (hash4(key.face, u, v, 0xCAFE) & 3) as u8;
-                            props.push(PropStamp {
-                                face: key.face,
-                                u,
-                                v,
-                                surface_layer: surface.height,
-                                model_key: variant.model_key.clone(),
-                                rotation,
-                            });
-                        }
-                        // Only one prop per cell — avoids stacking scatter types
-                        // on the same column.
-                        break;
-                    }
-                }
+        for scatter_idx in &planet.vox_prop_scatters {
+            if budget > 0 && props.len() >= budget {
+                break;
             }
+            let scatter = &self.registry.vox_prop_scatters[*scatter_idx];
+            crate::generation::placement::for_each_candidate(
+                &scatter.placement,
+                key.face,
+                u0,
+                u1,
+                v0,
+                v1,
+                voxel_scale,
+                |candidate| {
+                    if budget > 0 && props.len() >= budget {
+                        return;
+                    }
+                    // One prop per column max — different scatters can still
+                    // share a chunk, just not the same column.
+                    if emitted_at
+                        .iter()
+                        .any(|(u, v)| *u == candidate.pu && *v == candidate.pv)
+                    {
+                        return;
+                    }
+
+                    let surface = self.surface_sample(key.face, candidate.pu, candidate.pv);
+                    let biome = self.registry.biome(surface.primary_biome);
+                    if !scatter.placement.allowed_in_biome(biome) {
+                        self.stats.record_reject();
+                        return;
+                    }
+                    let top = biome.surface.top;
+                    if !scatter.placement.surface_blocks.contains(&top) {
+                        self.stats.record_reject();
+                        return;
+                    }
+                    if !self.placement_density_hit(&scatter.placement, key.face, &candidate) {
+                        return;
+                    }
+                    if let Some(variant) = scatter.pick_variant(candidate.seed) {
+                        // Quarter-turn rotation — the current renderer only
+                        // supports 4 cardinal directions for vox props.  The
+                        // jittered position itself already breaks the grid.
+                        let rotation = ((candidate.rotation / std::f32::consts::TAU * 4.0)
+                            .rem_euclid(4.0) as u8)
+                            & 3;
+                        props.push(PropStamp {
+                            face: key.face,
+                            u: candidate.pu,
+                            v: candidate.pv,
+                            surface_layer: surface.height,
+                            model_key: variant.model_key.clone(),
+                            rotation,
+                        });
+                        emitted_at.push((candidate.pu, candidate.pv));
+                        self.stats.record_prop();
+                    }
+                },
+            );
         }
 
         props
@@ -405,6 +526,61 @@ impl ProceduralPlanetTerrain {
         self.voxel_res
     }
 
+    pub fn surface_layer(&self) -> u32 {
+        self.surface_layer
+    }
+
+    /// Density gate evaluated at a placement candidate's sub-voxel position.
+    /// Scatter-field × optional clump-field × authored density, gated by a
+    /// candidate-specific RNG roll.  Keeps the scatter pattern continuous
+    /// (no chunk-aligned hash grid) and adds biome-scale clump/clearing
+    /// modulation when `clump_field` is set.
+    pub fn placement_density_hit(
+        &self,
+        placement: &crate::content::CompiledFeaturePlacement,
+        face: u8,
+        candidate: &crate::generation::placement::PlacementCandidate,
+    ) -> bool {
+        let res = self.voxel_res;
+        // Direction at the jittered sub-voxel position so the scatter
+        // field is sampled continuously, not on integer cells.
+        let dir = CoordSystem::get_direction(
+            face,
+            (candidate.pu_f.round() as u32).min(res.saturating_sub(1)),
+            (candidate.pv_f.round() as u32).min(res.saturating_sub(1)),
+            res,
+        );
+        let cluster = noise_sampler::sample_noise_field(
+            &self.registry,
+            &self.noise_generators,
+            placement.field,
+            dir,
+            0,
+        );
+        let clump = match placement.clump_field {
+            Some(idx) => noise_sampler::sample_noise_field(
+                &self.registry,
+                &self.noise_generators,
+                idx,
+                dir,
+                0,
+            ),
+            None => 0.5,
+        };
+        let strength = placement.clump_strength.clamp(0.0, 1.0);
+        // lerp(1, clump×2, strength) — clump >0.5 boosts density, <0.5 cuts it.
+        let modulator = (1.0 - strength) + strength * (clump * 2.0);
+        // Density compensation: candidate iteration runs once per placement
+        // cell (≥ 1 voxel), so authored "per 1 m² cell" densities must shrink
+        // with cell area.  density_scale handles the voxel-size axis; the
+        // cell side cancels here because both numerator and denominator
+        // scale with it.
+        let density = placement.density.clamp(0.0, 1.0) * self.density_scale();
+        let effective = (density * cluster * modulator * 2.0).clamp(0.0, 1.0);
+        let roll = (candidate.seed as f32) / (u32::MAX as f32);
+        roll < effective
+    }
+
     /// Multiplier applied to every voxel-counted quantity authored in the
     /// procedural pack so that physical world size stays constant when
     /// `voxel_size_meters` shrinks.  RON values are written assuming a 1 m
@@ -414,17 +590,6 @@ impl ProceduralPlanetTerrain {
         WORLD_SCALE_BASELINE_METERS / self.planet().base.voxel_size_meters.max(0.0001)
     }
 
-    pub(crate) fn feature_hit_pub(
-        &self,
-        field: usize,
-        face: u8,
-        u: u32,
-        v: u32,
-        density: f32,
-    ) -> bool {
-        self.feature_hit(field, face, u, v, density)
-    }
-
     /// Density compensation: `feature_hit` runs once per `(u, v)` cell.  When
     /// voxels shrink the cell grid densifies quadratically, so authored
     /// per-cell densities must shrink by the same factor to preserve the
@@ -432,66 +597,6 @@ impl ProceduralPlanetTerrain {
     pub fn density_scale(&self) -> f32 {
         let voxel_m = self.planet().base.voxel_size_meters.max(0.0001);
         (voxel_m / WORLD_SCALE_BASELINE_METERS).powi(2)
-    }
-
-    // ---- chunk feature stamping (orchestration; per-feature kind logic
-    //      is a thin loop here because it's just data-routing) -------------
-
-    fn push_vegetation(
-        &self,
-        planet: &CompiledProceduralPlanet,
-        coord: VoxelCoord,
-        surface: &SurfaceSample,
-        stamps: &mut Vec<FeatureStamp>,
-    ) {
-        let biome = self.registry.biome(surface.primary_biome);
-        let top = biome.surface.top;
-        for veg_idx in &planet.vegetation_sets {
-            let veg = &self.registry.vegetation[*veg_idx];
-            if !veg.placement.allowed_in_biome(biome) {
-                continue;
-            }
-            if !veg.placement.surface_blocks.contains(&top) {
-                continue;
-            }
-            if self.feature_hit(
-                veg.placement.field,
-                coord.face,
-                coord.u,
-                coord.v,
-                veg.placement.density,
-            ) {
-                let h = range_pick(veg.height, hash4(coord.face, coord.u, coord.v, 33));
-                let r = range_pick(veg.canopy_radius, hash4(coord.face, coord.u, coord.v, 34));
-                stamps.push(FeatureStamp::Tree {
-                    coord,
-                    trunk: veg.trunk,
-                    leaves: veg.leaves,
-                    height: h,
-                    canopy_radius: r,
-                    priority: 30,
-                });
-            }
-        }
-    }
-
-    pub(super) fn feature_hit(&self, field: usize, face: u8, u: u32, v: u32, density: f32) -> bool {
-        // Sample the scatter field as a spatial density envelope: high-noise
-        // areas become denser clusters (forests), low-noise areas become
-        // clearings.
-        let dir = CoordSystem::get_direction(face, u, v, self.voxel_res);
-        let cluster = noise_sampler::sample_noise_field(
-            &self.registry,
-            &self.noise_generators,
-            field,
-            dir,
-            0,
-        );
-        // cluster 0..1 → density × 0..2 so the average density stays on target
-        // (average cluster ≈ 0.5 × 2 = 1.0 × density).
-        let effective = (density * cluster * 2.0).clamp(0.0, 1.0);
-        let roll = hash4(face, u, v, field as u32 ^ 0xA5B6_C7D8) as f32 / u32::MAX as f32;
-        roll < effective
     }
 
     pub(super) fn sample_field(&self, field: usize, pos: Vec3) -> f32 {

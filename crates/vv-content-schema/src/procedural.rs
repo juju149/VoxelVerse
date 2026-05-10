@@ -117,6 +117,15 @@ pub struct RawPlanetStreamingDef {
     pub near_voxel_lod_radius: u32,
     pub far_surface_lod_radius: u32,
     pub upload_budget_chunks_per_frame: u32,
+    /// Side length (in voxels) of one cell in the lazy surface cache.  The
+    /// height/biome arrays are populated on demand cell-by-cell instead of
+    /// pre-baking the whole planet.  64 ≈ 4 KiB per cell — fits in L1.
+    #[serde(default = "default_region_cell_voxels")]
+    pub region_cell_voxels: u32,
+    /// Soft cap on placed features per chunk (vegetation + props combined).
+    /// 0 disables the cap.  Default 384 ≈ Minecraft-style forest density.
+    #[serde(default = "default_feature_budget_per_chunk")]
+    pub feature_budget_per_chunk: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -181,6 +190,46 @@ pub struct RawBiomeTerrainDef {
     #[serde(default)]
     pub ridge_field: Option<ContentRef>,
     pub terrace_strength: f32,
+    /// Optional non-linear curve applied to the biome height contribution.
+    /// Drives "plains rolling smoothly" vs "alpine sharp peaks" without
+    /// hand-tuning amplitudes.
+    #[serde(default)]
+    pub height_curve: Option<RawHeightCurveDef>,
+    /// 0..2 — how strongly this biome contributes to the mountain boost layer.
+    /// 0 = pure flat biome (ocean, desert), 1 = standard, >1 = exaggerated.
+    #[serde(default = "default_mountain_intensity")]
+    pub mountain_intensity: f32,
+    /// 0..1 — region post-pass slope smoothing weight.  0 disables.  Driven
+    /// per biome so coastal plains can stay smoother than rocky peaks.
+    #[serde(default)]
+    pub slope_smoothing: f32,
+}
+
+/// Per-biome height transfer curve applied to the unit-range height
+/// contribution before scaling.  Each variant maps `t ∈ [-1, 1]` to a
+/// reshaped value of similar range, controlling the silhouette of the
+/// biome — plateaus, mountain spikes, soft hills, etc.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RawHeightCurveDef {
+    Linear,
+    Smoothstep,
+    /// `t.signum() * t.abs().powf(exponent)` — exponent < 1 widens valleys,
+    /// > 1 sharpens peaks.
+    Power {
+        exponent: f32,
+    },
+    /// Pushes mid values toward 0 (flat plateau between -threshold and
+    /// +threshold) and clamps slopes outside.  Good for badlands / mesas.
+    Plateau {
+        flatness: f32,
+        threshold: f32,
+    },
+    /// Sharpens the upper end aggressively (mountain spikes) while leaving
+    /// the lower end alone (plains stay flat).
+    MountainSpike {
+        sharpness: f32,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -278,6 +327,53 @@ pub struct RawFeaturePlacementDef {
     pub density: f32,
     pub slope_max_degrees: u32,
     pub scatter_field: ContentRef,
+    /// Minimum spacing in voxels between two instances of this feature.
+    /// 0 disables the spacing check.  Drives the placement grid cell size
+    /// so authors can mix dense flower scatter (1-2 voxels) with sparse
+    /// tree placement (4-8 voxels) in the same biome.
+    #[serde(default)]
+    pub min_spacing_voxels: f32,
+    /// 0..1 — strength of the deterministic sub-cell jitter applied to
+    /// every candidate position.  0 = perfectly aligned to placement
+    /// cell centres (visible grid); 1 = candidate can land anywhere
+    /// inside its cell.  Default 0.75 hides the grid without overlapping
+    /// neighbours.
+    #[serde(default = "default_jitter_strength")]
+    pub jitter_strength: f32,
+    /// Optional low-frequency noise field used as a clump/clearing modulator
+    /// on top of the scatter field.  Multiplies the effective density,
+    /// driving forest masses + clearings without authoring a custom
+    /// scatter noise per biome.
+    #[serde(default)]
+    pub clump_field: Option<ContentRef>,
+    /// 0..1 — strength of the clump modulator.  0 leaves density flat;
+    /// 1 collapses density entirely outside clump centres.
+    #[serde(default)]
+    pub clump_strength: f32,
+    /// Optional altitude window in voxels relative to sea level.  When
+    /// `Some((min, max))`, candidates whose surface height falls outside
+    /// the window are rejected.  None = no altitude gate.
+    #[serde(default)]
+    pub altitude_range: Option<(f32, f32)>,
+    /// Optional humidity window in normalized climate space (0..1).
+    #[serde(default)]
+    pub humidity_range: Option<(f32, f32)>,
+    /// Optional temperature window in normalized climate space (0..1).
+    #[serde(default)]
+    pub temperature_range: Option<(f32, f32)>,
+    /// Optional minimum slope (in degrees).  Pairs with `slope_max_degrees`
+    /// to author cliff-only or scree-only placements.
+    #[serde(default)]
+    pub slope_min_degrees: Option<u32>,
+    /// Optional per-instance scale variance `(min, max)`.  Both bounds
+    /// must be >0; defaults to `(1.0, 1.0)` (no variance) when absent.
+    #[serde(default)]
+    pub scale_variance: Option<(f32, f32)>,
+    /// 0..1 — fraction of the full 2π rotation that is randomised per
+    /// instance.  0 = no rotation (always aligned), 1 = full random.
+    /// Default 1.0 for organic placement.
+    #[serde(default = "default_rotation_variance")]
+    pub rotation_variance: f32,
 }
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
@@ -439,4 +535,24 @@ fn default_trunk_lean_max() -> f32 {
 
 fn default_canopy_density() -> f32 {
     1.0
+}
+
+fn default_jitter_strength() -> f32 {
+    0.75
+}
+
+fn default_rotation_variance() -> f32 {
+    1.0
+}
+
+fn default_mountain_intensity() -> f32 {
+    1.0
+}
+
+fn default_region_cell_voxels() -> u32 {
+    64
+}
+
+fn default_feature_budget_per_chunk() -> u32 {
+    384
 }

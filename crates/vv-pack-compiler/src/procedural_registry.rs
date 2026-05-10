@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::CompiledPlanet;
-use vv_content_schema::{RawCurve, RawNoiseKind, RawTreeShapeKind};
+use vv_content_schema::{RawCurve, RawHeightCurveDef, RawNoiseKind, RawTreeShapeKind};
 use vv_voxel::VoxelId;
 
 #[derive(Clone, Copy, Debug)]
@@ -118,6 +118,91 @@ pub struct CompiledBiomeTerrain {
     pub hill_field: usize,
     pub ridge_field: Option<usize>,
     pub terrace_strength: f32,
+    pub height_curve: CompiledHeightCurve,
+    /// 0..=2 — strength of the mountain boost layer for this biome.
+    pub mountain_intensity: f32,
+    /// 0..=1 — weight blended into the region slope-smoothing pass.
+    pub slope_smoothing: f32,
+}
+
+/// Non-linear height transfer curve.  All variants accept `t ∈ [-1, 1]`
+/// and return a value of similar magnitude — never expanding the range
+/// beyond ~[-1.3, 1.3] so per-biome amplitudes stay predictable.
+#[derive(Clone, Copy, Debug, Default)]
+pub enum CompiledHeightCurve {
+    #[default]
+    Linear,
+    Smoothstep,
+    Power { exponent: f32 },
+    Plateau { flatness: f32, threshold: f32 },
+    MountainSpike { sharpness: f32 },
+}
+
+impl CompiledHeightCurve {
+    /// Apply the curve.  Input is expected in `[-1, 1]`; output stays in
+    /// roughly the same range.  Pure odd functions where possible so
+    /// symmetric noise stays symmetric.
+    pub fn evaluate(self, t: f32) -> f32 {
+        match self {
+            Self::Linear => t,
+            Self::Smoothstep => {
+                let u = (t * 0.5 + 0.5).clamp(0.0, 1.0);
+                let s = u * u * (3.0 - 2.0 * u);
+                s * 2.0 - 1.0
+            }
+            Self::Power { exponent } => {
+                let e = exponent.max(0.05);
+                t.signum() * t.abs().powf(e)
+            }
+            Self::Plateau {
+                flatness,
+                threshold,
+            } => {
+                let th = threshold.clamp(0.01, 0.95);
+                let f = flatness.clamp(0.0, 1.0);
+                if t.abs() <= th {
+                    t * (1.0 - f)
+                } else {
+                    let sign = t.signum();
+                    let outer = (t.abs() - th) / (1.0 - th);
+                    sign * (th * (1.0 - f) + outer * (1.0 - th))
+                }
+            }
+            Self::MountainSpike { sharpness } => {
+                // Only sharpens positives.  Negatives (valleys, lowlands)
+                // stay linear so flatlands keep their feel.
+                let s = sharpness.max(0.0);
+                if t > 0.0 {
+                    let exp = 1.0 + s;
+                    t.powf(exp)
+                } else {
+                    t
+                }
+            }
+        }
+    }
+}
+
+impl From<&RawHeightCurveDef> for CompiledHeightCurve {
+    fn from(value: &RawHeightCurveDef) -> Self {
+        match value {
+            RawHeightCurveDef::Linear => Self::Linear,
+            RawHeightCurveDef::Smoothstep => Self::Smoothstep,
+            RawHeightCurveDef::Power { exponent } => Self::Power {
+                exponent: *exponent,
+            },
+            RawHeightCurveDef::Plateau {
+                flatness,
+                threshold,
+            } => Self::Plateau {
+                flatness: *flatness,
+                threshold: *threshold,
+            },
+            RawHeightCurveDef::MountainSpike { sharpness } => Self::MountainSpike {
+                sharpness: *sharpness,
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -197,6 +282,26 @@ pub struct CompiledFeaturePlacement {
     /// only fires in biomes whose `vegetation_tags` (or `fauna_tags` for
     /// fauna) intersect this set.  `*` is treated as "any".
     pub biome_tags: Vec<String>,
+    /// Minimum spacing in voxels between two instances (drives the
+    /// placement grid cell size).  0 = no spacing enforced.
+    pub min_spacing: f32,
+    /// 0..1 fraction of the placement cell randomly offset per candidate.
+    pub jitter_strength: f32,
+    /// Optional clump-modulator noise field index.  When set the effective
+    /// density is `base × lerp(1, clump, clump_strength)`.
+    pub clump_field: Option<usize>,
+    pub clump_strength: f32,
+    /// Optional altitude window in voxels relative to sea level.
+    pub altitude_range: Option<(f32, f32)>,
+    /// Optional humidity / temperature windows in normalized climate space.
+    pub humidity_range: Option<(f32, f32)>,
+    pub temperature_range: Option<(f32, f32)>,
+    /// Optional minimum slope as a normalized 0..1 value (sin of degrees).
+    pub slope_min: f32,
+    /// Per-instance scale variance bounds (min, max).  (1.0, 1.0) = none.
+    pub scale_variance: (f32, f32),
+    /// 0..1 — fraction of 2π randomised per instance.
+    pub rotation_variance: f32,
 }
 
 impl CompiledFeaturePlacement {
@@ -216,6 +321,28 @@ impl CompiledFeaturePlacement {
                 || biome.fauna_tags.iter().any(|ft| ft == tag)
         })
     }
+
+    /// Returns a 0..1 weight for how much this biome matches the placement.
+    /// Unlike `allowed_in_biome`, this is continuous — used to feather
+    /// forest edges across biome transitions instead of cutting in a
+    /// straight line.  Currently binary at the per-biome level, but
+    /// callers fold it with the biome-blend weights to get smooth edges.
+    pub fn biome_match_weight(&self, biome: &CompiledProceduralBiome) -> f32 {
+        if self.allowed_in_biome(biome) {
+            1.0
+        } else {
+            0.0
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CompiledPlanetStreaming {
+    pub near_voxel_lod_radius: u32,
+    pub far_surface_lod_radius: u32,
+    pub upload_budget_chunks_per_frame: u32,
+    pub region_cell_voxels: u32,
+    pub feature_budget_per_chunk: u32,
 }
 
 /// Mirrors [`RawTreeShapeKind`].  Plumbed into the bakery so each tree picks
@@ -357,6 +484,7 @@ pub struct CompiledProceduralPlanet {
     pub structure_sets: Vec<usize>,
     pub fauna_sets: Vec<usize>,
     pub vox_prop_scatters: Vec<usize>,
+    pub streaming: CompiledPlanetStreaming,
 }
 
 #[derive(Clone, Debug)]

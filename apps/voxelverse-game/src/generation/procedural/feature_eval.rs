@@ -3,25 +3,22 @@
 //! When the bakery has not yet stamped a chunk's feature map (typical for
 //! collision / raycast / single-voxel queries that bypass meshing), we still
 //! need to know whether a voxel above the surface is part of a tree.  This
-//! submodule scans the plant-column neighborhood, applies the same biome /
-//! surface / slope / density filters as
-//! [`crate::generation::features::FeatureBakery::is_planted`], and asks
-//! [`TreeShape`] whether the voxel belongs to that tree.
+//! submodule iterates the same world-aligned placement cells the bakery
+//! uses, applies the same biome / surface / slope / density filters, and
+//! asks [`TreeShape`] whether the voxel belongs to that tree.
 //!
 //! Both code paths (bake and query) ultimately call `TreeShape::voxel_at`,
 //! so they're guaranteed to agree on the tree's exact silhouette.
 
 use super::{GeneratedVoxelContext, ProceduralPlanetTerrain};
 use crate::content::CompiledVegetation;
+use crate::generation::placement::{candidate_for_cell, placement_cell_size, PlacementCandidate};
 use crate::voxel::VoxelId;
 
 impl ProceduralPlanetTerrain {
     /// Return the tree voxel (trunk / branch / leaf) occupying this cell,
-    /// if any tree planted within the neighborhood reaches it.  Each
-    /// candidate planting column `(pu, pv)` within
-    /// `(trunk_thickness + canopy_radius)` of the current column is tested
-    /// independently — first match wins, so density and tree size dictate
-    /// whether two crowns can fight for the same voxel.
+    /// if any tree planted within the neighborhood reaches it.  Iterates
+    /// the placement cells around the query column.
     pub(super) fn tree_voxel_at(
         &self,
         ctx: &GeneratedVoxelContext,
@@ -41,49 +38,89 @@ impl ProceduralPlanetTerrain {
             crate::generation::features::scale_range(veg.branch_length, scale).1 as i32;
         let scan_radius = max_thickness + max_canopy.max(max_branch) + 2;
 
-        for du in -scan_radius..=scan_radius {
-            for dv in -scan_radius..=scan_radius {
-                let pu_i = ctx.u as i32 + du;
-                let pv_i = ctx.v as i32 + dv;
-                if pu_i < 0 || pv_i < 0 || pu_i >= res || pv_i >= res {
-                    continue;
-                }
-                let pu = pu_i as u32;
-                let pv = pv_i as u32;
+        let cell = placement_cell_size(&veg.placement, scale).max(1);
+        let u_lo = (ctx.u as i32 - scan_radius).max(0) as u32;
+        let v_lo = (ctx.v as i32 - scan_radius).max(0) as u32;
+        let u_hi = ((ctx.u as i32 + scan_radius + 1).min(res)) as u32;
+        let v_hi = ((ctx.v as i32 + scan_radius + 1).min(res)) as u32;
 
-                let plant_biome = self
-                    .registry
-                    .biome(self.get_biome_id(ctx.face, pu, pv) as usize);
-                if !veg.placement.allowed_in_biome(plant_biome) {
-                    continue;
-                }
-                let plant_top = plant_biome.surface.top;
-                if !veg.placement.surface_blocks.contains(&plant_top) {
-                    continue;
-                }
-                // Slope filter: mirrors `FeatureBakery::is_planted` in the
-                // baked path.
-                if veg.placement.slope_max > 0.0 {
-                    let res_u = self.voxel_res;
-                    let h0 = self.get_height(ctx.face, pu, pv) as i32;
-                    let h1 = self.get_height(ctx.face, (pu + 1).min(res_u - 1), pv) as i32;
-                    let h2 = self.get_height(ctx.face, pu, (pv + 1).min(res_u - 1)) as i32;
-                    let slope = (((h1 - h0).pow(2) + (h2 - h0).pow(2)) as f32).sqrt();
-                    if slope > veg.placement.slope_max {
-                        continue;
+        // Iterate every placement cell that could plant a tree reaching
+        // `(ctx.u, ctx.v)`.  Cells are world-aligned (multiples of `cell`).
+        let start_u = (u_lo / cell) * cell;
+        let start_v = (v_lo / cell) * cell;
+        let mut cu = start_u;
+        while cu < u_hi {
+            let mut cv = start_v;
+            while cv < v_hi {
+                if let Some(candidate) = candidate_for_cell(&veg.placement, ctx.face, cu, cv, cell)
+                {
+                    if let Some(block) = self.try_tree_at(ctx, veg, &candidate) {
+                        return Some(block);
                     }
                 }
-                let density = veg.placement.density * self.density_scale();
-                if !self.feature_hit(veg.placement.field, ctx.face, pu, pv, density) {
-                    continue;
+                cv = cv.saturating_add(cell);
+                if cv == 0 {
+                    break;
                 }
-
-                if let Some(block) = self.evaluate_tree_at(ctx, veg, pu, pv) {
-                    return Some(block);
-                }
+            }
+            cu = cu.saturating_add(cell);
+            if cu == 0 {
+                break;
             }
         }
         None
+    }
+
+    fn try_tree_at(
+        &self,
+        ctx: &GeneratedVoxelContext,
+        veg: &CompiledVegetation,
+        candidate: &PlacementCandidate,
+    ) -> Option<VoxelId> {
+        let pu = candidate.pu;
+        let pv = candidate.pv;
+        let res_u = self.voxel_res;
+        if pu >= res_u || pv >= res_u {
+            return None;
+        }
+
+        let plant_biome = self
+            .registry
+            .biome(self.get_biome_id(ctx.face, pu, pv) as usize);
+        if !veg.placement.allowed_in_biome(plant_biome) {
+            return None;
+        }
+        if !veg
+            .placement
+            .surface_blocks
+            .contains(&plant_biome.surface.top)
+        {
+            return None;
+        }
+        if veg.placement.slope_max > 0.0 || veg.placement.slope_min > 0.0 {
+            let h0 = self.get_height(ctx.face, pu, pv) as i32;
+            let h1 = self.get_height(ctx.face, (pu + 1).min(res_u - 1), pv) as i32;
+            let h2 = self.get_height(ctx.face, pu, (pv + 1).min(res_u - 1)) as i32;
+            let slope = (((h1 - h0).pow(2) + (h2 - h0).pow(2)) as f32).sqrt();
+            let slope01 = (slope / (1.0 + slope)).clamp(0.0, 1.0);
+            if veg.placement.slope_max > 0.0 && slope01 > veg.placement.slope_max {
+                return None;
+            }
+            if slope01 < veg.placement.slope_min {
+                return None;
+            }
+        }
+        if let Some((lo, hi)) = veg.placement.altitude_range {
+            let altitude = self.get_height(ctx.face, pu, pv) as i32 - self.surface_layer as i32;
+            let alt_f = altitude as f32 * self.voxel_scale();
+            if alt_f < lo || alt_f > hi {
+                return None;
+            }
+        }
+        if !self.placement_density_hit(&veg.placement, ctx.face, candidate) {
+            return None;
+        }
+        self.evaluate_tree_at(ctx, veg, pu, pv)
     }
 
     /// Evaluate whether the current voxel belongs to a tree planted at

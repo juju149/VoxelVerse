@@ -13,6 +13,9 @@
         hill_field: "core:field/rolling_hills",
         ridge_field: Some("core:field/mountain_sharp"),
         terrace_strength: 0.22,
+        height_curve: Some(mountain_spike(sharpness: 0.7)),
+        mountain_intensity: 1.6,
+        slope_smoothing: 0.0,
     ),
     palette: (
         grass: (0.50, 0.62, 0.45),

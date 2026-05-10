@@ -8,6 +8,15 @@
         density: 0.03,
         slope_max_degrees: 34,
         scatter_field: "core:field/jungle_scatter",
+        // Jungle canopies pack tighter (smaller spacing, stronger clump).
+        min_spacing_voxels: 2.0,
+        jitter_strength: 0.90,
+        clump_field: Some("core:field/forest_clump"),
+        clump_strength: 0.45,
+        altitude_range: Some((-4.0, 120.0)),
+        slope_min_degrees: None,
+        scale_variance: Some((0.95, 1.30)),
+        rotation_variance: 1.0,
     ),
     stamp: (
         trunk: "core:block/natural/logs/jungle_log",

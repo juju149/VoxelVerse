@@ -15,6 +15,13 @@ VoxPropScatterDef(
         density: 0.32,
         slope_max_degrees: 35,
         scatter_field: "core:field/soft_hills",
+        // Dense undergrowth — small spacing, full random rotation,
+        // patches modulated by the prop clump field for natural blooms.
+        min_spacing_voxels: 1.0,
+        jitter_strength: 0.95,
+        clump_field: Some("core:field/prop_clump"),
+        clump_strength: 0.30,
+        rotation_variance: 1.0,
     ),
     variants: [
         (model: "core:voxel/vegetation/grass/grass/grass_med_1", weight: 8),

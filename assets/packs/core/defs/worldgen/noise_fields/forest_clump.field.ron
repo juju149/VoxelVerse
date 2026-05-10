@@ -1,0 +1,14 @@
+NoiseFieldDef(
+    // Low-frequency clump modulator used by vegetation placements.  Large
+    // continuous masses (high values) become forest cores; the troughs are
+    // natural clearings.  Far lower frequency than the per-species scatter
+    // fields so multiple species cluster together inside the same patch.
+    kind: opensimplex2s,
+    frequency: 0.4,
+    amplitude: 1.0,
+    octaves: 3,
+    persistence: 0.55,
+    lacunarity: 2.0,
+    seed_salt: "forest_clump",
+    domain_warp: Some((field: "core:field/warp_large", strength: 0.18)),
+)

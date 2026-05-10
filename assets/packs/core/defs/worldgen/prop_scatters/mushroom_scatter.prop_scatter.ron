@@ -13,6 +13,12 @@ VoxPropScatterDef(
         density: 0.09,
         slope_max_degrees: 30,
         scatter_field: "core:field/flower_noise",
+        // Mushrooms grow in tight rings — strong clumping, small spacing.
+        min_spacing_voxels: 2.0,
+        jitter_strength: 0.90,
+        clump_field: Some("core:field/prop_clump"),
+        clump_strength: 0.75,
+        rotation_variance: 1.0,
     ),
     variants: [
         (

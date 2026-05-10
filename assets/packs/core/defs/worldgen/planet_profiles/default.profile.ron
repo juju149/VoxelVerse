@@ -1,10 +1,10 @@
 ﻿PlanetProfileDef(
     display_name: "Default Living Planet",
-    seed: 2,
+    seed: 1,
     shape: SphericalVoxelPlanet((
         resolution: 10000,
         surface_layer: 5000,
-        voxel_size_meters: 1,
+        voxel_size_meters: 0.5,
         edge_rounding_radius_voxels: 0.16,
         core_layers: 6,
         sea_level_offset: -6,
@@ -30,5 +30,11 @@
         near_voxel_lod_radius: 12,
         far_surface_lod_radius: 192,
         upload_budget_chunks_per_frame: 8,
+        // Side length of one lazy surface-cache tile.  Smaller = finer
+        // memory granularity but more per-cell overhead.  64 ≈ 4 KiB.
+        region_cell_voxels: 64,
+        // Soft cap of placed features (trees + props) per surface chunk.
+        // Keeps draw-call count predictable even in dense biomes.
+        feature_budget_per_chunk: 384,
     ),
 )

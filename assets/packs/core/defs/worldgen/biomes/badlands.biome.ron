@@ -13,6 +13,9 @@ BiomeDef(
         hill_field: "core:field/plateau_ridges",
         ridge_field: None,
         terrace_strength: 0.78,
+        height_curve: Some(plateau(flatness: 0.35, threshold: 0.4)),
+        mountain_intensity: 1.0,
+        slope_smoothing: 0.05,
     ),
     palette: (
         grass: (0.72, 0.44, 0.24),

@@ -8,6 +8,17 @@
         density: 0.03,
         slope_max_degrees: 34,
         scatter_field: "core:field/oak_scatter",
+        // Spacing + jitter break the visible plant-column grid.  Oaks like
+        // to cluster — a low-frequency clump field makes forests with
+        // clearings instead of a uniform speckle.
+        min_spacing_voxels: 4.0,
+        jitter_strength: 0.85,
+        clump_field: Some("core:field/forest_clump"),
+        clump_strength: 0.55,
+        altitude_range: Some((-12.0, 90.0)),
+        slope_min_degrees: None,
+        scale_variance: Some((0.90, 1.15)),
+        rotation_variance: 1.0,
     ),
     stamp: (
         trunk: "core:block/natural/logs/oak_log",

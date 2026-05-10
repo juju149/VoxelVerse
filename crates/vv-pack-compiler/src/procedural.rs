@@ -2,10 +2,11 @@ use crate::{
     BlockRegistry, CompiledBiomeColorTint, CompiledBiomeSelector, CompiledBiomeSet,
     CompiledBiomeSurface, CompiledBiomeTerrain, CompiledCave, CompiledCaveCarver, CompiledClimate,
     CompiledClimateAxis, CompiledCurve, CompiledFauna, CompiledFeaturePlacement,
-    CompiledNoiseField, CompiledNoiseKind, CompiledNoiseRemap, CompiledOre, CompiledPlanet,
-    CompiledProceduralBiome, CompiledProceduralPlanet, CompiledStructure, CompiledTerrainLayer,
-    CompiledTerrainLayerSet, CompiledTreeShapeKind, CompiledVegetation, CompiledVoxPropDrop,
-    CompiledVoxPropScatter, CompiledVoxPropVariant, ContentCompiler, ProceduralRegistry,
+    CompiledHeightCurve, CompiledNoiseField, CompiledNoiseKind, CompiledNoiseRemap, CompiledOre,
+    CompiledPlanet, CompiledPlanetStreaming, CompiledProceduralBiome, CompiledProceduralPlanet,
+    CompiledStructure, CompiledTerrainLayer, CompiledTerrainLayerSet, CompiledTreeShapeKind,
+    CompiledVegetation, CompiledVoxPropDrop, CompiledVoxPropScatter, CompiledVoxPropVariant,
+    ContentCompiler, ProceduralRegistry,
 };
 use std::collections::HashMap;
 use vv_content_schema::*;
@@ -235,6 +236,14 @@ fn compile_biome(
             hill_field,
             ridge_field,
             terrace_strength: def.terrain.terrace_strength.clamp(0.0, 1.0),
+            height_curve: def
+                .terrain
+                .height_curve
+                .as_ref()
+                .map(CompiledHeightCurve::from)
+                .unwrap_or_default(),
+            mountain_intensity: finite(def.terrain.mountain_intensity, 1.0).clamp(0.0, 2.0),
+            slope_smoothing: finite(def.terrain.slope_smoothing, 0.0).clamp(0.0, 1.0),
         },
         color_tint: CompiledBiomeColorTint {
             grass: tuple_color(def.palette.grass),
@@ -525,6 +534,13 @@ fn compile_planet(
             &def.visual_details,
             errors,
         ),
+        streaming: CompiledPlanetStreaming {
+            near_voxel_lod_radius: def.streaming.near_voxel_lod_radius,
+            far_surface_lod_radius: def.streaming.far_surface_lod_radius,
+            upload_budget_chunks_per_frame: def.streaming.upload_budget_chunks_per_frame,
+            region_cell_voxels: def.streaming.region_cell_voxels.clamp(16, 256),
+            feature_budget_per_chunk: def.streaming.feature_budget_per_chunk,
+        },
     })
 }
 
@@ -535,6 +551,22 @@ fn compile_placement(
     blocks: &BlockRegistry,
     errors: &mut Vec<String>,
 ) -> Option<CompiledFeaturePlacement> {
+    let clump_field = def
+        .clump_field
+        .as_ref()
+        .and_then(|f| resolve(field_map, "field", owner, f, errors));
+    let scale_variance = match def.scale_variance {
+        Some((lo, hi)) => {
+            let lo = finite_positive(lo, 1.0);
+            let hi = finite_positive(hi, lo);
+            if lo <= hi {
+                (lo, hi)
+            } else {
+                (hi, lo)
+            }
+        }
+        None => (1.0, 1.0),
+    };
     Some(CompiledFeaturePlacement {
         surface_blocks: def
             .allowed_surface_blocks
@@ -545,7 +577,30 @@ fn compile_placement(
         density: def.density.clamp(0.0, 1.0),
         field: resolve(field_map, "field", owner, &def.scatter_field, errors)?,
         biome_tags: refs_to_strings(&def.biome_tags),
+        min_spacing: finite(def.min_spacing_voxels, 0.0).max(0.0),
+        jitter_strength: finite(def.jitter_strength, 0.75).clamp(0.0, 1.0),
+        clump_field,
+        clump_strength: finite(def.clump_strength, 0.0).clamp(0.0, 1.0),
+        altitude_range: def.altitude_range.map(|(a, b)| ordered_pair(a, b)),
+        humidity_range: def.humidity_range.map(normalized_range),
+        temperature_range: def.temperature_range.map(normalized_range),
+        slope_min: def
+            .slope_min_degrees
+            .map(|d| (d as f32 / 90.0).clamp(0.0, 1.0))
+            .unwrap_or(0.0),
+        scale_variance,
+        rotation_variance: finite(def.rotation_variance, 1.0).clamp(0.0, 1.0),
     })
+}
+
+fn ordered_pair(a: f32, b: f32) -> (f32, f32) {
+    let a = finite(a, 0.0);
+    let b = finite(b, 0.0);
+    if a <= b {
+        (a, b)
+    } else {
+        (b, a)
+    }
 }
 
 fn resolve_many(

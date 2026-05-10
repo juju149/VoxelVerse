@@ -1,4 +1,6 @@
+pub mod diagnostics;
 pub mod features;
+pub mod placement;
 pub mod procedural;
 
 pub(crate) mod noise;

@@ -1,25 +1,29 @@
-//! Per-biome height composition — geological layering approach.
+//! Per-biome height composition — geological layering with data-driven
+//! curves and biome-weighted mountain boost.
 //!
 //! The height at any surface point is composed as a geological "lasagna":
 //!
 //! ```text
 //! final_height =
-//!     continent_curve(continentality)     // ocean / coast / land separation
-//!   + biome_blend(hills_fbm, ridge_fbm)   // local terrain character per biome
-//!   + mountain_boost(roughness, erosion)  // mountain chains where terrain is active
-//!   + erosion_modifier                    // older terrain sits lower and flatter
-//!   + weirdness_jitter                    // small local variation
+//!     continent_curve(continentality)            // ocean / coast / land
+//!   + Σ_biome weight × curve_b(hills_fbm + ridge_fbm) × amplitude_b
+//!   + Σ_biome weight × mountain_intensity_b × mountain_boost
+//!   + erosion_modifier                            // older terrain sits lower
+//!   + weirdness_jitter                            // small local variation
 //! ```
 //!
-//! This replaces the old linear `macro_shape` formula which produced
-//! ocean/land bands at constant latitude rings.  The non-linear continent
-//! curve creates distinct ocean / coastal / continental zones whose
-//! boundaries are controlled by the continent noise field (already
-//! domain-warped independently from temperature/humidity).
+//! Mountains are no longer a single hard cubic of `(inland × active × rough)`
+//! — that produced abrupt walls when any of the three fields jumped.  The
+//! boost now uses a smoothstep with a soft floor so the contribution rises
+//! smoothly from inland edges, and biomes opt into it via
+//! `mountain_intensity` (0 = flat biomes never get mountainsides, 1 =
+//! standard, >1 = exaggerated).  Each biome's *shape* (peak, plateau,
+//! plains) is driven by its `height_curve`.
 
-use super::biome_select::resolve_biome_weights;
+use super::biome_select::resolve_biome_weights_into;
 use super::climate::SurfaceFields;
 use super::noise_sampler::sample_noise_field;
+use super::{BiomeWeight, MAX_BIOME_WEIGHTS};
 use crate::content::{CompiledProceduralPlanet, ProceduralRegistry};
 use crate::generation::noise::NoiseGenerator;
 use crate::world::PlanetProfile;
@@ -33,14 +37,18 @@ pub(super) fn resolve_height(
     dir: Vec3,
     fields: &SurfaceFields,
 ) -> (u32, usize) {
-    let (weights, primary) = resolve_biome_weights(registry, planet, *fields);
+    let mut weights = [BiomeWeight::default(); MAX_BIOME_WEIGHTS];
+    let (count, primary) = resolve_biome_weights_into(registry, planet, *fields, &mut weights);
+    let active_weights = &weights[..count as usize];
 
     // ── Layer 1: Biome blend ─────────────────────────────────────────────────
-    // Each biome contributes hill noise + optional ridge noise scaled by its
-    // amplitude and flatness.  The weighted sum drives local terrain character.
+    // Each biome contributes hill+ridge noise reshaped by its height curve.
+    // The weighted sum drives local terrain character, with curves controlling
+    // silhouette per biome (plains stay flat, alpine spikes, badlands plateau).
     let mut height_offset = 0.0_f32;
-    for weight in &weights {
-        let biome = registry.biome(weight.biome);
+    let mut mountain_intensity = 0.0_f32;
+    for weight in active_weights {
+        let biome = registry.biome(weight.biome as usize);
         let hill =
             sample_noise_field(registry, generators, biome.terrain.hill_field, dir, 0) * 2.0 - 1.0;
         let ridge = biome
@@ -49,9 +57,14 @@ pub(super) fn resolve_height(
             .map(|f| sample_noise_field(registry, generators, f, dir, 0) * 2.0 - 1.0)
             .unwrap_or(0.0);
         let flat = 1.0 - biome.terrain.flatness;
-        let mut local = biome.terrain.base_height
-            + hill * biome.terrain.amplitude * flat
-            + ridge * biome.terrain.amplitude * 0.35;
+
+        // Apply the biome's height curve to the combined hill/ridge signal
+        // before scaling.  The curve operates on the [-1,1] unit-range
+        // pre-amplitude value so authoring stays predictable across biomes.
+        let raw_signal = (hill * flat + ridge * 0.35).clamp(-1.5, 1.5);
+        let shaped = biome.terrain.height_curve.evaluate(raw_signal);
+
+        let mut local = biome.terrain.base_height + shaped * biome.terrain.amplitude;
 
         // Terracing with spatial phase so steps tilt rather than being horizontal.
         if biome.terrain.terrace_strength > 0.0 {
@@ -62,6 +75,7 @@ pub(super) fn resolve_height(
             local += (terraced - local) * biome.terrain.terrace_strength;
         }
         height_offset += local * weight.weight;
+        mountain_intensity += biome.terrain.mountain_intensity * weight.weight;
     }
 
     // ── Layer 2: Continental baseline ───────────────────────────────────────
@@ -88,17 +102,24 @@ pub(super) fn resolve_height(
     };
 
     // ── Layer 3: Mountain boost ──────────────────────────────────────────────
-    // Mountains appear where terrain is both rough AND young (low erosion)
-    // AND inland (high continentality).  All three conditions must be met.
+    // Mountains appear where:
+    //   - terrain is inland (continentality high)
+    //   - terrain is active (low erosion)
+    //   - terrain is rough (low erosion + high weirdness)
+    //   - the contributing biome opts in via mountain_intensity
     //
-    // This avoids mountains on coasts, on flat old peneplains, and in deserts
-    // — matching real-world tectonic geography.
-    let inland = (c - 0.42).clamp(0.0, 0.58) / 0.58; // 0 at coast, 1 inland
-    let active = (1.0 - fields.erosion).max(0.0); // 1 = fresh terrain
-    let rough = fields.roughness; // 0..1
-    let mountain_potential = inland * active * rough; // 0..1
-                                                      // Cubic sharpen so the boost only kicks in where all three are high.
-    let mountain_boost = mountain_potential * mountain_potential * mountain_potential * 0.52;
+    // The boost is a smoothstep on the combined potential rather than a hard
+    // cubic — that kills the abrupt walls the cubic produced when any single
+    // field jumped.  A small floor (0.04) keeps subtle relief on inland
+    // plateaus without breaking the "mountain biome only" silhouette.
+    let inland = ((c - 0.42) / 0.58).clamp(0.0, 1.0);
+    let active = (1.0 - fields.erosion).clamp(0.0, 1.0);
+    let rough = fields.roughness.clamp(0.0, 1.0);
+    let potential = inland * active * rough;
+    // Smoothstep keeps low-potential areas flat without snapping high-
+    // potential ones into vertical cliffs.
+    let shaped_potential = potential * potential * (3.0 - 2.0 * potential);
+    let mountain_boost = (shaped_potential * 0.42 + potential * 0.04) * mountain_intensity;
 
     // ── Layer 4: Erosion modifier ────────────────────────────────────────────
     // Heavily eroded terrain is lower and flatter — ancient cratons and

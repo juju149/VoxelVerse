@@ -1,0 +1,14 @@
+NoiseFieldDef(
+    // Clump modulator for surface-detail vox props (grass, flowers,
+    // mushrooms).  Higher frequency than `forest_clump` so prop patches are
+    // smaller than tree masses — grass blooms inside a forest clearing, not
+    // over the whole patch.
+    kind: opensimplex2s,
+    frequency: 1.1,
+    amplitude: 1.0,
+    octaves: 3,
+    persistence: 0.52,
+    lacunarity: 2.05,
+    seed_salt: "prop_clump",
+    domain_warp: Some((field: "core:field/warp_medium", strength: 0.2)),
+)

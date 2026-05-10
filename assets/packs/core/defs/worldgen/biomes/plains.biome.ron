@@ -13,6 +13,9 @@
         hill_field: "core:field/soft_hills",
         ridge_field: None,
         terrace_strength: 0.0,
+        height_curve: Some(smoothstep),
+        mountain_intensity: 0.05,
+        slope_smoothing: 0.6,
     ),
     palette: (
         grass: (0.46, 0.72, 0.30),

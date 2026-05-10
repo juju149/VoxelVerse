@@ -18,6 +18,7 @@
 //! path now delegates to these helpers as well.
 
 use crate::content::{CompiledProceduralPlanet, CompiledVegetation, ProceduralRegistry};
+use crate::generation::placement::{for_each_candidate, PlacementCandidate};
 use crate::generation::procedural::ProceduralPlanetTerrain;
 use crate::voxel::{VoxelCoord, VoxelId, CHUNK_SIZE};
 use std::collections::HashMap;
@@ -94,18 +95,52 @@ impl<'a> FeatureBakery<'a> {
         let chunk_u_hi = (u_hi + margin).min(res);
         let chunk_v_hi = (v_hi + margin).min(res);
 
+        let voxel_scale = self.voxel_scale();
+        let budget = self
+            .planet
+            .streaming
+            .feature_budget_per_chunk
+            .saturating_sub(0) as usize;
+        let mut placed = 0usize;
+
         for veg_idx in &self.planet.vegetation_sets {
+            if budget > 0 && placed >= budget {
+                break;
+            }
             let veg = &self.registry.vegetation[*veg_idx];
-            for pu in scan_u_lo..scan_u_hi {
-                for pv in scan_v_lo..scan_v_hi {
-                    if !self.is_planted(veg, face, pu, pv) {
-                        continue;
+            // The candidate iterator visits at most one candidate per
+            // `min_spacing`-sized cell, world-aligned — no chunk-edge seams,
+            // and Poisson-like spacing without an O(N²) rejection pass.
+            for_each_candidate(
+                &veg.placement,
+                face,
+                scan_u_lo,
+                scan_u_hi,
+                scan_v_lo,
+                scan_v_hi,
+                voxel_scale,
+                |candidate| {
+                    if budget > 0 && placed >= budget {
+                        return;
+                    }
+                    if !self.candidate_passes(veg, face, &candidate) {
+                        return;
                     }
                     self.stamp_tree(
-                        veg, face, pu, pv, chunk_u_lo, chunk_v_lo, chunk_u_hi, chunk_v_hi, &mut map,
+                        veg,
+                        face,
+                        candidate.pu,
+                        candidate.pv,
+                        chunk_u_lo,
+                        chunk_v_lo,
+                        chunk_u_hi,
+                        chunk_v_hi,
+                        &mut map,
                     );
-                }
-            }
+                    self.terrain.stats().record_feature();
+                    placed += 1;
+                },
+            );
         }
 
         map
@@ -133,32 +168,64 @@ impl<'a> FeatureBakery<'a> {
             .unwrap_or(0)
     }
 
-    fn is_planted(&self, veg: &CompiledVegetation, face: u8, pu: u32, pv: u32) -> bool {
+    fn candidate_passes(
+        &self,
+        veg: &CompiledVegetation,
+        face: u8,
+        candidate: &PlacementCandidate,
+    ) -> bool {
+        let pu = candidate.pu;
+        let pv = candidate.pv;
         let biome = self
             .registry
             .biome(self.terrain.get_biome_id(face, pu, pv) as usize);
         if !veg.placement.allowed_in_biome(biome) {
+            self.terrain.stats().record_reject();
             return false;
         }
         let top = biome.surface.top;
         if !veg.placement.surface_blocks.contains(&top) {
+            self.terrain.stats().record_reject();
             return false;
         }
-        // Slope filter: skip steep terrain if slope_max is set.
-        if veg.placement.slope_max > 0.0 {
+        // Slope gate (min and max).
+        if veg.placement.slope_max > 0.0 || veg.placement.slope_min > 0.0 {
             let res = self.terrain.voxel_res();
             let h0 = self.terrain.get_height(face, pu, pv) as i32;
             let h1 = self.terrain.get_height(face, (pu + 1).min(res - 1), pv) as i32;
             let h2 = self.terrain.get_height(face, pu, (pv + 1).min(res - 1)) as i32;
+            // sqrt(Δh_u² + Δh_v²) is approximately the slope magnitude in
+            // voxels per voxel — convert to a 0..1 ratio (sin θ) the same
+            // way the compiler did.
             let slope = (((h1 - h0).pow(2) + (h2 - h0).pow(2)) as f32).sqrt();
-            if slope > veg.placement.slope_max {
+            let slope01 = (slope / (1.0 + slope)).clamp(0.0, 1.0);
+            if veg.placement.slope_max > 0.0 && slope01 > veg.placement.slope_max {
+                self.terrain.stats().record_reject();
+                return false;
+            }
+            if slope01 < veg.placement.slope_min {
+                self.terrain.stats().record_reject();
                 return false;
             }
         }
-        // density is authored "per 1 m² cell"; rescale for the active grid.
-        let density = veg.placement.density * self.density_scale();
-        self.terrain
-            .feature_hit_pub(veg.placement.field, face, pu, pv, density)
+        // Altitude gate (voxels above/below sea level).
+        if let Some((lo, hi)) = veg.placement.altitude_range {
+            let surface_layer = self.terrain.surface_layer() as i32;
+            let altitude = self.terrain.get_height(face, pu, pv) as i32 - surface_layer;
+            let alt_f = altitude as f32 * self.terrain.voxel_scale();
+            if alt_f < lo || alt_f > hi {
+                self.terrain.stats().record_reject();
+                return false;
+            }
+        }
+        // Density gate (scatter field × optional clump field × density).
+        if !self
+            .terrain
+            .placement_density_hit(&veg.placement, face, candidate)
+        {
+            return false;
+        }
+        true
     }
 
     /// Stamp every voxel of one planted tree into `map`, but only the ones

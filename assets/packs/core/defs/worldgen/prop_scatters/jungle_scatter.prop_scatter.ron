@@ -10,6 +10,11 @@ VoxPropScatterDef(
         density: 0.42,
         slope_max_degrees: 40,
         scatter_field: "core:field/jungle_scatter",
+        min_spacing_voxels: 1.0,
+        jitter_strength: 0.95,
+        clump_field: Some("core:field/prop_clump"),
+        clump_strength: 0.20,
+        rotation_variance: 1.0,
     ),
     variants: [
         (model: "core:voxel/vegetation/grass/ferns/ferns_01", weight: 8),

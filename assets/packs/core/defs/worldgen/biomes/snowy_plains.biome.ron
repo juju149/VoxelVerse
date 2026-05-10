@@ -13,6 +13,9 @@ BiomeDef(
         hill_field: "core:field/soft_hills",
         ridge_field: None,
         terrace_strength: 0.0,
+        height_curve: Some(smoothstep),
+        mountain_intensity: 0.1,
+        slope_smoothing: 0.55,
     ),
     palette: (
         grass: (0.78, 0.84, 0.90),

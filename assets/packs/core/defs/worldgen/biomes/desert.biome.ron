@@ -13,6 +13,9 @@
         hill_field: "core:field/rolling_hills",
         ridge_field: Some("core:field/dune_ridges"),
         terrace_strength: 0.0,
+        height_curve: Some(smoothstep),
+        mountain_intensity: 0.3,
+        slope_smoothing: 0.2,
     ),
     palette: (
         grass: (0.78, 0.60, 0.28),
