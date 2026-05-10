@@ -14,6 +14,7 @@ pub struct LoadedPack {
     pub prop_collections: Vec<(String, RawPropCollectionDef)>,
     pub vegetation_catalogs: Vec<(String, RawVegetationCatalogDef)>,
     pub tag_sets: Vec<(String, RawTagSetDef)>,
+    pub voxel_assets: Option<RawVoxelAssetRegistry>,
 }
 
 #[derive(Default)]
@@ -52,6 +53,10 @@ impl PackLoader {
                 defs.display()
             ));
         }
+        let voxel_assets_path = pack_dir
+            .join(&manifest.content_roots.generated)
+            .join("registries")
+            .join("voxel_assets.ron");
 
         Ok(LoadedPack {
             manifest,
@@ -64,6 +69,7 @@ impl PackLoader {
             prop_collections: load_typed_tree(&defs.join("props"), &defs, &namespace)?,
             vegetation_catalogs: load_typed_tree(&defs.join("vegetation"), &defs, &namespace)?,
             tag_sets: load_typed_tree(&defs.join("tags"), &defs, &namespace)?,
+            voxel_assets: load_optional_file(&voxel_assets_path)?,
         })
     }
 
@@ -137,6 +143,14 @@ fn load_file<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
     ron::from_str(&text)
         .or_else(|_| ron::from_str(strip_outer_type_name(&text)))
         .map_err(|e| format!("Parse error in {}:\n  {}", path.display(), e))
+}
+
+fn load_optional_file<T: serde::de::DeserializeOwned>(path: &Path) -> Result<Option<T>, String> {
+    if path.exists() {
+        load_file(path).map(Some)
+    } else {
+        Ok(None)
+    }
 }
 
 fn strip_outer_type_name(text: &str) -> &str {
@@ -227,7 +241,7 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
                 "Unknown definition root '{}': {}",
                 other,
                 path.display()
-            ))
+            ));
         }
     };
 
@@ -303,6 +317,21 @@ mod tests {
         assert!(!pack.prop_collections.is_empty());
         assert!(!pack.vegetation_catalogs.is_empty());
         assert!(!pack.tag_sets.is_empty());
+        let voxel_assets = pack.voxel_assets.expect("voxel asset registry");
+        assert_eq!(voxel_assets.asset_count as usize, voxel_assets.assets.len());
+        assert_eq!(voxel_assets.generated_from, "media/voxel");
+        for asset in &voxel_assets.assets {
+            assert!(
+                asset.id.0.starts_with("core:voxel/"),
+                "bad voxel id {}",
+                asset.id.0
+            );
+            assert!(
+                core_pack_dir.join(&asset.path).exists(),
+                "missing voxel asset {}",
+                asset.path
+            );
+        }
 
         assert!(!procedural.planets.is_empty());
         assert!(!procedural.fields.is_empty());

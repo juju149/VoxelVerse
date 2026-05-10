@@ -1,4 +1,4 @@
-use serde::{de, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de};
 
 /// Logical pack reference in `namespace:domain/path` form.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]

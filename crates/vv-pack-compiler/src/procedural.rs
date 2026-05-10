@@ -45,7 +45,9 @@ impl ContentCompiler {
             .biomes
             .iter()
             .enumerate()
-            .map(|(idx, (key, def))| compile_biome(idx, key, def, &field_map, &biome_map, blocks, &mut errors))
+            .map(|(idx, (key, def))| {
+                compile_biome(idx, key, def, &field_map, &biome_map, blocks, &mut errors)
+            })
             .collect();
         let climates = raw
             .climates
@@ -475,7 +477,10 @@ fn compile_planet(
 ) -> Option<CompiledProceduralPlanet> {
     let RawPlanetShapeDef::SphericalVoxelPlanet(shape) = &def.shape;
     if shape.surface_layer < 4 || shape.surface_layer >= shape.resolution {
-        errors.push(format!("Planet '{}': surface_layer must be in 4..resolution", key));
+        errors.push(format!(
+            "Planet '{}': surface_layer must be in 4..resolution",
+            key
+        ));
     }
     if shape.core_layers < 1 || shape.core_layers >= shape.surface_layer {
         errors.push(format!(
@@ -503,13 +508,25 @@ fn compile_planet(
         sea_level_offset: shape.sea_level_offset,
         climate: resolve(climate_map, "climate", key, &def.climate, errors)?,
         biome_set: resolve(biome_set_map, "biome set", key, &def.biome_set, errors)?,
-        terrain_layers: resolve(layer_map, "terrain layer set", key, &def.terrain_layers, errors)?,
+        terrain_layers: resolve(
+            layer_map,
+            "terrain layer set",
+            key,
+            &def.terrain_layers,
+            errors,
+        )?,
         caves: resolve_many(cave_map, "cave", key, &def.caves, errors),
         ore_sets: resolve_many(ore_map, "ore", key, &def.ores, errors),
         vegetation_sets: resolve_many(vegetation_map, "vegetation", key, &def.vegetation, errors),
         structure_sets: resolve_many(structure_map, "structure", key, &def.structures, errors),
         fauna_sets: resolve_many(fauna_map, "spawn", key, &def.spawns, errors),
-        visual_detail_sets: resolve_many(detail_map, "visual detail", key, &def.visual_details, errors),
+        visual_detail_sets: resolve_many(
+            detail_map,
+            "visual detail",
+            key,
+            &def.visual_details,
+            errors,
+        ),
     })
 }
 
@@ -555,7 +572,10 @@ fn resolve(
     match map.get(&key.0).copied() {
         Some(idx) => Some(idx),
         None => {
-            errors.push(format!("{} '{}': unknown {} '{}'", label, owner, label, key.0));
+            errors.push(format!(
+                "{} '{}': unknown {} '{}'",
+                label, owner, label, key.0
+            ));
             None
         }
     }
@@ -576,7 +596,11 @@ fn resolve_block(
     }
 }
 
-fn key_map<T>(label: &str, values: &[(String, T)], errors: &mut Vec<String>) -> HashMap<String, usize> {
+fn key_map<T>(
+    label: &str,
+    values: &[(String, T)],
+    errors: &mut Vec<String>,
+) -> HashMap<String, usize> {
     let mut map = HashMap::with_capacity(values.len());
     for (idx, (key, _)) in values.iter().enumerate() {
         if map.insert(key.clone(), idx).is_some() {
@@ -627,11 +651,7 @@ fn finite_positive(value: f32, fallback: f32) -> f32 {
 fn normalized_range(range: (f32, f32)) -> (f32, f32) {
     let a = finite(range.0, 0.0).clamp(0.0, 1.0);
     let b = finite(range.1, 1.0).clamp(0.0, 1.0);
-    if a <= b {
-        (a, b)
-    } else {
-        (b, a)
-    }
+    if a <= b { (a, b) } else { (b, a) }
 }
 
 fn normalized_u32_range(range: (u32, u32)) -> (u32, u32) {
@@ -652,8 +672,7 @@ mod tests {
     fn core_pack_procedural_compiles_from_current_schema() {
         let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
         let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");
-        let blocks =
-            ContentCompiler::compile_blocks(pack.blocks, pack.materials).expect("blocks");
+        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials).expect("blocks");
         let procedural_pack =
             PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
         let procedural =

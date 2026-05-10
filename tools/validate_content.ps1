@@ -192,6 +192,36 @@ if (Test-Path -LiteralPath $voxelRegistry) {
     if ($registryText -notmatch "asset_count:\s+$voxCount,") {
         Add-Error "Voxel registry asset_count does not match media/voxel count ($voxCount)."
     }
+    if ($registryText -notmatch 'generated_from:\s+"media/voxel"') {
+        Add-Error "Voxel registry generated_from must be media/voxel."
+    }
+
+    $assetMatches = [regex]::Matches($registryText, '\(id:\s+"([^"]+)",\s+path:\s+"([^"]+)",\s+kind:\s+voxel_model\)')
+    if ($assetMatches.Count -ne $voxCount) {
+        Add-Error "Voxel registry entry count ($($assetMatches.Count)) does not match media/voxel count ($voxCount)."
+    }
+
+    $assetIds = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($match in $assetMatches) {
+        $id = $match.Groups[1].Value
+        $path = $match.Groups[2].Value
+
+        if (-not $id.StartsWith("core:voxel/")) {
+            Add-Error "Invalid voxel asset id in registry: $id"
+        }
+        if (-not $assetIds.Add($id)) {
+            Add-Error "Duplicate voxel asset id in registry: $id"
+        }
+        if (-not $path.StartsWith("media/voxel/") -or -not $path.EndsWith(".vox")) {
+            Add-Error "Invalid voxel asset path in registry: $path"
+            continue
+        }
+
+        $resolved = Join-Path $PackRoot $path
+        if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
+            Add-Error "Voxel registry points to missing file: $path"
+        }
+    }
 }
 
 Write-Output "Content validation warnings: $($warnings.Count)"
