@@ -256,7 +256,7 @@ fn compile_biome_set(
     let RawBiomeSelectionDef::ClimateMap(map) = &def.selection;
     CompiledBiomeSet {
         key: key.to_string(),
-        blend_radius: 0.06,
+        blend_radius: def.blend_radius.clamp(0.02, 0.40),
         selectors: map
             .entries
             .iter()

@@ -8,7 +8,7 @@
         edge_rounding_radius_voxels: 0.16,
         core_layers: 6,
         sea_level_offset: -6,
-        max_terrain_offset: 180,
+        max_terrain_offset: 240,
     )),
     climate: "core:climate/earthlike",
     biome_set: "core:biome_set/earthlike",

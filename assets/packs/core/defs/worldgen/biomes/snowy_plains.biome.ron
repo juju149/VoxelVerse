@@ -1,0 +1,28 @@
+BiomeDef(
+    display_name: "Snowy Plains",
+    surface: (
+        top: "core:block/terrain/snow",
+        under: "core:block/terrain/powder_snow",
+        depth_voxels: (1, 3),
+        slope_override: Some((above_degrees: 40, top: "core:block/terrain/stone")),
+    ),
+    terrain: (
+        base_height: -0.01,
+        amplitude: 0.12,
+        flatness: 0.76,
+        hill_field: "core:field/soft_hills",
+        ridge_field: None,
+        terrace_strength: 0.02,
+    ),
+    palette: (
+        grass: (0.78, 0.84, 0.90),
+        foliage: (0.58, 0.68, 0.76),
+        fog_bias: (-0.04, -0.02, 0.06),
+    ),
+    placement: (
+        vegetation_tags: ["core:tag/biome/cold"],
+        fauna_tags: ["core:tag/fauna/small_herbivore"],
+        structure_tags: [],
+    ),
+    tags: ["core:tag/biome/cold", "core:tag/biome/snowy", "core:tag/biome/plains"],
+)

@@ -1,0 +1,28 @@
+BiomeDef(
+    display_name: "Badlands",
+    surface: (
+        top: "core:block/terrain/red_sand",
+        under: "core:block/terrain/coarse_dirt",
+        depth_voxels: (2, 5),
+        slope_override: Some((above_degrees: 35, top: "core:block/terrain/andesite")),
+    ),
+    terrain: (
+        base_height: 0.12,
+        amplitude: 0.44,
+        flatness: 0.26,
+        hill_field: "core:field/plateau_ridges",
+        ridge_field: None,
+        terrace_strength: 0.78,
+    ),
+    palette: (
+        grass: (0.72, 0.44, 0.24),
+        foliage: (0.56, 0.34, 0.16),
+        fog_bias: (0.10, 0.04, -0.04),
+    ),
+    placement: (
+        vegetation_tags: ["core:tag/biome/desert", "core:tag/biome/dry"],
+        fauna_tags: [],
+        structure_tags: [],
+    ),
+    tags: ["core:tag/biome/desert", "core:tag/biome/dry", "core:tag/biome/badlands"],
+)

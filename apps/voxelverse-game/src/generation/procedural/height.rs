@@ -49,7 +49,7 @@ pub(super) fn resolve_height(
         height_offset += local * weight.weight;
     }
     let macro_shape =
-        (fields.continentality - 0.5) * 0.40 - fields.erosion * 0.18 + fields.weirdness * 0.08;
+        (fields.continentality - 0.5) * 0.62 - fields.erosion * 0.22 + fields.weirdness * 0.10;
     height_offset += macro_shape;
     // `profile.max_terrain_offset` is already scaled by the profile builder
     // so mountains keep their authored physical relief regardless of voxel

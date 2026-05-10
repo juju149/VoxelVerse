@@ -147,6 +147,12 @@ pub struct RawBiomeClimateMapDef {
 pub struct RawBiomeSetDef {
     pub display_name: String,
     pub selection: RawBiomeSelectionDef,
+    #[serde(default = "default_blend_radius")]
+    pub blend_radius: f32,
+}
+
+fn default_blend_radius() -> f32 {
+    0.08
 }
 
 #[derive(Debug, Clone, Deserialize)]
