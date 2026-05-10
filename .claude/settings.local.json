@@ -11,7 +11,15 @@
       "Bash(Select-Object Name)",
       "PowerShell(head -50)",
       "Bash(npx tsc *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\DEV\\\\projects\\\\Voxel\\\\VoxelVerse\\\\assets\\\\packs\\\\core\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(grep -E \"\\\\.\\(ron|json|md|yaml|toml\\)$\")",
+      "Bash(xargs wc -l)",
+      "Bash(grep -E \"\\\\.vox$\")",
+      "Bash(grep -E \"\\\\.png|\\\\.mp3|\\\\.ogg|\\\\.wav$\")",
+      "Bash(xargs head -20)"
     ]
   }
 }

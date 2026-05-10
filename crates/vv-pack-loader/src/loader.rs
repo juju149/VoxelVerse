@@ -45,6 +45,12 @@ impl PackLoader {
                 manifest.namespace, namespace
             ));
         }
+        check_format_version(
+            manifest.format_version,
+            PACK_FORMAT_VERSION,
+            "pack",
+            &manifest.namespace,
+        )?;
 
         let defs = pack_dir.join(&manifest.content_roots.definitions);
         if !defs.exists() {
