@@ -8,9 +8,9 @@
     gameplay: (
         health: 6,
         movement: "core:movement/quadruped_small",
-        behavior: "core:behavior/passive_grazer",
-        drops: "core:loot/entities/rabbit",
+        behavior: Some("core:behavior/passive_grazer"),
+        drops: Some("core:loot/entities/rabbit"),
     ),
-    spawn: "core:spawn/rabbit",
+    spawn: Some("core:spawn/rabbit"),
     tags: ["core:tag/entity/animal", "core:tag/entity/passive"],
 )

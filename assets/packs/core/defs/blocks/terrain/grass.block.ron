@@ -13,7 +13,7 @@
     visual: (
         shape: cube,
         render: opaque,
-        materials: (top: "core:material/blocks/grass_block/grass_block_top", sides: "core:material/blocks/grass_block/grass_block_side", bottom: "core:material/blocks/grass_block/grass_block_bottom"),
+        materials: Faces((top: "core:material/blocks/grass_block/grass_block_top", sides: "core:material/blocks/grass_block/grass_block_side", bottom: "core:material/blocks/grass_block/grass_block_bottom")),
         ambient_occlusion: true,
         casts_shadow: true,
     ),
@@ -29,5 +29,5 @@
         place: "core:sound/place/grass",
     ),
     tags: ["core:tag/block/terrain", "core:tag/block/soil", "core:tag/block/supports_surface_vegetation"],
-    runtime: (role: default_place),
+    runtime: (role: Some(default_place)),
 )

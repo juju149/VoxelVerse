@@ -5,8 +5,8 @@
     gameplay: (
         health: 20,
         movement: "core:movement/player_planet_gravity",
-        inventory: "core:inventory/player_survival",
-        interaction_reach_voxels: 7.0,
+        inventory: Some("core:inventory/player_survival"),
+        interaction_reach_voxels: Some(7.0),
     ),
     tags: ["core:tag/entity/player"],
 )

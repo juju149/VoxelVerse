@@ -104,8 +104,10 @@ impl TextureRegistry {
                 texture_ref
             ));
         }
+        let path = path.strip_prefix("texture/").unwrap_or(path);
         Ok(pack_root
             .join(namespace)
+            .join("media")
             .join("textures")
             .join(path)
             .with_extension("png"))
@@ -234,7 +236,7 @@ mod tests {
     fn core_pack_texture_registry_loads_grass_top_material() {
         let pack_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs");
         let pack = PackLoader::load_from_dir(&pack_root.join("core")).expect("core pack");
-        let blocks = ContentCompiler::compile_blocks(pack.blocks).expect("blocks");
+        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials).expect("blocks");
         let textures = TextureRegistry::load(&pack_root, &blocks).expect("textures");
 
         assert!(textures.materials().len() > 10);

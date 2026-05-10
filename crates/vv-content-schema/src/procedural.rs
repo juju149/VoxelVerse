@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-
+use crate::ContentRef;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -21,7 +20,7 @@ pub enum RawCurve {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawDomainWarpDef {
-    pub field: String,
+    pub field: ContentRef,
     pub strength: f32,
 }
 
@@ -42,102 +41,127 @@ pub struct RawNoiseFieldDef {
     pub octaves: u32,
     pub persistence: f32,
     pub lacunarity: f32,
-    pub seed_salt: u32,
+    pub seed_salt: String,
     #[serde(default)]
     pub domain_warp: Option<RawDomainWarpDef>,
     #[serde(default)]
     pub remap: Option<RawNoiseRemapDef>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
-pub struct RawClimateAxisDef {
-    #[serde(default)]
-    pub latitude_bias: f32,
-    #[serde(default)]
-    pub fields: Vec<(String, f32)>,
-    #[serde(default)]
-    pub ocean_bias: f32,
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawClimateDef {
+    pub display_name: String,
+    pub fields: RawClimateFieldsDef,
+    pub atmosphere: RawAtmosphereDef,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct RawClimateDef {
-    pub temperature: RawClimateAxisDef,
-    pub humidity: RawClimateAxisDef,
-    pub continentality: RawClimateAxisDef,
-    pub erosion: RawClimateAxisDef,
-    pub weirdness: RawClimateAxisDef,
+pub struct RawClimateFieldsDef {
+    pub temperature: ContentRef,
+    pub humidity: ContentRef,
+    pub continentality: ContentRef,
+    pub erosion: ContentRef,
+    pub weirdness: ContentRef,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawAtmosphereDef {
+    pub fog_color: (f32, f32, f32),
+    pub horizon_fog_density: f32,
+    pub sky_scatter_strength: f32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawPlanetProceduralDef {
     pub display_name: String,
     pub seed: u32,
+    pub shape: RawPlanetShapeDef,
+    pub climate: ContentRef,
+    pub biome_set: ContentRef,
+    pub terrain_layers: ContentRef,
+    #[serde(default)]
+    pub caves: Vec<ContentRef>,
+    #[serde(default)]
+    pub ores: Vec<ContentRef>,
+    #[serde(default)]
+    pub vegetation: Vec<ContentRef>,
+    #[serde(default)]
+    pub structures: Vec<ContentRef>,
+    #[serde(default)]
+    pub spawns: Vec<ContentRef>,
+    #[serde(default)]
+    pub visual_details: Vec<ContentRef>,
+    pub streaming: RawPlanetStreamingDef,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub enum RawPlanetShapeDef {
+    SphericalVoxelPlanet(RawSphericalVoxelPlanetDef),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawSphericalVoxelPlanetDef {
     pub resolution: u32,
     pub surface_layer: u32,
     pub voxel_size_meters: f32,
-    /// Visual-only rounded edge radius, in voxel-face UV units.
-    /// `0.0` disables it; values around `0.12..0.18` soften block edges
-    /// without changing silhouettes or collision.
-    #[serde(default = "default_edge_rounding_radius_voxels")]
     pub edge_rounding_radius_voxels: f32,
     pub core_layers: u32,
-    pub inner_radius_fraction: f32,
     pub sea_level_offset: i32,
     pub max_terrain_offset: i32,
-    pub climate: String,
-    pub biome_set: String,
-    pub terrain_layers: String,
-    #[serde(default)]
-    pub caves: Vec<String>,
-    #[serde(default)]
-    pub ore_sets: Vec<String>,
-    #[serde(default)]
-    pub vegetation_sets: Vec<String>,
-    #[serde(default)]
-    pub structure_sets: Vec<String>,
-    #[serde(default)]
-    pub fauna_sets: Vec<String>,
-    #[serde(default)]
-    pub visual_detail_sets: Vec<String>,
 }
 
-fn default_edge_rounding_radius_voxels() -> f32 {
-    0.16
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawPlanetStreamingDef {
+    pub near_voxel_lod_radius: u32,
+    pub far_surface_lod_radius: u32,
+    pub upload_budget_chunks_per_frame: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBiomeSelectorDef {
-    pub biome: String,
+    pub biome: ContentRef,
     pub temperature: (f32, f32),
     pub humidity: (f32, f32),
-    pub roughness: (f32, f32),
+    #[serde(default)]
+    pub elevation: Option<(f32, f32)>,
     pub weight: f32,
-    /// Optional continentalness window. `None` = whole 0..1 range.
-    /// Lets a biome refuse to spawn near the coast (`(0.45, 1.0)`) or
-    /// only appear on it (`(0.0, 0.30)`).
     #[serde(default)]
     pub continentality: Option<(f32, f32)>,
-    /// Optional erosion window. Low erosion = jagged peaks; high erosion =
-    /// rolling/eroded relief.  Used to separate mountains from highlands.
     #[serde(default)]
     pub erosion: Option<(f32, f32)>,
-    /// Optional weirdness window. Drives sub-biome variants (e.g. flower
-    /// fields branch off plains in a positive weirdness band).
     #[serde(default)]
     pub weirdness: Option<(f32, f32)>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub enum RawBiomeSelectionDef {
+    ClimateMap(RawBiomeClimateMapDef),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawBiomeClimateMapDef {
+    pub entries: Vec<RawBiomeSelectorDef>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct RawBiomeSetDef {
-    pub blend_radius: f32,
-    pub selectors: Vec<RawBiomeSelectorDef>,
+    pub display_name: String,
+    pub selection: RawBiomeSelectionDef,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBiomeSurfaceDef {
-    pub top: String,
-    pub under: String,
-    pub depth: (u32, u32),
+    pub top: ContentRef,
+    pub under: ContentRef,
+    pub depth_voxels: (u32, u32),
+    #[serde(default)]
+    pub slope_override: Option<RawBiomeSlopeOverrideDef>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawBiomeSlopeOverrideDef {
+    pub above_degrees: u32,
+    pub top: ContentRef,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -145,16 +169,27 @@ pub struct RawBiomeTerrainDef {
     pub base_height: f32,
     pub amplitude: f32,
     pub flatness: f32,
-    pub hill_field: String,
+    pub hill_field: ContentRef,
     #[serde(default)]
-    pub ridge_field: Option<String>,
+    pub ridge_field: Option<ContentRef>,
     pub terrace_strength: f32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct RawBiomeColorTintDef {
-    pub grass: [f32; 3],
-    pub foliage: [f32; 3],
+pub struct RawBiomePaletteDef {
+    pub grass: (f32, f32, f32),
+    pub foliage: (f32, f32, f32),
+    pub fog_bias: (f32, f32, f32),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawBiomePlacementDef {
+    #[serde(default)]
+    pub vegetation_tags: Vec<ContentRef>,
+    #[serde(default)]
+    pub fauna_tags: Vec<ContentRef>,
+    #[serde(default)]
+    pub structure_tags: Vec<ContentRef>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -162,145 +197,199 @@ pub struct RawBiomeProceduralDef {
     pub display_name: String,
     pub surface: RawBiomeSurfaceDef,
     pub terrain: RawBiomeTerrainDef,
-    pub color_tint: RawBiomeColorTintDef,
+    pub palette: RawBiomePaletteDef,
+    pub placement: RawBiomePlacementDef,
     #[serde(default)]
-    pub vegetation_tags: Vec<String>,
+    pub tags: Vec<ContentRef>,
     #[serde(default)]
-    pub fauna_tags: Vec<String>,
-    /// If set, this biome is a sub-biome that only spawns at the border of
-    /// `edge_of`.  Drives natural transitions like beaches between ocean and
-    /// land, or stony shores between mountain and water.
-    #[serde(default)]
-    pub edge_of: Option<String>,
+    pub edge_of: Option<ContentRef>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RawTerrainLayerRange {
+    Surface,
+    Subsurface,
+    Crust,
+    DeepCrust,
+    Core,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawTerrainLayerDef {
-    pub name: String,
-    pub block: String,
+    pub range: RawTerrainLayerRange,
+    pub block: ContentRef,
     #[serde(default)]
-    pub depth: Option<(u32, u32)>,
+    pub thickness: Option<(u32, u32)>,
     #[serde(default)]
-    pub depth_from_center: Option<(u32, u32)>,
-    #[serde(default)]
-    pub biomes: Vec<String>,
-    #[serde(default)]
-    pub noise_variation: Option<String>,
+    pub noise_variation: Option<ContentRef>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawTerrainLayerSetDef {
+    pub display_name: String,
     pub layers: Vec<RawTerrainLayerDef>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawOreDef {
-    pub block: String,
-    pub replace: Vec<String>,
-    pub depth: (u32, u32),
+    pub block: ContentRef,
+    pub replace: Vec<ContentRef>,
+    pub depth_voxels: (u32, u32),
     pub density: f32,
     pub vein_size: (u32, u32),
-    pub field: String,
+    pub field: ContentRef,
     #[serde(default)]
-    pub biome_tags: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawCaveCarverDef {
-    pub kind: String,
-    pub field: String,
-    pub threshold: f32,
-    pub radius: (u32, u32),
-    pub depth: (u32, u32),
+    pub biome_tags: Vec<ContentRef>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawCaveDef {
-    pub carvers: Vec<RawCaveCarverDef>,
-    pub surface_break_chance: f32,
-    #[serde(default)]
-    pub fill_below_sea: Option<String>,
+    pub display_name: String,
+    pub fields: Vec<ContentRef>,
+    pub carve: RawCaveCarveDef,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawCaveCarveDef {
+    pub min_depth_voxels: u32,
+    pub max_depth_voxels: u32,
+    pub tunnel_radius: (f32, f32),
+    pub chamber_radius: (f32, f32),
+    pub air_block: ContentRef,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawFeaturePlacementDef {
     #[serde(default)]
-    pub surface_blocks: Vec<String>,
+    pub allowed_surface_tags: Vec<ContentRef>,
     #[serde(default)]
-    pub slope_max: f32,
+    pub allowed_surface_blocks: Vec<ContentRef>,
+    #[serde(default)]
+    pub biome_tags: Vec<ContentRef>,
     pub density: f32,
-    pub field: String,
-    /// Restrict placement to biomes whose `vegetation_tags` (or `fauna_tags`
-    /// for fauna placements) intersect this list.  Empty = no biome filter
-    /// (keeps backward compat with older packs).  `["*"]` is also "any".
-    #[serde(default)]
-    pub biome_tags: Vec<String>,
+    pub slope_max_degrees: u32,
+    pub scatter_field: ContentRef,
 }
 
-/// Silhouette family used by the tree stamper.
-///
-/// `BroadLeaf` is the original oak: rounded canopy, several lobes, ~half
-/// height of trunk visible.  Other variants change branch behaviour, canopy
-/// shape, and leaf density so a pack can describe spruces or acacias without
-/// needing brand-new stamping code.
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RawTreeShapeKind {
-    /// Rounded canopy of overlapping lobes — oaks, fruit trees.
     #[default]
     BroadLeaf,
-    /// Conifer cone: stacked discs of leaves shrinking toward the top, slim
-    /// straight trunk.  Spruce / fir / pine.
     Conical,
-    /// Slim and tall with a small canopy on top — birch.
     Tall,
-    /// Tall, narrow, leaves only at the top + occasional vines below — jungle.
     JungleCanopy,
-    /// Two-segment trunk forking near the top into a flat, plate-like canopy
-    /// — acacia.
     FlatTop,
-    /// 2×2 trunk with thick low-hanging dense canopy — dark oak / dark forest.
     DenseDark,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RawVegetationPlacementKind {
+    ProceduralTree,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawVegetationStampDef {
-    pub kind: String,
-    pub trunk: String,
-    pub leaves: String,
+    pub trunk: ContentRef,
+    pub leaves: ContentRef,
     pub height: (u32, u32),
     pub canopy_radius: (u32, u32),
-    /// Silhouette family (rounded oak, conical spruce, flat-top acacia…).
-    /// Defaults to `broad_leaf` so older packs keep their behaviour.
     #[serde(default)]
     pub shape_kind: RawTreeShapeKind,
-    /// 0..=1 fraction of leaf cells actually emitted by the canopy stamper.
-    /// `1.0` = full Minecraft-thick foliage, `0.5` = airy crown players can
-    /// peek and walk through.  Defaults to `1.0` for back-compat.
     #[serde(default = "default_canopy_density")]
     pub canopy_density: f32,
-    /// Thickness of the trunk footprint (Chebyshev half-extent).
-    /// `(1, 1)` = single column, `(1, 2)` = mostly thin trunks with occasional thick ones.
     #[serde(default = "default_trunk_thickness")]
     pub trunk_thickness: (u32, u32),
-    /// Number of horizontal branch voxels reaching out from the upper trunk.
     #[serde(default)]
     pub branch_count: (u32, u32),
-    /// Maximum horizontal length of each branch in voxels.
     #[serde(default = "default_branch_length")]
     pub branch_length: (u32, u32),
-    /// Vertical squash for the canopy ellipsoid. `1.0` = sphere, `<1.0` = oblate, `>1.0` = prolate.
     #[serde(default = "default_canopy_squash")]
     pub canopy_vertical_squash: f32,
-    /// Upward slope range (rise/run) for branches. `(0.25, 0.80)` gives natural oak angles.
     #[serde(default = "default_branch_slope")]
     pub branch_slope: (f32, f32),
-    /// Number of overlapping canopy lobes. More lobes → fuller canopy.
     #[serde(default = "default_canopy_lobe_count")]
     pub canopy_lobe_count: (u32, u32),
-    /// Max trunk lean as a fraction of tree height. `0.0` = straight, `0.15` = natural.
     #[serde(default = "default_trunk_lean_max")]
     pub trunk_lean_max: f32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawVegetationDef {
+    pub display_name: String,
+    pub kind: RawVegetationPlacementKind,
+    pub placement: RawFeaturePlacementDef,
+    pub stamp: RawVegetationStampDef,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RawStructureRarity {
+    Common,
+    Uncommon,
+    Rare,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawStructureDef {
+    pub display_name: String,
+    pub structure: ContentRef,
+    pub biome_tags: Vec<ContentRef>,
+    pub spacing_voxels: (u32, u32),
+    pub slope_max_degrees: u32,
+    pub rarity: RawStructureRarity,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RawSpawnLightDef {
+    Daylight,
+    Night,
+    Any,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawFaunaDef {
+    pub entity: ContentRef,
+    pub biome_tags: Vec<ContentRef>,
+    pub density: f32,
+    pub group_size: (u32, u32),
+    pub light: RawSpawnLightDef,
+    pub surface_tags: Vec<ContentRef>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RawVisualDetailRenderMode {
+    InstancedVoxelProp,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RawVisualDetailCollision {
+    None,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawVisualDetailDef {
+    pub display_name: String,
+    pub models: Vec<ContentRef>,
+    #[serde(default)]
+    pub surface_blocks: Vec<ContentRef>,
+    #[serde(default)]
+    pub details: Vec<RawVisualDetailItemDef>,
+    pub biome_tags: Vec<ContentRef>,
+    pub density: f32,
+    pub render: RawVisualDetailRenderMode,
+    pub collision: RawVisualDetailCollision,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawVisualDetailItemDef {
+    pub block: ContentRef,
+    pub weight: u32,
 }
 
 fn default_trunk_thickness() -> (u32, u32) {
@@ -329,61 +418,4 @@ fn default_trunk_lean_max() -> f32 {
 
 fn default_canopy_density() -> f32 {
     1.0
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawVegetationDef {
-    pub placement: RawFeaturePlacementDef,
-    pub stamp: RawVegetationStampDef,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawStructurePlacementDef {
-    pub density: f32,
-    pub min_spacing: u32,
-    #[serde(default)]
-    pub biomes: Vec<String>,
-    pub slope_max: f32,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawStructureDef {
-    pub placement: RawStructurePlacementDef,
-    pub footprint_radius: u32,
-    pub priority: i32,
-    pub stamp: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawFaunaSpawnDef {
-    #[serde(default)]
-    pub biome_tags: Vec<String>,
-    pub density: f32,
-    pub group_size: (u32, u32),
-    pub light: (f32, f32),
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawFaunaRuntimeDef {
-    pub despawn_distance: u32,
-    pub sim_distance: u32,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawFaunaDef {
-    pub entity: String,
-    pub spawn: RawFaunaSpawnDef,
-    pub runtime: RawFaunaRuntimeDef,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawVisualDetailItemDef {
-    pub block: String,
-    pub weight: u32,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawVisualDetailDef {
-    pub placement: RawFeaturePlacementDef,
-    pub details: Vec<RawVisualDetailItemDef>,
 }

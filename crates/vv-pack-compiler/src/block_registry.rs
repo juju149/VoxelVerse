@@ -13,6 +13,7 @@ pub enum BlockShape {
 impl From<RawBlockShape> for BlockShape {
     fn from(value: RawBlockShape) -> Self {
         match value {
+            RawBlockShape::None => Self::Cube,
             RawBlockShape::Cube => Self::Cube,
             RawBlockShape::CrossPlane => Self::CrossPlane,
         }

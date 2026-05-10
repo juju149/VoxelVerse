@@ -2,7 +2,7 @@
     display_name: "Iron Ore Chunk",
     category: "resource",
     stack_size: 99,
-    visual: (inventory_icon: "core:icon/items/resources/iron_ore_chunk", world_model: "core:voxel/items/resources/mineral/deposit/iron_1"),
-    gameplay: CraftingIngredient((smelts_to: Some(\,
-    tags: core:item/resource/iron_ingot\))),
+    visual: (inventory_icon: "core:icon/items/resources/iron_ore_chunk", world_model: Voxel("core:voxel/items/resources/mineral/deposit/iron_1")),
+    gameplay: CraftingIngredient((smelts_to: Some("core:item/resource/iron_ingot"))),
+    tags: ["core:tag/item/resource", "core:tag/resource/iron"],
 )

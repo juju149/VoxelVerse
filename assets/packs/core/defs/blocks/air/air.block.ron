@@ -29,5 +29,5 @@
         place: "core:sound/place/none",
     ),
     tags: [],
-    runtime: (reserved_id: 0, can_target: false, blocks_light: false),
+    runtime: (reserved_id: Some(0), can_target: false, blocks_light: false),
 )

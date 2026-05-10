@@ -3,6 +3,7 @@
     kind: procedural_tree,
     placement: (
         allowed_surface_tags: ["core:tag/block/soil"],
+        allowed_surface_blocks: ["core:block/terrain/grass", "core:block/terrain/dirt", "core:block/terrain/coarse_dirt", "core:block/terrain/podzol"],
         biome_tags: ["core:tag/biome/forest"],
         density: 0.03,
         slope_max_degrees: 34,

@@ -304,22 +304,22 @@ BlockDef(
 "@
 }
 
-BlockDef "defs/blocks/air/air.block.ron" "Air" "air" "none" "none" "invisible" "0.0" "None" "core:loot/blocks/air" "None" "[]" "none" "runtime: (reserved_id: 0, can_target: false, blocks_light: false),"
-BlockDef "defs/blocks/terrain/core.block.ron" "Planet Core" "terrain" "cube" "full_cube" "opaque" "999.0" "None" "core:loot/blocks/empty" 'All("core:material/blocks/bedrock/bedrock_all")' '["core:tag/block/unbreakable", "core:tag/block/planet_core"]' "stone" "runtime: (role: planet_core),"
+BlockDef "defs/blocks/air/air.block.ron" "Air" "air" "none" "none" "invisible" "0.0" "None" "core:loot/blocks/air" "None" "[]" "none" "runtime: (reserved_id: Some(0), can_target: false, blocks_light: false),"
+BlockDef "defs/blocks/terrain/core.block.ron" "Planet Core" "terrain" "cube" "full_cube" "opaque" "999.0" "None" "core:loot/blocks/empty" 'All("core:material/blocks/bedrock/bedrock_all")' '["core:tag/block/unbreakable", "core:tag/block/planet_core"]' "stone" "runtime: (role: Some(planet_core)),"
 BlockDef "defs/blocks/terrain/bedrock.block.ron" "Bedrock" "terrain" "cube" "full_cube" "opaque" "999.0" "None" "core:loot/blocks/empty" 'All("core:material/blocks/bedrock/bedrock_all")' '["core:tag/block/unbreakable"]'
-BlockDef "defs/blocks/terrain/grass.block.ron" "Grass Block" "terrain" "cube" "full_cube" "opaque" "0.6" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/grass" '(top: "core:material/blocks/grass_block/grass_block_top", sides: "core:material/blocks/grass_block/grass_block_side", bottom: "core:material/blocks/grass_block/grass_block_bottom")' '["core:tag/block/terrain", "core:tag/block/soil", "core:tag/block/supports_surface_vegetation"]' "grass" "runtime: (role: default_place),"
+BlockDef "defs/blocks/terrain/grass.block.ron" "Grass Block" "terrain" "cube" "full_cube" "opaque" "0.6" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/grass" 'Faces((top: "core:material/blocks/grass_block/grass_block_top", sides: "core:material/blocks/grass_block/grass_block_side", bottom: "core:material/blocks/grass_block/grass_block_bottom"))' '["core:tag/block/terrain", "core:tag/block/soil", "core:tag/block/supports_surface_vegetation"]' "grass" "runtime: (role: Some(default_place)),"
 BlockDef "defs/blocks/terrain/dirt.block.ron" "Dirt" "terrain" "cube" "full_cube" "opaque" "0.5" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/dirt" 'All("core:material/blocks/dirt/dirt_all")' '["core:tag/block/terrain", "core:tag/block/soil"]' "dirt"
 BlockDef "defs/blocks/terrain/coarse_dirt.block.ron" "Coarse Dirt" "terrain" "cube" "full_cube" "opaque" "0.65" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/coarse_dirt" 'All("core:material/blocks/dirt/dirt_all")' '["core:tag/block/terrain", "core:tag/block/soil", "core:tag/block/dry_soil"]' "dirt"
-BlockDef "defs/blocks/terrain/podzol.block.ron" "Podzol" "terrain" "cube" "full_cube" "opaque" "0.6" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/podzol" '(top: "core:material/blocks/grass_block/grass_block_top", sides: "core:material/blocks/dirt/dirt_all", bottom: "core:material/blocks/dirt/dirt_all")' '["core:tag/block/terrain", "core:tag/block/soil", "core:tag/block/forest_floor"]' "grass"
+BlockDef "defs/blocks/terrain/podzol.block.ron" "Podzol" "terrain" "cube" "full_cube" "opaque" "0.6" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/podzol" 'Faces((top: "core:material/blocks/grass_block/grass_block_top", sides: "core:material/blocks/dirt/dirt_all", bottom: "core:material/blocks/dirt/dirt_all"))' '["core:tag/block/terrain", "core:tag/block/soil", "core:tag/block/forest_floor"]' "grass"
 BlockDef "defs/blocks/terrain/stone.block.ron" "Smooth Stone" "terrain" "cube" "full_cube" "opaque" "1.5" 'Some("core:tag/item/tool/pickaxe")' "core:loot/blocks/stone" 'All("core:material/blocks/smooth_stone/smooth_stone_all")' '["core:tag/block/terrain", "core:tag/block/stone"]'
 BlockDef "defs/blocks/terrain/andesite.block.ron" "Andesite" "terrain" "cube" "full_cube" "opaque" "1.6" 'Some("core:tag/item/tool/pickaxe")' "core:loot/blocks/andesite" 'All("core:material/blocks/andesite/andesite_all")' '["core:tag/block/terrain", "core:tag/block/stone"]'
-BlockDef "defs/blocks/terrain/deepslate.block.ron" "Deepslate" "terrain" "cube" "full_cube" "opaque" "2.3" 'Some("core:tag/item/tool/pickaxe")' "core:loot/blocks/deepslate" '(top: "core:material/blocks/deepslate/deepslate_top", sides: "core:material/blocks/deepslate/deepslate_side", bottom: "core:material/blocks/deepslate/deepslate_top")' '["core:tag/block/terrain", "core:tag/block/stone", "core:tag/block/deep_layer"]'
+BlockDef "defs/blocks/terrain/deepslate.block.ron" "Deepslate" "terrain" "cube" "full_cube" "opaque" "2.3" 'Some("core:tag/item/tool/pickaxe")' "core:loot/blocks/deepslate" 'Faces((top: "core:material/blocks/deepslate/deepslate_top", sides: "core:material/blocks/deepslate/deepslate_side", bottom: "core:material/blocks/deepslate/deepslate_top"))' '["core:tag/block/terrain", "core:tag/block/stone", "core:tag/block/deep_layer"]'
 BlockDef "defs/blocks/terrain/red_sand.block.ron" "Red Sand" "terrain" "cube" "full_cube" "opaque" "0.5" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/red_sand" 'All("core:material/blocks/red_sand/red_sand_all")' '["core:tag/block/terrain", "core:tag/block/sand", "core:tag/block/desert"]' "sand"
 BlockDef "defs/blocks/terrain/snow.block.ron" "Snow Block" "terrain" "cube" "full_cube" "opaque" "0.4" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/snow" 'All("core:material/blocks/powder_snow/powder_snow_all")' '["core:tag/block/terrain", "core:tag/block/snow"]' "snow"
 BlockDef "defs/blocks/terrain/powder_snow.block.ron" "Powder Snow" "terrain" "cube" "soft_cube" "alpha_test" "0.2" 'Some("core:tag/item/tool/shovel")' "core:loot/blocks/powder_snow" 'All("core:material/blocks/powder_snow/powder_snow_all")' '["core:tag/block/terrain", "core:tag/block/snow", "core:tag/block/soft"]' "snow"
 
 foreach ($wood in @("oak", "birch", "spruce", "acacia", "dark_oak", "jungle")) {
-    BlockDef "defs/blocks/natural/logs/$wood`_log.block.ron" "$((Get-Culture).TextInfo.ToTitleCase($wood.Replace('_',' '))) Log" "natural/log" "cube" "full_cube" "opaque" "1.5" 'Some("core:tag/item/tool/axe")' "core:loot/blocks/$wood`_log" '(top: "core:material/blocks/oak_log/oak_log_top", sides: "core:material/blocks/oak_log/oak_log_side", bottom: "core:material/blocks/oak_log/oak_log_top")' '["core:tag/block/log", "core:tag/block/wood"]' "wood"
+    BlockDef "defs/blocks/natural/logs/$wood`_log.block.ron" "$((Get-Culture).TextInfo.ToTitleCase($wood.Replace('_',' '))) Log" "natural/log" "cube" "full_cube" "opaque" "1.5" 'Some("core:tag/item/tool/axe")' "core:loot/blocks/$wood`_log" 'Faces((top: "core:material/blocks/oak_log/oak_log_top", sides: "core:material/blocks/oak_log/oak_log_side", bottom: "core:material/blocks/oak_log/oak_log_top"))' '["core:tag/block/log", "core:tag/block/wood"]' "wood"
     BlockDef "defs/blocks/natural/leaves/$wood`_leaves.block.ron" "$((Get-Culture).TextInfo.ToTitleCase($wood.Replace('_',' '))) Leaves" "natural/leaves" "cube" "leaf_volume" "alpha_test" "0.25" 'Some("core:tag/item/tool/shears")' "core:loot/blocks/$wood`_leaves" 'All("core:material/blocks/oak_leaves/oak_leaves_all")' '["core:tag/block/leaves", "core:tag/block/foliage"]' "leaves" "simulation: (decays_without_log: true, supports_biome_tint: true),"
 }
 
@@ -375,14 +375,14 @@ foreach ($block in @(
     $blockRef = if ($block -match "_ore$") { "core:block/ores/$block" } elseif ($block -match "_log$") { "core:block/natural/logs/$block" } elseif ($block -match "_leaves$") { "core:block/natural/leaves/$block" } elseif ($block -in @("dandelion", "short_grass")) { "core:block/flora/$block" } else { "core:block/terrain/$block" }
     ItemDef "defs/items/blocks/$block.item.ron" "$((Get-Culture).TextInfo.ToTitleCase($block.Replace('_',' ')))" "block" "99" "(inventory_icon: ""core:icon/blocks/$block"", world_model: BlockItem(""$blockRef""))" "PlaceBlock(""$blockRef"")" '["core:tag/item/block"]'
 }
-ItemDef "defs/items/resources/coal.item.ron" "Coal" "resource" "99" '(inventory_icon: "core:icon/items/resources/coal", world_model: "core:voxel/items/resources/mineral/deposit/coal_1")' "CraftingIngredient((fuel_value: Some(1600)))" '["core:tag/item/resource", "core:tag/resource/coal", "core:tag/item/fuel"]'
-ItemDef "defs/items/resources/iron_ore_chunk.item.ron" "Iron Ore Chunk" "resource" "99" '(inventory_icon: "core:icon/items/resources/iron_ore_chunk", world_model: "core:voxel/items/resources/mineral/deposit/iron_1")' "CraftingIngredient((smelts_to: Some(\"core:item/resource/iron_ingot\")))" '["core:tag/item/resource", "core:tag/resource/iron"]'
+ItemDef "defs/items/resources/coal.item.ron" "Coal" "resource" "99" '(inventory_icon: "core:icon/items/resources/coal", world_model: Voxel("core:voxel/items/resources/mineral/deposit/coal_1"))' "CraftingIngredient((fuel_value: Some(1600)))" '["core:tag/item/resource", "core:tag/resource/coal", "core:tag/item/fuel"]'
+ItemDef "defs/items/resources/iron_ore_chunk.item.ron" "Iron Ore Chunk" "resource" "99" '(inventory_icon: "core:icon/items/resources/iron_ore_chunk", world_model: Voxel("core:voxel/items/resources/mineral/deposit/iron_1"))' 'CraftingIngredient((smelts_to: Some("core:item/resource/iron_ingot")))' '["core:tag/item/resource", "core:tag/resource/iron"]'
 ItemDef "defs/items/resources/iron_ingot.item.ron" "Iron Ingot" "resource" "99" '(inventory_icon: "core:icon/items/resources/iron_ingot", world_model: None)' "CraftingIngredient(())" '["core:tag/item/resource", "core:tag/material/iron"]'
-ItemDef "defs/items/resources/plant_fiber.item.ron" "Plant Fiber" "resource" "99" '(inventory_icon: "core:icon/items/resources/plant_fiber", world_model: "core:voxel/items/crafting/plant_fiber")' "CraftingIngredient(())" '["core:tag/item/resource", "core:tag/material/fiber"]'
-ItemDef "defs/items/tools/stone_pickaxe.item.ron" "Stone Pickaxe" "tool" "1" '(inventory_icon: "core:icon/items/tools/stone_pickaxe", world_model: "core:voxel/equipment/tools/pickaxe_stone", hand_model: "core:voxel/equipment/tools/pickaxe_stone")' "Tool((tool_tags: [\"core:tag/item/tool/pickaxe\"], tier: 1, mining_speed: 4.0, durability: 132))" '["core:tag/item/tool", "core:tag/item/tool/pickaxe"]'
-ItemDef "defs/items/weapons/wood_bow.item.ron" "Wood Bow" "weapon" "1" '(inventory_icon: "core:icon/items/weapons/wood_bow", world_model: "core:voxel/equipment/weapons/bow/bow/wood", hand_model: "core:voxel/equipment/weapons/bow/bow/wood")' "Weapon((class: bow, damage: 5.0, attack_speed: 0.8, durability: 180, projectile: \"core:projectile/arrow\"))" '["core:tag/item/weapon", "core:tag/item/weapon/bow"]'
-ItemDef "defs/items/food/apple.item.ron" "Apple" "food" "16" '(inventory_icon: "core:icon/items/food/apple", world_model: "core:voxel/items/food/fruit/apple")' "Food((nutrition: 4, saturation: 1.2, eat_seconds: 1.0))" '["core:tag/item/food", "core:tag/item/plant_food"]'
-ItemDef "defs/items/consumables/health_potion.item.ron" "Health Potion" "consumable" "8" '(inventory_icon: "core:icon/items/consumables/health_potion", world_model: "core:voxel/items/consumables/potions/potion_red")' "Consumable((effect: \"core:effect/heal\", magnitude: 8.0, use_seconds: 1.2))" '["core:tag/item/consumable", "core:tag/item/potion"]'
+ItemDef "defs/items/resources/plant_fiber.item.ron" "Plant Fiber" "resource" "99" '(inventory_icon: "core:icon/items/resources/plant_fiber", world_model: Voxel("core:voxel/items/crafting/plant_fiber"))' "CraftingIngredient(())" '["core:tag/item/resource", "core:tag/material/fiber"]'
+ItemDef "defs/items/tools/stone_pickaxe.item.ron" "Stone Pickaxe" "tool" "1" '(inventory_icon: "core:icon/items/tools/stone_pickaxe", world_model: Voxel("core:voxel/equipment/tools/pickaxe_stone"), hand_model: Some("core:voxel/equipment/tools/pickaxe_stone"))' 'Tool((tool_tags: ["core:tag/item/tool/pickaxe"], tier: 1, mining_speed: 4.0, durability: 132))' '["core:tag/item/tool", "core:tag/item/tool/pickaxe"]'
+ItemDef "defs/items/weapons/wood_bow.item.ron" "Wood Bow" "weapon" "1" '(inventory_icon: "core:icon/items/weapons/wood_bow", world_model: Voxel("core:voxel/equipment/weapons/bow/bow/wood"), hand_model: Some("core:voxel/equipment/weapons/bow/bow/wood"))' 'Weapon((class: bow, damage: 5.0, attack_speed: 0.8, durability: 180, projectile: Some("core:projectile/arrow")))' '["core:tag/item/weapon", "core:tag/item/weapon/bow"]'
+ItemDef "defs/items/food/apple.item.ron" "Apple" "food" "16" '(inventory_icon: "core:icon/items/food/apple", world_model: Voxel("core:voxel/items/food/fruit/apple"))' "Food((nutrition: 4, saturation: 1.2, eat_seconds: 1.0))" '["core:tag/item/food", "core:tag/item/plant_food"]'
+ItemDef "defs/items/consumables/health_potion.item.ron" "Health Potion" "consumable" "8" '(inventory_icon: "core:icon/items/consumables/health_potion", world_model: Voxel("core:voxel/items/consumables/potions/potion_red"))' 'Consumable((effect: "core:effect/heal", magnitude: 8.0, use_seconds: 1.2))' '["core:tag/item/consumable", "core:tag/item/potion"]'
 
 SimpleLoot "defs/loot/entities/rabbit.loot.ron" "core:item/resource/plant_fiber"
 
@@ -394,8 +394,8 @@ EntityDef(
     gameplay: (
         health: 20,
         movement: "core:movement/player_planet_gravity",
-        inventory: "core:inventory/player_survival",
-        interaction_reach_voxels: 7.0,
+        inventory: Some("core:inventory/player_survival"),
+        interaction_reach_voxels: Some(7.0),
     ),
     tags: ["core:tag/entity/player"],
 )
@@ -412,10 +412,10 @@ EntityDef(
     gameplay: (
         health: 6,
         movement: "core:movement/quadruped_small",
-        behavior: "core:behavior/passive_grazer",
-        drops: "core:loot/entities/rabbit",
+        behavior: Some("core:behavior/passive_grazer"),
+        drops: Some("core:loot/entities/rabbit"),
     ),
-    spawn: "core:spawn/rabbit",
+    spawn: Some("core:spawn/rabbit"),
     tags: ["core:tag/entity/animal", "core:tag/entity/passive"],
 )
 "@
@@ -490,7 +490,7 @@ BiomeSetDef(
             (biome: "core:biome/plains", temperature: (0.35, 0.80), humidity: (0.20, 0.55), weight: 0.85),
             (biome: "core:biome/desert", temperature: (0.65, 1.00), humidity: (0.00, 0.28), weight: 0.75),
             (biome: "core:biome/snowy_taiga", temperature: (0.00, 0.32), humidity: (0.35, 0.90), weight: 0.8),
-            (biome: "core:biome/alpine", temperature: (0.00, 0.48), humidity: (0.15, 0.80), elevation: (0.70, 1.00), weight: 0.9),
+            (biome: "core:biome/alpine", temperature: (0.00, 0.48), humidity: (0.15, 0.80), elevation: Some((0.70, 1.00)), weight: 0.9),
         ],
     )),
 )
@@ -555,7 +555,7 @@ TerrainLayerSetDef(
     display_name: "Earth Crust",
     layers: [
         (range: surface, block: "core:block/terrain/grass"),
-        (range: subsurface, block: "core:block/terrain/dirt", thickness: (2, 6)),
+        (range: subsurface, block: "core:block/terrain/dirt", thickness: Some((2, 6))),
         (range: crust, block: "core:block/terrain/stone"),
         (range: deep_crust, block: "core:block/terrain/deepslate"),
         (range: core, block: "core:block/terrain/core"),
@@ -608,6 +608,7 @@ VegetationPlacementDef(
     kind: procedural_tree,
     placement: (
         allowed_surface_tags: ["core:tag/block/soil"],
+        allowed_surface_blocks: ["core:block/terrain/grass", "core:block/terrain/dirt", "core:block/terrain/coarse_dirt", "core:block/terrain/podzol"],
         biome_tags: ["core:tag/biome/forest"],
         density: 0.03,
         slope_max_degrees: 34,
@@ -650,6 +651,11 @@ Write-Text (Join-Path $PackRoot "defs/worldgen/visual_details/flower_scatter.vis
 VisualDetailDef(
     display_name: "Flower Scatter",
     models: ["core:voxel/vegetation/flowers"],
+    surface_blocks: ["core:block/terrain/grass", "core:block/terrain/dirt", "core:block/terrain/podzol"],
+    details: [
+        (block: "core:block/flora/dandelion", weight: 1),
+        (block: "core:block/flora/short_grass", weight: 3),
+    ],
     biome_tags: ["core:tag/biome/temperate", "core:tag/biome/plains"],
     density: 0.12,
     render: instanced_voxel_prop,

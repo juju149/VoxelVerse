@@ -29,5 +29,5 @@
         place: "core:sound/place/stone",
     ),
     tags: ["core:tag/block/unbreakable", "core:tag/block/planet_core"],
-    runtime: (role: planet_core),
+    runtime: (role: Some(planet_core)),
 )

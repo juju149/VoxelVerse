@@ -3,7 +3,10 @@ use crate::block_registry::{
     MaterialTextureSet,
 };
 use std::collections::HashMap;
-use vv_content_schema::{BlockRole, RawBlockDef, RawBlockVisual, RawMaterialTextureSet};
+use vv_content_schema::{
+    BlockRole, ContentRef, RawBlockDef, RawBlockMaterials, RawBlockVisual, RawMaterialDef,
+    RawRenderMode,
+};
 use vv_voxel::VoxelId;
 
 pub struct ContentCompiler;
@@ -17,12 +20,16 @@ impl ContentCompiler {
     /// - Returns a list of human-readable errors if validation fails.
     pub fn compile_blocks(
         mut raw: Vec<(String, RawBlockDef)>,
+        materials: Vec<(String, RawMaterialDef)>,
     ) -> Result<BlockRegistry, Vec<String>> {
         let mut errors = Vec::new();
+        let material_map: HashMap<String, RawMaterialDef> = materials.into_iter().collect();
 
-        let air_pos = raw.iter().position(|(key, _)| key.ends_with(":air"));
+        let air_pos = raw
+            .iter()
+            .position(|(key, def)| key == "core:block/air/air" || def.runtime.reserved_id == Some(0));
         if air_pos.is_none() {
-            errors.push("Pack must define a block with key ending in ':air'.".into());
+            errors.push("Pack must define one air block with runtime.reserved_id = 0.".into());
         }
 
         if !errors.is_empty() {
@@ -50,32 +57,30 @@ impl ContentCompiler {
 
             // A block that declares `role = "default_place"` is used as the
             // initial placement block.  No name heuristics needed.
-            if def.role == Some(BlockRole::DefaultPlace) {
+            if def.runtime.role == Some(BlockRole::DefaultPlace) {
                 default_place = id;
             }
-            if def.role == Some(BlockRole::PlanetCore) && planet_core.replace(id).is_some() {
+            if def.runtime.role == Some(BlockRole::PlanetCore) && planet_core.replace(id).is_some() {
                 errors.push("Only one block may declare role = \"planet_core\".".into());
             }
 
-            let visual = if let Some(raw_visual) = def.visual {
-                match Self::compile_block_visual(&key, def.color, raw_visual, &mut material_sets) {
-                    Ok(visual) => visual,
-                    Err(err) => {
-                        errors.extend(err);
-                        CompiledBlockVisual {
-                            layers: BlockMaterialLayers::default(),
-                            tint: [1.0, 1.0, 1.0],
-                            flat_color: def.color,
-                            shape: BlockShape::Cube,
-                        }
+            let color = category_color(&def.category);
+            let visual = match Self::compile_block_visual(
+                &key,
+                color,
+                def.visual,
+                &material_map,
+                &mut material_sets,
+            ) {
+                Ok(visual) => visual,
+                Err(err) => {
+                    errors.extend(err);
+                    CompiledBlockVisual {
+                        layers: BlockMaterialLayers::default(),
+                        tint: [1.0, 1.0, 1.0],
+                        flat_color: color,
+                        shape: BlockShape::Cube,
                     }
-                }
-            } else {
-                CompiledBlockVisual {
-                    layers: BlockMaterialLayers::default(),
-                    tint: [1.0, 1.0, 1.0],
-                    flat_color: def.color,
-                    shape: BlockShape::Cube,
                 }
             };
 
@@ -84,9 +89,9 @@ impl ContentCompiler {
                 id,
                 key,
                 display_name: def.display_name,
-                solid: def.solid,
-                color: def.color,
-                hardness: def.hardness,
+                solid: def.physical.solid,
+                color,
+                hardness: def.physical.hardness,
                 visual,
             });
         }
@@ -149,57 +154,59 @@ impl ContentCompiler {
         key: &str,
         color: [f32; 3],
         raw: RawBlockVisual,
+        material_map: &HashMap<String, RawMaterialDef>,
         material_sets: &mut Vec<MaterialTextureSet>,
     ) -> Result<CompiledBlockVisual, Vec<String>> {
         let mut errors = Vec::new();
         let shape = BlockShape::from(raw.shape);
-        let mut layer_for = |face: &str, material: Option<&RawMaterialTextureSet>| -> u32 {
-            let Some(material) = material else {
-                // Cross-planes only need the `all` layer; missing per-face materials are
-                // expected and must not error out.
-                if shape == BlockShape::CrossPlane {
-                    return 0;
+        let mut layer_for = |face: &str, material: &ContentRef| -> u32 {
+            match material_map.get(&material.0) {
+                Some(def) => Self::material_layer(def, material_sets),
+                None => {
+                    errors.push(format!(
+                        "Block '{}': unknown material '{}' for {} face",
+                        key, material.0, face
+                    ));
+                    0
                 }
-                errors.push(format!(
-                    "Block '{}': visual must define material for {} face",
-                    key, face
-                ));
-                return 0;
-            };
-            Self::material_layer(material, material_sets)
+            }
         };
 
-        let layers = BlockMaterialLayers {
-            top: layer_for("top", raw.top.as_ref().or(raw.all.as_ref())),
-            bottom: layer_for("bottom", raw.bottom.as_ref().or(raw.all.as_ref())),
-            front: layer_for(
-                "front",
-                raw.front
-                    .as_ref()
-                    .or(raw.side.as_ref())
-                    .or(raw.all.as_ref()),
-            ),
-            back: layer_for(
-                "back",
-                raw.back.as_ref().or(raw.side.as_ref()).or(raw.all.as_ref()),
-            ),
-            left: layer_for(
-                "left",
-                raw.left.as_ref().or(raw.side.as_ref()).or(raw.all.as_ref()),
-            ),
-            right: layer_for(
-                "right",
-                raw.right
-                    .as_ref()
-                    .or(raw.side.as_ref())
-                    .or(raw.all.as_ref()),
-            ),
+        let layers = match raw.materials {
+            RawBlockMaterials::None => {
+                if raw.render != RawRenderMode::Invisible {
+                    errors.push(format!(
+                        "Block '{}': non-invisible visual must define materials",
+                        key
+                    ));
+                }
+                BlockMaterialLayers::default()
+            }
+            RawBlockMaterials::All(material) => {
+                let layer = layer_for("all", &material);
+                BlockMaterialLayers {
+                    top: layer,
+                    bottom: layer,
+                    front: layer,
+                    back: layer,
+                    left: layer,
+                    right: layer,
+                }
+            }
+            RawBlockMaterials::Faces(faces) => BlockMaterialLayers {
+                top: layer_for("top", &faces.top),
+                bottom: layer_for("bottom", &faces.bottom),
+                front: layer_for("front", faces.front.as_ref().unwrap_or(&faces.sides)),
+                back: layer_for("back", faces.back.as_ref().unwrap_or(&faces.sides)),
+                left: layer_for("left", faces.left.as_ref().unwrap_or(&faces.sides)),
+                right: layer_for("right", faces.right.as_ref().unwrap_or(&faces.sides)),
+            },
         };
 
         if errors.is_empty() {
             Ok(CompiledBlockVisual {
                 layers,
-                tint: raw.tint,
+                tint: [1.0, 1.0, 1.0],
                 flat_color: color,
                 shape,
             })
@@ -209,13 +216,23 @@ impl ContentCompiler {
     }
 
     fn material_layer(
-        raw: &RawMaterialTextureSet,
+        raw: &RawMaterialDef,
         material_sets: &mut Vec<MaterialTextureSet>,
     ) -> u32 {
         let material = MaterialTextureSet {
             albedo: raw.albedo.0.clone(),
-            normal: raw.normal.0.clone(),
-            roughness: raw.roughness.0.clone(),
+            normal: raw
+                .normal
+                .as_ref()
+                .unwrap_or(&raw.albedo)
+                .0
+                .clone(),
+            roughness: raw
+                .roughness
+                .as_ref()
+                .unwrap_or(&raw.albedo)
+                .0
+                .clone(),
         };
         if let Some(index) = material_sets.iter().position(|m| m == &material) {
             (index + 1) as u32
@@ -226,28 +243,76 @@ impl ContentCompiler {
     }
 }
 
+fn category_color(category: &str) -> [f32; 3] {
+    match category {
+        "air" => [0.0, 0.0, 0.0],
+        "terrain" => [0.46, 0.42, 0.34],
+        "natural/log" => [0.43, 0.27, 0.13],
+        "natural/leaves" => [0.23, 0.50, 0.18],
+        "flora" => [0.38, 0.72, 0.25],
+        "ore" => [0.45, 0.45, 0.45],
+        _ => [1.0, 1.0, 1.0],
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::ContentCompiler;
-    use vv_content_schema::{BlockRole, RawBlockDef};
+    use vv_content_schema::*;
 
     fn block(role: Option<BlockRole>) -> RawBlockDef {
         RawBlockDef {
             display_name: "Block".to_string(),
-            solid: true,
-            color: [1.0, 1.0, 1.0],
-            hardness: 1.0,
-            role,
-            visual: None,
+            category: "terrain".to_string(),
+            physical: RawBlockPhysicalDef {
+                solid: true,
+                opaque: true,
+                collision: RawBlockCollision::FullCube,
+                hardness: 1.0,
+                blast_resistance: 1.0,
+                friction: 0.8,
+                restitution: 0.0,
+            },
+            visual: RawBlockVisual {
+                shape: RawBlockShape::Cube,
+                render: RawRenderMode::Invisible,
+                materials: RawBlockMaterials::None,
+                ambient_occlusion: true,
+                casts_shadow: true,
+            },
+            gameplay: RawBlockGameplayDef {
+                preferred_tool: None,
+                drops: ContentRef("core:loot/blocks/empty".to_string()),
+                placement: RawBlockPlacement::GridAligned,
+                replaceable: false,
+            },
+            audio: RawBlockAudioDef {
+                footstep: ContentRef("core:sound/step/stone".to_string()),
+                break_sound: ContentRef("core:sound/break/stone".to_string()),
+                place: ContentRef("core:sound/place/stone".to_string()),
+            },
+            tags: Vec::new(),
+            runtime: RawBlockRuntimeDef {
+                role,
+                reserved_id: None,
+                can_target: true,
+                blocks_light: true,
+            },
+            simulation: RawBlockSimulationDef::default(),
         }
     }
 
     #[test]
     fn block_compilation_requires_planet_core_role() {
-        let err = match ContentCompiler::compile_blocks(vec![
-            ("core:air".to_string(), block(None)),
-            ("core:stone".to_string(), block(None)),
-        ]) {
+        let mut air = block(None);
+        air.runtime.reserved_id = Some(0);
+        let err = match ContentCompiler::compile_blocks(
+            vec![
+                ("core:block/air/air".to_string(), air),
+                ("core:block/terrain/stone".to_string(), block(None)),
+            ],
+            Vec::new(),
+        ) {
             Ok(_) => panic!("missing planet core should be rejected"),
             Err(err) => err,
         };
@@ -262,7 +327,7 @@ mod tests {
 
         let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
         let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");
-        let blocks = ContentCompiler::compile_blocks(pack.blocks).expect("blocks");
+        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials).expect("blocks");
 
         for block in blocks.blocks().iter().filter(|b| b.solid) {
             let layers = block.visual.layers;

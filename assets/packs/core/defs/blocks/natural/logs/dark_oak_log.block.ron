@@ -13,7 +13,7 @@
     visual: (
         shape: cube,
         render: opaque,
-        materials: (top: "core:material/blocks/oak_log/oak_log_top", sides: "core:material/blocks/oak_log/oak_log_side", bottom: "core:material/blocks/oak_log/oak_log_top"),
+        materials: Faces((top: "core:material/blocks/oak_log/oak_log_top", sides: "core:material/blocks/oak_log/oak_log_side", bottom: "core:material/blocks/oak_log/oak_log_top")),
         ambient_occlusion: true,
         casts_shadow: true,
     ),

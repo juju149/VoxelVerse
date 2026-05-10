@@ -1,4 +1,3 @@
-use crate::ContentCompiler;
 use crate::{
     BlockRegistry, CompiledBiomeColorTint, CompiledBiomeSelector, CompiledBiomeSet,
     CompiledBiomeSurface, CompiledBiomeTerrain, CompiledCave, CompiledCaveCarver, CompiledClimate,
@@ -6,7 +5,7 @@ use crate::{
     CompiledNoiseField, CompiledNoiseKind, CompiledNoiseRemap, CompiledOre, CompiledPlanet,
     CompiledProceduralBiome, CompiledProceduralPlanet, CompiledStructure, CompiledTerrainLayer,
     CompiledTerrainLayerSet, CompiledTreeShapeKind, CompiledVegetation, CompiledVisualDetail,
-    CompiledVisualDetailItem, ProceduralRegistry,
+    CompiledVisualDetailItem, ContentCompiler, ProceduralRegistry,
 };
 use std::collections::HashMap;
 use vv_content_schema::*;
@@ -19,15 +18,14 @@ impl ContentCompiler {
         blocks: &BlockRegistry,
     ) -> Result<ProceduralRegistry, Vec<String>> {
         let mut errors = Vec::new();
-
         if raw.planets.is_empty() {
             return Err(vec![
-                "Procedural pack must define at least one planet.".to_string()
+                "Procedural pack must define at least one planet.".to_string(),
             ]);
         }
 
         let field_map = key_map("field", &raw.fields, &mut errors);
-        let biome_map = key_map("procedural biome", &raw.biomes, &mut errors);
+        let biome_map = key_map("biome", &raw.biomes, &mut errors);
         let climate_map = key_map("climate", &raw.climates, &mut errors);
         let biome_set_map = key_map("biome set", &raw.biome_sets, &mut errors);
         let layer_map = key_map("terrain layer set", &raw.terrain_layers, &mut errors);
@@ -35,140 +33,35 @@ impl ContentCompiler {
         let cave_map = key_map("cave", &raw.caves, &mut errors);
         let vegetation_map = key_map("vegetation", &raw.vegetation, &mut errors);
         let structure_map = key_map("structure", &raw.structures, &mut errors);
-        let fauna_map = key_map("fauna", &raw.fauna, &mut errors);
+        let fauna_map = key_map("spawn", &raw.fauna, &mut errors);
         let detail_map = key_map("visual detail", &raw.visual_details, &mut errors);
 
         let fields = raw
             .fields
             .iter()
-            .map(|(key, def)| {
-                let domain_warp = match &def.domain_warp {
-                    Some(warp) => resolve(&field_map, "field", key, &warp.field, &mut errors)
-                        .map(|idx| (idx, warp.strength.max(0.0))),
-                    None => None,
-                };
-                CompiledNoiseField {
-                    key: key.to_string(),
-                    kind: CompiledNoiseKind::from(&def.kind),
-                    frequency: finite_positive(def.frequency, 0.01),
-                    amplitude: finite(def.amplitude, 1.0),
-                    octaves: def.octaves.clamp(1, 12),
-                    persistence: finite_positive(def.persistence, 0.5),
-                    lacunarity: finite_positive(def.lacunarity, 2.0),
-                    seed_salt: def.seed_salt,
-                    domain_warp,
-                    remap: def.remap.as_ref().map(|r| CompiledNoiseRemap {
-                        in_min: r.in_min,
-                        in_max: r.in_max,
-                        out_min: r.out_min,
-                        out_max: r.out_max,
-                        curve: CompiledCurve::from(&r.curve),
-                    }),
-                }
-            })
+            .map(|(key, def)| compile_field(key, def, &field_map, &mut errors))
             .collect();
-
-        let biomes: Vec<_> = raw
+        let biomes = raw
             .biomes
             .iter()
             .enumerate()
-            .map(|(idx, (key, def))| {
-                compile_biome(idx, key, def, &field_map, &biome_map, blocks, &mut errors)
-            })
+            .map(|(idx, (key, def))| compile_biome(idx, key, def, &field_map, &biome_map, blocks, &mut errors))
             .collect();
-
         let climates = raw
             .climates
             .iter()
-            .map(|(key, def)| CompiledClimate {
-                key: key.clone(),
-                temperature: compile_axis(
-                    key,
-                    "temperature",
-                    &def.temperature,
-                    &field_map,
-                    &mut errors,
-                ),
-                humidity: compile_axis(key, "humidity", &def.humidity, &field_map, &mut errors),
-                continentality: compile_axis(
-                    key,
-                    "continentality",
-                    &def.continentality,
-                    &field_map,
-                    &mut errors,
-                ),
-                erosion: compile_axis(key, "erosion", &def.erosion, &field_map, &mut errors),
-                weirdness: compile_axis(key, "weirdness", &def.weirdness, &field_map, &mut errors),
-            })
+            .map(|(key, def)| compile_climate(key, def, &field_map, &mut errors))
             .collect();
-
         let biome_sets = raw
             .biome_sets
             .iter()
-            .map(|(key, def)| CompiledBiomeSet {
-                key: key.clone(),
-                blend_radius: def.blend_radius.clamp(0.001, 1.0),
-                selectors: def
-                    .selectors
-                    .iter()
-                    .filter_map(|s| {
-                        resolve(&biome_map, "procedural biome", key, &s.biome, &mut errors).map(
-                            |biome| CompiledBiomeSelector {
-                                biome,
-                                temperature: normalized_range(s.temperature),
-                                humidity: normalized_range(s.humidity),
-                                roughness: normalized_range(s.roughness),
-                                weight: finite_positive(s.weight, 1.0),
-                                continentality: s.continentality.map(normalized_range),
-                                erosion: s.erosion.map(normalized_range),
-                                weirdness: s.weirdness.map(normalized_range),
-                            },
-                        )
-                    })
-                    .collect(),
-            })
+            .map(|(key, def)| compile_biome_set(key, def, &biome_map, &mut errors))
             .collect();
-
         let terrain_layers = raw
             .terrain_layers
             .iter()
-            .map(|(key, def)| CompiledTerrainLayerSet {
-                key: key.clone(),
-                layers: def
-                    .layers
-                    .iter()
-                    .filter_map(|layer| {
-                        let block = resolve_block(blocks, key, &layer.block, &mut errors)?;
-                        let all_biomes =
-                            layer.biomes.iter().any(|b| b == "*") || layer.biomes.is_empty();
-                        let biomes = if all_biomes {
-                            Vec::new()
-                        } else {
-                            layer
-                                .biomes
-                                .iter()
-                                .filter_map(|b| {
-                                    resolve(&biome_map, "procedural biome", key, b, &mut errors)
-                                })
-                                .collect()
-                        };
-                        Some(CompiledTerrainLayer {
-                            name: layer.name.clone(),
-                            block,
-                            depth: layer.depth.map(normalized_u32_range),
-                            depth_from_center: layer.depth_from_center.map(normalized_u32_range),
-                            all_biomes,
-                            biomes,
-                            noise_variation: layer
-                                .noise_variation
-                                .as_ref()
-                                .and_then(|f| resolve(&field_map, "field", key, f, &mut errors)),
-                        })
-                    })
-                    .collect(),
-            })
+            .map(|(key, def)| compile_terrain_layers(key, def, &field_map, blocks, &mut errors))
             .collect();
-
         let ores = raw
             .ores
             .iter()
@@ -187,19 +80,18 @@ impl ContentCompiler {
         let structures = raw
             .structures
             .iter()
-            .map(|(key, def)| compile_structure(key, def, &biome_map, &mut errors))
+            .map(|(key, def)| compile_structure(key, def))
             .collect();
         let fauna = raw
             .fauna
             .iter()
-            .map(|(key, def)| compile_fauna(key, def, &mut errors))
+            .map(|(key, def)| compile_fauna(key, def))
             .collect();
         let visual_details = raw
             .visual_details
             .iter()
             .filter_map(|(key, def)| compile_detail(key, def, &field_map, blocks, &mut errors))
             .collect();
-
         let planets = raw
             .planets
             .iter()
@@ -242,6 +134,69 @@ impl ContentCompiler {
     }
 }
 
+fn compile_field(
+    key: &str,
+    def: &RawNoiseFieldDef,
+    field_map: &HashMap<String, usize>,
+    errors: &mut Vec<String>,
+) -> CompiledNoiseField {
+    let domain_warp = def
+        .domain_warp
+        .as_ref()
+        .and_then(|warp| resolve(field_map, "field", key, &warp.field, errors))
+        .map(|idx| (idx, def.domain_warp.as_ref().unwrap().strength.max(0.0)));
+
+    CompiledNoiseField {
+        key: key.to_string(),
+        kind: CompiledNoiseKind::from(&def.kind),
+        frequency: finite_positive(def.frequency, 0.01),
+        amplitude: finite(def.amplitude, 1.0),
+        octaves: def.octaves.clamp(1, 12),
+        persistence: finite_positive(def.persistence, 0.5),
+        lacunarity: finite_positive(def.lacunarity, 2.0),
+        seed_salt: stable_hash(&def.seed_salt),
+        domain_warp,
+        remap: def.remap.as_ref().map(|r| CompiledNoiseRemap {
+            in_min: r.in_min,
+            in_max: r.in_max,
+            out_min: r.out_min,
+            out_max: r.out_max,
+            curve: CompiledCurve::from(&r.curve),
+        }),
+    }
+}
+
+fn compile_climate(
+    key: &str,
+    def: &RawClimateDef,
+    field_map: &HashMap<String, usize>,
+    errors: &mut Vec<String>,
+) -> CompiledClimate {
+    CompiledClimate {
+        key: key.to_string(),
+        temperature: axis_from_field(key, &def.fields.temperature, field_map, errors),
+        humidity: axis_from_field(key, &def.fields.humidity, field_map, errors),
+        continentality: axis_from_field(key, &def.fields.continentality, field_map, errors),
+        erosion: axis_from_field(key, &def.fields.erosion, field_map, errors),
+        weirdness: axis_from_field(key, &def.fields.weirdness, field_map, errors),
+    }
+}
+
+fn axis_from_field(
+    owner: &str,
+    field: &ContentRef,
+    field_map: &HashMap<String, usize>,
+    errors: &mut Vec<String>,
+) -> CompiledClimateAxis {
+    CompiledClimateAxis {
+        latitude_bias: 0.0,
+        fields: resolve(field_map, "field", owner, field, errors)
+            .map(|idx| vec![(idx, 1.0)])
+            .unwrap_or_default(),
+        ocean_bias: 0.0,
+    }
+}
+
 fn compile_biome(
     idx: usize,
     key: &str,
@@ -258,7 +213,7 @@ fn compile_biome(
         .terrain
         .ridge_field
         .as_ref()
-        .and_then(|f| resolve(field_map, "field", key, f, errors));
+        .and_then(|field| resolve(field_map, "field", key, field, errors));
 
     CompiledProceduralBiome {
         id: idx.min(u8::MAX as usize) as u8,
@@ -267,7 +222,7 @@ fn compile_biome(
         surface: CompiledBiomeSurface {
             top,
             under,
-            depth: normalized_u32_range(def.surface.depth),
+            depth: normalized_u32_range(def.surface.depth_voxels),
         },
         terrain: CompiledBiomeTerrain {
             base_height: def.terrain.base_height,
@@ -278,35 +233,76 @@ fn compile_biome(
             terrace_strength: def.terrain.terrace_strength.clamp(0.0, 1.0),
         },
         color_tint: CompiledBiomeColorTint {
-            grass: def.color_tint.grass,
-            foliage: def.color_tint.foliage,
+            grass: tuple_color(def.palette.grass),
+            foliage: tuple_color(def.palette.foliage),
         },
-        vegetation_tags: def.vegetation_tags.clone(),
-        fauna_tags: def.fauna_tags.clone(),
+        vegetation_tags: refs_to_strings(&def.placement.vegetation_tags),
+        fauna_tags: refs_to_strings(&def.placement.fauna_tags),
         edge_of: def
             .edge_of
             .as_ref()
-            .and_then(|b| resolve(biome_map, "procedural biome", key, b, errors)),
+            .and_then(|biome| resolve(biome_map, "biome", key, biome, errors)),
     }
 }
 
-fn compile_axis(
-    owner: &str,
-    _axis_name: &str,
-    axis: &RawClimateAxisDef,
-    field_map: &HashMap<String, usize>,
+fn compile_biome_set(
+    key: &str,
+    def: &RawBiomeSetDef,
+    biome_map: &HashMap<String, usize>,
     errors: &mut Vec<String>,
-) -> CompiledClimateAxis {
-    CompiledClimateAxis {
-        latitude_bias: axis.latitude_bias,
-        fields: axis
-            .fields
+) -> CompiledBiomeSet {
+    let RawBiomeSelectionDef::ClimateMap(map) = &def.selection;
+    CompiledBiomeSet {
+        key: key.to_string(),
+        blend_radius: 0.06,
+        selectors: map
+            .entries
             .iter()
-            .filter_map(|(field, weight)| {
-                resolve(field_map, "field", owner, field, errors).map(|idx| (idx, *weight))
+            .filter_map(|s| {
+                resolve(biome_map, "biome", key, &s.biome, errors).map(|biome| {
+                    CompiledBiomeSelector {
+                        biome,
+                        temperature: normalized_range(s.temperature),
+                        humidity: normalized_range(s.humidity),
+                        roughness: s.elevation.map(normalized_range).unwrap_or((0.0, 1.0)),
+                        weight: finite_positive(s.weight, 1.0),
+                        continentality: s.continentality.map(normalized_range),
+                        erosion: s.erosion.map(normalized_range),
+                        weirdness: s.weirdness.map(normalized_range),
+                    }
+                })
             })
             .collect(),
-        ocean_bias: axis.ocean_bias,
+    }
+}
+
+fn compile_terrain_layers(
+    key: &str,
+    def: &RawTerrainLayerSetDef,
+    field_map: &HashMap<String, usize>,
+    blocks: &BlockRegistry,
+    errors: &mut Vec<String>,
+) -> CompiledTerrainLayerSet {
+    CompiledTerrainLayerSet {
+        key: key.to_string(),
+        layers: def
+            .layers
+            .iter()
+            .filter_map(|layer| {
+                Some(CompiledTerrainLayer {
+                    name: terrain_range_name(layer.range),
+                    block: resolve_block(blocks, key, &layer.block, errors)?,
+                    depth: layer.thickness.map(normalized_u32_range),
+                    depth_from_center: None,
+                    all_biomes: true,
+                    biomes: Vec::new(),
+                    noise_variation: layer
+                        .noise_variation
+                        .as_ref()
+                        .and_then(|field| resolve(field_map, "field", key, field, errors)),
+                })
+            })
+            .collect(),
     }
 }
 
@@ -323,13 +319,13 @@ fn compile_ore(
         replace: def
             .replace
             .iter()
-            .filter_map(|b| resolve_block(blocks, key, b, errors))
+            .filter_map(|block| resolve_block(blocks, key, block, errors))
             .collect(),
-        depth: normalized_u32_range(def.depth),
+        depth: normalized_u32_range(def.depth_voxels),
         density: def.density.clamp(0.0, 1.0),
         vein_size: normalized_u32_range(def.vein_size),
         field: resolve(field_map, "field", key, &def.field, errors)?,
-        biome_tags: def.biome_tags.clone(),
+        biome_tags: refs_to_strings(&def.biome_tags),
     })
 }
 
@@ -343,23 +339,23 @@ fn compile_cave(
     CompiledCave {
         key: key.to_string(),
         carvers: def
-            .carvers
+            .fields
             .iter()
-            .filter_map(|c| {
+            .filter_map(|field| {
                 Some(CompiledCaveCarver {
-                    kind: c.kind.clone(),
-                    field: resolve(field_map, "field", key, &c.field, errors)?,
-                    threshold: c.threshold.clamp(0.0, 1.0),
-                    radius: normalized_u32_range(c.radius),
-                    depth: normalized_u32_range(c.depth),
+                    kind: "noise".to_string(),
+                    field: resolve(field_map, "field", key, field, errors)?,
+                    threshold: 0.58,
+                    radius: (
+                        def.carve.tunnel_radius.0.max(1.0) as u32,
+                        def.carve.tunnel_radius.1.max(1.0) as u32,
+                    ),
+                    depth: (def.carve.min_depth_voxels, def.carve.max_depth_voxels),
                 })
             })
             .collect(),
-        surface_break_chance: def.surface_break_chance.clamp(0.0, 1.0),
-        fill_below_sea: def
-            .fill_below_sea
-            .as_ref()
-            .and_then(|b| resolve_block(blocks, key, b, errors)),
+        surface_break_chance: 0.03,
+        fill_below_sea: resolve_block(blocks, key, &def.carve.air_block, errors),
     }
 }
 
@@ -377,75 +373,49 @@ fn compile_vegetation(
         leaves: resolve_block(blocks, key, &def.stamp.leaves, errors)?,
         height: normalized_u32_range(def.stamp.height),
         canopy_radius: normalized_u32_range(def.stamp.canopy_radius),
-        trunk_thickness: clamp_thickness(def.stamp.trunk_thickness),
+        trunk_thickness: normalized_u32_range(def.stamp.trunk_thickness),
         branch_count: normalized_u32_range(def.stamp.branch_count),
         branch_length: normalized_u32_range(def.stamp.branch_length),
-        canopy_vertical_squash: finite_positive(def.stamp.canopy_vertical_squash, 0.85)
-            .clamp(0.2, 3.0),
-        branch_slope: (
-            finite(def.stamp.branch_slope.0, 0.25).clamp(0.0, 3.0),
-            finite(def.stamp.branch_slope.1, 0.80).clamp(0.0, 3.0),
-        ),
-        canopy_lobe_count: {
-            let (lo, hi) = normalized_u32_range(def.stamp.canopy_lobe_count);
-            (lo.max(1), hi.max(lo).max(1))
-        },
-        trunk_lean_max: finite(def.stamp.trunk_lean_max, 0.12).clamp(0.0, 0.5),
+        canopy_vertical_squash: finite_positive(def.stamp.canopy_vertical_squash, 0.85),
+        branch_slope: def.stamp.branch_slope,
+        canopy_lobe_count: normalized_u32_range(def.stamp.canopy_lobe_count),
+        trunk_lean_max: finite(def.stamp.trunk_lean_max, 0.12),
         shape_kind: CompiledTreeShapeKind::from(&def.stamp.shape_kind),
         canopy_density: finite(def.stamp.canopy_density, 1.0).clamp(0.05, 1.0),
     })
 }
 
-fn clamp_thickness(range: (u32, u32)) -> (u32, u32) {
-    let (a, b) = normalized_u32_range(range);
-    (a.max(1).min(4), b.max(1).min(4))
-}
-
-fn compile_structure(
-    key: &str,
-    def: &RawStructureDef,
-    biome_map: &HashMap<String, usize>,
-    errors: &mut Vec<String>,
-) -> CompiledStructure {
-    if !def.stamp.contains(':') {
-        errors.push(format!(
-            "Structure '{}': stamp '{}' must be a namespaced key",
-            key, def.stamp
-        ));
-    }
+fn compile_structure(key: &str, def: &RawStructureDef) -> CompiledStructure {
     CompiledStructure {
         key: key.to_string(),
-        density: def.placement.density.clamp(0.0, 1.0),
-        min_spacing: def.placement.min_spacing.max(1),
-        biomes: def
-            .placement
-            .biomes
-            .iter()
-            .filter_map(|b| resolve(biome_map, "procedural biome", key, b, errors))
-            .collect(),
-        slope_max: def.placement.slope_max.clamp(0.0, 1.0),
-        footprint_radius: def.footprint_radius,
-        priority: def.priority,
-        stamp: def.stamp.clone(),
+        density: match def.rarity {
+            RawStructureRarity::Common => 0.12,
+            RawStructureRarity::Uncommon => 0.05,
+            RawStructureRarity::Rare => 0.015,
+        },
+        min_spacing: def.spacing_voxels.0.max(1),
+        biomes: Vec::new(),
+        slope_max: (def.slope_max_degrees as f32 / 90.0).clamp(0.0, 1.0),
+        footprint_radius: (def.spacing_voxels.0 / 32).max(4),
+        priority: 0,
+        stamp: def.structure.0.clone(),
     }
 }
 
-fn compile_fauna(key: &str, def: &RawFaunaDef, errors: &mut Vec<String>) -> CompiledFauna {
-    if !def.entity.contains(':') {
-        errors.push(format!(
-            "Fauna '{}': entity '{}' must be a namespaced key",
-            key, def.entity
-        ));
-    }
+fn compile_fauna(key: &str, def: &RawFaunaDef) -> CompiledFauna {
     CompiledFauna {
         key: key.to_string(),
-        entity: def.entity.clone(),
-        biome_tags: def.spawn.biome_tags.clone(),
-        density: def.spawn.density.clamp(0.0, 1.0),
-        group_size: normalized_u32_range(def.spawn.group_size),
-        light: normalized_range(def.spawn.light),
-        despawn_distance: def.runtime.despawn_distance,
-        sim_distance: def.runtime.sim_distance,
+        entity: def.entity.0.clone(),
+        biome_tags: refs_to_strings(&def.biome_tags),
+        density: def.density.clamp(0.0, 1.0),
+        group_size: normalized_u32_range(def.group_size),
+        light: match def.light {
+            RawSpawnLightDef::Daylight => (0.45, 1.0),
+            RawSpawnLightDef::Night => (0.0, 0.45),
+            RawSpawnLightDef::Any => (0.0, 1.0),
+        },
+        despawn_distance: 128,
+        sim_distance: 96,
     }
 }
 
@@ -458,37 +428,33 @@ fn compile_detail(
 ) -> Option<CompiledVisualDetail> {
     Some(CompiledVisualDetail {
         key: key.to_string(),
-        placement: compile_placement(key, &def.placement, field_map, blocks, errors)?,
+        placement: CompiledFeaturePlacement {
+            surface_blocks: def
+                .surface_blocks
+                .iter()
+                .filter_map(|block| resolve_block(blocks, key, block, errors))
+                .collect(),
+            slope_max: 0.65,
+            density: def.density.clamp(0.0, 1.0),
+            field: resolve(
+                field_map,
+                "field",
+                key,
+                &ContentRef("core:field/flower_noise".to_string()),
+                errors,
+            )?,
+            biome_tags: refs_to_strings(&def.biome_tags),
+        },
         details: def
             .details
             .iter()
-            .filter_map(|d| {
+            .filter_map(|detail| {
                 Some(CompiledVisualDetailItem {
-                    block: resolve_block(blocks, key, &d.block, errors)?,
-                    weight: d.weight,
+                    block: resolve_block(blocks, key, &detail.block, errors)?,
+                    weight: detail.weight,
                 })
             })
             .collect(),
-    })
-}
-
-fn compile_placement(
-    owner: &str,
-    def: &RawFeaturePlacementDef,
-    field_map: &HashMap<String, usize>,
-    blocks: &BlockRegistry,
-    errors: &mut Vec<String>,
-) -> Option<CompiledFeaturePlacement> {
-    Some(CompiledFeaturePlacement {
-        surface_blocks: def
-            .surface_blocks
-            .iter()
-            .filter_map(|b| resolve_block(blocks, owner, b, errors))
-            .collect(),
-        slope_max: def.slope_max.clamp(0.0, 1.0),
-        density: def.density.clamp(0.0, 1.0),
-        field: resolve(field_map, "field", owner, &def.field, errors)?,
-        biome_tags: def.biome_tags.clone(),
     })
 }
 
@@ -507,13 +473,11 @@ fn compile_planet(
     detail_map: &HashMap<String, usize>,
     errors: &mut Vec<String>,
 ) -> Option<CompiledProceduralPlanet> {
-    if def.surface_layer < 4 || def.surface_layer >= def.resolution {
-        errors.push(format!(
-            "Planet '{}': surface_layer must be in 4..resolution",
-            key
-        ));
+    let RawPlanetShapeDef::SphericalVoxelPlanet(shape) = &def.shape;
+    if shape.surface_layer < 4 || shape.surface_layer >= shape.resolution {
+        errors.push(format!("Planet '{}': surface_layer must be in 4..resolution", key));
     }
-    if def.core_layers < 1 || def.core_layers >= def.surface_layer {
+    if shape.core_layers < 1 || shape.core_layers >= shape.surface_layer {
         errors.push(format!(
             "Planet '{}': core_layers must be at least 1 and below surface_layer",
             key
@@ -526,44 +490,46 @@ fn compile_planet(
             key: key.to_string(),
             display_name: def.display_name.clone(),
             seed: def.seed,
-            resolution: def.resolution.max(8),
-            surface_layer: def.surface_layer,
-            voxel_size_meters: finite_positive(def.voxel_size_meters, 1.0),
-            edge_rounding_radius_voxels: finite(def.edge_rounding_radius_voxels, 0.16)
+            resolution: shape.resolution.max(8),
+            surface_layer: shape.surface_layer,
+            voxel_size_meters: finite_positive(shape.voxel_size_meters, 1.0),
+            edge_rounding_radius_voxels: finite(shape.edge_rounding_radius_voxels, 0.16)
                 .clamp(0.0, 0.35),
-            core_layers: def.core_layers,
-            inner_radius_fraction: def.inner_radius_fraction.clamp(0.02, 0.95),
-            max_terrain_offset: def.max_terrain_offset.max(0),
+            core_layers: shape.core_layers,
+            inner_radius_fraction: 0.35,
+            max_terrain_offset: shape.max_terrain_offset.max(0),
             spawn_clearance_layers: 8.0,
         },
-        sea_level_offset: def.sea_level_offset,
+        sea_level_offset: shape.sea_level_offset,
         climate: resolve(climate_map, "climate", key, &def.climate, errors)?,
         biome_set: resolve(biome_set_map, "biome set", key, &def.biome_set, errors)?,
-        terrain_layers: resolve(
-            layer_map,
-            "terrain layer set",
-            key,
-            &def.terrain_layers,
-            errors,
-        )?,
+        terrain_layers: resolve(layer_map, "terrain layer set", key, &def.terrain_layers, errors)?,
         caves: resolve_many(cave_map, "cave", key, &def.caves, errors),
-        ore_sets: resolve_many(ore_map, "ore", key, &def.ore_sets, errors),
-        vegetation_sets: resolve_many(
-            vegetation_map,
-            "vegetation",
-            key,
-            &def.vegetation_sets,
-            errors,
-        ),
-        structure_sets: resolve_many(structure_map, "structure", key, &def.structure_sets, errors),
-        fauna_sets: resolve_many(fauna_map, "fauna", key, &def.fauna_sets, errors),
-        visual_detail_sets: resolve_many(
-            detail_map,
-            "visual detail",
-            key,
-            &def.visual_detail_sets,
-            errors,
-        ),
+        ore_sets: resolve_many(ore_map, "ore", key, &def.ores, errors),
+        vegetation_sets: resolve_many(vegetation_map, "vegetation", key, &def.vegetation, errors),
+        structure_sets: resolve_many(structure_map, "structure", key, &def.structures, errors),
+        fauna_sets: resolve_many(fauna_map, "spawn", key, &def.spawns, errors),
+        visual_detail_sets: resolve_many(detail_map, "visual detail", key, &def.visual_details, errors),
+    })
+}
+
+fn compile_placement(
+    owner: &str,
+    def: &RawFeaturePlacementDef,
+    field_map: &HashMap<String, usize>,
+    blocks: &BlockRegistry,
+    errors: &mut Vec<String>,
+) -> Option<CompiledFeaturePlacement> {
+    Some(CompiledFeaturePlacement {
+        surface_blocks: def
+            .allowed_surface_blocks
+            .iter()
+            .filter_map(|block| resolve_block(blocks, owner, block, errors))
+            .collect(),
+        slope_max: (def.slope_max_degrees as f32 / 90.0).clamp(0.0, 1.0),
+        density: def.density.clamp(0.0, 1.0),
+        field: resolve(field_map, "field", owner, &def.scatter_field, errors)?,
+        biome_tags: refs_to_strings(&def.biome_tags),
     })
 }
 
@@ -571,7 +537,7 @@ fn resolve_many(
     map: &HashMap<String, usize>,
     label: &str,
     owner: &str,
-    keys: &[String],
+    keys: &[ContentRef],
     errors: &mut Vec<String>,
 ) -> Vec<usize> {
     keys.iter()
@@ -583,16 +549,13 @@ fn resolve(
     map: &HashMap<String, usize>,
     label: &str,
     owner: &str,
-    key: &str,
+    key: &ContentRef,
     errors: &mut Vec<String>,
 ) -> Option<usize> {
-    match map.get(key).copied() {
+    match map.get(&key.0).copied() {
         Some(idx) => Some(idx),
         None => {
-            errors.push(format!(
-                "{} '{}': unknown {} '{}'",
-                label, owner, label, key
-            ));
+            errors.push(format!("{} '{}': unknown {} '{}'", label, owner, label, key.0));
             None
         }
     }
@@ -601,23 +564,19 @@ fn resolve(
 fn resolve_block(
     blocks: &BlockRegistry,
     owner: &str,
-    key: &str,
+    key: &ContentRef,
     errors: &mut Vec<String>,
-) -> Option<vv_voxel::VoxelId> {
-    match blocks.lookup(key) {
+) -> Option<VoxelId> {
+    match blocks.lookup(&key.0) {
         Some(id) => Some(id),
         None => {
-            errors.push(format!("Procedural '{}': unknown block '{}'", owner, key));
+            errors.push(format!("Procedural '{}': unknown block '{}'", owner, key.0));
             None
         }
     }
 }
 
-fn key_map<T>(
-    label: &str,
-    values: &[(String, T)],
-    errors: &mut Vec<String>,
-) -> HashMap<String, usize> {
+fn key_map<T>(label: &str, values: &[(String, T)], errors: &mut Vec<String>) -> HashMap<String, usize> {
     let mut map = HashMap::with_capacity(values.len());
     for (idx, (key, _)) in values.iter().enumerate() {
         if map.insert(key.clone(), idx).is_some() {
@@ -625,6 +584,34 @@ fn key_map<T>(
         }
     }
     map
+}
+
+fn refs_to_strings(values: &[ContentRef]) -> Vec<String> {
+    values.iter().map(|value| value.0.clone()).collect()
+}
+
+fn tuple_color(value: (f32, f32, f32)) -> [f32; 3] {
+    [value.0, value.1, value.2]
+}
+
+fn terrain_range_name(value: RawTerrainLayerRange) -> String {
+    match value {
+        RawTerrainLayerRange::Surface => "surface",
+        RawTerrainLayerRange::Subsurface => "subsurface",
+        RawTerrainLayerRange::Crust => "crust",
+        RawTerrainLayerRange::DeepCrust => "deep_crust",
+        RawTerrainLayerRange::Core => "core",
+    }
+    .to_string()
+}
+
+fn stable_hash(value: &str) -> u32 {
+    let mut hash = 0x811c9dc5u32;
+    for byte in value.as_bytes() {
+        hash ^= *byte as u32;
+        hash = hash.wrapping_mul(0x01000193);
+    }
+    hash
 }
 
 fn finite(value: f32, fallback: f32) -> f32 {
@@ -652,5 +639,29 @@ fn normalized_u32_range(range: (u32, u32)) -> (u32, u32) {
         range
     } else {
         (range.1, range.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ContentCompiler;
+    use std::path::Path;
+    use vv_pack_loader::PackLoader;
+
+    #[test]
+    fn core_pack_procedural_compiles_from_current_schema() {
+        let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
+        let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");
+        let blocks =
+            ContentCompiler::compile_blocks(pack.blocks, pack.materials).expect("blocks");
+        let procedural_pack =
+            PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
+        let procedural =
+            ContentCompiler::compile_procedural(procedural_pack, &blocks).expect("procedural");
+
+        assert!(!procedural.planets.is_empty());
+        assert!(!procedural.fields.is_empty());
+        assert!(!procedural.biomes.is_empty());
+        assert!(!procedural.terrain_layers.is_empty());
     }
 }

@@ -2,7 +2,7 @@
     display_name: "Earth Crust",
     layers: [
         (range: surface, block: "core:block/terrain/grass"),
-        (range: subsurface, block: "core:block/terrain/dirt", thickness: (2, 6)),
+        (range: subsurface, block: "core:block/terrain/dirt", thickness: Some((2, 6))),
         (range: crust, block: "core:block/terrain/stone"),
         (range: deep_crust, block: "core:block/terrain/deepslate"),
         (range: core, block: "core:block/terrain/core"),
