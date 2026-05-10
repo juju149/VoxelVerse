@@ -239,7 +239,7 @@ impl<'a> Renderer<'a> {
         // --- BUFFERS ---
         let global_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Global Uniform"),
-            size: 160,
+            size: std::mem::size_of::<GlobalUniform>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -424,6 +424,68 @@ impl<'a> Renderer<'a> {
             multiview: None,
         });
 
+        // --- SKY PIPELINE ---
+        // Fullscreen sky rendered with a separate, simple pipeline that only needs
+        // the global uniform (no shadow sampler, no atlas, no vertex buffer).
+        let sky_global_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("sky_global_layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let sky_global_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Sky Global Bind"),
+            layout: &sky_global_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: global_buf.as_entire_binding(),
+            }],
+        });
+
+        let sky_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Sky Pipeline Layout"),
+            bind_group_layouts: &[&sky_global_layout],
+            push_constant_ranges: &[],
+        });
+
+        let sky_shaders = Self::create_shader_pair(
+            &device,
+            render_registry,
+            "core:render/techniques/sky/sky_gradient",
+        );
+
+        let pipeline_sky = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Sky Pipeline"),
+            layout: Some(&sky_layout),
+            vertex: wgpu::VertexState {
+                module: &sky_shaders.vertex,
+                entry_point: "vs_main",
+                buffers: &[], // fullscreen triangle from vertex_index — no vertex buffer
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &sky_shaders.fragment,
+                entry_point: "fs_main",
+                targets: &[Some(config.format.into())],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                cull_mode: None,
+                ..Default::default()
+            },
+            depth_stencil: None, // sky writes no depth
+            multisample: Default::default(),
+            multiview: None,
+        });
+
         // --- MESHES ---
         let player_mesh = MeshGen::generate_cylinder(0.4, 1.8, 16);
         let pv: Vec<Vertex> = player_mesh
@@ -495,6 +557,8 @@ impl<'a> Renderer<'a> {
             light_view_proj: identity_mat.to_cols_array(),
             cam_pos: [0.0, 0.0, 0.0, 0.0],
             sun_dir: [0.0, 1.0, 0.0, 0.0],
+            sky_horizon: [0.72, 0.84, 1.00, 0.5],
+            sky_zenith: [0.12, 0.28, 0.76, 1.0],
         };
 
         let global_buf_identity = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -534,6 +598,8 @@ impl<'a> Renderer<'a> {
             pipeline_fill,
             pipeline_wire,
             pipeline_line,
+            pipeline_sky,
+            sky_global_bind,
             chunks: HashMap::new(),
             lod_chunks: HashMap::new(),
             global_buf,

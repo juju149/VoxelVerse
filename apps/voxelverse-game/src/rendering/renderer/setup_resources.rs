@@ -81,7 +81,7 @@ impl<'a> Renderer<'a> {
     ) -> ShadowPassResources {
         let global_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Shadow Global Uniform"),
-            size: 160,
+            size: std::mem::size_of::<super::GlobalUniform>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });

@@ -261,23 +261,68 @@ impl<'a> Renderer<'a> {
             cos_angle < cos_horizon - 1.5 * angular_radius
         };
 
-        // 1. update main global uni
+        // 1. Compute atmosphere colors from sun elevation.
+        //    sun_dir.y is the sine of the sun's elevation angle.
+        let sun_elevation = sun_dir.y.clamp(-1.0_f32, 1.0);
+        let above_horizon = sun_elevation.max(0.0_f32);
+        // dawn_factor peaks near the horizon (sunrise/sunset) and falls off at noon/night
+        let dawn_factor =
+            (1.0 - (sun_elevation.abs() * 3.5).min(1.0)).powi(2) * (above_horizon * 2.0).min(1.0);
+
+        let h_noon = glam::Vec3::new(0.72, 0.84, 1.00);
+        let h_dawn = glam::Vec3::new(0.96, 0.58, 0.26);
+        let h_night = glam::Vec3::new(0.02, 0.03, 0.08);
+        let sky_horizon_rgb = if sun_elevation >= 0.0 {
+            // Blend toward dawn/dusk colors when sun is near horizon
+            let t = dawn_factor;
+            glam::Vec3::new(
+                h_noon.x * (1.0 - t) + h_dawn.x * t,
+                h_noon.y * (1.0 - t) + h_dawn.y * t,
+                h_noon.z * (1.0 - t) + h_dawn.z * t,
+            )
+        } else {
+            let night_t = (-sun_elevation * 4.0).min(1.0);
+            glam::Vec3::new(
+                h_dawn.x * (1.0 - night_t) + h_night.x * night_t,
+                h_dawn.y * (1.0 - night_t) + h_night.y * night_t,
+                h_dawn.z * (1.0 - night_t) + h_night.z * night_t,
+            )
+        };
+
+        let day_t = above_horizon.powf(0.5);
+        let z_day = glam::Vec3::new(0.12, 0.28, 0.76);
+        let z_night = glam::Vec3::new(0.01, 0.01, 0.05);
+        let sky_zenith_rgb = glam::Vec3::new(
+            z_day.x * day_t + z_night.x * (1.0 - day_t),
+            z_day.y * day_t + z_night.y * (1.0 - day_t),
+            z_day.z * day_t + z_night.z * (1.0 - day_t),
+        );
+
+        let sun_intensity = above_horizon.powf(0.3).min(1.0);
+        // time_of_day: placeholder (0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset)
+        let time_of_day = 0.5_f32;
+
+        // 2. Build and upload the main global uniform.
         let global_data = GlobalUniform {
             view_proj: mvp.to_cols_array(),
             light_view_proj: light_view_proj.to_cols_array(),
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, self.quality.pack()],
             // w component carries per-planet fog density (read in shader via sun_dir.w).
             sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, fog_density],
+            sky_horizon: [sky_horizon_rgb.x, sky_horizon_rgb.y, sky_horizon_rgb.z, time_of_day],
+            sky_zenith: [sky_zenith_rgb.x, sky_zenith_rgb.y, sky_zenith_rgb.z, sun_intensity],
         };
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
 
-        // 2. update shadow global uni (put Light Matrix in view_proj)
+        // 3. Shadow global uniform uses the light matrix as view_proj.
         let shadow_uniform_data = GlobalUniform {
             view_proj: light_view_proj.to_cols_array(),
             light_view_proj: light_view_proj.to_cols_array(),
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, self.quality.pack()],
             sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, fog_density],
+            sky_horizon: [sky_horizon_rgb.x, sky_horizon_rgb.y, sky_horizon_rgb.z, time_of_day],
+            sky_zenith: [sky_zenith_rgb.x, sky_zenith_rgb.y, sky_zenith_rgb.z, sun_intensity],
         };
         self.queue.write_buffer(
             &self.shadow_global_buf,
@@ -388,7 +433,30 @@ impl<'a> Renderer<'a> {
             }
         }
 
-        // --- PASS 2: MAIN RENDER ---
+        // --- PASS 2: SKY ---
+        // Renders the atmospheric sky as a fullscreen triangle before terrain so
+        // background pixels (horizon, space above planet) show the sky.
+        {
+            let mut sky_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Sky Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None, // sky writes no depth
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            sky_pass.set_pipeline(&self.pipeline_sky);
+            sky_pass.set_bind_group(0, &self.sky_global_bind, &[]);
+            sky_pass.draw(0..3, 0..1); // fullscreen triangle from vertex_index
+        }
+
+        // --- PASS 3: MAIN RENDER ---
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
@@ -396,13 +464,8 @@ impl<'a> Renderer<'a> {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        // Sky blue — matches the horizon fog color after ACES tonemapping.
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.28,
-                            g: 0.52,
-                            b: 0.94,
-                            a: 1.0,
-                        }),
+                        // Sky was rendered in the previous pass — keep it as background.
+                        load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
                     },
                 })],
