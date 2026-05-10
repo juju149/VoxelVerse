@@ -75,6 +75,11 @@ pub struct RawPlanetProceduralDef {
     pub resolution: u32,
     pub surface_layer: u32,
     pub voxel_size_meters: f32,
+    /// Visual-only rounded edge radius, in voxel-face UV units.
+    /// `0.0` disables it; values around `0.12..0.18` soften block edges
+    /// without changing silhouettes or collision.
+    #[serde(default = "default_edge_rounding_radius_voxels")]
+    pub edge_rounding_radius_voxels: f32,
     pub core_layers: u32,
     pub inner_radius_fraction: f32,
     pub sea_level_offset: i32,
@@ -94,6 +99,10 @@ pub struct RawPlanetProceduralDef {
     pub fauna_sets: Vec<String>,
     #[serde(default)]
     pub visual_detail_sets: Vec<String>,
+}
+
+fn default_edge_rounding_radius_voxels() -> f32 {
+    0.16
 }
 
 #[derive(Debug, Clone, Deserialize)]

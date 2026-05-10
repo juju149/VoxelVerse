@@ -186,16 +186,17 @@ fn surface_basis(world_pos: vec3<f32>, uv: vec2<f32>, world_normal: vec3<f32>) -
     return SurfaceBasis(tangent, bitangent);
 }
 
-fn edge_amount(enabled: bool, distance_to_edge: f32, radius: f32) -> f32 {
-    if (!enabled || radius <= 0.0001) {
-        return 0.0;
-    }
-    let x = 1.0 - smoothstep(0.0, radius, distance_to_edge);
-    return x * x * (3.0 - 2.0 * x);
+fn smootherstep01(x: f32) -> f32 {
+    let t = clamp(x, 0.0, 1.0);
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
 }
 
-fn edge_weight(enabled: bool, distance_to_edge: f32, radius: f32) -> f32 {
-    return edge_amount(enabled, distance_to_edge, radius) * 1.35;
+fn bevel_profile(enabled: bool, distance_to_edge: f32, radius: f32, feather: f32) -> f32 {
+    // Screen-space feather keeps the normal transition stable at distance.
+    // The silhouette stays a cube; only lighting gets a rounded-box response.
+    let inside_radius = 1.0 - smoothstep(radius - feather, radius + feather, distance_to_edge);
+    let amount = smootherstep01(inside_radius);
+    return select(0.0, amount, enabled && radius > 0.0001);
 }
 
 fn rounded_edge_normal(
@@ -204,27 +205,46 @@ fn rounded_edge_normal(
     edge_mask: u32,
     radius: f32,
     basis: SurfaceBasis,
+    edge_feather: vec2<f32>,
 ) -> vec3<f32> {
-    let safe_radius = clamp(radius, 0.0, 0.50);
+    let safe_radius = clamp(radius, 0.0, 0.35);
+    if (edge_mask == 0u || safe_radius <= 0.0001) {
+        return world_normal;
+    }
 
     let min_u = (edge_mask & EDGE_MIN_U) != 0u;
     let max_u = (edge_mask & EDGE_MAX_U) != 0u;
     let min_v = (edge_mask & EDGE_MIN_V) != 0u;
     let max_v = (edge_mask & EDGE_MAX_V) != 0u;
 
-    let u_bend =
-        -edge_weight(min_u, uv.x, safe_radius) +
-         edge_weight(max_u, 1.0 - uv.x, safe_radius);
-    let v_bend =
-        -edge_weight(min_v, uv.y, safe_radius) +
-         edge_weight(max_v, 1.0 - uv.y, safe_radius);
+    let u_min = bevel_profile(min_u, uv.x, safe_radius, edge_feather.x);
+    let u_max = bevel_profile(max_u, 1.0 - uv.x, safe_radius, edge_feather.x);
+    let v_min = bevel_profile(min_v, uv.y, safe_radius, edge_feather.y);
+    let v_max = bevel_profile(max_v, 1.0 - uv.y, safe_radius, edge_feather.y);
 
-    let bend = basis.tangent * u_bend + basis.bitangent * v_bend;
-    return normalize(world_normal + bend);
+    let signed_u = u_max - u_min;
+    let signed_v = v_max - v_min;
+    let edge_strength = max(max(u_min, u_max), max(v_min, v_max));
+    let corner_strength = max(u_min, u_max) * max(v_min, v_max);
+
+    // Keep a strong face component so the result reads as a soft radius, not a
+    // geometric chamfer. Corners receive a little extra diagonal bend.
+    let face_keep = mix(1.0, 0.76, edge_strength) - corner_strength * 0.08;
+    let side_gain = mix(0.72, 0.92, corner_strength);
+    let bend = (basis.tangent * signed_u + basis.bitangent * signed_v) * side_gain;
+    return normalize(world_normal * max(face_keep, 0.62) + bend);
 }
 
-fn rounded_edge_amount(uv: vec2<f32>, edge_mask: u32, radius: f32) -> f32 {
-    let safe_radius = clamp(radius, 0.0, 0.50);
+fn rounded_edge_amount(
+    uv: vec2<f32>,
+    edge_mask: u32,
+    radius: f32,
+    edge_feather: vec2<f32>,
+) -> f32 {
+    let safe_radius = clamp(radius, 0.0, 0.35);
+    if (edge_mask == 0u || safe_radius <= 0.0001) {
+        return 0.0;
+    }
 
     let min_u = (edge_mask & EDGE_MIN_U) != 0u;
     let max_u = (edge_mask & EDGE_MAX_U) != 0u;
@@ -232,12 +252,12 @@ fn rounded_edge_amount(uv: vec2<f32>, edge_mask: u32, radius: f32) -> f32 {
     let max_v = (edge_mask & EDGE_MAX_V) != 0u;
 
     let u_amount = max(
-        edge_amount(min_u, uv.x, safe_radius),
-        edge_amount(max_u, 1.0 - uv.x, safe_radius)
+        bevel_profile(min_u, uv.x, safe_radius, edge_feather.x),
+        bevel_profile(max_u, 1.0 - uv.x, safe_radius, edge_feather.x)
     );
     let v_amount = max(
-        edge_amount(min_v, uv.y, safe_radius),
-        edge_amount(max_v, 1.0 - uv.y, safe_radius)
+        bevel_profile(min_v, uv.y, safe_radius, edge_feather.y),
+        bevel_profile(max_v, 1.0 - uv.y, safe_radius, edge_feather.y)
     );
     return max(u_amount, v_amount);
 }
@@ -262,6 +282,8 @@ fn aces_approx(v: vec3<f32>) -> vec3<f32> {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
+    let edge_feather = max(fwidth(in.uv) * 1.5, vec2<f32>(0.0005));
+
     // 1. Transparency Dithering
     if (local.params.x < 1.0 && dither_opacity(in.clip_pos, local.params.x)) {
         discard;
@@ -295,7 +317,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         roughness = 0.7;
         // Cross-plane foliage opted into alpha test — without textures we
         // have no per-pixel mask, so render the cards as opaque rectangles.
-        N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
+        N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis, edge_feather);
     } else {
         let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(material_layer));
         // Alpha test only when the geometry opted in (cross-plane foliage).
@@ -306,15 +328,15 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         }
         roughness = textureSample(t_roughness, s_material, in.uv, i32(material_layer)).r;
         N = material_normal(N, in.uv, material_layer, basis);
-        N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis);
+        N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis, edge_feather);
         albedo_rgb = albedo_sample.rgb;
     }
-    let bevel_amount = rounded_edge_amount(in.uv, edge_mask, local.params.y);
+    let bevel_amount = rounded_edge_amount(in.uv, edge_mask, local.params.y, edge_feather);
     let vert_color_linear = pow(in.color, vec3<f32>(2.2));
 
     // Detail grain — gated behind the triplanar quality flag.  3 sin() per
     // fragment is non-trivial on weak GPUs, so it's optional.
-    let bevel_contrast = mix(1.0, 0.88, bevel_amount);
+    let bevel_contrast = mix(1.0, 0.96, bevel_amount);
     var albedo = vert_color_linear * albedo_rgb * bevel_contrast;
     if (triplanar_on && !color_only) {
         let noise = triplanar_detail(in.world_pos, N);

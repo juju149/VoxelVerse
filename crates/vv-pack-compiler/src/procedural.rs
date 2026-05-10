@@ -529,7 +529,8 @@ fn compile_planet(
             resolution: def.resolution.max(8),
             surface_layer: def.surface_layer,
             voxel_size_meters: finite_positive(def.voxel_size_meters, 1.0),
-            edge_rounding_radius_voxels: 0.42,
+            edge_rounding_radius_voxels: finite(def.edge_rounding_radius_voxels, 0.16)
+                .clamp(0.0, 0.35),
             core_layers: def.core_layers,
             inner_radius_fraction: def.inner_radius_fraction.clamp(0.02, 0.95),
             max_terrain_offset: def.max_terrain_offset.max(0),
