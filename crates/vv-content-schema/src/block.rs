@@ -1,4 +1,4 @@
-use crate::{ContentRef, RawRenderMode};
+use crate::{ContentRef, RawBlockStates, RawRenderMode};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -98,6 +98,11 @@ pub struct RawBlockDef {
     pub runtime: RawBlockRuntimeDef,
     #[serde(default)]
     pub simulation: RawBlockSimulationDef,
+    /// Optional state declaration. Variants are not yet compiled — this
+    /// field accepts content but is currently inert; it will gain a
+    /// runtime contract in subsequent sprint steps.
+    #[serde(default)]
+    pub states: RawBlockStates,
 }
 
 fn default_true() -> bool {

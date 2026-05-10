@@ -1,5 +1,6 @@
 mod block;
 mod block_model;
+mod block_state;
 mod catalog;
 mod entity;
 mod generated;
@@ -12,6 +13,7 @@ pub mod visual;
 
 pub use block::*;
 pub use block_model::*;
+pub use block_state::*;
 pub use catalog::*;
 pub use entity::*;
 pub use generated::*;

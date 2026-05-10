@@ -584,6 +584,7 @@ mod tests {
                 blocks_light: true,
             },
             simulation: RawBlockSimulationDef::default(),
+            states: vv_content_schema::RawBlockStates::default(),
         }
     }
 
