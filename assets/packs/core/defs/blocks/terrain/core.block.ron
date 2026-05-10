@@ -6,22 +6,23 @@ BlockDef(
     physical: (
         solid: true,
         opaque: true,
-
         hardness: 999.0,
         blast_resistance: 2997,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-
         render: opaque,
         materials: {
             "py": "core:material/blocks/bedrock/bedrock_all",
-            "ny": "core:material/blocks/bedrock/bedrock_all",
+            
+"ny": "core:material/blocks/bedrock/bedrock_all",
             "pz": "core:material/blocks/bedrock/bedrock_all",
-            "nz": "core:material/blocks/bedrock/bedrock_all",
+            
+"nz": "core:material/blocks/bedrock/bedrock_all",
             "px": "core:material/blocks/bedrock/bedrock_all",
-            "nx": "core:material/blocks/bedrock/bedrock_all",
+            
+"nx": "core:material/blocks/bedrock/bedrock_all",
         },
     ),
     gameplay: (

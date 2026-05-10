@@ -6,22 +6,23 @@ BlockDef(
     physical: (
         solid: true,
         opaque: true,
-
         hardness: 0.6,
         blast_resistance: 1.8,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-
         render: opaque,
         materials: {
             "py": "core:material/blocks/grass_block/grass_block_top",
-            "ny": "core:material/blocks/grass_block/grass_block_bottom",
+            
+"ny": "core:material/blocks/grass_block/grass_block_bottom",
             "pz": "core:material/blocks/grass_block/grass_block_side",
-            "nz": "core:material/blocks/grass_block/grass_block_side",
+            
+"nz": "core:material/blocks/grass_block/grass_block_side",
             "px": "core:material/blocks/grass_block/grass_block_side",
-            "nx": "core:material/blocks/grass_block/grass_block_side",
+            
+"nx": "core:material/blocks/grass_block/grass_block_side",
         },
     ),
     gameplay: (

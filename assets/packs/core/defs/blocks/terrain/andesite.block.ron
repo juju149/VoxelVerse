@@ -6,22 +6,23 @@ BlockDef(
     physical: (
         solid: true,
         opaque: true,
-
         hardness: 1.6,
         blast_resistance: 4.8,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-
         render: opaque,
         materials: {
             "py": "core:material/blocks/andesite/andesite_all",
-            "ny": "core:material/blocks/andesite/andesite_all",
+            
+"ny": "core:material/blocks/andesite/andesite_all",
             "pz": "core:material/blocks/andesite/andesite_all",
-            "nz": "core:material/blocks/andesite/andesite_all",
+            
+"nz": "core:material/blocks/andesite/andesite_all",
             "px": "core:material/blocks/andesite/andesite_all",
-            "nx": "core:material/blocks/andesite/andesite_all",
+            
+"nx": "core:material/blocks/andesite/andesite_all",
         },
     ),
     gameplay: (
@@ -36,5 +37,4 @@ BlockDef(
         place: "core:sound/place/stone",
     ),
     tags: ["core:tag/block/terrain", "core:tag/block/stone"],
-    
 )

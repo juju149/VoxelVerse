@@ -6,14 +6,12 @@ BlockDef(
     physical: (
         solid: true,
         opaque: false,
-
         hardness: 0.25,
         blast_resistance: 0.75,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-
         render: alpha_test,
         materials: {
             "py": "core:material/blocks/oak_leaves/oak_leaves_all",

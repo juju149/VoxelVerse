@@ -66,7 +66,7 @@ impl VoxelRuntime {
     }
 
     /// Number of chunks currently holding at least one override.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn chunk_count(&self) -> usize {
         self.chunks.len()
     }

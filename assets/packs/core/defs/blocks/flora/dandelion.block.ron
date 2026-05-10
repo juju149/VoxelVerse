@@ -1,4 +1,4 @@
-BlockDef(
+﻿BlockDef(
     format_version: 1,
     model: "core:block_model/cross_plane",
     display_name: "Dandelion",
@@ -6,14 +6,12 @@ BlockDef(
     physical: (
         solid: false,
         opaque: false,
-
         hardness: 0.0,
         blast_resistance: 0,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-
         render: alpha_test,
         materials: {
             "plane": "core:material/blocks/dandelion/dandelion_all",

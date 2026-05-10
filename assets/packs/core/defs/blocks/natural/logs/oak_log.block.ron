@@ -1,4 +1,4 @@
-BlockDef(
+﻿BlockDef(
     format_version: 1,
     display_name: "Oak Log",
     category: "natural/log",

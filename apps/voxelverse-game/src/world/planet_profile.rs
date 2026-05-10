@@ -12,7 +12,6 @@ pub struct PlanetProfile {
     pub layer_height: f32,
     /// Maximum terrain height offset in layers.  Stored as `i32` and used as
     /// `f32` amplitude — supports the i16 height storage (range up to 32767).
-    #[allow(dead_code)]
     pub max_terrain_offset: i32,
     pub spawn_clearance_layers: f32,
     pub seed: u32,

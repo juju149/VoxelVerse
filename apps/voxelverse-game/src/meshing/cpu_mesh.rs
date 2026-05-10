@@ -13,7 +13,7 @@ pub struct CpuVertex {
 }
 
 impl CpuVertex {
-    #[allow(dead_code)] // used in tests; mesh builders use struct literal syntax
+    #[cfg(test)]
     #[inline]
     pub fn new(pos: [f32; 3], uv: [f32; 2], normal: [f32; 3], color: [f32; 3]) -> Self {
         Self {

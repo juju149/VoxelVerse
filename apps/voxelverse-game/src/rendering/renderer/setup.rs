@@ -580,7 +580,6 @@ impl<'a> Renderer<'a> {
 
             frame_stats: FrameStats::new(),
             quality: perf.quality,
-            perf_tier,
             shadow_map_size: perf.shadow_map_size,
             lod_distance_scale: perf.lod_distance_scale,
             atlas_bind,

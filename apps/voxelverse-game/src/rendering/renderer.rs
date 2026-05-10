@@ -4,7 +4,6 @@ use crate::diagnostics::FrameStats;
 use crate::math::Frustum;
 use crate::meshing::CpuMesh;
 use crate::rendering::lod_animation::LodAnimator;
-use crate::rendering::perf_profile::PerfTier;
 use crate::rendering::quality::QualitySettings;
 use crate::rendering::types::ChunkMesh;
 use crate::streaming::{MeshScheduler, SchedulerStats};
@@ -132,10 +131,6 @@ pub struct Renderer<'a> {
 
     // --- QUALITY ---
     pub quality: QualitySettings,
-    /// Active hardware tier picked at startup (or via VV_PERF) — drives the
-    /// shadow map size, scheduler budget and LOD aggressiveness.
-    #[allow(dead_code)]
-    pub perf_tier: PerfTier,
     /// Edge length of the shadow depth texture, in pixels.  Read by the main
     /// render pass for texel-snapping the sun view matrix.
     pub shadow_map_size: u32,

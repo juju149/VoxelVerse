@@ -6,22 +6,23 @@ BlockDef(
     physical: (
         solid: true,
         opaque: true,
-
         hardness: 3.0,
         blast_resistance: 9,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-
         render: opaque,
         materials: {
             "py": "core:material/blocks/iron_ore/iron_ore_all",
-            "ny": "core:material/blocks/iron_ore/iron_ore_all",
+            
+"ny": "core:material/blocks/iron_ore/iron_ore_all",
             "pz": "core:material/blocks/iron_ore/iron_ore_all",
-            "nz": "core:material/blocks/iron_ore/iron_ore_all",
+            
+"nz": "core:material/blocks/iron_ore/iron_ore_all",
             "px": "core:material/blocks/iron_ore/iron_ore_all",
-            "nx": "core:material/blocks/iron_ore/iron_ore_all",
+            
+"nx": "core:material/blocks/iron_ore/iron_ore_all",
         },
     ),
     gameplay: (
@@ -36,5 +37,4 @@ BlockDef(
         place: "core:sound/place/stone",
     ),
     tags: ["core:tag/block/ore", "core:tag/resource/iron"],
-    
 )

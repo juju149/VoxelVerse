@@ -27,17 +27,6 @@ impl PerfTier {
         }
     }
 
-    /// Pick the next tier (cycles Low → Medium → High → Ultra → Low).
-    #[allow(dead_code)]
-    pub fn next(self) -> Self {
-        match self {
-            PerfTier::Low => PerfTier::Medium,
-            PerfTier::Medium => PerfTier::High,
-            PerfTier::High => PerfTier::Ultra,
-            PerfTier::Ultra => PerfTier::Low,
-        }
-    }
-
     /// Parse `low|medium|high|ultra` (case-insensitive). Returns `None` on
     /// unknown input so callers can fall back to auto-detection.
     pub fn from_str(s: &str) -> Option<Self> {

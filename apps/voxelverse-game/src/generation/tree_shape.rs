@@ -18,7 +18,6 @@ use std::f32::consts::TAU;
 #[derive(Clone, Copy, Debug)]
 pub struct CanopyLobe {
     pub center: Vec3, // x = u + 0.5, y = layer + 0.5, z = v + 0.5
-    pub radius: f32,
     pub radii: Vec3,
     pub jitter_seed: u32,
 }
@@ -29,7 +28,6 @@ impl CanopyLobe {
     pub fn sphere(center: Vec3, radius: f32, jitter_seed: u32) -> Self {
         Self {
             center,
-            radius,
             radii: Vec3::splat(radius),
             jitter_seed,
         }
@@ -199,44 +197,6 @@ impl TreeShape {
             branches,
             lobes,
         }
-    }
-
-    /// Furthest a single tree can reach horizontally from its plant column.
-    /// Used by the bakery to size its neighbourhood scan.
-    #[allow(dead_code)]
-    pub fn horizontal_reach(&self) -> f32 {
-        let lean = (self.trunk_lean.0.powi(2) + self.trunk_lean.1.powi(2)).sqrt();
-        let canopy = self
-            .lobes
-            .iter()
-            .map(|l| {
-                let dx = l.center.x - self.trunk_pivot.x;
-                let dz = l.center.z - self.trunk_pivot.z;
-                (dx * dx + dz * dz).sqrt() + l.radius
-            })
-            .fold(0.0_f32, f32::max);
-        let branch = self
-            .branches
-            .iter()
-            .map(|b| b.length + b.tip.map(|t| t.radius).unwrap_or(0.0))
-            .fold(0.0_f32, f32::max);
-        lean + canopy.max(branch).max(self.trunk_base_radius)
-    }
-
-    #[allow(dead_code)]
-    pub fn vertical_reach_above(&self) -> f32 {
-        let canopy = self
-            .lobes
-            .iter()
-            .map(|l| (l.center.y + l.radius) - self.plant_height as f32)
-            .fold(self.height as f32, f32::max);
-        let branch = self
-            .branches
-            .iter()
-            .map(|b| b.start.y + b.direction.y * b.length + 1.5)
-            .map(|y| y - self.plant_height as f32)
-            .fold(canopy, f32::max);
-        branch
     }
 
     /// Walk every voxel that belongs to this tree and forward it to `emit`.
@@ -452,7 +412,6 @@ fn build_broad_leaf(
             let center = canopy_anchor + Vec3::new(theta.cos() * r_off, y_off, theta.sin() * r_off);
             lobes.push(CanopyLobe {
                 center,
-                radius: lobe_r.max(1.5),
                 radii: Vec3::new(lobe_r, lobe_r * squash, lobe_r),
                 jitter_seed: h ^ 0xCAFE,
             });
@@ -501,7 +460,6 @@ fn build_conical(
         let disc_thickness = (canopy_radius * 0.18 + 0.35).max(0.5);
         lobes.push(CanopyLobe {
             center: Vec3::new(pivot.x, layer, pivot.z),
-            radius: r,
             radii: Vec3::new(r, disc_thickness, r),
             jitter_seed: hash4(face, pu, pv, 0xC02E + i) ^ 0xCAFE,
         });
@@ -568,7 +526,6 @@ fn build_flat_top(
         let tip_center = start + direction * len;
         let plate = CanopyLobe {
             center: tip_center,
-            radius: plate_r,
             radii: Vec3::new(plate_r, (canopy_radius * 0.18 + 0.4).max(0.5), plate_r),
             jitter_seed: h ^ 0xACAC,
         };
@@ -585,7 +542,6 @@ fn build_flat_top(
     // single plate when limbs fan out, not as separate puffs.
     let halo = CanopyLobe {
         center: Vec3::new(pivot.x, plant_height as f32 + height as f32 + 0.1, pivot.z),
-        radius: canopy_radius * 0.85,
         radii: Vec3::new(
             canopy_radius * 0.85,
             (canopy_radius * 0.16 + 0.3).max(0.5),

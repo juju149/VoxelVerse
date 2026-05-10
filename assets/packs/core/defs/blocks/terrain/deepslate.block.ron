@@ -6,22 +6,23 @@ BlockDef(
     physical: (
         solid: true,
         opaque: true,
-
         hardness: 2.3,
         blast_resistance: 6.9,
         friction: 0.82,
         restitution: 0.0,
     ),
     visual: (
-
         render: opaque,
         materials: {
             "py": "core:material/blocks/deepslate/deepslate_top",
-            "ny": "core:material/blocks/deepslate/deepslate_top",
+            
+"ny": "core:material/blocks/deepslate/deepslate_top",
             "pz": "core:material/blocks/deepslate/deepslate_side",
-            "nz": "core:material/blocks/deepslate/deepslate_side",
+            
+"nz": "core:material/blocks/deepslate/deepslate_side",
             "px": "core:material/blocks/deepslate/deepslate_side",
-            "nx": "core:material/blocks/deepslate/deepslate_side",
+            
+"nx": "core:material/blocks/deepslate/deepslate_side",
         },
     ),
     gameplay: (
@@ -36,5 +37,4 @@ BlockDef(
         place: "core:sound/place/stone",
     ),
     tags: ["core:tag/block/terrain", "core:tag/block/stone", "core:tag/block/deep_layer"],
-    
 )

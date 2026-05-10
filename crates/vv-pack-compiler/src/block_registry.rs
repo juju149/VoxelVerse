@@ -129,14 +129,11 @@ impl BlockModelRegistry {
 /// keyed by `model_id`. There is no shape cache — the model is the single
 /// source of truth.
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct CompiledBlockVisual {
     /// Material layers per cube face. 0 = neutral fallback material.
     pub layers: BlockMaterialLayers,
     /// RGB tint multiplied over the material. `[1,1,1]` = no tint.
     pub tint: [f32; 3],
-    /// RGB flat color fallback used when no atlas is present.
-    pub flat_color: [f32; 3],
     /// Reference into the `BlockModelRegistry`.
     pub model_id: BlockModelId,
 }
@@ -146,7 +143,6 @@ impl Default for CompiledBlockVisual {
         Self {
             layers: BlockMaterialLayers::default(),
             tint: [1.0; 3],
-            flat_color: [1.0, 0.0, 1.0],
             model_id: BlockModelId(0),
         }
     }
@@ -158,14 +154,17 @@ impl Default for CompiledBlockVisual {
 /// variants of the same block share `family_key`; their `state` field
 /// disambiguates them.
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct CompiledBlock {
     pub id: VoxelId,
     /// Namespaced key of the source block (the family). Multiple variants
     /// share this key; their `state` distinguishes them.
     pub family_key: String,
     /// State assignment for this variant. Empty for stateless blocks.
+    /// Reserved for future block-state interaction (doors, slabs, etc.).
+    #[allow(dead_code)]
     pub state: BlockStateValue,
+    /// Human-readable name for UI and diagnostics.
+    #[allow(dead_code)]
     pub display_name: String,
     pub solid: bool,
     /// RGB color used for voxel rendering until a texture atlas is in place.
