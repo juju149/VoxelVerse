@@ -1,23 +1,3 @@
-// MeshScheduler is defined and tested but not yet wired into the renderer.
-// Dead-code lint suppressed so the infrastructure is ready for integration.
-#![allow(dead_code)]
-
-/// Priority used to order mesh generation jobs.
-///
-/// Lower value = higher priority.  Jobs with priority 0 (dirty/player edit)
-/// are always dispatched before regular loads.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct JobPriority(pub u32);
-
-impl JobPriority {
-    /// Immediate: player just modified this area.
-    pub const DIRTY: Self = Self(0);
-    /// Normal: initial load, sorted by camera distance.
-    pub const fn distance(dist_squared: u32) -> Self {
-        Self(1 + dist_squared)
-    }
-}
-
 /// Per-frame budgets that govern how aggressively the scheduler dispatches
 /// and uploads jobs.  Lowering these reduces GPU stalls at the cost of
 /// slower streaming; raising them speeds up loading at the cost of frame spikes.

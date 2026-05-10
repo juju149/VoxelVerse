@@ -1,6 +1,6 @@
 use super::{
-    ambient_occlusion, pack_material_edges, CpuMesh, CpuVertex, FaceEdgeMask, MeshGen,
-    prop_baker::bake_props,
+    ambient_occlusion, pack_material_edges, prop_baker::bake_props, CpuMesh, CpuVertex,
+    FaceEdgeMask, MeshGen,
 };
 use crate::content::CompiledMesh;
 use crate::generation::{ChunkFeatureMap, CoordSystem};
@@ -52,6 +52,15 @@ impl<'a> ChunkAccessor<'a> {
 #[derive(Default)]
 struct CandidateBuffer {
     coords: Vec<VoxelCoord>,
+}
+
+struct QuadFace {
+    pos: [Vec3; 4],
+    colors: [[f32; 3]; 4],
+    force_radial: bool,
+    packed_tex_index: u32,
+    flip_u: bool,
+    flip_v: bool,
 }
 
 impl CandidateBuffer {
@@ -236,7 +245,7 @@ impl MeshGen {
             if !stamps.is_empty() {
                 let alive_stamps: Vec<_> = stamps
                     .into_iter()
-                    .filter(|s| data.prop_layer.is_alive(s.face, s.u, s.v))
+                    .filter(|s| data.broken_props.is_alive(s.face, s.u, s.v))
                     .collect();
                 if !alive_stamps.is_empty() {
                     bake_props(&alive_stamps, &data.prop_models, data.profile, &mut mesh);
@@ -384,17 +393,19 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                [o_bl, o_br, o_tr, o_tl],
-                [
-                    face_color(layer, ao_bl),
-                    face_color(layer, ao_br),
-                    face_color(layer, ao_tr),
-                    face_color(layer, ao_tl),
-                ],
-                true,
-                pack_material_edges(layer, edges),
-                false,
-                false,
+                QuadFace {
+                    pos: [o_bl, o_br, o_tr, o_tl],
+                    colors: [
+                        face_color(layer, ao_bl),
+                        face_color(layer, ao_br),
+                        face_color(layer, ao_tr),
+                        face_color(layer, ao_tl),
+                    ],
+                    force_radial: true,
+                    packed_tex_index: pack_material_edges(layer, edges),
+                    flip_u: false,
+                    flip_v: false,
+                },
             );
         }
 
@@ -411,12 +422,14 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                [i_tl, i_tr, i_br, i_bl],
-                [c, c, c, c],
-                true,
-                pack_material_edges(layer, edges),
-                false,
-                true, // v is flipped when viewed from below
+                QuadFace {
+                    pos: [i_tl, i_tr, i_br, i_bl],
+                    colors: [c, c, c, c],
+                    force_radial: true,
+                    packed_tex_index: pack_material_edges(layer, edges),
+                    flip_u: false,
+                    flip_v: true, // v is flipped when viewed from below
+                },
             );
         }
 
@@ -433,12 +446,14 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                [i_bl, i_br, o_br, o_bl],
-                [c, c, c, c],
-                false,
-                pack_material_edges(layer, edges),
-                false,
-                true,
+                QuadFace {
+                    pos: [i_bl, i_br, o_br, o_bl],
+                    colors: [c, c, c, c],
+                    force_radial: false,
+                    packed_tex_index: pack_material_edges(layer, edges),
+                    flip_u: false,
+                    flip_v: true,
+                },
             );
         }
         if !has_back {
@@ -454,12 +469,14 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                [i_tl, i_tr, o_tr, o_tl],
-                [c, c, c, c],
-                false,
-                pack_material_edges(layer, edges),
-                false,
-                true,
+                QuadFace {
+                    pos: [i_tl, i_tr, o_tr, o_tl],
+                    colors: [c, c, c, c],
+                    force_radial: false,
+                    packed_tex_index: pack_material_edges(layer, edges),
+                    flip_u: false,
+                    flip_v: true,
+                },
             );
         }
         if !has_left {
@@ -475,12 +492,14 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                [i_bl, i_tl, o_tl, o_bl],
-                [c, c, c, c],
-                false,
-                pack_material_edges(layer, edges),
-                false,
-                true,
+                QuadFace {
+                    pos: [i_bl, i_tl, o_tl, o_bl],
+                    colors: [c, c, c, c],
+                    force_radial: false,
+                    packed_tex_index: pack_material_edges(layer, edges),
+                    flip_u: false,
+                    flip_v: true,
+                },
             );
         }
         if !has_right {
@@ -496,52 +515,44 @@ impl MeshGen {
                 verts,
                 inds,
                 idx,
-                [i_br, i_tr, o_tr, o_br],
-                [c, c, c, c],
-                false,
-                pack_material_edges(layer, edges),
-                false,
-                true,
+                QuadFace {
+                    pos: [i_br, i_tr, o_tr, o_br],
+                    colors: [c, c, c, c],
+                    force_radial: false,
+                    packed_tex_index: pack_material_edges(layer, edges),
+                    flip_u: false,
+                    flip_v: true,
+                },
             );
         }
     }
 
-    fn quad(
-        verts: &mut Vec<CpuVertex>,
-        inds: &mut Vec<u32>,
-        idx: &mut u32,
-        pos: [Vec3; 4],
-        colors: [[f32; 3]; 4],
-        force_radial: bool,
-        packed_tex_index: u32,
-        flip_u: bool,
-        flip_v: bool,
-    ) {
+    fn quad(verts: &mut Vec<CpuVertex>, inds: &mut Vec<u32>, idx: &mut u32, face: QuadFace) {
         // UV corners: (0,0) bl, (1,0) br, (1,1) tr, (0,1) tl
         // flip_u mirrors horizontally, flip_v mirrors vertically.
-        let u0 = if flip_u { 1.0_f32 } else { 0.0_f32 };
-        let u1 = if flip_u { 0.0_f32 } else { 1.0_f32 };
-        let v0 = if flip_v { 1.0_f32 } else { 0.0_f32 };
-        let v1 = if flip_v { 0.0_f32 } else { 1.0_f32 };
+        let u0 = if face.flip_u { 1.0_f32 } else { 0.0_f32 };
+        let u1 = if face.flip_u { 0.0_f32 } else { 1.0_f32 };
+        let v0 = if face.flip_v { 1.0_f32 } else { 0.0_f32 };
+        let v1 = if face.flip_v { 0.0_f32 } else { 1.0_f32 };
         let uvs: [[f32; 2]; 4] = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
 
-        let normal = if force_radial {
-            let center = (pos[0] + pos[1] + pos[2] + pos[3]) * 0.25;
+        let normal = if face.force_radial {
+            let center = (face.pos[0] + face.pos[1] + face.pos[2] + face.pos[3]) * 0.25;
             center.normalize().to_array()
         } else {
-            (pos[1] - pos[0])
-                .cross(pos[2] - pos[0])
+            (face.pos[1] - face.pos[0])
+                .cross(face.pos[2] - face.pos[0])
                 .normalize()
                 .to_array()
         };
 
-        for i in 0..4 {
+        for (i, uv) in uvs.iter().enumerate() {
             verts.push(CpuVertex {
-                pos: pos[i].to_array(),
-                uv: uvs[i],
-                color: colors[i],
+                pos: face.pos[i].to_array(),
+                uv: *uv,
+                color: face.colors[i],
                 normal,
-                tex_index: packed_tex_index,
+                tex_index: face.packed_tex_index,
             });
         }
 
@@ -557,7 +568,7 @@ impl MeshGen {
 
 #[cfg(test)]
 mod tests {
-    use super::{CandidateBuffer, MeshGen};
+    use super::{CandidateBuffer, MeshGen, QuadFace};
     use crate::voxel::VoxelCoord;
     use glam::Vec3;
 
@@ -606,17 +617,19 @@ mod tests {
             &mut verts,
             &mut inds,
             &mut idx,
-            [
-                Vec3::new(0.0, 0.0, 0.0),
-                Vec3::new(1.0, 0.0, 0.0),
-                Vec3::new(1.0, 1.0, 0.0),
-                Vec3::new(0.0, 1.0, 0.0),
-            ],
-            [[1.0, 1.0, 1.0]; 4],
-            false,
-            0,
-            false,
-            true,
+            QuadFace {
+                pos: [
+                    Vec3::new(0.0, 0.0, 0.0),
+                    Vec3::new(1.0, 0.0, 0.0),
+                    Vec3::new(1.0, 1.0, 0.0),
+                    Vec3::new(0.0, 1.0, 0.0),
+                ],
+                colors: [[1.0, 1.0, 1.0]; 4],
+                force_radial: false,
+                packed_tex_index: 0,
+                flip_u: false,
+                flip_v: true,
+            },
         );
 
         assert_eq!(

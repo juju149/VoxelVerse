@@ -30,7 +30,7 @@ impl VoxelRuntime {
         if let Some(voxel) = voxel {
             self.chunks
                 .entry(key)
-                .or_insert_with(VoxelChunk::new)
+                .or_default()
                 .set_override(local, Some(voxel));
             return;
         }

@@ -3,7 +3,7 @@ use crate::generation::{
     bake_for_chunk, procedural::ProceduralPlanetTerrain, ChunkFeatureMap, CoordSystem,
 };
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use crate::world::{PlanetProfile, PropLayer, VoxelRuntime, VoxModelRegistry};
+use crate::world::{BrokenPropLayer, PlanetProfile, VoxModelRegistry, VoxelRuntime};
 use std::sync::Arc;
 
 /// Cached runtime block ID for the planet core (deep underground).
@@ -35,11 +35,6 @@ pub trait VoxelRead {
     fn exists(&self, coord: VoxelCoord) -> bool;
 }
 
-#[allow(dead_code)]
-pub trait VoxelWrite {
-    fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult;
-}
-
 #[derive(Clone)]
 pub struct PlanetData {
     pub voxels: VoxelRuntime,
@@ -53,7 +48,7 @@ pub struct PlanetData {
     /// Read-only registry of pre-loaded .vox prop models.
     pub prop_models: Arc<VoxModelRegistry>,
     /// Mutable set of prop columns the player has explicitly destroyed.
-    pub prop_layer: PropLayer,
+    pub broken_props: BrokenPropLayer,
     /// Surface-chunk key of the player's current position (updated each frame
     /// before rayon workers start).  Used by the mesher's prop LOD gate to skip
     /// prop geometry in chunks beyond `PROP_LOD_CHUNK_RADIUS`.
@@ -116,7 +111,7 @@ impl PlanetData {
             has_core: true,
             terrain,
             prop_models,
-            prop_layer: PropLayer::new(),
+            broken_props: BrokenPropLayer::new(),
             player_surface_key: None,
             seed: profile.seed,
             planet_def,
@@ -162,7 +157,7 @@ impl PlanetData {
         // If a prop is sitting directly above the broken block, destroy it too.
         // Props sit at `surface_layer + 1`, so a prop whose surface_layer == coord.layer
         // is supported by this block.
-        self.prop_layer.break_prop(coord.face, coord.u, coord.v);
+        self.broken_props.break_prop(coord.face, coord.u, coord.v);
 
         self.set_voxel(coord, VoxelId::AIR)
     }
@@ -296,12 +291,6 @@ impl VoxelRead for PlanetData {
 
     fn exists(&self, coord: VoxelCoord) -> bool {
         PlanetData::exists(self, coord)
-    }
-}
-
-impl VoxelWrite for PlanetData {
-    fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult {
-        PlanetData::set_voxel(self, coord, voxel)
     }
 }
 

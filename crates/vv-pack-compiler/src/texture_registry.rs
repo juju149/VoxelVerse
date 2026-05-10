@@ -237,8 +237,8 @@ mod tests {
         let pack_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs");
         let pack = PackLoader::load_from_dir(&pack_root.join("core")).expect("core pack");
         let index = crate::ContentIndex::build(&pack);
-        let models = ContentCompiler::compile_block_models(pack.block_models)
-            .expect("block_models");
+        let models =
+            ContentCompiler::compile_block_models(pack.block_models).expect("block_models");
         let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials, models, &index)
             .expect("blocks");
         let textures = TextureRegistry::load(&pack_root, &blocks).expect("textures");

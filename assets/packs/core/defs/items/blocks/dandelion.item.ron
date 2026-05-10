@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Dandelion",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/dandelion", world_model: BlockItem("core:block/flora/dandelion")),
-    gameplay: PlaceBlock("core:block/flora/dandelion"),
-    tags: ["core:tag/item/block"],
-)

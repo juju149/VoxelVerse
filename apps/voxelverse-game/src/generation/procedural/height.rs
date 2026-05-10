@@ -93,11 +93,11 @@ pub(super) fn resolve_height(
     //
     // This avoids mountains on coasts, on flat old peneplains, and in deserts
     // — matching real-world tectonic geography.
-    let inland = (c - 0.42).max(0.0).min(0.58) / 0.58;       // 0 at coast, 1 inland
-    let active = (1.0 - fields.erosion).max(0.0);             // 1 = fresh terrain
-    let rough  = fields.roughness;                            // 0..1
-    let mountain_potential = inland * active * rough;          // 0..1
-    // Cubic sharpen so the boost only kicks in where all three are high.
+    let inland = (c - 0.42).clamp(0.0, 0.58) / 0.58; // 0 at coast, 1 inland
+    let active = (1.0 - fields.erosion).max(0.0); // 1 = fresh terrain
+    let rough = fields.roughness; // 0..1
+    let mountain_potential = inland * active * rough; // 0..1
+                                                      // Cubic sharpen so the boost only kicks in where all three are high.
     let mountain_boost = mountain_potential * mountain_potential * mountain_potential * 0.52;
 
     // ── Layer 4: Erosion modifier ────────────────────────────────────────────
@@ -118,4 +118,3 @@ pub(super) fn resolve_height(
     let max_layer = profile.resolution.saturating_sub(3) as i32;
     (layer.clamp(min_layer, max_layer) as u32, primary)
 }
-

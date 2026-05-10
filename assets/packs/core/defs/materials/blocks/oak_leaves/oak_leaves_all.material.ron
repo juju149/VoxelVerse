@@ -1,4 +1,4 @@
-﻿MaterialDef(
+MaterialDef(
     display_name: "oak leaves all",
     category: block_surface,
     albedo: "core:texture/blocks/oak_leaves/oak_leaves_all_albedo",
@@ -10,6 +10,6 @@
     atlas: "core:atlas/blocks/main",
     authoring: (
         source: "media/textures/blocks/oak_leaves",
-        generated_by: "tools/rebuild_core_pack_data.ps1",
+        generated_by: "manual_core_pack",
     ),
 )

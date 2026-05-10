@@ -35,17 +35,29 @@ pub(super) fn sample_noise_field(
             // each axis so there is no directional correlation between X, Y and Z.
             // The offsets are large prime-ish values to avoid any periodicity.
             let wx = sample_noise_field(
-                registry, generators, warp_idx,
-                pos + Vec3::new(0.0, 71.3, 13.7), depth + 1,
-            ) * 2.0 - 1.0;
+                registry,
+                generators,
+                warp_idx,
+                pos + Vec3::new(0.0, 71.3, 13.7),
+                depth + 1,
+            ) * 2.0
+                - 1.0;
             let wy = sample_noise_field(
-                registry, generators, warp_idx,
-                pos + Vec3::new(83.7, 0.0, 31.9), depth + 1,
-            ) * 2.0 - 1.0;
+                registry,
+                generators,
+                warp_idx,
+                pos + Vec3::new(83.7, 0.0, 31.9),
+                depth + 1,
+            ) * 2.0
+                - 1.0;
             let wz = sample_noise_field(
-                registry, generators, warp_idx,
-                pos + Vec3::new(29.4, 47.6, 0.0), depth + 1,
-            ) * 2.0 - 1.0;
+                registry,
+                generators,
+                warp_idx,
+                pos + Vec3::new(29.4, 47.6, 0.0),
+                depth + 1,
+            ) * 2.0
+                - 1.0;
             sample_pos += Vec3::new(wx, wy, wz) * strength;
         }
     }

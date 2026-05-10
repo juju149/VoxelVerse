@@ -99,8 +99,12 @@ impl RawBlockMesh {
     /// Whether this mesh exposes ambient-occlusion as a model option.
     pub fn ambient_occlusion(&self) -> bool {
         match self {
-            RawBlockMesh::Cube { ambient_occlusion, .. }
-            | RawBlockMesh::CubeColumn { ambient_occlusion, .. } => *ambient_occlusion,
+            RawBlockMesh::Cube {
+                ambient_occlusion, ..
+            }
+            | RawBlockMesh::CubeColumn {
+                ambient_occlusion, ..
+            } => *ambient_occlusion,
             RawBlockMesh::None => false,
         }
     }

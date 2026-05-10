@@ -1,0 +1,8 @@
+ItemDef(
+    display_name: "Mushroom",
+    category: "misc",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/items/misc/mushroom", world_model: None),
+    gameplay: Food((nutrition: 2, saturation: 0.6, eat_seconds: 0.8)),
+    tags: ["core:tag/item/misc", "core:tag/item/food", "core:tag/item/fungus"],
+)

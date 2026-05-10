@@ -20,7 +20,7 @@ impl ContentCompiler {
         let mut errors = Vec::new();
         if raw.planets.is_empty() {
             return Err(vec![
-                "Procedural pack must define at least one planet.".to_string(),
+                "Procedural pack must define at least one planet.".to_string()
             ]);
         }
 
@@ -92,7 +92,9 @@ impl ContentCompiler {
         let vox_prop_scatters = raw
             .vox_prop_scatters
             .iter()
-            .filter_map(|(key, def)| compile_vox_prop_scatter(key, def, &field_map, blocks, &mut errors))
+            .filter_map(|(key, def)| {
+                compile_vox_prop_scatter(key, def, &field_map, blocks, &mut errors)
+            })
             .collect();
         let planets = raw
             .planets
@@ -635,19 +637,29 @@ fn stable_hash(value: &str) -> u32 {
 }
 
 fn finite(value: f32, fallback: f32) -> f32 {
-    value.is_finite().then_some(value).unwrap_or(fallback)
+    if value.is_finite() {
+        value
+    } else {
+        fallback
+    }
 }
 
 fn finite_positive(value: f32, fallback: f32) -> f32 {
-    (value.is_finite() && value > 0.0)
-        .then_some(value)
-        .unwrap_or(fallback)
+    if value.is_finite() && value > 0.0 {
+        value
+    } else {
+        fallback
+    }
 }
 
 fn normalized_range(range: (f32, f32)) -> (f32, f32) {
     let a = finite(range.0, 0.0).clamp(0.0, 1.0);
     let b = finite(range.1, 1.0).clamp(0.0, 1.0);
-    if a <= b { (a, b) } else { (b, a) }
+    if a <= b {
+        (a, b)
+    } else {
+        (b, a)
+    }
 }
 
 fn normalized_u32_range(range: (u32, u32)) -> (u32, u32) {
@@ -669,8 +681,8 @@ mod tests {
         let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
         let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");
         let index = crate::ContentIndex::build(&pack);
-        let models = ContentCompiler::compile_block_models(pack.block_models)
-            .expect("block_models");
+        let models =
+            ContentCompiler::compile_block_models(pack.block_models).expect("block_models");
         let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials, models, &index)
             .expect("blocks");
         let procedural_pack =

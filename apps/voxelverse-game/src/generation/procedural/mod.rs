@@ -308,8 +308,8 @@ impl ProceduralPlanetTerrain {
         let v1 = (v0 + CHUNK_SIZE).min(self.voxel_res);
 
         // Number of cells that fit in this chunk (may be less at planet edge).
-        let cells_u = (u1 - u0 + CELL - 1) / CELL;
-        let cells_v = (v1 - v0 + CELL - 1) / CELL;
+        let cells_u = (u1 - u0).div_ceil(CELL);
+        let cells_v = (v1 - v0).div_ceil(CELL);
 
         let mut props = Vec::with_capacity((cells_u * cells_v) as usize);
 
@@ -324,12 +324,11 @@ impl ProceduralPlanetTerrain {
                 // cells spaced exactly CELL=3 apart don't produce correlated
                 // modulo residues.  XOR-ing U and V inputs prevents diagonal
                 // mirroring.
-                let su = cell_u0.wrapping_mul(2_654_435_761u32)
-                    ^ cell_v0.wrapping_mul(805_459_861u32);
-                let sv = cell_v0.wrapping_mul(2_246_822_519u32)
-                    ^ cell_u0.wrapping_mul(1_013_904_223u32);
-                let ju = hash4(key.face, su, sv, 0x1F2E_3D4C)
-                    % CELL.min(u1 - cell_u0);
+                let su =
+                    cell_u0.wrapping_mul(2_654_435_761u32) ^ cell_v0.wrapping_mul(805_459_861u32);
+                let sv =
+                    cell_v0.wrapping_mul(2_246_822_519u32) ^ cell_u0.wrapping_mul(1_013_904_223u32);
+                let ju = hash4(key.face, su, sv, 0x1F2E_3D4C) % CELL.min(u1 - cell_u0);
                 let jv = hash4(key.face, su ^ 0xDEAD_C0DE, sv ^ 0xBEEF_1234, 0xABCD_EF01)
                     % CELL.min(v1 - cell_v0);
 

@@ -103,7 +103,7 @@ impl RawBlockStateProperty {
             | Self::Half { default }
             | Self::StairShape { default } => {
                 let allowed = self.allowed_values();
-                if !allowed.iter().any(|v| *v == default.as_str()) {
+                if !allowed.contains(&default.as_str()) {
                     errors.push(format!(
                         "{ctx}: state '{name}' ({}) default '{}' not in [{}]",
                         self.kind_tag(),
@@ -117,9 +117,7 @@ impl RawBlockStateProperty {
             }
             Self::Enum { values, default } => {
                 if values.is_empty() {
-                    errors.push(format!(
-                        "{ctx}: state '{name}' (enum) has empty `values`"
-                    ));
+                    errors.push(format!("{ctx}: state '{name}' (enum) has empty `values`"));
                     return;
                 }
                 let mut seen = std::collections::HashSet::new();
@@ -213,8 +211,10 @@ mod tests {
     #[test]
     fn enum_with_absent_default_rejected() {
         let mut s = RawBlockStates::default();
-        s.properties
-            .insert("color".into(), enum_prop(&["red", "green", "blue"], "purple"));
+        s.properties.insert(
+            "color".into(),
+            enum_prop(&["red", "green", "blue"], "purple"),
+        );
         let mut errors = Vec::new();
         s.validate_into("block 'paint'", &mut errors);
         assert_eq!(errors.len(), 1, "{errors:?}");
@@ -247,9 +247,17 @@ mod tests {
         // Insert in non-alphabetical order on purpose; BTreeMap should
         // surface them in lexicographic order regardless.
         let mut s = RawBlockStates::default();
-        s.properties.insert("waterlogged".into(), RawBlockStateProperty::Bool { default: false });
+        s.properties.insert(
+            "waterlogged".into(),
+            RawBlockStateProperty::Bool { default: false },
+        );
         s.properties.insert("axis".into(), axis("y"));
-        s.properties.insert("half".into(), RawBlockStateProperty::Half { default: "bottom".into() });
+        s.properties.insert(
+            "half".into(),
+            RawBlockStateProperty::Half {
+                default: "bottom".into(),
+            },
+        );
 
         let order: Vec<&str> = s.properties.keys().map(String::as_str).collect();
         assert_eq!(order, vec!["axis", "half", "waterlogged"]);
@@ -267,8 +275,7 @@ mod tests {
                 "waterlogged": bool(default: false),
             },
         )"#;
-        let parsed: RawBlockStates =
-            ron::from_str(src).expect("ron parses block states");
+        let parsed: RawBlockStates = ron::from_str(src).expect("ron parses block states");
         assert_eq!(parsed.properties.len(), 2);
         match parsed.properties.get("axis").unwrap() {
             RawBlockStateProperty::Axis { default } => assert_eq!(default, "y"),
@@ -283,8 +290,7 @@ mod tests {
                 "color": enum(values: ["red", "green", "blue"], default: "red"),
             },
         )"#;
-        let parsed: RawBlockStates =
-            ron::from_str(src).expect("ron parses enum state");
+        let parsed: RawBlockStates = ron::from_str(src).expect("ron parses enum state");
         match parsed.properties.get("color").unwrap() {
             RawBlockStateProperty::Enum { values, default } => {
                 assert_eq!(values.len(), 3);

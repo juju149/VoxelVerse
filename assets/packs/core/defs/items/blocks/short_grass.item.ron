@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Short Grass",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/short_grass", world_model: BlockItem("core:block/flora/short_grass")),
-    gameplay: PlaceBlock("core:block/flora/short_grass"),
-    tags: ["core:tag/item/block"],
-)

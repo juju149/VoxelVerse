@@ -86,7 +86,10 @@ impl NoiseGenerator {
             return self.compute_ridged_multi(pos, settings);
         }
         if settings.octaves <= 1 {
-            return self.compute_base(pos * settings.frequency + settings.offset, settings.noise_type);
+            return self.compute_base(
+                pos * settings.frequency + settings.offset,
+                settings.noise_type,
+            );
         }
         // Standard fBm accumulation (Musgrave 1988).
         let mut total = 0.0_f32;
@@ -100,7 +103,11 @@ impl NoiseGenerator {
             amp *= settings.persistence;
             freq *= settings.lacunarity;
         }
-        if total_amp > 0.0 { total / total_amp } else { 0.5 }
+        if total_amp > 0.0 {
+            total / total_amp
+        } else {
+            0.5
+        }
     }
 
     // ── Base kernels ─────────────────────────────────────────────────────────
@@ -146,14 +153,29 @@ impl NoiseGenerator {
         let z0 = z - (k as f32 - t);
 
         // Determine which of the six 3-D simplex tetrahedra the point is in.
-        let (i1, j1, k1, i2, j2, k2): (usize, usize, usize, usize, usize, usize) =
-            if x0 >= y0 {
-                if y0 >= z0      { (1, 0, 0, 1, 1, 0) } // X Y Z
-                else if x0 >= z0 { (1, 0, 0, 1, 0, 1) } // X Z Y
-                else             { (0, 0, 1, 1, 0, 1) } // Z X Y
-            } else if y0 < z0    { (0, 0, 1, 0, 1, 1) } // Z Y X
-            else if x0 < z0      { (0, 1, 0, 0, 1, 1) } // Y Z X
-            else                 { (0, 1, 0, 1, 1, 0) }; // Y X Z
+        let (i1, j1, k1, i2, j2, k2): (usize, usize, usize, usize, usize, usize) = if x0 >= y0 {
+            if y0 >= z0 {
+                (1, 0, 0, 1, 1, 0)
+            }
+            // X Y Z
+            else if x0 >= z0 {
+                (1, 0, 0, 1, 0, 1)
+            }
+            // X Z Y
+            else {
+                (0, 0, 1, 1, 0, 1)
+            } // Z X Y
+        } else if y0 < z0 {
+            (0, 0, 1, 0, 1, 1)
+        }
+        // Z Y X
+        else if x0 < z0 {
+            (0, 1, 0, 0, 1, 1)
+        }
+        // Y Z X
+        else {
+            (0, 1, 0, 1, 1, 0)
+        }; // Y X Z
 
         // Displacements from the other three simplex corners.
         let x1 = x0 - i1 as f32 + G3;
@@ -170,10 +192,10 @@ impl NoiseGenerator {
         let ii = (i & 255) as usize;
         let jj = (j & 255) as usize;
         let kk = (k & 255) as usize;
-        let gi0 = self.perm3(ii,      jj,      kk     ) % 12;
+        let gi0 = self.perm3(ii, jj, kk) % 12;
         let gi1 = self.perm3(ii + i1, jj + j1, kk + k1) % 12;
         let gi2 = self.perm3(ii + i2, jj + j2, kk + k2) % 12;
-        let gi3 = self.perm3(ii + 1,  jj + 1,  kk + 1 ) % 12;
+        let gi3 = self.perm3(ii + 1, jj + 1, kk + 1) % 12;
 
         // Sum contributions from all four corners.
         let n0 = Self::simplex_corner3(gi0, x0, y0, z0);
@@ -270,7 +292,11 @@ impl NoiseGenerator {
             w,
             lerp(
                 v,
-                lerp(u, grad(self.perm[aa], x, y, z), grad(self.perm[ba], x - 1.0, y, z)),
+                lerp(
+                    u,
+                    grad(self.perm[aa], x, y, z),
+                    grad(self.perm[ba], x - 1.0, y, z),
+                ),
                 lerp(
                     u,
                     grad(self.perm[ab], x, y - 1.0, z),
@@ -316,5 +342,3 @@ fn grad(hash: u8, x: f32, y: f32, z: f32) -> f32 {
     };
     (if (h & 1) == 0 { u } else { -u }) + (if (h & 2) == 0 { v } else { -v })
 }
-
-

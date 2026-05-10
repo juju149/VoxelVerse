@@ -102,7 +102,7 @@ impl TreeShape {
             hash4(face, pu, pv, 34),
         ) as f32;
         let trunk_seed = hash4(face, pu, pv, 0xA17EE5);
-        let canopy_seed = hash4(face, pu, pv, 0xCA7E0_DE);
+        let canopy_seed = hash4(face, pu, pv, 0x0CA7_E0DE);
 
         let trunk_top_layer = plant_height + height;
         let pivot = Vec3::new(pu as f32 + 0.5, plant_height as f32 + 0.5, pv as f32 + 0.5);

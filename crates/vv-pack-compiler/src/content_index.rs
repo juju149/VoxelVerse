@@ -21,7 +21,7 @@
 //! Domains *not yet* indexed (deferred to later sprint steps because they
 //! require their own refactor):
 //!  - `core:tag/...`    → tags are currently anonymous `id_hint` strings; will
-//!     be reworked into addressable defs.
+//!    be reworked into addressable defs.
 //!  - `core:texture/...` → resolved by `TextureRegistry` from media paths.
 
 use std::collections::HashSet;

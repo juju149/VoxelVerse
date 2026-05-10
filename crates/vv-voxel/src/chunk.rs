@@ -92,3 +92,9 @@ impl VoxelChunk {
         }
     }
 }
+
+impl Default for VoxelChunk {
+    fn default() -> Self {
+        Self::new()
+    }
+}

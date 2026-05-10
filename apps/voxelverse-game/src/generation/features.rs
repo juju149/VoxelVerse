@@ -17,9 +17,7 @@
 //! duplicated inside [`ProceduralPlanetTerrain::evaluate_tree_at`].  The slow
 //! path now delegates to these helpers as well.
 
-use crate::content::{
-    CompiledProceduralPlanet, CompiledVegetation, ProceduralRegistry,
-};
+use crate::content::{CompiledProceduralPlanet, CompiledVegetation, ProceduralRegistry};
 use crate::generation::procedural::ProceduralPlanetTerrain;
 use crate::voxel::{VoxelCoord, VoxelId, CHUNK_SIZE};
 use std::collections::HashMap;

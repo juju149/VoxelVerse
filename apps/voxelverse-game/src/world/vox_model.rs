@@ -12,10 +12,10 @@ use std::path::{Path, PathBuf};
 // Used in BakedFace::dir to determine world-space brightness multiplier.
 pub const FACE_TOP: u8 = 0; // +Z (outward, brightest)
 pub const FACE_BTM: u8 = 1; // -Z (inward, darkest)
-pub const FACE_PV: u8 = 2;  // +Y side
-pub const FACE_NV: u8 = 3;  // -Y side
-pub const FACE_PU: u8 = 4;  // +X side
-pub const FACE_NU: u8 = 5;  // -X side
+pub const FACE_PV: u8 = 2; // +Y side
+pub const FACE_NV: u8 = 3; // -Y side
+pub const FACE_PU: u8 = 4; // +X side
+pub const FACE_NU: u8 = 5; // -X side
 
 /// Vertex-colour brightness per face direction (sRGB, applied at bake time).
 /// These encode a fake ambient-occlusion / diffuse cue that gives voxels depth
@@ -75,24 +75,44 @@ impl VoxModel {
         let (sx, sy, sz) = (model.size.x, model.size.y, model.size.z);
 
         // Collect voxels with their palette colour.
-        struct Raw { x: u8, y: u8, z: u8, r: f32, g: f32, b: f32 }
-        let raw_voxels: Vec<Raw> = model.voxels.iter().map(|v| {
-            let c = palette.get(v.i as usize).copied().unwrap_or(dot_vox::Color {
-                r: 200, g: 200, b: 200, a: 255,
-            });
-            Raw {
-                x: v.x, y: v.y, z: v.z,
-                r: c.r as f32 / 255.0,
-                g: c.g as f32 / 255.0,
-                b: c.b as f32 / 255.0,
-            }
-        }).collect();
+        struct Raw {
+            x: u8,
+            y: u8,
+            z: u8,
+            r: f32,
+            g: f32,
+            b: f32,
+        }
+        let raw_voxels: Vec<Raw> = model
+            .voxels
+            .iter()
+            .map(|v| {
+                let c = palette
+                    .get(v.i as usize)
+                    .copied()
+                    .unwrap_or(dot_vox::Color {
+                        r: 200,
+                        g: 200,
+                        b: 200,
+                        a: 255,
+                    });
+                Raw {
+                    x: v.x,
+                    y: v.y,
+                    z: v.z,
+                    r: c.r as f32 / 255.0,
+                    g: c.g as f32 / 255.0,
+                    b: c.b as f32 / 255.0,
+                }
+            })
+            .collect();
 
         // Neighbour lookup (built once, discarded after this fn).
-        let filled: HashSet<(u8, u8, u8)> =
-            raw_voxels.iter().map(|v| (v.x, v.y, v.z)).collect();
+        let filled: HashSet<(u8, u8, u8)> = raw_voxels.iter().map(|v| (v.x, v.y, v.z)).collect();
         let occ = |ix: i32, iy: i32, iz: i32| -> bool {
-            if ix < 0 || iy < 0 || iz < 0 { return false; }
+            if ix < 0 || iy < 0 || iz < 0 {
+                return false;
+            }
             filled.contains(&(ix as u8, iy as u8, iz as u8))
         };
 
@@ -114,62 +134,73 @@ impl VoxModel {
 
             // +Z top
             if !occ(ix, iy, iz + 1) {
-                face!(FACE_TOP,
-                    [x,   y,   z+1.0],
-                    [x+1.0, y,   z+1.0],
-                    [x+1.0, y+1.0, z+1.0],
-                    [x,   y+1.0, z+1.0]
+                face!(
+                    FACE_TOP,
+                    [x, y, z + 1.0],
+                    [x + 1.0, y, z + 1.0],
+                    [x + 1.0, y + 1.0, z + 1.0],
+                    [x, y + 1.0, z + 1.0]
                 );
             }
             // -Z bottom
             if !occ(ix, iy, iz - 1) {
-                face!(FACE_BTM,
-                    [x,   y+1.0, z],
-                    [x+1.0, y+1.0, z],
-                    [x+1.0, y,   z],
-                    [x,   y,   z]
+                face!(
+                    FACE_BTM,
+                    [x, y + 1.0, z],
+                    [x + 1.0, y + 1.0, z],
+                    [x + 1.0, y, z],
+                    [x, y, z]
                 );
             }
             // +Y side (+V)
             if !occ(ix, iy + 1, iz) {
-                face!(FACE_PV,
-                    [x,   y+1.0, z],
-                    [x+1.0, y+1.0, z],
-                    [x+1.0, y+1.0, z+1.0],
-                    [x,   y+1.0, z+1.0]
+                face!(
+                    FACE_PV,
+                    [x, y + 1.0, z],
+                    [x + 1.0, y + 1.0, z],
+                    [x + 1.0, y + 1.0, z + 1.0],
+                    [x, y + 1.0, z + 1.0]
                 );
             }
             // -Y side (-V)
             if !occ(ix, iy - 1, iz) {
-                face!(FACE_NV,
-                    [x+1.0, y,   z],
-                    [x,   y,   z],
-                    [x,   y,   z+1.0],
-                    [x+1.0, y,   z+1.0]
+                face!(
+                    FACE_NV,
+                    [x + 1.0, y, z],
+                    [x, y, z],
+                    [x, y, z + 1.0],
+                    [x + 1.0, y, z + 1.0]
                 );
             }
             // +X side (+U)
             if !occ(ix + 1, iy, iz) {
-                face!(FACE_PU,
-                    [x+1.0, y,   z],
-                    [x+1.0, y+1.0, z],
-                    [x+1.0, y+1.0, z+1.0],
-                    [x+1.0, y,   z+1.0]
+                face!(
+                    FACE_PU,
+                    [x + 1.0, y, z],
+                    [x + 1.0, y + 1.0, z],
+                    [x + 1.0, y + 1.0, z + 1.0],
+                    [x + 1.0, y, z + 1.0]
                 );
             }
             // -X side (-U)
             if !occ(ix - 1, iy, iz) {
-                face!(FACE_NU,
-                    [x,   y+1.0, z],
-                    [x,   y,   z],
-                    [x,   y,   z+1.0],
-                    [x,   y+1.0, z+1.0]
+                face!(
+                    FACE_NU,
+                    [x, y + 1.0, z],
+                    [x, y, z],
+                    [x, y, z + 1.0],
+                    [x, y + 1.0, z + 1.0]
                 );
             }
         }
 
         faces.shrink_to_fit();
-        Some(VoxModel { faces, size_x: sx, size_y: sy, size_z: sz })
+        Some(VoxModel {
+            faces,
+            size_x: sx,
+            size_y: sy,
+            size_z: sz,
+        })
     }
 
     /// True if this model has no visible geometry (fully surrounded or empty).

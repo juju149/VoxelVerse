@@ -44,14 +44,18 @@ pub fn load_core_content() -> LoadedCoreContent {
             }
             panic!("Block model compilation failed; see errors above.");
         });
-    let compiled_blocks =
-        ContentCompiler::compile_blocks(pack.blocks, pack.materials, compiled_models, &content_index)
-            .unwrap_or_else(|errors| {
-                for e in &errors {
-                    eprintln!("[content error] {}", e);
-                }
-                panic!("Block compilation failed; see errors above.");
-            });
+    let compiled_blocks = ContentCompiler::compile_blocks(
+        pack.blocks,
+        pack.materials,
+        compiled_models,
+        &content_index,
+    )
+    .unwrap_or_else(|errors| {
+        for e in &errors {
+            eprintln!("[content error] {}", e);
+        }
+        panic!("Block compilation failed; see errors above.");
+    });
 
     let procedural_pack =
         PackLoader::load_procedural_from_dir(&core_pack_dir).unwrap_or_else(|e| {

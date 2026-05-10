@@ -238,11 +238,7 @@ impl BlockRegistry {
     }
 
     /// Look up a specific variant of a family by its state assignment.
-    pub fn lookup_variant(
-        &self,
-        family_key: &str,
-        state: &BlockStateValue,
-    ) -> Option<VoxelId> {
+    pub fn lookup_variant(&self, family_key: &str, state: &BlockStateValue) -> Option<VoxelId> {
         let idx = *self.family_by_key.get(family_key)?;
         self.families[idx].lookup(state)
     }

@@ -66,6 +66,9 @@ function Resolve-CoreRef([string]$Ref) {
     if ($path.StartsWith("block/")) {
         return Join-Path $PackRoot ("defs/blocks/" + $path.Substring("block/".Length) + ".block.ron")
     }
+    if ($path.StartsWith("block_model/")) {
+        return Join-Path $PackRoot ("defs/block_models/" + $path.Substring("block_model/".Length) + ".block_model.ron")
+    }
     if ($path.StartsWith("item/block/")) {
         return Join-Path $PackRoot ("defs/items/blocks/" + $path.Substring("item/block/".Length) + ".item.ron")
     }
@@ -77,6 +80,9 @@ function Resolve-CoreRef([string]$Ref) {
     }
     if ($path.StartsWith("item/weapon/")) {
         return Join-Path $PackRoot ("defs/items/weapons/" + $path.Substring("item/weapon/".Length) + ".item.ron")
+    }
+    if ($path.StartsWith("item/misc/")) {
+        return Join-Path $PackRoot ("defs/items/misc/" + $path.Substring("item/misc/".Length) + ".item.ron")
     }
     if ($path.StartsWith("loot/")) {
         return Join-Path $PackRoot ("defs/loot/" + $path.Substring("loot/".Length) + ".loot.ron")
@@ -116,6 +122,9 @@ function Resolve-CoreRef([string]$Ref) {
     }
     if ($path.StartsWith("spawn/")) {
         return Join-Path $PackRoot ("defs/worldgen/spawns/" + $path.Substring("spawn/".Length) + ".spawn.ron")
+    }
+    if ($path.StartsWith("prop_scatter/")) {
+        return Join-Path $PackRoot ("defs/worldgen/prop_scatters/" + $path.Substring("prop_scatter/".Length) + ".prop_scatter.ron")
     }
     if ($path.StartsWith("visual_detail/")) {
         return Join-Path $PackRoot ("defs/worldgen/visual_details/" + $path.Substring("visual_detail/".Length) + ".visual_detail.ron")

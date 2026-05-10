@@ -109,9 +109,7 @@ fn bake_stamp(
         (cx + cos_r * dx - sin_r * dy, cy + sin_r * dx + cos_r * dy)
     };
 
-    let mut faces_done = 0usize;
-
-    for face in &model.faces {
+    for (faces_done, face) in model.faces.iter().enumerate() {
         if faces_done >= MAX_FACES_PER_STAMP {
             break;
         }
@@ -145,11 +143,13 @@ fn bake_stamp(
             });
         }
         inds.extend_from_slice(&[
-            base_idx, base_idx + 1, base_idx + 2,
-            base_idx, base_idx + 2, base_idx + 3,
+            base_idx,
+            base_idx + 1,
+            base_idx + 2,
+            base_idx,
+            base_idx + 2,
+            base_idx + 3,
         ]);
         *idx += 4;
-        faces_done += 1;
     }
 }
-

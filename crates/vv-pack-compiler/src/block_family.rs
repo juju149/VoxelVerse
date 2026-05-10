@@ -156,11 +156,7 @@ pub fn enumerate_variants(states: &RawBlockStates) -> Vec<BlockStateValue> {
     }
 
     let names: Vec<&str> = states.properties.keys().map(String::as_str).collect();
-    let value_lists: Vec<Vec<String>> = states
-        .properties
-        .values()
-        .map(canonical_values)
-        .collect();
+    let value_lists: Vec<Vec<String>> = states.properties.values().map(canonical_values).collect();
     let total: usize = value_lists.iter().map(Vec::len).product();
 
     let mut result = Vec::with_capacity(total);
@@ -233,9 +229,7 @@ mod tests {
     #[test]
     fn bool_produces_two_variants_false_then_true() {
         let mut states = RawBlockStates::default();
-        states
-            .properties
-            .insert("powered".into(), bool_prop(false));
+        states.properties.insert("powered".into(), bool_prop(false));
         let variants = enumerate_variants(&states);
         assert_eq!(variants.len(), 2);
         assert_eq!(variants[0].get("powered"), Some("false"));

@@ -95,7 +95,13 @@ impl CoordSystem {
 
     /// Fractional version of [`get_vertex_pos`] used by the prop baker to
     /// place sub-voxel geometry inside a terrain voxel cell.
-    pub fn get_vertex_pos_f32(face: u8, u: f32, v: f32, layer: f32, profile: PlanetProfile) -> Vec3 {
+    pub fn get_vertex_pos_f32(
+        face: u8,
+        u: f32,
+        v: f32,
+        layer: f32,
+        profile: PlanetProfile,
+    ) -> Vec3 {
         let res = profile.resolution as f64;
         let uf = u as f64;
         let vf = v as f64;

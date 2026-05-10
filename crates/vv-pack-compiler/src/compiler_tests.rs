@@ -1,8 +1,8 @@
 use super::*;
 use std::collections::HashMap;
 use vv_content_schema::{
-    ContentRef, RawBlockAudioDef, RawBlockGameplayDef, RawBlockPhysicalDef,
-    RawBlockPlacement, RawBlockRuntimeDef, RawBlockSimulationDef,
+    ContentRef, RawBlockAudioDef, RawBlockGameplayDef, RawBlockPhysicalDef, RawBlockPlacement,
+    RawBlockRuntimeDef, RawBlockSimulationDef,
 };
 
 fn synthetic_index() -> ContentIndex {
@@ -76,7 +76,10 @@ fn synthetic_materials() -> Vec<(String, RawMaterialDef)> {
 fn cube_materials_map() -> HashMap<String, ContentRef> {
     let mut m = HashMap::new();
     for slot in ["py", "ny", "pz", "nz", "px", "nx"] {
-        m.insert(slot.into(), ContentRef("core:material/test/all".to_string()));
+        m.insert(
+            slot.into(),
+            ContentRef("core:material/test/all".to_string()),
+        );
     }
     m
 }
@@ -149,7 +152,10 @@ fn block_compilation_requires_planet_core_role() {
         Err(err) => err,
     };
 
-    assert!(err.iter().any(|e| e.contains("planet_core")), "got: {err:?}");
+    assert!(
+        err.iter().any(|e| e.contains("planet_core")),
+        "got: {err:?}"
+    );
 }
 
 #[test]
@@ -184,20 +190,38 @@ fn core_pack_solid_blocks_have_all_faces_materialized() {
     let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
     let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");
     let index = ContentIndex::build(&pack);
-    let models =
-        ContentCompiler::compile_block_models(pack.block_models).expect("block_models");
-    let blocks =
-        ContentCompiler::compile_blocks(pack.blocks, pack.materials, models, &index)
-            .expect("blocks");
+    let models = ContentCompiler::compile_block_models(pack.block_models).expect("block_models");
+    let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials, models, &index)
+        .expect("blocks");
 
     for block in blocks.blocks().iter().filter(|b| b.solid) {
         let layers = block.visual.layers;
         assert!(layers.top > 0, "{} missing top material", block.family_key);
-        assert!(layers.bottom > 0, "{} missing bottom material", block.family_key);
-        assert!(layers.front > 0, "{} missing front material", block.family_key);
-        assert!(layers.back > 0, "{} missing back material", block.family_key);
-        assert!(layers.left > 0, "{} missing left material", block.family_key);
-        assert!(layers.right > 0, "{} missing right material", block.family_key);
+        assert!(
+            layers.bottom > 0,
+            "{} missing bottom material",
+            block.family_key
+        );
+        assert!(
+            layers.front > 0,
+            "{} missing front material",
+            block.family_key
+        );
+        assert!(
+            layers.back > 0,
+            "{} missing back material",
+            block.family_key
+        );
+        assert!(
+            layers.left > 0,
+            "{} missing left material",
+            block.family_key
+        );
+        assert!(
+            layers.right > 0,
+            "{} missing right material",
+            block.family_key
+        );
     }
 }
 
@@ -270,9 +294,7 @@ fn block_with_no_states_yields_one_variant() {
     let stone_default = reg
         .lookup_default("core:block/terrain/stone")
         .expect("stone default");
-    let fam = reg
-        .family_of(stone_default)
-        .expect("stone family");
+    let fam = reg.family_of(stone_default).expect("stone family");
     assert_eq!(fam.variants.len(), 1);
     assert_eq!(fam.variants[0], stone_default);
     assert!(reg.state_of(stone_default).unwrap().is_empty());
@@ -334,21 +356,17 @@ fn axis_and_bool_state_yields_six_variants() {
     assert_eq!(fam.variants.len(), 6);
     // Default = axis=y, waterlogged=false.
     let id = reg
-        .lookup_variant(
-            "core:block/terrain/stone",
-            &axis_water_value("y", "false"),
-        )
+        .lookup_variant("core:block/terrain/stone", &axis_water_value("y", "false"))
         .expect("default present");
     assert_eq!(fam.default_variant, id);
     // All combinations resolvable.
     for axis in ["x", "y", "z"] {
         for water in ["false", "true"] {
-            assert!(reg
-                .lookup_variant(
-                    "core:block/terrain/stone",
-                    &axis_water_value(axis, water),
-                )
-                .is_some(), "missing {axis}/{water}");
+            assert!(
+                reg.lookup_variant("core:block/terrain/stone", &axis_water_value(axis, water),)
+                    .is_some(),
+                "missing {axis}/{water}"
+            );
         }
     }
 }
@@ -357,10 +375,7 @@ fn axis_and_bool_state_yields_six_variants() {
 fn state_of_round_trips() {
     let reg = compile_pair(axis_and_bool_state("y", true));
     let id = reg
-        .lookup_variant(
-            "core:block/terrain/stone",
-            &axis_water_value("z", "true"),
-        )
+        .lookup_variant("core:block/terrain/stone", &axis_water_value("z", "true"))
         .unwrap();
     let state = reg.state_of(id).unwrap();
     assert_eq!(state.get("axis"), Some("z"));

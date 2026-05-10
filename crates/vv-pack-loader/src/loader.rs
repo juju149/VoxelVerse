@@ -276,7 +276,7 @@ fn derive_worldgen_key(dirs: &[String], stem: &str) -> Result<String, String> {
         "structures" => "structure",
         "terrain_layers" => "terrain_layers",
         "vegetation" => "vegetation",
-        "visual_details" => return Err(format!("'visual_details' directory is obsolete; rename to 'prop_scatters' and update files to VoxPropScatterDef format")),
+        "visual_details" => return Err("'visual_details' directory is obsolete; rename to 'prop_scatters' and update files to VoxPropScatterDef format".to_string()),
         "prop_scatters" => "prop_scatter",
         other => return Err(format!("Unknown worldgen category '{}'", other)),
     };

@@ -9,9 +9,9 @@ use crate::block_registry::{
 use crate::content_index::ContentIndex;
 use std::collections::{HashMap, HashSet};
 use vv_content_schema::{
-    BLOCK_FORMAT_VERSION, BLOCK_MODEL_FORMAT_VERSION, BlockRole, RawBlockCollisionShape,
-    RawBlockDef, RawBlockMesh, RawBlockModelDef, RawBlockVisual, RawMaterialDef, RawRenderMode,
-    check_format_version,
+    check_format_version, BlockRole, RawBlockCollisionShape, RawBlockDef, RawBlockMesh,
+    RawBlockModelDef, RawBlockVisual, RawMaterialDef, RawRenderMode, BLOCK_FORMAT_VERSION,
+    BLOCK_MODEL_FORMAT_VERSION,
 };
 use vv_voxel::VoxelId;
 
@@ -59,10 +59,7 @@ impl ContentCompiler {
             let mut seen = HashSet::new();
             for layer in &face_layers {
                 if layer.is_empty() {
-                    errors.push(format!(
-                        "block_model '{}': face_layer name is empty",
-                        key
-                    ));
+                    errors.push(format!("block_model '{}': face_layer name is empty", key));
                 }
                 if !seen.insert(layer.as_str()) {
                     errors.push(format!(
@@ -74,12 +71,12 @@ impl ContentCompiler {
 
             let mesh = match def.mesh {
                 RawBlockMesh::None => CompiledMesh::None,
-                RawBlockMesh::Cube { ambient_occlusion, .. } => {
-                    CompiledMesh::Cube { ambient_occlusion }
-                }
-                RawBlockMesh::CubeColumn { ambient_occlusion, .. } => {
-                    CompiledMesh::CubeColumn { ambient_occlusion }
-                }
+                RawBlockMesh::Cube {
+                    ambient_occlusion, ..
+                } => CompiledMesh::Cube { ambient_occlusion },
+                RawBlockMesh::CubeColumn {
+                    ambient_occlusion, ..
+                } => CompiledMesh::CubeColumn { ambient_occlusion },
             };
             let collision = match def.collision {
                 RawBlockCollisionShape::None => CompiledCollision::None,
@@ -113,9 +110,9 @@ impl ContentCompiler {
         let mut errors = Vec::new();
         let material_map: HashMap<String, RawMaterialDef> = materials.into_iter().collect();
 
-        let air_pos = raw
-            .iter()
-            .position(|(key, def)| key == "core:block/air/air" || def.runtime.reserved_id == Some(0));
+        let air_pos = raw.iter().position(|(key, def)| {
+            key == "core:block/air/air" || def.runtime.reserved_id == Some(0)
+        });
         if air_pos.is_none() {
             errors.push("Pack must define one air block with runtime.reserved_id = 0.".into());
         }
@@ -166,11 +163,7 @@ impl ContentCompiler {
                 &format!("block '{}' audio.place", key),
                 &mut errors,
             );
-            index.require(
-                &def.model,
-                &format!("block '{}' model", key),
-                &mut errors,
-            );
+            index.require(&def.model, &format!("block '{}' model", key), &mut errors);
 
             // Validate state property defaults & enum sanity.
             def.states
@@ -218,8 +211,7 @@ impl ContentCompiler {
 
             // Pre-compute the per-family bookkeeping. Each variant gets the
             // next sequential `VoxelId`.
-            let next_id_after =
-                next_id as usize + variant_states.len();
+            let next_id_after = next_id as usize + variant_states.len();
             if next_id_after > MAX_BLOCK_COUNT {
                 errors.push(format!(
                     "Block count would exceed u16 VoxelId capacity ({}) when compiling '{}' ({} variants).",
@@ -264,7 +256,9 @@ impl ContentCompiler {
                         "block '{}': default state '{}' not found among generated variants — likely an invalid declared default",
                         key, default_state_value
                     ));
-                    *family_variants.first().expect("at least one variant generated")
+                    *family_variants
+                        .first()
+                        .expect("at least one variant generated")
                 }
             };
 
@@ -360,10 +354,8 @@ impl ContentCompiler {
 
         // Strict slot-keys validation. Block.materials must have exactly the
         // same set of keys as the model.face_layers — no missing, no extra.
-        let model_slots: HashSet<&str> =
-            model.face_layers.iter().map(String::as_str).collect();
-        let block_slots: HashSet<&str> =
-            raw.materials.keys().map(String::as_str).collect();
+        let model_slots: HashSet<&str> = model.face_layers.iter().map(String::as_str).collect();
+        let block_slots: HashSet<&str> = raw.materials.keys().map(String::as_str).collect();
 
         let missing: Vec<&str> = model_slots.difference(&block_slots).copied().collect();
         let extra: Vec<&str> = block_slots.difference(&model_slots).copied().collect();
@@ -481,24 +473,11 @@ impl ContentCompiler {
         })
     }
 
-    fn material_layer(
-        raw: &RawMaterialDef,
-        material_sets: &mut Vec<MaterialTextureSet>,
-    ) -> u32 {
+    fn material_layer(raw: &RawMaterialDef, material_sets: &mut Vec<MaterialTextureSet>) -> u32 {
         let material = MaterialTextureSet {
             albedo: raw.albedo.0.clone(),
-            normal: raw
-                .normal
-                .as_ref()
-                .unwrap_or(&raw.albedo)
-                .0
-                .clone(),
-            roughness: raw
-                .roughness
-                .as_ref()
-                .unwrap_or(&raw.albedo)
-                .0
-                .clone(),
+            normal: raw.normal.as_ref().unwrap_or(&raw.albedo).0.clone(),
+            roughness: raw.roughness.as_ref().unwrap_or(&raw.albedo).0.clone(),
         };
         if let Some(index) = material_sets.iter().position(|m| m == &material) {
             (index + 1) as u32
@@ -547,4 +526,3 @@ fn category_color(category: &str) -> [f32; 3] {
 #[cfg(test)]
 #[path = "compiler_tests.rs"]
 mod tests;
-
