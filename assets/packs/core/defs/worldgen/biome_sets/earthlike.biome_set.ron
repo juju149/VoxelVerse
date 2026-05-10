@@ -1,0 +1,12 @@
+﻿BiomeSetDef(
+    display_name: "Earthlike Planet Biomes",
+    selection: ClimateMap((
+        entries: [
+            (biome: "core:biome/temperate_forest", temperature: (0.30, 0.72), humidity: (0.35, 0.85), weight: 1.0),
+            (biome: "core:biome/plains", temperature: (0.35, 0.80), humidity: (0.20, 0.55), weight: 0.85),
+            (biome: "core:biome/desert", temperature: (0.65, 1.00), humidity: (0.00, 0.28), weight: 0.75),
+            (biome: "core:biome/snowy_taiga", temperature: (0.00, 0.32), humidity: (0.35, 0.90), weight: 0.8),
+            (biome: "core:biome/alpine", temperature: (0.00, 0.48), humidity: (0.15, 0.80), elevation: (0.70, 1.00), weight: 0.9),
+        ],
+    )),
+)

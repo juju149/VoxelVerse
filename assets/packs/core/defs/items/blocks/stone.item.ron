@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Stone",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/stone", world_model: BlockItem("core:block/terrain/stone")),
+    gameplay: PlaceBlock("core:block/terrain/stone"),
+    tags: ["core:tag/item/block"],
+)

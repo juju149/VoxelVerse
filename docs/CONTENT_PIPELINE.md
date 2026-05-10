@@ -3,45 +3,46 @@
 The permanent content flow is:
 
 ```text
-assets/packs/* raw files
--> vv-pack-loader
--> vv-content-schema raw structs
--> vv-pack-compiler validation and reference resolution
+assets/packs/*/defs
+assets/packs/*/media
+-> validation
+-> generated registries and atlases
 -> compact runtime registries
 -> game runtime, worldgen, meshing, renderer
 ```
 
 ## Identity
 
-Content identity is path-as-identity:
+Content identity is path-as-identity inside a pack namespace. Raw `.ron` files
+should not repeat their own ID when the namespace and path already define it.
+
+Examples:
 
 ```text
-assets/packs/core/blocks/dirt.ron -> core:dirt
-```
+assets/packs/core/defs/blocks/terrain/grass.block.ron
+-> core:block/terrain/grass
 
-Raw `.ron` files should not repeat their own ID when the namespace and path already define it.
+assets/packs/core/defs/materials/blocks/grass_block/grass_block_top.material.ron
+-> core:material/blocks/grass_block/grass_block_top
+```
 
 ## Pack Layout
 
-The core pack currently uses:
+The core pack uses:
 
 ```text
 assets/packs/core/
-  blocks/
-  items/
-  textures/
-  texture_recipes/
-  worldgen/
+  pack.ron
+  defs/
+  media/
   generated/
 ```
 
-`worldgen/` contains the current procedural planet data: planets, fields, climates, biome sets, biomes, terrain layers, ores, caves, vegetation, structures, fauna, and visual details.
-
 ## Runtime Rules
 
-- Runtime code does not parse raw pack files directly.
-- Voxels store compact `VoxelId`, never strings.
-- Missing required pack roots and missing `blocks/` directories are hard errors.
-- Optional future categories may be absent until their systems exist.
-- Renderer PNG assets remain final assets under `textures/`; generated or intermediate outputs belong under `generated/` or future tool-specific folders.
-
+- Runtime code must not parse raw media files directly.
+- Runtime code should consume generated registries.
+- Voxels store compact runtime IDs, never strings.
+- Blocks reference materials.
+- Materials reference texture IDs.
+- Media files never define gameplay.

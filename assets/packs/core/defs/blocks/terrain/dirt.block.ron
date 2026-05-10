@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Dirt",
+    category: "terrain",
+    physical: (
+        solid: true,
+        opaque: true,
+        collision: full_cube,
+        hardness: 0.5,
+        blast_resistance: 1.5,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: cube,
+        render: opaque,
+        materials: All("core:material/blocks/dirt/dirt_all"),
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: Some("core:tag/item/tool/shovel"),
+        drops: "core:loot/blocks/dirt",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/dirt",
+        break: "core:sound/break/dirt",
+        place: "core:sound/place/dirt",
+    ),
+    tags: ["core:tag/block/terrain", "core:tag/block/soil"],
+    
+)

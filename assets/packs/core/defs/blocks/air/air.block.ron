@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Air",
+    category: "air",
+    physical: (
+        solid: false,
+        opaque: false,
+        collision: none,
+        hardness: 0.0,
+        blast_resistance: 0,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: none,
+        render: invisible,
+        materials: None,
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: None,
+        drops: "core:loot/blocks/air",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/none",
+        break: "core:sound/break/none",
+        place: "core:sound/place/none",
+    ),
+    tags: [],
+    runtime: (reserved_id: 0, can_target: false, blocks_light: false),
+)

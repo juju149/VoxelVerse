@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Snow Block",
+    category: "terrain",
+    physical: (
+        solid: true,
+        opaque: true,
+        collision: full_cube,
+        hardness: 0.4,
+        blast_resistance: 1.2,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: cube,
+        render: opaque,
+        materials: All("core:material/blocks/powder_snow/powder_snow_all"),
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: Some("core:tag/item/tool/shovel"),
+        drops: "core:loot/blocks/snow",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/snow",
+        break: "core:sound/break/snow",
+        place: "core:sound/place/snow",
+    ),
+    tags: ["core:tag/block/terrain", "core:tag/block/snow"],
+    
+)

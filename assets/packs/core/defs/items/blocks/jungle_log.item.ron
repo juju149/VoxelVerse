@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Jungle Log",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/jungle_log", world_model: BlockItem("core:block/natural/logs/jungle_log")),
+    gameplay: PlaceBlock("core:block/natural/logs/jungle_log"),
+    tags: ["core:tag/item/block"],
+)

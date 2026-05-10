@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Dandelion",
+    category: "flora",
+    physical: (
+        solid: false,
+        opaque: false,
+        collision: none,
+        hardness: 0.0,
+        blast_resistance: 0,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: cross_plane,
+        render: alpha_test,
+        materials: All("core:material/blocks/dandelion/dandelion_all"),
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: None,
+        drops: "core:loot/blocks/dandelion",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/grass",
+        break: "core:sound/break/grass",
+        place: "core:sound/place/grass",
+    ),
+    tags: ["core:tag/block/flora", "core:tag/block/replaceable", "core:tag/block/surface_detail"],
+    simulation: (surface_attached: true, breaks_when_support_removed: true),
+)

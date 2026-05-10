@@ -1,0 +1,6 @@
+﻿LootTableDef(
+    rolls: 1,
+    entries: [
+        (item: "core:item/resource/coal", count: (2, 2), chance: 1.0),
+    ],
+)

@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Powder Snow",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/powder_snow", world_model: BlockItem("core:block/terrain/powder_snow")),
+    gameplay: PlaceBlock("core:block/terrain/powder_snow"),
+    tags: ["core:tag/item/block"],
+)

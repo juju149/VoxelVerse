@@ -1,0 +1,27 @@
+﻿PlanetProfileDef(
+    display_name: "Default Living Planet",
+    seed: 2,
+    shape: SphericalVoxelPlanet((
+        resolution: 10000,
+        surface_layer: 5000,
+        voxel_size_meters: 0.5,
+        edge_rounding_radius_voxels: 0.16,
+        core_layers: 6,
+        sea_level_offset: -6,
+        max_terrain_offset: 180,
+    )),
+    climate: "core:climate/earthlike",
+    biome_set: "core:biome_set/earthlike",
+    terrain_layers: "core:terrain_layers/earth_crust",
+    caves: ["core:cave/default"],
+    ores: ["core:ore/coal", "core:ore/iron"],
+    vegetation: ["core:vegetation/oak_tree", "core:vegetation/birch_tree", "core:vegetation/spruce_tree"],
+    structures: ["core:structure/small_ruin"],
+    spawns: ["core:spawn/rabbit"],
+    visual_details: ["core:visual_detail/flower_scatter"],
+    streaming: (
+        near_voxel_lod_radius: 12,
+        far_surface_lod_radius: 192,
+        upload_budget_chunks_per_frame: 8,
+    ),
+)

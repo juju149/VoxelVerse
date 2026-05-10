@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Dark Oak Leaves",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/dark_oak_leaves", world_model: BlockItem("core:block/natural/leaves/dark_oak_leaves")),
+    gameplay: PlaceBlock("core:block/natural/leaves/dark_oak_leaves"),
+    tags: ["core:tag/item/block"],
+)

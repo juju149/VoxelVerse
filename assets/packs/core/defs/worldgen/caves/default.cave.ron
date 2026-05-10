@@ -1,0 +1,11 @@
+﻿CaveSystemDef(
+    display_name: "Default Cave Network",
+    fields: ["core:field/cave_worms", "core:field/cave_chambers"],
+    carve: (
+        min_depth_voxels: 18,
+        max_depth_voxels: 420,
+        tunnel_radius: (2.0, 7.0),
+        chamber_radius: (6.0, 24.0),
+        air_block: "core:block/air/air",
+    ),
+)

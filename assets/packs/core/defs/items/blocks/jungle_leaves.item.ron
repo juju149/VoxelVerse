@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Jungle Leaves",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/jungle_leaves", world_model: BlockItem("core:block/natural/leaves/jungle_leaves")),
+    gameplay: PlaceBlock("core:block/natural/leaves/jungle_leaves"),
+    tags: ["core:tag/item/block"],
+)

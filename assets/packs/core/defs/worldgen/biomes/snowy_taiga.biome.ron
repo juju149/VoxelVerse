@@ -1,0 +1,28 @@
+﻿BiomeDef(
+    display_name: "Snowy Taiga",
+    surface: (
+        top: "core:block/terrain/snow",
+        under: "core:block/terrain/dirt",
+        depth_voxels: (2, 6),
+        slope_override: Some((above_degrees: 42, top: "core:block/terrain/stone")),
+    ),
+    terrain: (
+        base_height: 0.02,
+        amplitude: 0.40,
+        flatness: 0.46,
+        hill_field: "core:field/rolling_hills",
+        ridge_field: None,
+        terrace_strength: 0.03,
+    ),
+    palette: (
+        grass: (0.62, 0.72, 0.62),
+        foliage: (0.36, 0.50, 0.40),
+        fog_bias: (0.0, 0.0, 0.0),
+    ),
+    placement: (
+        vegetation_tags: ["core:tag/biome/cold", "core:tag/biome/forest"],
+        fauna_tags: ["core:tag/fauna/small_herbivore"],
+        structure_tags: ["core:tag/structure/small"],
+    ),
+    tags: ["core:tag/biome/cold", "core:tag/biome/forest"],
+)

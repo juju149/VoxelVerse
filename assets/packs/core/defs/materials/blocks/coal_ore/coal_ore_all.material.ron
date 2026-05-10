@@ -1,0 +1,15 @@
+﻿MaterialDef(
+    display_name: "coal ore all",
+    category: block_surface,
+    albedo: "core:texture/blocks/coal_ore/coal_ore_all_albedo",
+    normal: Some("core:texture/blocks/coal_ore/coal_ore_all_normal"),
+    roughness: Some("core:texture/blocks/coal_ore/coal_ore_all_roughness"),
+    tint: None,
+    render: opaque,
+    sampling: pixel_art_nearest,
+    atlas: "core:atlas/blocks/main",
+    authoring: (
+        source: "media/textures/blocks/coal_ore",
+        generated_by: "tools/rebuild_core_pack_data.ps1",
+    ),
+)

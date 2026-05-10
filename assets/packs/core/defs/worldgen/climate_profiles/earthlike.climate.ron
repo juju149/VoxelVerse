@@ -1,0 +1,15 @@
+﻿ClimateProfileDef(
+    display_name: "Earthlike",
+    fields: (
+        temperature: "core:field/temperature_jitter",
+        humidity: "core:field/humidity",
+        continentality: "core:field/continentality",
+        erosion: "core:field/erosion",
+        weirdness: "core:field/weirdness",
+    ),
+    atmosphere: (
+        fog_color: (0.64, 0.76, 0.92),
+        horizon_fog_density: 0.018,
+        sky_scatter_strength: 0.72,
+    ),
+)

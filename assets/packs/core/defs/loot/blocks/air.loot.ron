@@ -1,0 +1,6 @@
+﻿LootTableDef(
+    rolls: 1,
+    entries: [
+        (item: "core:item/none", count: (0, 0), chance: 1.0),
+    ],
+)

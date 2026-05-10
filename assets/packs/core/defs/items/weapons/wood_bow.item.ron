@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Wood Bow",
+    category: "weapon",
+    stack_size: 1,
+    visual: (inventory_icon: "core:icon/items/weapons/wood_bow", world_model: "core:voxel/equipment/weapons/bow/bow/wood", hand_model: "core:voxel/equipment/weapons/bow/bow/wood"),
+    gameplay: Weapon((class: bow, damage: 5.0, attack_speed: 0.8, durability: 180, projectile: \,
+    tags: core:projectile/arrow\)),
+)

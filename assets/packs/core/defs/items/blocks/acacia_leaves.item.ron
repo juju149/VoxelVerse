@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Acacia Leaves",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/acacia_leaves", world_model: BlockItem("core:block/natural/leaves/acacia_leaves")),
+    gameplay: PlaceBlock("core:block/natural/leaves/acacia_leaves"),
+    tags: ["core:tag/item/block"],
+)

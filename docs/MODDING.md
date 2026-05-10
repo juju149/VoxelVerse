@@ -1,32 +1,32 @@
 # Modding Notes
 
-Modding source files are `.ron` files under `assets/packs/<namespace>/`.
+Modding source files live under `assets/packs/<namespace>/`.
 
-## Current Supported Content
+## Pack Layout
 
-- Blocks: `blocks/*.ron`
-- Block texture references: `textures/**/*.png`
-- Procedural worldgen: `worldgen/**`
+```text
+pack.ron
+defs/
+media/
+generated/
+```
 
-The pack namespace is the folder name. A file path becomes the content key, for example `assets/packs/core/blocks/air.ron` becomes `core:air`.
+## Content Domains
 
-## Validation Expectations
+- Blocks: `defs/blocks/**/*.block.ron`
+- Materials: `defs/materials/**/*.material.ron`
+- Items: `defs/items/**/*.item.ron`
+- Entities: `defs/entities/**/*.entity.ron`
+- Props: `defs/props/**/*.ron`
+- Vegetation: `defs/vegetation/**/*.ron`
+- Worldgen: `defs/worldgen/**/*.ron`
+- Loot: `defs/loot/**/*.loot.ron`
+- Recipes: `defs/recipes/**/*.ron`
 
-Pack errors should be explicit. A broken pack should fail in loading or compilation with a useful diagnostic rather than silently falling back.
+## Rules
 
-Current required block rules:
-
-- One block key ending in `:air` must exist and becomes `VoxelId(0)`.
-- Exactly one block must declare `role = "planet_core"`.
-- Solid blocks should have all material faces resolved when texture data is present.
-
-## Future Studio/CLI Contract
-
-VoxelVerse Studio and `vv-cli` should call:
-
-- `vv-content-schema` to author raw data shapes.
-- `vv-pack-loader` to discover and parse packs.
-- `vv-pack-compiler` to validate and build runtime registries.
-
-They should not implement separate pack parsers.
-
+- Add content through data, not engine code.
+- Keep media and gameplay separate.
+- Use lowercase `snake_case` filenames.
+- Prefer tags, roles and semantic references over name checks.
+- Generated registries are compiler output, not hand-authored gameplay data.

@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Dark Oak Leaves",
+    category: "natural/leaves",
+    physical: (
+        solid: true,
+        opaque: false,
+        collision: leaf_volume,
+        hardness: 0.25,
+        blast_resistance: 0.75,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: cube,
+        render: alpha_test,
+        materials: All("core:material/blocks/oak_leaves/oak_leaves_all"),
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: Some("core:tag/item/tool/shears"),
+        drops: "core:loot/blocks/dark_oak_leaves",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/leaves",
+        break: "core:sound/break/leaves",
+        place: "core:sound/place/leaves",
+    ),
+    tags: ["core:tag/block/leaves", "core:tag/block/foliage"],
+    simulation: (decays_without_log: true, supports_biome_tint: true),
+)

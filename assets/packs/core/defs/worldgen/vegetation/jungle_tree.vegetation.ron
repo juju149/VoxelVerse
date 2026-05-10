@@ -1,0 +1,18 @@
+﻿VegetationPlacementDef(
+    display_name: "Jungle Tree",
+    kind: procedural_tree,
+    placement: (
+        allowed_surface_tags: ["core:tag/block/soil"],
+        biome_tags: ["core:tag/biome/forest"],
+        density: 0.03,
+        slope_max_degrees: 34,
+        scatter_field: "core:field/jungle_scatter",
+    ),
+    stamp: (
+        trunk: "core:block/natural/logs/jungle_log",
+        leaves: "core:block/natural/leaves/jungle_leaves",
+        height: (5, 9),
+        canopy_radius: (2, 4),
+        canopy_density: 0.65,
+    ),
+)

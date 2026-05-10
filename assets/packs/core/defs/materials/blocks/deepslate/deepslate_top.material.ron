@@ -1,0 +1,15 @@
+﻿MaterialDef(
+    display_name: "deepslate top",
+    category: block_surface,
+    albedo: "core:texture/blocks/deepslate/deepslate_top_albedo",
+    normal: Some("core:texture/blocks/deepslate/deepslate_top_normal"),
+    roughness: Some("core:texture/blocks/deepslate/deepslate_top_roughness"),
+    tint: None,
+    render: opaque,
+    sampling: pixel_art_nearest,
+    atlas: "core:atlas/blocks/main",
+    authoring: (
+        source: "media/textures/blocks/deepslate",
+        generated_by: "tools/rebuild_core_pack_data.ps1",
+    ),
+)

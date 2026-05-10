@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Deepslate",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/deepslate", world_model: BlockItem("core:block/terrain/deepslate")),
+    gameplay: PlaceBlock("core:block/terrain/deepslate"),
+    tags: ["core:tag/item/block"],
+)

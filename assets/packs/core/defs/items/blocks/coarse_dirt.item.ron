@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Coarse Dirt",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/coarse_dirt", world_model: BlockItem("core:block/terrain/coarse_dirt")),
+    gameplay: PlaceBlock("core:block/terrain/coarse_dirt"),
+    tags: ["core:tag/item/block"],
+)

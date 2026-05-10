@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Andesite",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/andesite", world_model: BlockItem("core:block/terrain/andesite")),
+    gameplay: PlaceBlock("core:block/terrain/andesite"),
+    tags: ["core:tag/item/block"],
+)

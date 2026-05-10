@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Bedrock",
+    category: "terrain",
+    physical: (
+        solid: true,
+        opaque: true,
+        collision: full_cube,
+        hardness: 999.0,
+        blast_resistance: 2997,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: cube,
+        render: opaque,
+        materials: All("core:material/blocks/bedrock/bedrock_all"),
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: None,
+        drops: "core:loot/blocks/empty",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/stone",
+        break: "core:sound/break/stone",
+        place: "core:sound/place/stone",
+    ),
+    tags: ["core:tag/block/unbreakable"],
+    
+)

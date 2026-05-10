@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Deepslate",
+    category: "terrain",
+    physical: (
+        solid: true,
+        opaque: true,
+        collision: full_cube,
+        hardness: 2.3,
+        blast_resistance: 6.9,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: cube,
+        render: opaque,
+        materials: (top: "core:material/blocks/deepslate/deepslate_top", sides: "core:material/blocks/deepslate/deepslate_side", bottom: "core:material/blocks/deepslate/deepslate_top"),
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: Some("core:tag/item/tool/pickaxe"),
+        drops: "core:loot/blocks/deepslate",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/stone",
+        break: "core:sound/break/stone",
+        place: "core:sound/place/stone",
+    ),
+    tags: ["core:tag/block/terrain", "core:tag/block/stone", "core:tag/block/deep_layer"],
+    
+)

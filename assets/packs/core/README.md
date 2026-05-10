@@ -2,23 +2,12 @@
 
 This pack contains the built-in VoxelVerse content.
 
-Current active runtime inputs:
+Current layout:
 
-- `blocks/`
-- `worldgen/`
-- `textures/`
+- `pack.ron` for pack metadata.
+- `defs/` for authored gameplay, world, material and registry-facing data.
+- `media/` for final textures, voxel models, audio and icons.
+- `generated/` for generated registries and caches.
 
-Target authoring architecture:
-
-- `defs/` for gameplay/content definitions.
-- `media/` for final runtime media assets.
-- `source/` for editable source assets and references.
-- `generated/` for generated registries, atlases, caches and diagnostics.
-- `legacy_imports/` for preserved imports that still need conversion.
-
-The historical `voxel/` asset bank has been migrated out of the runtime root.
-Most `.vox` files now live under `media/voxel/`; uncertain legacy sprite assets
-and old manifests are quarantined under `legacy_imports/`.
-
-`pack.toml` remains the current metadata file until a `pack.ron` manifest schema
-is implemented and wired into the pack loader.
+The old raw content roots have been removed. Runtime code will be updated later
+to consume this new data layout.

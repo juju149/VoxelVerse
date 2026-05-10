@@ -1,0 +1,8 @@
+﻿SkeletonDef(
+    display_name: "golem",
+    coordinate_space: voxel_model_local,
+    scale: 1.0,
+    slots: [],
+    animation_sets: [],
+    notes: "Clean replacement for imported body manifests; slots will be expanded when animation code is wired.",
+)

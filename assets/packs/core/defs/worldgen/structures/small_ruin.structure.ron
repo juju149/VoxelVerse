@@ -1,0 +1,8 @@
+﻿StructureDistributionDef(
+    display_name: "Small Ruin",
+    structure: "core:structure_template/small_ruin",
+    biome_tags: ["core:tag/biome/temperate", "core:tag/biome/plains"],
+    spacing_voxels: (450, 900),
+    slope_max_degrees: 18,
+    rarity: uncommon,
+)

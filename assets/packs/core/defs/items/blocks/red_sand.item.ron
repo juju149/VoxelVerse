@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Red Sand",
+    category: "block",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/blocks/red_sand", world_model: BlockItem("core:block/terrain/red_sand")),
+    gameplay: PlaceBlock("core:block/terrain/red_sand"),
+    tags: ["core:tag/item/block"],
+)

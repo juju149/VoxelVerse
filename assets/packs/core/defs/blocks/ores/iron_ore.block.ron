@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Iron Ore",
+    category: "ore",
+    physical: (
+        solid: true,
+        opaque: true,
+        collision: full_cube,
+        hardness: 3.0,
+        blast_resistance: 9,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: cube,
+        render: opaque,
+        materials: All("core:material/blocks/iron_ore/iron_ore_all"),
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: Some("core:tag/item/tool/pickaxe"),
+        drops: "core:loot/blocks/iron_ore",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/stone",
+        break: "core:sound/break/stone",
+        place: "core:sound/place/stone",
+    ),
+    tags: ["core:tag/block/ore", "core:tag/resource/iron"],
+    
+)

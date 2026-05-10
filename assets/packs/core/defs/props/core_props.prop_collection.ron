@@ -1,0 +1,8 @@
+﻿PropCollectionDef(
+    props: [
+        (id_hint: "camp_tent", model: "core:voxel/props/interactables/camps/tent", collision: voxel_bounds, interaction: shelter),
+        (id_hint: "street_lamp", model: "core:voxel/props/lights/street_lamp", collision: voxel_bounds, interaction: light_source),
+        (id_hint: "bell", model: "core:voxel/props/interactables/bells/bell", collision: voxel_bounds, interaction: signal),
+        (id_hint: "ladder", model: "core:voxel/props/structure_parts/ladders/ladder", collision: ladder, interaction: climbable),
+    ],
+)

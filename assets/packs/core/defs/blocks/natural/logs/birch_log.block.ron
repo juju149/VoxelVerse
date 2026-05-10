@@ -1,0 +1,33 @@
+﻿BlockDef(
+    display_name: "Birch Log",
+    category: "natural/log",
+    physical: (
+        solid: true,
+        opaque: true,
+        collision: full_cube,
+        hardness: 1.5,
+        blast_resistance: 4.5,
+        friction: 0.82,
+        restitution: 0.0,
+    ),
+    visual: (
+        shape: cube,
+        render: opaque,
+        materials: (top: "core:material/blocks/oak_log/oak_log_top", sides: "core:material/blocks/oak_log/oak_log_side", bottom: "core:material/blocks/oak_log/oak_log_top"),
+        ambient_occlusion: true,
+        casts_shadow: true,
+    ),
+    gameplay: (
+        preferred_tool: Some("core:tag/item/tool/axe"),
+        drops: "core:loot/blocks/birch_log",
+        placement: grid_aligned,
+        replaceable: false,
+    ),
+    audio: (
+        footstep: "core:sound/step/wood",
+        break: "core:sound/break/wood",
+        place: "core:sound/place/wood",
+    ),
+    tags: ["core:tag/block/log", "core:tag/block/wood"],
+    
+)

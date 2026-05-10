@@ -1,0 +1,10 @@
+﻿NoiseFieldDef(
+    kind: perlin,
+    frequency: 1.0,
+    amplitude: 1.0,
+    octaves: 5,
+    persistence: 0.50,
+    lacunarity: 2.05,
+    seed_salt: "soft_hills",
+    domain_warp: Some((field: "core:field/warp_large", strength: 0.12)),
+)

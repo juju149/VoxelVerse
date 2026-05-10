@@ -1,31 +1,44 @@
 param(
-    [string]$PackRoot = "assets/packs/core",
-    [switch]$RunRustContentTests
+    [string]$PackRoot = "assets/packs/core"
 )
 
 $ErrorActionPreference = "Stop"
 $errors = New-Object System.Collections.Generic.List[string]
 $warnings = New-Object System.Collections.Generic.List[string]
 
-function Add-Error {
-    param([string]$Message)
+function FullPath([string]$Path) {
+    return [System.IO.Path]::GetFullPath($Path)
+}
+
+function Add-Error([string]$Message) {
     $script:errors.Add($Message)
 }
 
-function Add-Warning {
-    param([string]$Message)
+function Add-Warning([string]$Message) {
     $script:warnings.Add($Message)
 }
 
-function Assert-Dir {
-    param([string]$Path)
+function RelPath([string]$Base, [string]$Path) {
+    $baseFull = (FullPath $Base).TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+    $pathFull = FullPath $Path
+    $baseUri = New-Object System.Uri($baseFull)
+    $pathUri = New-Object System.Uri($pathFull)
+    return [System.Uri]::UnescapeDataString($baseUri.MakeRelativeUri($pathUri).ToString()).Replace('/', '\')
+}
+
+function Assert-Dir([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
         Add-Error "Missing directory: $Path"
     }
 }
 
-function Test-SafeContentName {
-    param([string]$Name)
+function Assert-File([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        Add-Error "Missing file: $Path"
+    }
+}
+
+function Test-SafeName([string]$Name) {
     if ($Name -cmatch "[A-Z]") { return $false }
     if ($Name -match "\s") { return $false }
     if ($Name -match "-") { return $false }
@@ -33,112 +46,151 @@ function Test-SafeContentName {
     return $true
 }
 
-function Get-RelativePath {
-    param([string]$Base, [string]$Path)
-    $baseFull = [System.IO.Path]::GetFullPath($Base).TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
-    $pathFull = [System.IO.Path]::GetFullPath($Path)
-    $baseUri = New-Object System.Uri($baseFull)
-    $pathUri = New-Object System.Uri($pathFull)
-    $relativeUri = $baseUri.MakeRelativeUri($pathUri)
-    return [System.Uri]::UnescapeDataString($relativeUri.ToString()).Replace('/', [System.IO.Path]::DirectorySeparatorChar)
+function Resolve-CoreRef([string]$Ref) {
+    $parts = $Ref.Split(":", 2)
+    if ($parts.Count -ne 2 -or $parts[0] -ne "core") { return $null }
+    $path = $parts[1]
+
+    if ($path.StartsWith("texture/")) {
+        return Join-Path $PackRoot ("media/textures/" + $path.Substring("texture/".Length) + ".png")
+    }
+    if ($path.StartsWith("voxel/")) {
+        $assetPath = Join-Path $PackRoot ("media/voxel/" + $path.Substring("voxel/".Length))
+        $filePath = "$assetPath.vox"
+        if (Test-Path -LiteralPath $filePath) { return $filePath }
+        return $assetPath
+    }
+    if ($path.StartsWith("material/")) {
+        return Join-Path $PackRoot ("defs/materials/" + $path.Substring("material/".Length) + ".material.ron")
+    }
+    if ($path.StartsWith("block/")) {
+        return Join-Path $PackRoot ("defs/blocks/" + $path.Substring("block/".Length) + ".block.ron")
+    }
+    if ($path.StartsWith("item/block/")) {
+        return Join-Path $PackRoot ("defs/items/blocks/" + $path.Substring("item/block/".Length) + ".item.ron")
+    }
+    if ($path.StartsWith("item/resource/")) {
+        return Join-Path $PackRoot ("defs/items/resources/" + $path.Substring("item/resource/".Length) + ".item.ron")
+    }
+    if ($path.StartsWith("item/tool/")) {
+        return Join-Path $PackRoot ("defs/items/tools/" + $path.Substring("item/tool/".Length) + ".item.ron")
+    }
+    if ($path.StartsWith("item/weapon/")) {
+        return Join-Path $PackRoot ("defs/items/weapons/" + $path.Substring("item/weapon/".Length) + ".item.ron")
+    }
+    if ($path.StartsWith("loot/")) {
+        return Join-Path $PackRoot ("defs/loot/" + $path.Substring("loot/".Length) + ".loot.ron")
+    }
+    if ($path.StartsWith("entity/")) {
+        return Join-Path $PackRoot ("defs/entities/" + $path.Substring("entity/".Length) + ".entity.ron")
+    }
+    if ($path.StartsWith("skeleton/")) {
+        return Join-Path $PackRoot ("defs/skeletons/" + $path.Substring("skeleton/".Length) + ".skeleton.ron")
+    }
+    if ($path.StartsWith("field/")) {
+        return Join-Path $PackRoot ("defs/worldgen/noise_fields/" + $path.Substring("field/".Length) + ".field.ron")
+    }
+    if ($path.StartsWith("climate/")) {
+        return Join-Path $PackRoot ("defs/worldgen/climate_profiles/" + $path.Substring("climate/".Length) + ".climate.ron")
+    }
+    if ($path.StartsWith("biome_set/")) {
+        return Join-Path $PackRoot ("defs/worldgen/biome_sets/" + $path.Substring("biome_set/".Length) + ".biome_set.ron")
+    }
+    if ($path.StartsWith("biome/")) {
+        return Join-Path $PackRoot ("defs/worldgen/biomes/" + $path.Substring("biome/".Length) + ".biome.ron")
+    }
+    if ($path.StartsWith("terrain_layers/")) {
+        return Join-Path $PackRoot ("defs/worldgen/terrain_layers/" + $path.Substring("terrain_layers/".Length) + ".terrain_layers.ron")
+    }
+    if ($path.StartsWith("cave/")) {
+        return Join-Path $PackRoot ("defs/worldgen/caves/" + $path.Substring("cave/".Length) + ".cave.ron")
+    }
+    if ($path.StartsWith("ore/")) {
+        return Join-Path $PackRoot ("defs/worldgen/ores/" + $path.Substring("ore/".Length) + ".ore.ron")
+    }
+    if ($path.StartsWith("vegetation/")) {
+        return Join-Path $PackRoot ("defs/worldgen/vegetation/" + $path.Substring("vegetation/".Length) + ".vegetation.ron")
+    }
+    if ($path.StartsWith("structure/")) {
+        return Join-Path $PackRoot ("defs/worldgen/structures/" + $path.Substring("structure/".Length) + ".structure.ron")
+    }
+    if ($path.StartsWith("spawn/")) {
+        return Join-Path $PackRoot ("defs/worldgen/spawns/" + $path.Substring("spawn/".Length) + ".spawn.ron")
+    }
+    if ($path.StartsWith("visual_detail/")) {
+        return Join-Path $PackRoot ("defs/worldgen/visual_details/" + $path.Substring("visual_detail/".Length) + ".visual_detail.ron")
+    }
+    return $null
 }
 
-$packFull = [System.IO.Path]::GetFullPath($PackRoot)
+$packFull = FullPath $PackRoot
 if (-not (Test-Path -LiteralPath $packFull -PathType Container)) {
     throw "Pack root not found: $PackRoot"
 }
 
-$requiredDirs = @(
-    "blocks",
-    "worldgen",
-    "textures",
-    "generated",
-    "defs",
-    "media",
-    "source",
-    "legacy_imports",
-    "media/voxel",
-    "generated/diagnostics"
-)
-
-foreach ($dir in $requiredDirs) {
-    Assert-Dir (Join-Path $packFull $dir)
+Assert-File (Join-Path $PackRoot "pack.ron")
+Assert-File (Join-Path $PackRoot "README.md")
+foreach ($dir in @("defs", "media", "generated", "media/voxel", "media/textures", "generated/registries")) {
+    Assert-Dir (Join-Path $PackRoot $dir)
 }
 
-$blockDir = Join-Path $packFull "blocks"
-$textureDir = Join-Path $packFull "textures"
-$legacyDir = Join-Path $packFull "legacy_imports"
-$mediaVoxelDir = Join-Path $packFull "media/voxel"
-
-if (Test-Path -LiteralPath $blockDir) {
-    $blockFiles = Get-ChildItem -LiteralPath $blockDir -File -Filter *.ron | Sort-Object Name
-    if ($blockFiles.Count -eq 0) {
-        Add-Error "No block RON files found in active loader path: $blockDir"
-    }
-
-    $stems = $blockFiles | ForEach-Object { $_.BaseName }
-    $duplicateStems = $stems | Group-Object | Where-Object { $_.Count -gt 1 }
-    foreach ($dup in $duplicateStems) {
-        Add-Error "Duplicate block id stem in active loader path: $($dup.Name)"
-    }
-
-    foreach ($file in $blockFiles) {
-        $text = Get-Content -LiteralPath $file.FullName -Raw
-        $matches = [regex]::Matches($text, '"([a-z0-9_]+):([a-z0-9_./-]+)"')
-        foreach ($match in $matches) {
-            $namespace = $match.Groups[1].Value
-            $path = $match.Groups[2].Value
-            if ($namespace -ne "core") {
-                continue
-            }
-            if ($path -match "(albedo|normal|roughness)$") {
-                $texturePath = Join-Path $textureDir ($path + ".png")
-                if (-not (Test-Path -LiteralPath $texturePath -PathType Leaf)) {
-                    Add-Error "Missing texture referenced by $($file.FullName): core:$path -> $texturePath"
-                }
-            }
-        }
+foreach ($legacy in @("legacy_imports", "blocks", "worldgen", "textures", "items", "voxel", "pack.toml")) {
+    $path = Join-Path $PackRoot $legacy
+    if (Test-Path -LiteralPath $path) {
+        Add-Error "Legacy path still exists: $path"
     }
 }
 
-if (Test-Path -LiteralPath $mediaVoxelDir) {
-    $invalidNames = Get-ChildItem -LiteralPath $mediaVoxelDir -Recurse -File |
-        Where-Object { -not (Test-SafeContentName $_.Name) } |
-        Select-Object -First 100
+$emptyDirs = Get-ChildItem -LiteralPath $PackRoot -Directory -Recurse |
+    Where-Object { -not (Get-ChildItem -LiteralPath $_.FullName -Force) }
+foreach ($dir in $emptyDirs) {
+    Add-Error "Empty directory remains: $(RelPath $PackRoot $dir.FullName)"
+}
 
-    foreach ($file in $invalidNames) {
-        $rel = Get-RelativePath $packFull $file.FullName
-        Add-Warning "Invalid target media filename: $rel"
+$invalidFiles = Get-ChildItem -LiteralPath $PackRoot -Recurse -File |
+    Where-Object { $_.Extension -in @(".ron", ".vox", ".png") -and -not (Test-SafeName $_.Name) }
+foreach ($file in $invalidFiles) {
+    Add-Error "Invalid content filename: $(RelPath $PackRoot $file.FullName)"
+}
+
+$ronFiles = Get-ChildItem -LiteralPath $PackRoot -Recurse -File -Filter *.ron
+$allRefs = New-Object System.Collections.Generic.HashSet[string]
+foreach ($file in $ronFiles) {
+    $text = Get-Content -LiteralPath $file.FullName -Raw
+    if ($text -match "legacy_imports|common\.items|voxel\.sprite|voxel\.npc") {
+        Add-Error "Legacy reference found in RON: $(RelPath $PackRoot $file.FullName)"
+    }
+    $matches = [regex]::Matches($text, '"core:[a-z0-9_./-]+"')
+    foreach ($match in $matches) {
+        $ref = $match.Value.Trim('"')
+        $null = $allRefs.Add($ref)
     }
 }
 
-if (Test-Path -LiteralPath $legacyDir) {
-    $activeRonRoots = @("defs", "blocks", "items", "worldgen")
-    foreach ($root in $activeRonRoots) {
-        $dir = Join-Path $packFull $root
-        if (-not (Test-Path -LiteralPath $dir)) { continue }
-        $ronFiles = Get-ChildItem -LiteralPath $dir -Recurse -File -Filter *.ron
-        foreach ($file in $ronFiles) {
-            $text = Get-Content -LiteralPath $file.FullName -Raw
-            if ($text -match "legacy_imports") {
-                Add-Error "Runtime definition references legacy_imports: $($file.FullName)"
-            }
-        }
+foreach ($ref in $allRefs) {
+    if ($ref -eq "core:item/none") {
+        continue
+    }
+    if ($ref -match "^core:(tag|icon|sound|atlas|effect|movement|behavior|inventory|projectile|structure_template)/") {
+        continue
+    }
+    $resolved = Resolve-CoreRef $ref
+    if ($null -eq $resolved) {
+        Add-Warning "No validator mapping for reference: $ref"
+        continue
+    }
+    if (-not (Test-Path -LiteralPath $resolved)) {
+        Add-Error "Broken reference: $ref -> $(RelPath $PackRoot $resolved)"
     }
 }
 
-$manifestDir = Join-Path $legacyDir "manifests"
-if (Test-Path -LiteralPath $manifestDir) {
-    $manifestCount = (Get-ChildItem -LiteralPath $manifestDir -File -Filter *.ron).Count
-    if ($manifestCount -gt 0) {
-        Add-Warning "Legacy manifests are quarantined but not converted yet: $manifestCount file(s)"
-    }
-}
-
-if ($RunRustContentTests) {
-    cargo test -p vv-pack-compiler
-    if ($LASTEXITCODE -ne 0) {
-        Add-Error "Rust content tests failed: cargo test -p vv-pack-compiler"
+$voxelRegistry = Join-Path $PackRoot "generated/registries/voxel_assets.ron"
+Assert-File $voxelRegistry
+if (Test-Path -LiteralPath $voxelRegistry) {
+    $voxCount = (Get-ChildItem -LiteralPath (Join-Path $PackRoot "media/voxel") -Recurse -File -Filter *.vox).Count
+    $registryText = Get-Content -LiteralPath $voxelRegistry -Raw
+    if ($registryText -notmatch "asset_count:\s+$voxCount,") {
+        Add-Error "Voxel registry asset_count does not match media/voxel count ($voxCount)."
     }
 }
 
@@ -150,7 +202,7 @@ foreach ($warning in $warnings) {
 if ($errors.Count -gt 0) {
     Write-Output "Content validation errors: $($errors.Count)"
     foreach ($err in $errors) {
-        Write-Error $err
+        Write-Output "ERROR: $err"
     }
     exit 1
 }

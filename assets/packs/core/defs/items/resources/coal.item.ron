@@ -1,0 +1,8 @@
+﻿ItemDef(
+    display_name: "Coal",
+    category: "resource",
+    stack_size: 99,
+    visual: (inventory_icon: "core:icon/items/resources/coal", world_model: "core:voxel/items/resources/mineral/deposit/coal_1"),
+    gameplay: CraftingIngredient((fuel_value: Some(1600))),
+    tags: ["core:tag/item/resource", "core:tag/resource/coal", "core:tag/item/fuel"],
+)

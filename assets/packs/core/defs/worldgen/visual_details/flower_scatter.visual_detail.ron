@@ -1,0 +1,8 @@
+﻿VisualDetailDef(
+    display_name: "Flower Scatter",
+    models: ["core:voxel/vegetation/flowers"],
+    biome_tags: ["core:tag/biome/temperate", "core:tag/biome/plains"],
+    density: 0.12,
+    render: instanced_voxel_prop,
+    collision: none,
+)

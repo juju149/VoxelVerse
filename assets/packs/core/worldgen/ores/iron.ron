@@ -1,9 +1,0 @@
-RawOreDef(
-    block: "core:iron_ore",
-    replace: ["core:smooth_stone", "core:deepslate", "core:andesite"],
-    depth: (35, 260),
-    density: 0.045,
-    vein_size: (4, 16),
-    field: "core:iron_veins",
-    biome_tags: ["*"],
-)
