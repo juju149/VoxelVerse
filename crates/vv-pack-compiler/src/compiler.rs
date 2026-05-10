@@ -67,10 +67,25 @@ impl ContentCompiler {
             }
 
             // Strict reference validation. New checks land here as their
-            // target domains gain real defs (audio: step 3, tags/tools: later).
+            // target domains gain real defs (tags/tools: later).
             index.require(
                 &def.gameplay.drops,
                 &format!("block '{}' gameplay.drops", key),
+                &mut errors,
+            );
+            index.require(
+                &def.audio.footstep,
+                &format!("block '{}' audio.footstep", key),
+                &mut errors,
+            );
+            index.require(
+                &def.audio.break_sound,
+                &format!("block '{}' audio.break", key),
+                &mut errors,
+            );
+            index.require(
+                &def.audio.place,
+                &format!("block '{}' audio.place", key),
                 &mut errors,
             );
 
@@ -313,7 +328,12 @@ mod tests {
     }
 
     fn synthetic_index() -> crate::ContentIndex {
-        crate::ContentIndex::from_keys(["core:loot/blocks/empty"])
+        crate::ContentIndex::from_keys([
+            "core:loot/blocks/empty",
+            "core:sound/step/stone",
+            "core:sound/break/stone",
+            "core:sound/place/stone",
+        ])
     }
 
     #[test]

@@ -14,6 +14,7 @@ pub struct LoadedPack {
     pub prop_collections: Vec<(String, RawPropCollectionDef)>,
     pub vegetation_catalogs: Vec<(String, RawVegetationCatalogDef)>,
     pub tag_sets: Vec<(String, RawTagSetDef)>,
+    pub sounds: Vec<(String, RawSoundEventDef)>,
     pub voxel_assets: Option<RawVoxelAssetRegistry>,
 }
 
@@ -75,6 +76,7 @@ impl PackLoader {
             prop_collections: load_typed_tree(&defs.join("props"), &defs, &namespace)?,
             vegetation_catalogs: load_typed_tree(&defs.join("vegetation"), &defs, &namespace)?,
             tag_sets: load_typed_tree(&defs.join("tags"), &defs, &namespace)?,
+            sounds: load_typed_tree(&defs.join("sounds"), &defs, &namespace)?,
             voxel_assets: load_optional_file(&voxel_assets_path)?,
         })
     }
@@ -241,6 +243,7 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
         "props" => format!("prop_collection/{}", stem),
         "vegetation" => format!("vegetation_catalog/{}", stem),
         "tags" => format!("tags/{}", stem),
+        "sounds" => join_domain("sound", dirs, &stem),
         "worldgen" => derive_worldgen_key(dirs, &stem)?,
         other => {
             return Err(format!(

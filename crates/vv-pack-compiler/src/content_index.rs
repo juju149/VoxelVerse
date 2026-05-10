@@ -14,11 +14,11 @@
 //!  - `core:skeleton/...`    (skeleton defs)
 //!  - `core:props/...`       (prop collection defs)
 //!  - `core:vegetation/...`  (vegetation catalog defs)
+//!  - `core:sound/...`       (sound event defs — typed registry, no audio yet)
 //!  - `core:voxel/...`       (generated voxel asset registry)
 //!
 //! Domains *not yet* indexed (deferred to later sprint steps because they
 //! require their own refactor):
-//!  - `core:sound/...`  → arrives in step 3 with `RawSoundEventDef`.
 //!  - `core:tag/...`    → tags are currently anonymous `id_hint` strings; will
 //!     be reworked into addressable defs.
 //!  - `core:texture/...` → resolved by `TextureRegistry` from media paths.
@@ -60,6 +60,9 @@ impl ContentIndex {
             keys.insert(k.clone());
         }
         for (k, _) in &pack.vegetation_catalogs {
+            keys.insert(k.clone());
+        }
+        for (k, _) in &pack.sounds {
             keys.insert(k.clone());
         }
         if let Some(reg) = &pack.voxel_assets {

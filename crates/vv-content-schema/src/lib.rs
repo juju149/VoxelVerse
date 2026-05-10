@@ -5,6 +5,7 @@ mod generated;
 mod item;
 mod procedural;
 mod props;
+mod sound;
 mod version;
 pub mod visual;
 
@@ -15,6 +16,7 @@ pub use generated::*;
 pub use item::*;
 pub use procedural::*;
 pub use props::*;
+pub use sound::*;
 pub use version::*;
 pub use visual::{
     ContentRef, RawBlockMaterials, RawBlockShape, RawMaterialDef, RawMaterialTextureSet,
