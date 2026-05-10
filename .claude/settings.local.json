@@ -25,7 +25,12 @@
       "Bash(git commit -m ' *)",
       "Bash(python3 tools/migrate_blocks_to_models.py)",
       "Bash(git commit *)",
-      "Bash(grep -nB1 -A2 \"let mut air = block\" crates/vv-pack-compiler/src/compiler.rs)"
+      "Bash(grep -nB1 -A2 \"let mut air = block\" crates/vv-pack-compiler/src/compiler.rs)",
+      "Bash(Get-ChildItem -Path \"C:\\\\DEV\\\\projects\\\\Voxel\\\\VoxelVerse\\\\assets\\\\packs\\\\core\\\\defs\\\\worldgen\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(Get-ChildItem -Path \"C:\\\\DEV\\\\projects\\\\Voxel\\\\VoxelVerse\\\\assets\\\\packs\\\\core\\\\defs\\\\worldgen\\\\\" -Recurse -Filter \"*.ron\" | Select-Object -ExpandProperty FullName)",
+      "Bash(find /mnt/c/DEV/projects/Voxel/VoxelVerse/assets/packs/core/defs/worldgen -name \"*.ron\" -type f | head -50)",
+      "Read(//mnt/c/DEV/projects/Voxel/VoxelVerse/assets/packs/core/defs/**)"
     ]
   }
 }

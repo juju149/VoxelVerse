@@ -1,0 +1,13 @@
+ShaderModule(
+    language: wgsl,
+    imports: [
+        "core:render/shader_modules/voxel/terrain_vertex",
+    ],
+    feature_class: "debug",
+    contracts: [
+        "core:render/shader_contracts/frame_globals",
+        "core:render/shader_contracts/planet_globals",
+    ],
+    allow_override: true,
+)
+

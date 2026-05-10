@@ -1,0 +1,10 @@
+AllowedShaderImports(
+    allowed_prefixes: [
+        "core:render/shader_modules/",
+    ],
+    denied_prefixes: [
+        "core:render/validation/",
+        "core:render/render_graph/",
+    ],
+)
+

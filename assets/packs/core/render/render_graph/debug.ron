@@ -1,0 +1,18 @@
+RenderGraph(
+    label: "Debug",
+    passes: [
+        (
+            name: "terrain_debug",
+            technique: Some("core:render/techniques/terrain/terrain_opaque"),
+            inputs: ["frame_globals"],
+            outputs: ["debug_color", "depth"],
+        ),
+        (
+            name: "debug_ui",
+            technique: Some("core:render/techniques/ui/ui_flat"),
+            inputs: ["frame_globals", "debug_color"],
+            outputs: ["debug_color"],
+        ),
+    ],
+)
+

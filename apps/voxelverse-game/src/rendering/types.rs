@@ -2,7 +2,7 @@ use crate::meshing::CpuVertex;
 use bytemuck::{Pod, Zeroable};
 
 /// GPU vertex layout — 48 bytes.
-/// Attribute locations match shader.wgsl exactly.
+/// Attribute locations match the `terrain_chunk_mesh` render vertex contract.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct Vertex {

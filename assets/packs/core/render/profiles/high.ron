@@ -1,0 +1,23 @@
+RenderProfile(
+    label: "High",
+    quality_class: "high",
+    shadows: "pcf_medium",
+    antialiasing: "fxaa",
+    bloom: true,
+    fog: true,
+    water: "shiny",
+    clouds: true,
+    normal_maps: true,
+    roughness_maps: true,
+    texture_filtering: "nearest",
+    feature_overrides: {
+        "texture_array": true,
+        "voxel_ao": true,
+        "face_variation": true,
+        "curvature_fog": true,
+        "normal_maps": true,
+        "roughness_maps": true,
+        "fxaa": true,
+    },
+)
+

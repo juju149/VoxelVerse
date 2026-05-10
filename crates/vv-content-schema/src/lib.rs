@@ -7,6 +7,7 @@ mod generated;
 mod item;
 mod procedural;
 mod props;
+mod render;
 mod sound;
 mod version;
 pub mod visual;
@@ -20,6 +21,7 @@ pub use generated::*;
 pub use item::*;
 pub use procedural::*;
 pub use props::*;
+pub use render::*;
 pub use sound::*;
 pub use version::*;
 pub use visual::{

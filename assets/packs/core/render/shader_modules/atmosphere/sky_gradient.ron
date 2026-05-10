@@ -1,0 +1,12 @@
+ShaderModule(
+    language: wgsl,
+    imports: [
+        "core:render/shader_modules/color/tonemap",
+    ],
+    feature_class: "atmosphere",
+    contracts: [
+        "core:render/shader_contracts/frame_globals",
+    ],
+    allow_override: true,
+)
+

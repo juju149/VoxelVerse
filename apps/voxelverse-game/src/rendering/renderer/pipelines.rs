@@ -42,7 +42,8 @@ impl<'a> Renderer<'a> {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         layout: &wgpu::PipelineLayout,
-        shader: &wgpu::ShaderModule,
+        vertex_shader: &wgpu::ShaderModule,
+        fragment_shader: &wgpu::ShaderModule,
         topology: wgpu::PrimitiveTopology,
         wireframe: bool,
     ) -> wgpu::RenderPipeline {
@@ -50,12 +51,12 @@ impl<'a> Renderer<'a> {
             label: None,
             layout: Some(layout),
             vertex: wgpu::VertexState {
-                module: shader,
+                module: vertex_shader,
                 entry_point: "vs_main",
                 buffers: &[vertex_buffer_layout()],
             },
             fragment: Some(wgpu::FragmentState {
-                module: shader,
+                module: fragment_shader,
                 entry_point: "fs_main",
                 targets: &[Some(config.format.into())],
             }),

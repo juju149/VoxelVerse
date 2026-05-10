@@ -1,0 +1,13 @@
+MaterialFamily(
+    label: "Glass",
+    surface_model: "glass_lit",
+    texture_slots: [
+        (name: "albedo", kind: albedo, required: true),
+        (name: "opacity", kind: mask, required: false),
+    ],
+    scalar_parameters: [
+        (name: "transmission", default: 0.65, min: 0.0, max: 1.0),
+    ],
+    color_parameters: [],
+)
+

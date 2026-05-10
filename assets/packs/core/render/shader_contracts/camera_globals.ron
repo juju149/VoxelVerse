@@ -1,0 +1,18 @@
+ShaderContract(
+    label: "Camera Globals",
+    bind_groups: [
+        (
+            name: "frame",
+            group: 0,
+            bindings: [
+                (
+                    name: "global_camera_block",
+                    binding: 0,
+                    kind: uniform_buffer,
+                    visibility: [vertex, fragment],
+                ),
+            ],
+        ),
+    ],
+)
+

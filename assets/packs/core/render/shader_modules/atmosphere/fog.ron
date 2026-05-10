@@ -1,0 +1,10 @@
+ShaderModule(
+    language: wgsl,
+    imports: [
+        "core:render/shader_modules/math/constants",
+    ],
+    feature_class: "atmosphere",
+    contracts: [],
+    allow_override: true,
+)
+

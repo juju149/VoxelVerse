@@ -1,0 +1,13 @@
+MaterialFamily(
+    label: "Voxel Emissive",
+    surface_model: "emissive",
+    texture_slots: [
+        (name: "albedo", kind: albedo, required: true),
+        (name: "emissive", kind: mask, required: true),
+    ],
+    scalar_parameters: [
+        (name: "emissive_strength", default: 1.0, min: 0.0, max: 16.0),
+    ],
+    color_parameters: [],
+)
+

@@ -1,0 +1,18 @@
+ShaderContract(
+    label: "Frame Globals",
+    bind_groups: [
+        (
+            name: "frame",
+            group: 0,
+            bindings: [
+                (
+                    name: "global",
+                    binding: 0,
+                    kind: uniform_buffer,
+                    visibility: [vertex, fragment],
+                ),
+            ],
+        ),
+    ],
+)
+

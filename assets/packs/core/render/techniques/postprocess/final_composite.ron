@@ -1,0 +1,23 @@
+RenderTechnique(
+    label: "Final Composite",
+    pass: "postprocess",
+    stages: (
+        vertex: "core:render/shader_modules/post/final_composite",
+        fragment: Some("core:render/shader_modules/post/final_composite"),
+    ),
+    vertex_layout: "fullscreen_triangle",
+    material_family: "core:render/material_families/sky",
+    contracts: [],
+    depth: (write: false, compare: always),
+    culling: none,
+    blend: opaque,
+    outputs: [
+        "swapchain",
+    ],
+    features: [
+        "final_composite",
+        "fxaa",
+    ],
+    profile_overrides: [],
+)
+

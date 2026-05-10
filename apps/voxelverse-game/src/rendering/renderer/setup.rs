@@ -9,6 +9,7 @@ use crate::rendering::types::Vertex;
 use crate::streaming::{MeshScheduler, SchedulerStats};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
+use vv_pack_compiler::RenderRegistry;
 use wgpu::util::DeviceExt;
 use wgpu::PresentMode;
 use winit::window::Window;
@@ -18,6 +19,7 @@ impl<'a> Renderer<'a> {
         window: &'a Window,
         textures: &TextureRegistry,
         material_colors: &[[f32; 4]],
+        render_registry: &RenderRegistry,
     ) -> Self {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window).unwrap();
@@ -315,10 +317,16 @@ impl<'a> Renderer<'a> {
         });
 
         // --- PIPELINES ---
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: None,
-            source: wgpu::ShaderSource::Wgsl(include_str!("../shader.wgsl").into()),
-        });
+        let terrain_shaders = Self::create_shader_pair(
+            &device,
+            render_registry,
+            "core:render/techniques/terrain/terrain_opaque",
+        );
+        let ui_shaders = Self::create_shader_pair(
+            &device,
+            render_registry,
+            "core:render/techniques/ui/ui_flat",
+        );
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[&global_layout, &local_layout, &atlas_layout],
@@ -329,7 +337,7 @@ impl<'a> Renderer<'a> {
             label: Some("Shadow Pipeline"),
             layout: Some(&layout),
             vertex: wgpu::VertexState {
-                module: &shader,
+                module: &terrain_shaders.vertex,
                 entry_point: "vs_main",
                 buffers: &[super::pipelines::vertex_buffer_layout()],
             },
@@ -358,7 +366,8 @@ impl<'a> Renderer<'a> {
             &device,
             &config,
             &layout,
-            &shader,
+            &terrain_shaders.vertex,
+            &terrain_shaders.fragment,
             wgpu::PrimitiveTopology::TriangleList,
             false,
         );
@@ -366,7 +375,8 @@ impl<'a> Renderer<'a> {
             &device,
             &config,
             &layout,
-            &shader,
+            &terrain_shaders.vertex,
+            &terrain_shaders.fragment,
             wgpu::PrimitiveTopology::TriangleList,
             true,
         );
@@ -374,7 +384,8 @@ impl<'a> Renderer<'a> {
             &device,
             &config,
             &layout,
-            &shader,
+            &terrain_shaders.vertex,
+            &terrain_shaders.fragment,
             wgpu::PrimitiveTopology::LineList,
             false,
         );
@@ -385,12 +396,12 @@ impl<'a> Renderer<'a> {
             label: Some("UI Pipeline"),
             layout: Some(&layout),
             vertex: wgpu::VertexState {
-                module: &shader,
+                module: &ui_shaders.vertex,
                 entry_point: "vs_main",
                 buffers: &[super::pipelines::vertex_buffer_layout()],
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
+                module: &ui_shaders.fragment,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -590,4 +601,62 @@ impl<'a> Renderer<'a> {
             atlas_bind,
         }
     }
+
+    fn create_shader_pair(
+        device: &wgpu::Device,
+        render_registry: &RenderRegistry,
+        technique_key: &str,
+    ) -> RenderShaderPair {
+        let technique = render_registry
+            .technique_by_key(technique_key)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Render technique '{}' is missing from RenderRegistry",
+                    technique_key
+                )
+            });
+        let vertex_module = render_registry
+            .shader_module(technique.vertex_stage)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Render technique '{}' references a missing vertex shader",
+                    technique_key
+                )
+            });
+        let fragment_id = technique.fragment_stage.unwrap_or_else(|| {
+            panic!(
+                "Render technique '{}' must declare a fragment shader for this pipeline",
+                technique_key
+            )
+        });
+        let fragment_module = render_registry
+            .shader_module(fragment_id)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Render technique '{}' references a missing fragment shader",
+                    technique_key
+                )
+            });
+
+        let vertex_label = format!("{} vertex {}", technique.label, vertex_module.source_path);
+        let fragment_label = format!(
+            "{} fragment {}",
+            technique.label, fragment_module.source_path
+        );
+        RenderShaderPair {
+            vertex: device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(&vertex_label),
+                source: wgpu::ShaderSource::Wgsl(vertex_module.source.as_str().into()),
+            }),
+            fragment: device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(&fragment_label),
+                source: wgpu::ShaderSource::Wgsl(fragment_module.source.as_str().into()),
+            }),
+        }
+    }
+}
+
+struct RenderShaderPair {
+    vertex: wgpu::ShaderModule,
+    fragment: wgpu::ShaderModule,
 }

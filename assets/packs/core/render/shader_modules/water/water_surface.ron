@@ -1,0 +1,14 @@
+ShaderModule(
+    language: wgsl,
+    imports: [
+        "core:render/shader_modules/math/constants",
+        "core:render/shader_modules/lighting/sun_light",
+        "core:render/shader_modules/atmosphere/fog",
+    ],
+    feature_class: "water",
+    contracts: [
+        "core:render/shader_contracts/frame_globals",
+    ],
+    allow_override: true,
+)
+

@@ -1,0 +1,20 @@
+ShaderModule(
+    language: wgsl,
+    imports: [
+        "core:render/shader_modules/math/constants",
+        "core:render/shader_modules/color/srgb",
+        "core:render/shader_modules/color/tonemap",
+        "core:render/shader_modules/lighting/sun_light",
+        "core:render/shader_modules/atmosphere/fog",
+        "core:render/shader_modules/voxel/ambient_occlusion",
+        "core:render/shader_modules/voxel/face_variation",
+    ],
+    feature_class: "surface",
+    contracts: [
+        "core:render/shader_contracts/frame_globals",
+        "core:render/shader_contracts/lighting_globals",
+        "core:render/shader_contracts/material_surface",
+    ],
+    allow_override: true,
+)
+

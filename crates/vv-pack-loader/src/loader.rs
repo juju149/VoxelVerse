@@ -17,6 +17,30 @@ pub struct LoadedPack {
     pub tag_sets: Vec<(String, RawTagSetDef)>,
     pub sounds: Vec<(String, RawSoundEventDef)>,
     pub voxel_assets: Option<RawVoxelAssetRegistry>,
+    pub render: RawRenderPack,
+}
+
+/// Raw render content after pack discovery. IDs are still path-derived keys,
+/// while WGSL bytes are loaded only for the compiler to validate and normalize.
+#[derive(Default)]
+pub struct RawRenderPack {
+    pub shader_modules: Vec<LoadedShaderModule>,
+    pub shader_contracts: Vec<(String, RawShaderContract)>,
+    pub techniques: Vec<(String, RawRenderTechnique)>,
+    pub material_families: Vec<(String, RawMaterialFamily)>,
+    pub profiles: Vec<(String, RawRenderProfile)>,
+    pub render_graphs: Vec<(String, RawRenderGraph)>,
+    pub allowed_shader_imports: Option<RawAllowedShaderImports>,
+    pub feature_budget: Option<RawFeatureBudget>,
+    pub performance_classes: Option<RawPerformanceClasses>,
+}
+
+pub struct LoadedShaderModule {
+    pub key: String,
+    pub metadata_path: String,
+    pub source_path: String,
+    pub metadata: RawShaderModule,
+    pub source: String,
 }
 
 #[derive(Default)]
@@ -80,6 +104,7 @@ impl PackLoader {
             tag_sets: load_typed_tree(&defs.join("tags"), &defs, &namespace)?,
             sounds: load_typed_tree(&defs.join("sounds"), &defs, &namespace)?,
             voxel_assets: load_optional_file(&voxel_assets_path)?,
+            render: load_render_pack(pack_dir, &namespace)?,
         })
     }
 
@@ -137,6 +162,117 @@ impl PackLoader {
             )?,
         })
     }
+}
+
+fn load_render_pack(pack_dir: &Path, namespace: &str) -> Result<RawRenderPack, String> {
+    let root = pack_dir.join("render");
+    if !root.exists() {
+        return Ok(RawRenderPack::default());
+    }
+
+    Ok(RawRenderPack {
+        shader_modules: load_shader_modules(&root.join("shader_modules"), &root, namespace)?,
+        shader_contracts: load_render_typed_tree(&root.join("shader_contracts"), &root, namespace)?,
+        techniques: load_render_typed_tree(&root.join("techniques"), &root, namespace)?,
+        material_families: load_render_typed_tree(
+            &root.join("material_families"),
+            &root,
+            namespace,
+        )?,
+        profiles: load_render_typed_tree(&root.join("profiles"), &root, namespace)?,
+        render_graphs: load_render_typed_tree(&root.join("render_graph"), &root, namespace)?,
+        allowed_shader_imports: load_optional_file(
+            &root.join("validation").join("allowed_shader_imports.ron"),
+        )?,
+        feature_budget: load_optional_file(&root.join("validation").join("feature_budget.ron"))?,
+        performance_classes: load_optional_file(
+            &root.join("validation").join("performance_classes.ron"),
+        )?,
+    })
+}
+
+fn load_shader_modules(
+    dir: &Path,
+    render_root: &Path,
+    namespace: &str,
+) -> Result<Vec<LoadedShaderModule>, String> {
+    let mut paths = Vec::new();
+    collect_ron_files(dir, &mut paths)?;
+    paths.sort();
+
+    let mut modules = Vec::with_capacity(paths.len());
+    for metadata_path in paths {
+        let key = derive_render_key(namespace, render_root, &metadata_path)?;
+        let metadata = load_file::<RawShaderModule>(&metadata_path)?;
+        let source_path = metadata_path.with_extension("wgsl");
+        if !source_path.exists() {
+            return Err(format!(
+                "Shader module '{}' is missing WGSL source next to {}",
+                key,
+                metadata_path.display()
+            ));
+        }
+        let source = std::fs::read_to_string(&source_path)
+            .map_err(|e| format!("Cannot read {}: {}", source_path.display(), e))?;
+        modules.push(LoadedShaderModule {
+            key,
+            metadata_path: relative_path_string(render_root, &metadata_path)?,
+            source_path: relative_path_string(render_root, &source_path)?,
+            metadata,
+            source,
+        });
+    }
+
+    Ok(modules)
+}
+
+fn load_render_typed_tree<T: serde::de::DeserializeOwned>(
+    dir: &Path,
+    render_root: &Path,
+    namespace: &str,
+) -> Result<Vec<(String, T)>, String> {
+    let mut paths = Vec::new();
+    collect_ron_files(dir, &mut paths)?;
+    paths.sort();
+
+    paths
+        .into_iter()
+        .map(|path| {
+            let key = derive_render_key(namespace, render_root, &path)?;
+            let def = load_file::<T>(&path)?;
+            Ok((key, def))
+        })
+        .collect()
+}
+
+fn derive_render_key(namespace: &str, render_root: &Path, path: &Path) -> Result<String, String> {
+    let rel = path
+        .strip_prefix(render_root)
+        .map_err(|_| format!("{} is outside {}", path.display(), render_root.display()))?;
+    let mut parts: Vec<String> = rel
+        .iter()
+        .filter_map(|p| p.to_str())
+        .map(str::to_string)
+        .collect();
+    if parts.len() < 2 {
+        return Err(format!(
+            "Render definition path is too shallow: {}",
+            path.display()
+        ));
+    }
+    let last = parts
+        .pop()
+        .expect("len checked")
+        .trim_end_matches(".ron")
+        .to_string();
+    parts.push(strip_def_suffix(&last));
+    Ok(format!("{}:render/{}", namespace, parts.join("/")))
+}
+
+fn relative_path_string(root: &Path, path: &Path) -> Result<String, String> {
+    path.strip_prefix(root)
+        .map_err(|_| format!("{} is outside {}", path.display(), root.display()))
+        .map(|p| p.to_string_lossy().replace('\\', "/"))
 }
 
 fn namespace_from_dir(pack_dir: &Path) -> Result<String, String> {

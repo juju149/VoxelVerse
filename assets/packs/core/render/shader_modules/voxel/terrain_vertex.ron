@@ -1,0 +1,14 @@
+ShaderModule(
+    language: wgsl,
+    imports: [
+        "core:render/shader_modules/math/constants",
+    ],
+    feature_class: "voxel",
+    contracts: [
+        "core:render/shader_contracts/frame_globals",
+        "core:render/shader_contracts/camera_globals",
+        "core:render/shader_contracts/planet_globals",
+    ],
+    allow_override: true,
+)
+

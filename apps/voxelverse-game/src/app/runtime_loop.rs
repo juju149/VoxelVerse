@@ -26,6 +26,7 @@ pub fn run() {
         &window,
         &content.textures,
         content.blocks.material_colors(),
+        &content.render,
     ));
     renderer.render_loading(0.0, "Initialisation planète");
     let mut controller = Controller::new();

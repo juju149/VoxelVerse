@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use vv_pack_compiler::{
-    BlockRegistry, CompiledPlanet, ContentCompiler, ProceduralRegistry, TextureRegistry,
+    BlockRegistry, CompiledPlanet, ContentCompiler, ProceduralRegistry, RenderRegistry,
+    TextureRegistry,
 };
 use vv_pack_loader::PackLoader;
 
@@ -11,6 +12,7 @@ pub struct LoadedCoreContent {
     pub procedural: Arc<ProceduralRegistry>,
     pub procedural_planet_index: usize,
     pub textures: Arc<TextureRegistry>,
+    pub render: Arc<RenderRegistry>,
     pub planet: CompiledPlanet,
     /// Maps content ref strings to file paths relative to the core pack directory.
     pub vox_asset_paths: HashMap<String, String>,
@@ -37,6 +39,12 @@ pub fn load_core_content() -> LoadedCoreContent {
     });
 
     let content_index = vv_pack_compiler::ContentIndex::build(&pack);
+    let compiled_render = ContentCompiler::compile_render_content(&pack).unwrap_or_else(|errors| {
+        for e in &errors {
+            eprintln!("[render content error] {}", e);
+        }
+        panic!("Render content compilation failed; see errors above.");
+    });
     let compiled_models =
         ContentCompiler::compile_block_models(pack.block_models).unwrap_or_else(|errors| {
             for e in &errors {
@@ -115,6 +123,7 @@ pub fn load_core_content() -> LoadedCoreContent {
         procedural: Arc::new(procedural),
         procedural_planet_index,
         textures: Arc::new(texture_registry),
+        render: Arc::new(compiled_render.registry),
         planet,
         vox_asset_paths,
         needed_vox_keys,

@@ -1,0 +1,8 @@
+ShaderModule(
+    language: wgsl,
+    imports: [],
+    feature_class: "math",
+    contracts: [],
+    allow_override: true,
+)
+

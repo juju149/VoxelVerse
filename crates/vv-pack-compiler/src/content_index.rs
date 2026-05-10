@@ -17,6 +17,7 @@
 //!  - `core:vegetation/...`  (vegetation catalog defs)
 //!  - `core:sound/...`       (sound event defs — typed registry, no audio yet)
 //!  - `core:voxel/...`       (generated voxel asset registry)
+//!  - `core:render/...`      (render profiles, shader modules, techniques)
 //!
 //! Domains *not yet* indexed (deferred to later sprint steps because they
 //! require their own refactor):
@@ -73,6 +74,24 @@ impl ContentIndex {
             for asset in &reg.assets {
                 keys.insert(asset.id.0.clone());
             }
+        }
+        for module in &pack.render.shader_modules {
+            keys.insert(module.key.clone());
+        }
+        for (k, _) in &pack.render.shader_contracts {
+            keys.insert(k.clone());
+        }
+        for (k, _) in &pack.render.techniques {
+            keys.insert(k.clone());
+        }
+        for (k, _) in &pack.render.material_families {
+            keys.insert(k.clone());
+        }
+        for (k, _) in &pack.render.profiles {
+            keys.insert(k.clone());
+        }
+        for (k, _) in &pack.render.render_graphs {
+            keys.insert(k.clone());
         }
 
         Self { keys }
