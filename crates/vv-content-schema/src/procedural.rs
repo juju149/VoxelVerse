@@ -6,6 +6,8 @@ use serde::Deserialize;
 pub enum RawNoiseKind {
     Perlin,
     Simplex,
+    #[serde(rename = "opensimplex2s")]
+    OpenSimplex2S,
     Ridged,
     Cellular,
     Constant,
@@ -366,36 +368,49 @@ pub struct RawFaunaDef {
     pub surface_tags: Vec<ContentRef>,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum RawVisualDetailRenderMode {
-    InstancedVoxelProp,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum RawVisualDetailCollision {
-    None,
-}
-
+/// Drop entry for a vox prop — item dropped when the prop is destroyed.
 #[derive(Debug, Clone, Deserialize)]
-pub struct RawVisualDetailDef {
-    pub display_name: String,
-    pub models: Vec<ContentRef>,
-    #[serde(default)]
-    pub surface_blocks: Vec<ContentRef>,
-    #[serde(default)]
-    pub details: Vec<RawVisualDetailItemDef>,
-    pub biome_tags: Vec<ContentRef>,
-    pub density: f32,
-    pub render: RawVisualDetailRenderMode,
-    pub collision: RawVisualDetailCollision,
+pub struct RawVoxPropDropDef {
+    pub item: ContentRef,
+    #[serde(default = "default_drop_count")]
+    pub count: (u32, u32),
+    #[serde(default = "default_drop_chance")]
+    pub chance: f32,
 }
 
+/// One model variant inside a vox prop scatter — a specific .vox file to place,
+/// with its weight and optional drops.
 #[derive(Debug, Clone, Deserialize)]
-pub struct RawVisualDetailItemDef {
-    pub block: ContentRef,
+pub struct RawVoxPropVariantDef {
+    /// Content ref to a specific .vox asset, e.g.
+    /// `"core:voxel/vegetation/flowers/flower_blue_1"`.
+    pub model: ContentRef,
+    #[serde(default = "default_weight")]
     pub weight: u32,
+    #[serde(default)]
+    pub drops: Vec<RawVoxPropDropDef>,
+    /// Vertical offset in voxels above the surface (0 = touching surface).
+    #[serde(default)]
+    pub y_offset: i32,
+}
+
+/// A scatter rule: describes which .vox props to place, where, and how dense.
+/// Files live in `defs/worldgen/prop_scatters/*.prop_scatter.ron`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawVoxPropScatterDef {
+    pub display_name: String,
+    pub placement: RawFeaturePlacementDef,
+    pub variants: Vec<RawVoxPropVariantDef>,
+}
+
+fn default_drop_count() -> (u32, u32) {
+    (1, 1)
+}
+fn default_drop_chance() -> f32 {
+    1.0
+}
+fn default_weight() -> u32 {
+    1
 }
 
 fn default_trunk_thickness() -> (u32, u32) {

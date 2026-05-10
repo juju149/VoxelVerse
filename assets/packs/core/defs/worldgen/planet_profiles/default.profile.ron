@@ -18,7 +18,14 @@
     vegetation: ["core:vegetation/oak_tree", "core:vegetation/birch_tree", "core:vegetation/spruce_tree"],
     structures: ["core:structure/small_ruin"],
     spawns: ["core:spawn/rabbit"],
-    visual_details: ["core:visual_detail/flower_scatter"],
+    visual_details: [
+        "core:prop_scatter/grass_scatter",
+        "core:prop_scatter/savanna_scatter",
+        "core:prop_scatter/snow_scatter",
+        "core:prop_scatter/desert_scatter",
+        "core:prop_scatter/jungle_scatter",
+        "core:prop_scatter/mushroom_scatter",
+    ],
     streaming: (
         near_voxel_lod_radius: 12,
         far_surface_lod_radius: 192,

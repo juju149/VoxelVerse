@@ -11,7 +11,7 @@
 //! * Should an ore replace the surface block here?
 //! * If we're above the surface, is it a tree, a flower, or just air?
 
-use super::{hash4, weighted_detail, GeneratedVoxelContext, ProceduralPlanetTerrain};
+use super::{GeneratedVoxelContext, ProceduralPlanetTerrain};
 use crate::voxel::VoxelId;
 use crate::world::PlanetProfile;
 use glam::Vec3;
@@ -46,41 +46,14 @@ impl ProceduralPlanetTerrain {
     }
 
     pub(super) fn resolve_above_surface_voxel(&self, ctx: &GeneratedVoxelContext) -> VoxelId {
-        let above = (-ctx.depth_from_surface) as u32;
-        let top = self.registry.biome(ctx.surface.primary_biome).surface.top;
-
-        // Walk every vegetation entry the planet uses; the first tree
-        // (planted in the local neighborhood) that claims this voxel wins.
+        // Walk every vegetation entry; the first tree that claims this voxel wins.
         for veg_idx in &self.planet().vegetation_sets {
             let veg = &self.registry.vegetation[*veg_idx];
             if let Some(block) = self.tree_voxel_at(ctx, veg) {
                 return block;
             }
         }
-
-        if above == 1 {
-            let biome = self.registry.biome(ctx.surface.primary_biome);
-            for detail_idx in &self.planet().visual_detail_sets {
-                let detail = &self.registry.visual_details[*detail_idx];
-                if detail.placement.allowed_in_biome(biome)
-                    && detail.placement.surface_blocks.contains(&top)
-                    && self.feature_hit(
-                        detail.placement.field,
-                        ctx.face,
-                        ctx.u,
-                        ctx.v,
-                        detail.placement.density * self.density_scale(),
-                    )
-                {
-                    if let Some(block) =
-                        weighted_detail(&detail.details, hash4(ctx.face, ctx.u, ctx.v, 17))
-                    {
-                        return block;
-                    }
-                }
-            }
-        }
-
+        // Props are not in the voxel grid — query props_for_chunk() separately.
         VoxelId::AIR
     }
 

@@ -12,7 +12,7 @@
         flatness: 0.56,
         hill_field: "core:field/rolling_hills",
         ridge_field: Some("core:field/dune_ridges"),
-        terrace_strength: 0.06,
+        terrace_strength: 0.0,
     ),
     palette: (
         grass: (0.78, 0.60, 0.28),

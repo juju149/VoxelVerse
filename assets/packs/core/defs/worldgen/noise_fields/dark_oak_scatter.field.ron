@@ -1,5 +1,5 @@
-﻿NoiseFieldDef(
-    kind: perlin,
+NoiseFieldDef(
+    kind: opensimplex2s,
     frequency: 1.0,
     amplitude: 1.0,
     octaves: 5,

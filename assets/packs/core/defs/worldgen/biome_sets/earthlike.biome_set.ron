@@ -1,6 +1,6 @@
 ﻿BiomeSetDef(
     display_name: "Earthlike Planet Biomes",
-    blend_radius: 0.12,
+    blend_radius: 0.22,
     selection: ClimateMap((
         entries: [
             // ── OCEAN / COASTAL ──────────────────────────────────────────────────

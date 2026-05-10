@@ -29,6 +29,9 @@ const SUN_COLOR       = vec3<f32>(1.25, 1.12, 0.82);
 const SKY_COLOR       = vec3<f32>(0.28, 0.48, 0.86);
 const GROUND_COLOR    = vec3<f32>(0.11, 0.09, 0.06);
 const SHADOW_OPACITY  = 0.62;
+// Sentinel material index for prop voxels — vertex colour carries the full
+// albedo; no texture or material_colors[] lookup should be performed.
+const PROP_VERTEX_COLOR_ONLY = 0xFFFFu;
 
 // --- VERTEX SHADER ---
 
@@ -135,7 +138,6 @@ const EDGE_MIN_U = 1u;
 const EDGE_MAX_U = 2u;
 const EDGE_MIN_V = 4u;
 const EDGE_MAX_V = 8u;
-const FLAG_ALPHA_TEST = 0x00100000u; // bit 20 — set by cross-plane foliage
 
 struct SurfaceBasis {
     tangent: vec3<f32>,
@@ -309,23 +311,22 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 
     var albedo_rgb: vec3<f32>;
     var roughness: f32;
-    if (color_only) {
+    if (material_layer == PROP_VERTEX_COLOR_ONLY) {
+        // Prop voxel path — vertex colour is the full pre-darkened sRGB colour.
+        // No texture array fetch, no material_colors buffer read, no normal map,
+        // no bevel (prop faces are tiny — rounded edges would be invisible).
+        // The shader's gamma-expansion below handles sRGB→linear conversion.
+        albedo_rgb = vec3<f32>(1.0, 1.0, 1.0); // vertex colour × 1.0 = vertex colour
+        roughness = 0.78; // matte-ish, similar to leaves/grass
+    } else if (color_only) {
         // Cheap path: one storage-buffer fetch, no texture sampling, no
         // normal-map perturbation. The vertex `in.color` already carries
         // AO × skylight tint, so we keep it as a multiplier.
         albedo_rgb = material_colors[material_layer].rgb;
         roughness = 0.7;
-        // Cross-plane foliage opted into alpha test — without textures we
-        // have no per-pixel mask, so render the cards as opaque rectangles.
         N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis, edge_feather);
     } else {
         let albedo_sample = textureSample(t_albedo, s_material, in.uv, i32(material_layer));
-        // Alpha test only when the geometry opted in (cross-plane foliage).
-        // Cube blocks may carry partial alpha in their albedo (e.g. fancy leaves)
-        // and must stay fully opaque outside any dedicated transparency pass.
-        if ((in.packed_tex_index & FLAG_ALPHA_TEST) != 0u && albedo_sample.a < 0.5) {
-            discard;
-        }
         roughness = textureSample(t_roughness, s_material, in.uv, i32(material_layer)).r;
         N = material_normal(N, in.uv, material_layer, basis);
         N = rounded_edge_normal(N, in.uv, edge_mask, local.params.y, basis, edge_feather);

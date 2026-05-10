@@ -6,7 +6,8 @@ use crate::gameplay::{
 };
 use crate::input::Controller;
 use crate::rendering::Renderer;
-use crate::world::PlanetData;
+use crate::world::{PlanetData, VoxModelRegistry};
+use std::sync::Arc;
 use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent};
 use winit::event_loop::EventLoop;
@@ -29,11 +30,21 @@ pub fn run() {
     renderer.render_loading(0.0, "Initialisation planète");
     let mut controller = Controller::new();
     let mut player = Player::new();
+
+    // Pre-load only the .vox prop models referenced by scatter variant defs.
+    renderer.render_loading(0.05, "Chargement des modèles vox…");
+    let prop_models = Arc::new(VoxModelRegistry::load_all(
+        &content.core_pack_dir,
+        &content.vox_asset_paths,
+        &content.needed_vox_keys,
+    ));
+
     let mut planet = PlanetData::new_with_progress(
         content.planet,
         content.blocks,
         content.procedural,
         content.procedural_planet_index,
+        prop_models,
         |progress, message| renderer.render_loading(progress, message),
     );
     renderer.render_loading(1.0, "Monde prêt");

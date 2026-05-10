@@ -80,7 +80,6 @@ impl ContentCompiler {
                 RawBlockMesh::CubeColumn { ambient_occlusion, .. } => {
                     CompiledMesh::CubeColumn { ambient_occlusion }
                 }
-                RawBlockMesh::CrossPlane { .. } => CompiledMesh::CrossPlane,
             };
             let collision = match def.collision {
                 RawBlockCollisionShape::None => CompiledCollision::None,
@@ -451,19 +450,6 @@ impl ContentCompiler {
                     back: side,
                     left: side,
                     right: side,
-                }
-            }
-            CompiledMesh::CrossPlane => {
-                // The mesher reads only one slot for cross-planes, but we
-                // populate all six for layout uniformity.
-                let plane = lookup_slot(&slot_layers, "plane", key, &mut errors);
-                BlockMaterialLayers {
-                    top: plane,
-                    bottom: plane,
-                    front: plane,
-                    back: plane,
-                    left: plane,
-                    right: plane,
                 }
             }
             CompiledMesh::None => BlockMaterialLayers::default(),

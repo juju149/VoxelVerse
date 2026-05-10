@@ -1,0 +1,19 @@
+VoxPropScatterDef(
+    display_name: "Desert Sparse Plants",
+    placement: (
+        allowed_surface_blocks: [
+            "core:block/terrain/red_sand",
+            "core:block/terrain/coarse_dirt",
+        ],
+        biome_tags: ["core:tag/biome/desert", "core:tag/biome/badlands"],
+        density: 0.07,
+        slope_max_degrees: 20,
+        scatter_field: "core:field/dune_ridges",
+    ),
+    variants: [
+        (model: "core:voxel/vegetation/bushes/dead_bush/dead_bush_01", weight: 5),
+        (model: "core:voxel/vegetation/bushes/dead_bush/dead_bush_02", weight: 5),
+        (model: "core:voxel/vegetation/bushes/welwitch/welwitch_01", weight: 3),
+        (model: "core:voxel/vegetation/bushes/dead_plant/dead_plant_1", weight: 2),
+    ],
+)

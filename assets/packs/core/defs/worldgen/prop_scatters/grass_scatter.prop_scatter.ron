@@ -1,0 +1,46 @@
+VoxPropScatterDef(
+    display_name: "Temperate Grass & Flowers",
+    placement: (
+        allowed_surface_blocks: [
+            "core:block/terrain/grass",
+            "core:block/terrain/dirt",
+            "core:block/terrain/podzol",
+        ],
+        biome_tags: [
+            "core:tag/biome/temperate",
+            "core:tag/biome/plains",
+            "core:tag/biome/meadow",
+            "core:tag/biome/forest",
+        ],
+        density: 0.32,
+        slope_max_degrees: 35,
+        scatter_field: "core:field/soft_hills",
+    ),
+    variants: [
+        (model: "core:voxel/vegetation/grass/grass/grass_med_1", weight: 8),
+        (model: "core:voxel/vegetation/grass/grass/grass_med_2", weight: 8),
+        (model: "core:voxel/vegetation/grass/grass/grass_long_1", weight: 5),
+        (model: "core:voxel/vegetation/grass/grass/grass_long_2", weight: 5),
+        (model: "core:voxel/vegetation/grass/ferns/ferns_01", weight: 3),
+        (
+            model: "core:voxel/vegetation/flowers/flower_blue_1",
+            weight: 2,
+            drops: [(item: "core:item/misc/flower", count: (1, 2), chance: 1.0)],
+        ),
+        (
+            model: "core:voxel/vegetation/flowers/flower_pink_1",
+            weight: 2,
+            drops: [(item: "core:item/misc/flower", count: (1, 2), chance: 1.0)],
+        ),
+        (
+            model: "core:voxel/vegetation/flowers/flower_purple_1",
+            weight: 2,
+            drops: [(item: "core:item/misc/flower", count: (1, 2), chance: 1.0)],
+        ),
+        (
+            model: "core:voxel/vegetation/flowers/flower_yellow_0",
+            weight: 1,
+            drops: [(item: "core:item/misc/flower", count: (1, 2), chance: 1.0)],
+        ),
+    ],
+)

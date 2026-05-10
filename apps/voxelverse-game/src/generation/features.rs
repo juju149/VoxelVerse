@@ -18,7 +18,7 @@
 //! path now delegates to these helpers as well.
 
 use crate::content::{
-    CompiledProceduralPlanet, CompiledVegetation, CompiledVisualDetail, ProceduralRegistry,
+    CompiledProceduralPlanet, CompiledVegetation, ProceduralRegistry,
 };
 use crate::generation::procedural::ProceduralPlanetTerrain;
 use crate::voxel::{VoxelCoord, VoxelId, CHUNK_SIZE};
@@ -70,8 +70,10 @@ impl<'a> FeatureBakery<'a> {
         self.terrain.density_scale()
     }
 
-    /// Bake every tree + visual-detail voxel that overlaps the rectangle
+    /// Bake every tree voxel that overlaps the rectangle
     /// `[u_lo, u_hi) × [v_lo, v_hi)` (plus `margin` for face culling).
+    /// Props (vox props) are NOT part of the voxel feature map — query
+    /// `ProceduralPlanetTerrain::props_for_chunk()` separately.
     pub fn bake_chunk(
         &self,
         face: u8,
@@ -104,27 +106,6 @@ impl<'a> FeatureBakery<'a> {
                     self.stamp_tree(
                         veg, face, pu, pv, chunk_u_lo, chunk_v_lo, chunk_u_hi, chunk_v_hi, &mut map,
                     );
-                }
-            }
-        }
-
-        for detail_idx in &self.planet.visual_detail_sets {
-            let detail = &self.registry.visual_details[*detail_idx];
-            for u in chunk_u_lo..chunk_u_hi {
-                for v in chunk_v_lo..chunk_v_hi {
-                    if let Some(block) = self.detail_block_at(detail, face, u, v) {
-                        let coord = VoxelCoord {
-                            face,
-                            layer: self.terrain.get_height(face, u, v).saturating_add(1),
-                            u,
-                            v,
-                        };
-                        // Trees take precedence over flowers.
-                        map.blocks.entry(coord).or_insert(block);
-                        if coord.layer + 1 > map.max_layer_exclusive {
-                            map.max_layer_exclusive = coord.layer + 1;
-                        }
-                    }
                 }
             }
         }
@@ -180,33 +161,6 @@ impl<'a> FeatureBakery<'a> {
         let density = veg.placement.density * self.density_scale();
         self.terrain
             .feature_hit_pub(veg.placement.field, face, pu, pv, density)
-    }
-
-    fn detail_block_at(
-        &self,
-        detail: &CompiledVisualDetail,
-        face: u8,
-        u: u32,
-        v: u32,
-    ) -> Option<VoxelId> {
-        let biome = self
-            .registry
-            .biome(self.terrain.get_biome_id(face, u, v) as usize);
-        if !detail.placement.allowed_in_biome(biome) {
-            return None;
-        }
-        let top = biome.surface.top;
-        if !detail.placement.surface_blocks.contains(&top) {
-            return None;
-        }
-        let density = detail.placement.density * self.density_scale();
-        if !self
-            .terrain
-            .feature_hit_pub(detail.placement.field, face, u, v, density)
-        {
-            return None;
-        }
-        weighted_detail(&detail.details, hash4(face, u, v, 17))
     }
 
     /// Stamp every voxel of one planted tree into `map`, but only the ones
@@ -288,24 +242,6 @@ pub fn scale_range(range: (u32, u32), scale: f32) -> (u32, u32) {
 /// Same idea for single counts (e.g. `core_layers`, `surface_layer`).
 pub fn scale_count(value: u32, scale: f32) -> u32 {
     ((value as f32) * scale).round().max(0.0) as u32
-}
-
-pub fn weighted_detail(
-    items: &[crate::content::CompiledVisualDetailItem],
-    roll: u32,
-) -> Option<VoxelId> {
-    let total = items.iter().map(|i| i.weight).sum::<u32>();
-    if total == 0 {
-        return None;
-    }
-    let mut pick = roll % total;
-    for item in items {
-        if pick < item.weight {
-            return Some(item.block);
-        }
-        pick -= item.weight;
-    }
-    None
 }
 
 /// Convenience helper used by the mesher when it needs the entire

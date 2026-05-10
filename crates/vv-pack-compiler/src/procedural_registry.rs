@@ -8,6 +8,7 @@ use vv_voxel::VoxelId;
 pub enum CompiledNoiseKind {
     Perlin,
     Simplex,
+    OpenSimplex2S,
     Ridged,
     Cellular,
     Constant,
@@ -18,6 +19,7 @@ impl From<&RawNoiseKind> for CompiledNoiseKind {
         match value {
             RawNoiseKind::Perlin => Self::Perlin,
             RawNoiseKind::Simplex => Self::Simplex,
+            RawNoiseKind::OpenSimplex2S => Self::OpenSimplex2S,
             RawNoiseKind::Ridged => Self::Ridged,
             RawNoiseKind::Cellular => Self::Cellular,
             RawNoiseKind::Constant => Self::Constant,
@@ -291,17 +293,54 @@ pub struct CompiledFauna {
     pub sim_distance: u32,
 }
 
+/// Item dropped when a vox prop (or its support block) is destroyed.
 #[derive(Clone, Debug)]
-pub struct CompiledVisualDetailItem {
-    pub block: VoxelId,
-    pub weight: u32,
+pub struct CompiledVoxPropDrop {
+    pub item: String,
+    pub count: (u32, u32),
+    pub chance: f32,
 }
 
+/// One selectable variant in a vox prop scatter — a specific .vox asset key,
+/// its relative weight, optional drops, and vertical offset.
 #[derive(Clone, Debug)]
-pub struct CompiledVisualDetail {
+pub struct CompiledVoxPropVariant {
+    /// Full content ref to a .vox asset, e.g.
+    /// `"core:voxel/vegetation/flowers/flower_blue_1"`.
+    pub model_key: String,
+    pub weight: u32,
+    pub drops: Vec<CompiledVoxPropDrop>,
+    /// Extra voxels above the surface block (0 = touching the surface).
+    pub y_offset: i32,
+}
+
+/// A compiled scatter rule: biome-filtered placement parameters + a list of
+/// weighted .vox variants to instantiate.
+#[derive(Clone, Debug)]
+pub struct CompiledVoxPropScatter {
     pub key: String,
     pub placement: CompiledFeaturePlacement,
-    pub details: Vec<CompiledVisualDetailItem>,
+    pub variants: Vec<CompiledVoxPropVariant>,
+
+    /// Cached total weight for O(1) selection.
+    pub total_weight: u32,
+}
+
+impl CompiledVoxPropScatter {
+    /// Pick a variant index using a pre-hashed integer in `[0, u32::MAX]`.
+    pub fn pick_variant(&self, hash: u32) -> Option<&CompiledVoxPropVariant> {
+        if self.total_weight == 0 || self.variants.is_empty() {
+            return None;
+        }
+        let mut rem = hash % self.total_weight;
+        for v in &self.variants {
+            if rem < v.weight {
+                return Some(v);
+            }
+            rem -= v.weight;
+        }
+        self.variants.last()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -317,7 +356,7 @@ pub struct CompiledProceduralPlanet {
     pub vegetation_sets: Vec<usize>,
     pub structure_sets: Vec<usize>,
     pub fauna_sets: Vec<usize>,
-    pub visual_detail_sets: Vec<usize>,
+    pub vox_prop_scatters: Vec<usize>,
 }
 
 #[derive(Clone, Debug)]
@@ -333,7 +372,7 @@ pub struct ProceduralRegistry {
     pub vegetation: Vec<CompiledVegetation>,
     pub structures: Vec<CompiledStructure>,
     pub fauna: Vec<CompiledFauna>,
-    pub visual_details: Vec<CompiledVisualDetail>,
+    pub vox_prop_scatters: Vec<CompiledVoxPropScatter>,
 }
 
 impl ProceduralRegistry {

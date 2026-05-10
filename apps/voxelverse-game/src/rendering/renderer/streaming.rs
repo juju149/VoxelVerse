@@ -114,7 +114,8 @@ impl<'a> Renderer<'a> {
             }
             self.pending_chunks.insert(key);
             self.pending_dirty.insert(key);
-            let planet_clone = planet.clone();
+            let mut planet_clone = planet.clone();
+            planet_clone.player_surface_key = self.player_chunk_pos;
             let tx = self.mesh_tx.clone();
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
@@ -151,7 +152,8 @@ impl<'a> Renderer<'a> {
                 continue;
             }
             self.pending_chunks.insert(key);
-            let planet_clone = planet.clone();
+            let mut planet_clone = planet.clone();
+            planet_clone.player_surface_key = self.player_chunk_pos;
             let tx = self.mesh_tx.clone();
             rayon::spawn(move || {
                 let started = std::time::Instant::now();

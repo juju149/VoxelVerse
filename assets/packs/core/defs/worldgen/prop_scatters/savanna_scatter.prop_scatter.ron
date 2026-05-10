@@ -1,0 +1,26 @@
+VoxPropScatterDef(
+    display_name: "Savanna Dry Vegetation",
+    placement: (
+        allowed_surface_blocks: [
+            "core:block/terrain/dirt",
+            "core:block/terrain/coarse_dirt",
+        ],
+        biome_tags: ["core:tag/biome/savanna"],
+        density: 0.18,
+        slope_max_degrees: 30,
+        scatter_field: "core:field/soft_hills",
+    ),
+    variants: [
+        (model: "core:voxel/vegetation/grass/grass/grass_long_3", weight: 6),
+        (model: "core:voxel/vegetation/grass/grass/grass_long_4", weight: 6),
+        (model: "core:voxel/vegetation/bushes/savanna_bush/savanna_bush_01", weight: 3),
+        (model: "core:voxel/vegetation/bushes/savanna_bush/savanna_bush_02", weight: 3),
+        (model: "core:voxel/vegetation/bushes/dead_bush/dead_bush_01", weight: 2),
+        (model: "core:voxel/vegetation/bushes/dead_bush/dead_bush_02", weight: 2),
+        (
+            model: "core:voxel/vegetation/flowers/flower_yellow_0",
+            weight: 1,
+            drops: [(item: "core:item/misc/flower", count: (1, 2), chance: 1.0)],
+        ),
+    ],
+)

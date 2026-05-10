@@ -4,8 +4,8 @@ use crate::{
     CompiledClimateAxis, CompiledCurve, CompiledFauna, CompiledFeaturePlacement,
     CompiledNoiseField, CompiledNoiseKind, CompiledNoiseRemap, CompiledOre, CompiledPlanet,
     CompiledProceduralBiome, CompiledProceduralPlanet, CompiledStructure, CompiledTerrainLayer,
-    CompiledTerrainLayerSet, CompiledTreeShapeKind, CompiledVegetation, CompiledVisualDetail,
-    CompiledVisualDetailItem, ContentCompiler, ProceduralRegistry,
+    CompiledTerrainLayerSet, CompiledTreeShapeKind, CompiledVegetation, CompiledVoxPropDrop,
+    CompiledVoxPropScatter, CompiledVoxPropVariant, ContentCompiler, ProceduralRegistry,
 };
 use std::collections::HashMap;
 use vv_content_schema::*;
@@ -34,7 +34,7 @@ impl ContentCompiler {
         let vegetation_map = key_map("vegetation", &raw.vegetation, &mut errors);
         let structure_map = key_map("structure", &raw.structures, &mut errors);
         let fauna_map = key_map("spawn", &raw.fauna, &mut errors);
-        let detail_map = key_map("visual detail", &raw.visual_details, &mut errors);
+        let scatter_map = key_map("prop scatter", &raw.vox_prop_scatters, &mut errors);
 
         let fields = raw
             .fields
@@ -89,10 +89,10 @@ impl ContentCompiler {
             .iter()
             .map(|(key, def)| compile_fauna(key, def))
             .collect();
-        let visual_details = raw
-            .visual_details
+        let vox_prop_scatters = raw
+            .vox_prop_scatters
             .iter()
-            .filter_map(|(key, def)| compile_detail(key, def, &field_map, blocks, &mut errors))
+            .filter_map(|(key, def)| compile_vox_prop_scatter(key, def, &field_map, blocks, &mut errors))
             .collect();
         let planets = raw
             .planets
@@ -109,7 +109,7 @@ impl ContentCompiler {
                     &vegetation_map,
                     &structure_map,
                     &fauna_map,
-                    &detail_map,
+                    &scatter_map,
                     &mut errors,
                 )
             })
@@ -128,7 +128,7 @@ impl ContentCompiler {
                 vegetation,
                 structures,
                 fauna,
-                visual_details,
+                vox_prop_scatters,
             })
         } else {
             Err(errors)
@@ -421,42 +421,38 @@ fn compile_fauna(key: &str, def: &RawFaunaDef) -> CompiledFauna {
     }
 }
 
-fn compile_detail(
+fn compile_vox_prop_scatter(
     key: &str,
-    def: &RawVisualDetailDef,
+    def: &RawVoxPropScatterDef,
     field_map: &HashMap<String, usize>,
     blocks: &BlockRegistry,
     errors: &mut Vec<String>,
-) -> Option<CompiledVisualDetail> {
-    Some(CompiledVisualDetail {
-        key: key.to_string(),
-        placement: CompiledFeaturePlacement {
-            surface_blocks: def
-                .surface_blocks
+) -> Option<CompiledVoxPropScatter> {
+    let placement = compile_placement(key, &def.placement, field_map, blocks, errors)?;
+    let variants: Vec<CompiledVoxPropVariant> = def
+        .variants
+        .iter()
+        .map(|v| CompiledVoxPropVariant {
+            model_key: v.model.0.clone(),
+            weight: v.weight.max(1),
+            drops: v
+                .drops
                 .iter()
-                .filter_map(|block| resolve_block(blocks, key, block, errors))
-                .collect(),
-            slope_max: 0.65,
-            density: def.density.clamp(0.0, 1.0),
-            field: resolve(
-                field_map,
-                "field",
-                key,
-                &ContentRef("core:field/flower_noise".to_string()),
-                errors,
-            )?,
-            biome_tags: refs_to_strings(&def.biome_tags),
-        },
-        details: def
-            .details
-            .iter()
-            .filter_map(|detail| {
-                Some(CompiledVisualDetailItem {
-                    block: resolve_block(blocks, key, &detail.block, errors)?,
-                    weight: detail.weight,
+                .map(|d| CompiledVoxPropDrop {
+                    item: d.item.0.clone(),
+                    count: d.count,
+                    chance: d.chance.clamp(0.0, 1.0),
                 })
-            })
-            .collect(),
+                .collect(),
+            y_offset: v.y_offset,
+        })
+        .collect();
+    let total_weight = variants.iter().map(|v| v.weight).sum();
+    Some(CompiledVoxPropScatter {
+        key: key.to_string(),
+        placement,
+        variants,
+        total_weight,
     })
 }
 
@@ -472,7 +468,7 @@ fn compile_planet(
     vegetation_map: &HashMap<String, usize>,
     structure_map: &HashMap<String, usize>,
     fauna_map: &HashMap<String, usize>,
-    detail_map: &HashMap<String, usize>,
+    scatter_map: &HashMap<String, usize>,
     errors: &mut Vec<String>,
 ) -> Option<CompiledProceduralPlanet> {
     let RawPlanetShapeDef::SphericalVoxelPlanet(shape) = &def.shape;
@@ -520,9 +516,9 @@ fn compile_planet(
         vegetation_sets: resolve_many(vegetation_map, "vegetation", key, &def.vegetation, errors),
         structure_sets: resolve_many(structure_map, "structure", key, &def.structures, errors),
         fauna_sets: resolve_many(fauna_map, "spawn", key, &def.spawns, errors),
-        visual_detail_sets: resolve_many(
-            detail_map,
-            "visual detail",
+        vox_prop_scatters: resolve_many(
+            scatter_map,
+            "prop scatter",
             key,
             &def.visual_details,
             errors,

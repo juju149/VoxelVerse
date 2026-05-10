@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use vv_pack_compiler::{
@@ -11,6 +12,12 @@ pub struct LoadedCoreContent {
     pub procedural_planet_index: usize,
     pub textures: Arc<TextureRegistry>,
     pub planet: CompiledPlanet,
+    /// Maps content ref strings to file paths relative to the core pack directory.
+    pub vox_asset_paths: HashMap<String, String>,
+    /// Only the model keys referenced by scatter variant defs.
+    pub needed_vox_keys: std::collections::HashSet<String>,
+    /// Absolute path to the core pack directory.
+    pub core_pack_dir: PathBuf,
 }
 
 pub fn asset_pack_root() -> PathBuf {
@@ -72,11 +79,29 @@ pub fn load_core_content() -> LoadedCoreContent {
             panic!("Texture loading failed; see errors above.");
         });
 
+    // Build vox asset path index from the registry (content_ref -> relative path).
+    let vox_asset_paths: HashMap<String, String> = pack
+        .voxel_assets
+        .iter()
+        .flat_map(|reg| reg.assets.iter())
+        .map(|def| (def.id.0.clone(), def.path.clone()))
+        .collect();
+
+    // Collect only the model keys actually referenced by scatter variant defs so
+    // we don't load thousands of character/entity .vox models at startup.
+    let needed_vox_keys: std::collections::HashSet<String> = procedural
+        .vox_prop_scatters
+        .iter()
+        .flat_map(|scatter| scatter.variants.iter())
+        .map(|v| v.model_key.clone())
+        .collect();
+
     println!(
-        "Loaded {} blocks, {} procedural biomes, {} material layers, planet '{}' ({}) from pack 'core'.",
+        "Loaded {} blocks, {} procedural biomes, {} material layers, {} vox models needed, planet '{}' ({}) from pack 'core'.",
         compiled_blocks.block_count(),
         procedural.biomes.len(),
         texture_registry.materials().len(),
+        needed_vox_keys.len(),
         planet.key,
         planet.display_name,
     );
@@ -87,5 +112,8 @@ pub fn load_core_content() -> LoadedCoreContent {
         procedural_planet_index,
         textures: Arc::new(texture_registry),
         planet,
+        vox_asset_paths,
+        needed_vox_keys,
+        core_pack_dir,
     }
 }

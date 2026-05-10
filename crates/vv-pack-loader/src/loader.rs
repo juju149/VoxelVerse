@@ -32,7 +32,7 @@ pub struct RawProceduralPack {
     pub vegetation: Vec<(String, RawVegetationDef)>,
     pub structures: Vec<(String, RawStructureDef)>,
     pub fauna: Vec<(String, RawFaunaDef)>,
-    pub visual_details: Vec<(String, RawVisualDetailDef)>,
+    pub vox_prop_scatters: Vec<(String, RawVoxPropScatterDef)>,
 }
 
 pub struct PackLoader;
@@ -130,8 +130,8 @@ impl PackLoader {
                 &namespace,
             )?,
             fauna: load_typed_tree(&root.join("spawns"), &pack_dir.join("defs"), &namespace)?,
-            visual_details: load_typed_tree(
-                &root.join("visual_details"),
+            vox_prop_scatters: load_typed_tree(
+                &root.join("prop_scatters"),
                 &pack_dir.join("defs"),
                 &namespace,
             )?,
@@ -276,7 +276,8 @@ fn derive_worldgen_key(dirs: &[String], stem: &str) -> Result<String, String> {
         "structures" => "structure",
         "terrain_layers" => "terrain_layers",
         "vegetation" => "vegetation",
-        "visual_details" => "visual_detail",
+        "visual_details" => return Err(format!("'visual_details' directory is obsolete; rename to 'prop_scatters' and update files to VoxPropScatterDef format")),
+        "prop_scatters" => "prop_scatter",
         other => return Err(format!("Unknown worldgen category '{}'", other)),
     };
     Ok(format!("{}/{}", domain, stem))

@@ -13,7 +13,6 @@
 //! - `px` / `nx` — local +X / -X face
 //! - `end`       — both axial caps (cube_column)
 //! - `side`      — the four lateral faces (cube_column)
-//! - `plane`     — both crossed planes (cross_plane)
 
 use crate::ContentRef;
 use serde::Deserialize;
@@ -53,10 +52,6 @@ pub enum RawBlockMesh {
         #[serde(default = "default_true")]
         ambient_occlusion: bool,
     },
-
-    /// Two crossed quads (vegetation, flora). Required length: 1.
-    /// Canonical naming: `["plane"]`.
-    CrossPlane { face_layers: Vec<String> },
 }
 
 /// Collision volume of a block model. Sprint 0 keeps the four legacy kinds
@@ -79,7 +74,6 @@ impl RawBlockMesh {
             RawBlockMesh::None => &[],
             RawBlockMesh::Cube { face_layers, .. } => face_layers.as_slice(),
             RawBlockMesh::CubeColumn { face_layers, .. } => face_layers.as_slice(),
-            RawBlockMesh::CrossPlane { face_layers } => face_layers.as_slice(),
         }
     }
 
@@ -90,7 +84,6 @@ impl RawBlockMesh {
             RawBlockMesh::None => 0,
             RawBlockMesh::Cube { .. } => 6,
             RawBlockMesh::CubeColumn { .. } => 2,
-            RawBlockMesh::CrossPlane { .. } => 1,
         }
     }
 
@@ -100,7 +93,6 @@ impl RawBlockMesh {
             RawBlockMesh::None => "none",
             RawBlockMesh::Cube { .. } => "cube",
             RawBlockMesh::CubeColumn { .. } => "cube_column",
-            RawBlockMesh::CrossPlane { .. } => "cross_plane",
         }
     }
 
@@ -109,7 +101,7 @@ impl RawBlockMesh {
         match self {
             RawBlockMesh::Cube { ambient_occlusion, .. }
             | RawBlockMesh::CubeColumn { ambient_occlusion, .. } => *ambient_occlusion,
-            RawBlockMesh::None | RawBlockMesh::CrossPlane { .. } => false,
+            RawBlockMesh::None => false,
         }
     }
 }

@@ -12,7 +12,7 @@
         flatness: 0.36,
         hill_field: "core:field/rolling_hills",
         ridge_field: None,
-        terrace_strength: 0.04,
+        terrace_strength: 0.0,
     ),
     palette: (
         grass: (0.36, 0.66, 0.28),

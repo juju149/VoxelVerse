@@ -1,8 +1,0 @@
-BlockModelDef(
-    format_version: 1,
-    display_name: "Crossed planes (vegetation, flora)",
-    mesh: cross_plane(
-        face_layers: ["plane"],
-    ),
-    collision: none,
-)

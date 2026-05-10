@@ -1,0 +1,28 @@
+VoxPropScatterDef(
+    display_name: "Jungle Ferns & Undergrowth",
+    placement: (
+        allowed_surface_blocks: [
+            "core:block/terrain/grass",
+            "core:block/terrain/dirt",
+            "core:block/terrain/podzol",
+        ],
+        biome_tags: ["core:tag/biome/jungle", "core:tag/biome/swamp"],
+        density: 0.42,
+        slope_max_degrees: 40,
+        scatter_field: "core:field/jungle_scatter",
+    ),
+    variants: [
+        (model: "core:voxel/vegetation/grass/ferns/ferns_01", weight: 8),
+        (model: "core:voxel/vegetation/grass/ferns/ferns_02", weight: 8),
+        (model: "core:voxel/vegetation/grass/ferns/ferns_03", weight: 6),
+        (model: "core:voxel/vegetation/grass/junglefern/junglefern_01", weight: 5),
+        (model: "core:voxel/vegetation/grass/grass/grass_large_0", weight: 4),
+        (model: "core:voxel/vegetation/grass/grass/grass_large_1", weight: 4),
+        (model: "core:voxel/vegetation/bushes/lingonberry/lingonberry_01", weight: 2),
+        (
+            model: "core:voxel/vegetation/flowers/flower_pink_1",
+            weight: 2,
+            drops: [(item: "core:item/misc/flower", count: (1, 2), chance: 1.0)],
+        ),
+    ],
+)

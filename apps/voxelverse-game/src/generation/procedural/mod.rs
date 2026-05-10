@@ -72,11 +72,6 @@ pub struct GeneratedVoxelContext {
 
 #[derive(Clone, Debug)]
 pub enum FeatureStamp {
-    VisualDetail {
-        coord: VoxelCoord,
-        block: VoxelId,
-        priority: i32,
-    },
     Tree {
         coord: VoxelCoord,
         trunk: VoxelId,
@@ -90,6 +85,21 @@ pub enum FeatureStamp {
         stamp: String,
         priority: i32,
     },
+}
+
+/// A vox prop instance to be rendered above the terrain surface.
+/// Props are not in the voxel grid — they are rendered separately.
+#[derive(Clone, Debug)]
+pub struct PropStamp {
+    pub face: u8,
+    pub u: u32,
+    pub v: u32,
+    /// Layer index of the surface block (prop sits at layer + 1).
+    pub surface_layer: u32,
+    /// Content ref to a .vox asset, e.g. `"core:voxel/vegetation/flowers/flower_blue_1"`.
+    pub model_key: String,
+    /// Quarter-turn rotation around the radial axis (0–3).
+    pub rotation: u8,
 }
 
 #[derive(Clone)]
@@ -263,12 +273,120 @@ impl ProceduralPlanetTerrain {
                     u,
                     v,
                 };
-                self.push_visual_details(planet, coord, &surface, &mut stamps);
                 self.push_vegetation(planet, coord, &surface, &mut stamps);
             }
         }
 
         stamps
+    }
+
+    /// Return the vox prop instances that should appear in the given chunk.
+    /// Props are procedurally derived (deterministic) and are NOT stored in the
+    /// voxel grid — this is the authoritative placement query.
+    ///
+    /// # Algorithm — jittered sparse grid
+    ///
+    /// Instead of testing every `(u, v)` voxel column (which creates visible
+    /// grid lines), the chunk is divided into `CELL × CELL` voxel cells.
+    /// For each cell a single candidate column is chosen by hashing the cell
+    /// coordinates into a 2-D jitter offset.  This gives:
+    ///
+    /// * **Natural distribution** — candidates are never perfectly aligned.
+    /// * **~10× fewer surface_sample calls** (32² → (32/CELL)²).
+    /// * **Controllable density** — cell size drives the maximum density cap;
+    ///   the scatter's RON density is a 0..1 probability gate on top.
+    pub fn props_for_chunk(&self, key: SurfaceChunkKey) -> Vec<PropStamp> {
+        let planet = self.planet();
+
+        // Cell size in voxels.  3 → max ~115 candidates per chunk.
+        // Larger = sparser but more natural.  Must be ≥ 1.
+        const CELL: u32 = 3;
+
+        let u0 = key.u_idx * CHUNK_SIZE;
+        let v0 = key.v_idx * CHUNK_SIZE;
+        let u1 = (u0 + CHUNK_SIZE).min(self.voxel_res);
+        let v1 = (v0 + CHUNK_SIZE).min(self.voxel_res);
+
+        // Number of cells that fit in this chunk (may be less at planet edge).
+        let cells_u = (u1 - u0 + CELL - 1) / CELL;
+        let cells_v = (v1 - v0 + CELL - 1) / CELL;
+
+        let mut props = Vec::with_capacity((cells_u * cells_v) as usize);
+
+        for cu in 0..cells_u {
+            for cv in 0..cells_v {
+                // Cell origin in world voxel coords.
+                let cell_u0 = u0 + cu * CELL;
+                let cell_v0 = v0 + cv * CELL;
+
+                // Hash-driven jitter: pick a random column inside this cell.
+                // Scramble with Knuth/Fibonacci primes BEFORE hashing so that
+                // cells spaced exactly CELL=3 apart don't produce correlated
+                // modulo residues.  XOR-ing U and V inputs prevents diagonal
+                // mirroring.
+                let su = cell_u0.wrapping_mul(2_654_435_761u32)
+                    ^ cell_v0.wrapping_mul(805_459_861u32);
+                let sv = cell_v0.wrapping_mul(2_246_822_519u32)
+                    ^ cell_u0.wrapping_mul(1_013_904_223u32);
+                let ju = hash4(key.face, su, sv, 0x1F2E_3D4C)
+                    % CELL.min(u1 - cell_u0);
+                let jv = hash4(key.face, su ^ 0xDEAD_C0DE, sv ^ 0xBEEF_1234, 0xABCD_EF01)
+                    % CELL.min(v1 - cell_v0);
+
+                let u = cell_u0 + ju;
+                let v = cell_v0 + jv;
+
+                // Clamp to valid range (shouldn't be needed but be safe).
+                if u >= u1 || v >= v1 {
+                    continue;
+                }
+
+                let surface = self.surface_sample(key.face, u, v);
+                let biome = self.registry.biome(surface.primary_biome);
+                let top = biome.surface.top;
+
+                for scatter_idx in &planet.vox_prop_scatters {
+                    let scatter = &self.registry.vox_prop_scatters[*scatter_idx];
+                    if !scatter.placement.allowed_in_biome(biome) {
+                        continue;
+                    }
+                    if !scatter.placement.surface_blocks.contains(&top) {
+                        continue;
+                    }
+                    // The density gate uses the jittered (u,v) so clusters and
+                    // clearings from the noise field are still respected.
+                    // Note: density_scale() is NOT applied here — the cell size
+                    // already controls physical density independently of voxel
+                    // resolution.  RON density values are direct 0..1 per-cell
+                    // probabilities (average, before noise modulation).
+                    if self.feature_hit(
+                        scatter.placement.field,
+                        key.face,
+                        u,
+                        v,
+                        scatter.placement.density,
+                    ) {
+                        let hash = hash4(key.face, u, v, 0xDEAD_BEEF);
+                        if let Some(variant) = scatter.pick_variant(hash) {
+                            let rotation = (hash4(key.face, u, v, 0xCAFE) & 3) as u8;
+                            props.push(PropStamp {
+                                face: key.face,
+                                u,
+                                v,
+                                surface_layer: surface.height,
+                                model_key: variant.model_key.clone(),
+                                rotation,
+                            });
+                        }
+                        // Only one prop per cell — avoids stacking scatter types
+                        // on the same column.
+                        break;
+                    }
+                }
+            }
+        }
+
+        props
     }
 
     pub fn lod_surface_blocks(&self, face: u8, u: u32, v: u32) -> (VoxelId, VoxelId) {
@@ -319,43 +437,6 @@ impl ProceduralPlanetTerrain {
 
     // ---- chunk feature stamping (orchestration; per-feature kind logic
     //      is a thin loop here because it's just data-routing) -------------
-
-    fn push_visual_details(
-        &self,
-        planet: &CompiledProceduralPlanet,
-        coord: VoxelCoord,
-        surface: &SurfaceSample,
-        stamps: &mut Vec<FeatureStamp>,
-    ) {
-        let biome = self.registry.biome(surface.primary_biome);
-        let top = biome.surface.top;
-        for detail_idx in &planet.visual_detail_sets {
-            let detail = &self.registry.visual_details[*detail_idx];
-            if !detail.placement.allowed_in_biome(biome) {
-                continue;
-            }
-            if !detail.placement.surface_blocks.contains(&top) {
-                continue;
-            }
-            if self.feature_hit(
-                detail.placement.field,
-                coord.face,
-                coord.u,
-                coord.v,
-                detail.placement.density,
-            ) {
-                if let Some(block) =
-                    weighted_detail(&detail.details, hash4(coord.face, coord.u, coord.v, 17))
-                {
-                    stamps.push(FeatureStamp::VisualDetail {
-                        coord,
-                        block,
-                        priority: 10,
-                    });
-                }
-            }
-        }
-    }
 
     fn push_vegetation(
         &self,
@@ -434,18 +515,6 @@ impl ProceduralPlanetTerrain {
 }
 
 // ---- Small shared helpers -------------------------------------------------
-//
-// `weighted_detail`, `range_pick`, and `hash4` live here so every submodule
-// can pull them in via `super::`.  They are thin re-exports of utilities
-// authored in `crate::generation::features`, kept here as plain free
-// functions so submodules don't need to know about that path.
-
-pub(super) fn weighted_detail(
-    items: &[crate::content::CompiledVisualDetailItem],
-    roll: u32,
-) -> Option<VoxelId> {
-    crate::generation::features::weighted_detail(items, roll)
-}
 
 pub(super) fn range_pick(range: (u32, u32), roll: u32) -> u32 {
     crate::generation::features::range_pick(range, roll)

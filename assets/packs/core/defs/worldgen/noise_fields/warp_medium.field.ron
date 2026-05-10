@@ -1,0 +1,9 @@
+NoiseFieldDef(
+    kind: opensimplex2s,
+    frequency: 1.7,
+    amplitude: 1.0,
+    octaves: 4,
+    persistence: 0.48,
+    lacunarity: 1.91,
+    seed_salt: "warp_medium",
+)

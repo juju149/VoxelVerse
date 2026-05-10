@@ -1,10 +1,10 @@
-﻿NoiseFieldDef(
-    kind: perlin,
-    frequency: 3.0,
+NoiseFieldDef(
+    kind: opensimplex2s,
+    frequency: 2.8,
     amplitude: 1.0,
     octaves: 5,
-    persistence: 0.50,
-    lacunarity: 2.05,
+    persistence: 0.49,
+    lacunarity: 1.96,
     seed_salt: "erosion",
-    domain_warp: Some((field: "core:field/warp_large", strength: 0.16)),
+    domain_warp: Some((field: "core:field/warp_medium", strength: 0.28)),
 )

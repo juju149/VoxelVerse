@@ -3,7 +3,7 @@ use crate::generation::{
     bake_for_chunk, procedural::ProceduralPlanetTerrain, ChunkFeatureMap, CoordSystem,
 };
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use crate::world::{PlanetProfile, VoxelRuntime};
+use crate::world::{PlanetProfile, PropLayer, VoxelRuntime, VoxModelRegistry};
 use std::sync::Arc;
 
 /// Cached runtime block ID for the planet core (deep underground).
@@ -50,6 +50,14 @@ pub struct PlanetData {
     pub resolution: u32,
     pub has_core: bool,
     pub terrain: ProceduralPlanetTerrain,
+    /// Read-only registry of pre-loaded .vox prop models.
+    pub prop_models: Arc<VoxModelRegistry>,
+    /// Mutable set of prop columns the player has explicitly destroyed.
+    pub prop_layer: PropLayer,
+    /// Surface-chunk key of the player's current position (updated each frame
+    /// before rayon workers start).  Used by the mesher's prop LOD gate to skip
+    /// prop geometry in chunks beyond `PROP_LOD_CHUNK_RADIUS`.
+    pub player_surface_key: Option<SurfaceChunkKey>,
     block_ids: PlanetBlockIds,
     planet_def: CompiledPlanet,
     /// Seed stored so resize can regenerate terrain with the same seed.
@@ -69,6 +77,7 @@ impl PlanetData {
             registry,
             procedural,
             procedural_planet_index,
+            Arc::new(VoxModelRegistry::default()),
             |_, _| {},
         )
     }
@@ -78,6 +87,7 @@ impl PlanetData {
         registry: Arc<BlockRegistry>,
         procedural: Arc<ProceduralRegistry>,
         procedural_planet_index: usize,
+        prop_models: Arc<VoxModelRegistry>,
         progress: impl FnMut(f32, &str),
     ) -> Self {
         let profile = PlanetProfile::from_compiled(&planet_def);
@@ -105,6 +115,9 @@ impl PlanetData {
             resolution: profile.resolution,
             has_core: true,
             terrain,
+            prop_models,
+            prop_layer: PropLayer::new(),
+            player_surface_key: None,
             seed: profile.seed,
             planet_def,
         }
@@ -145,6 +158,11 @@ impl PlanetData {
                 dirty_chunks: Vec::new(),
             };
         }
+
+        // If a prop is sitting directly above the broken block, destroy it too.
+        // Props sit at `surface_layer + 1`, so a prop whose surface_layer == coord.layer
+        // is supported by this block.
+        self.prop_layer.break_prop(coord.face, coord.u, coord.v);
 
         self.set_voxel(coord, VoxelId::AIR)
     }

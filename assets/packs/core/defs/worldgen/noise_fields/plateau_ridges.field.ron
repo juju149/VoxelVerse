@@ -1,10 +1,10 @@
 ﻿NoiseFieldDef(
     kind: ridged,
-    frequency: 2.0,
+    frequency: 2.2,
     amplitude: 1.0,
     octaves: 5,
-    persistence: 0.55,
-    lacunarity: 2.05,
+    persistence: 0.53,
+    lacunarity: 2.08,
     seed_salt: "plateau_ridges",
-    domain_warp: Some((field: "core:field/warp_large", strength: 0.10)),
+    domain_warp: Some((field: "core:field/warp_large", strength: 0.18)),
 )

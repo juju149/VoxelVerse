@@ -12,7 +12,7 @@ BiomeDef(
         flatness: 0.66,
         hill_field: "core:field/soft_hills",
         ridge_field: None,
-        terrace_strength: 0.02,
+        terrace_strength: 0.0,
     ),
     palette: (
         grass: (0.50, 0.78, 0.32),

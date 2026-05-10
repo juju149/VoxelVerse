@@ -17,6 +17,7 @@ edition = "2021"
 
 [workspace.dependencies]
 bytemuck = { version = "1.14", features = ["derive"] }
+dot_vox = "5"
 glam = "0.25"
 glyphon = "0.5"
 png = "0.17"

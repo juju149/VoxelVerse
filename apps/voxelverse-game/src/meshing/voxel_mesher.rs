@@ -1,6 +1,6 @@
 use super::{
-    ambient_occlusion, pack_material_edges, pack_material_flags, CpuMesh, CpuVertex, FaceEdgeMask,
-    MeshGen, FLAG_ALPHA_TEST,
+    ambient_occlusion, pack_material_edges, CpuMesh, CpuVertex, FaceEdgeMask, MeshGen,
+    prop_baker::bake_props,
 };
 use crate::content::CompiledMesh;
 use crate::generation::{ChunkFeatureMap, CoordSystem};
@@ -220,7 +220,31 @@ impl MeshGen {
                 Self::add_voxel(id, &accessor, &mut verts, &mut inds, &mut idx);
             }
         }
-        CpuMesh::new(verts, inds)
+
+        let mut mesh = CpuMesh::new(verts, inds);
+
+        // Append .vox prop geometry (grass, flowers, mushrooms, …).
+        // Props are NOT in the voxel grid — query the terrain procedural layer.
+        // Filter out columns where the prop or its support block was broken by the player.
+        //
+        // No LOD gate — all loaded chunks receive full prop geometry.
+        // Performance is bounded by the jittered-grid (~113 candidates/chunk)
+        // and the per-chunk quad cap (MAX_QUADS_PER_CHUNK) already baked into
+        // the baker, so culling by distance is not needed.
+        {
+            let stamps = data.terrain.props_for_chunk(key);
+            if !stamps.is_empty() {
+                let alive_stamps: Vec<_> = stamps
+                    .into_iter()
+                    .filter(|s| data.prop_layer.is_alive(s.face, s.u, s.v))
+                    .collect();
+                if !alive_stamps.is_empty() {
+                    bake_props(&alive_stamps, &data.prop_models, data.profile, &mut mesh);
+                }
+            }
+        }
+
+        mesh
     }
 
     fn add_voxel(
@@ -233,9 +257,6 @@ impl MeshGen {
         let voxel_id = accessor.voxel_id(id);
         let model = accessor.data.content.model_of(voxel_id);
         match &model.mesh {
-            CompiledMesh::CrossPlane => {
-                Self::add_cross_plane_voxel(id, accessor, verts, inds, idx)
-            }
             CompiledMesh::Cube { .. } | CompiledMesh::CubeColumn { .. } => {
                 Self::add_cube_voxel(id, accessor, verts, inds, idx)
             }
@@ -483,98 +504,6 @@ impl MeshGen {
                 true,
             );
         }
-    }
-
-    /// Mesh a Minecraft-style flora block: two diagonal vertical planes forming
-    /// an X-shape inside the unit voxel.  Each plane is emitted twice (front +
-    /// back winding) so lighting is correct from both sides without relying on
-    /// face culling.
-    fn add_cross_plane_voxel(
-        id: VoxelCoord,
-        accessor: &ChunkAccessor,
-        verts: &mut Vec<CpuVertex>,
-        inds: &mut Vec<u32>,
-        idx: &mut u32,
-    ) {
-        let data = accessor.data;
-        let voxel_id = accessor.voxel_id(id);
-        let visual = data.content.visual(voxel_id);
-        let layer_index = visual.layers.top;
-        let tint = visual.tint;
-        let color = [tint[0], tint[1], tint[2]];
-
-        let p = |u_off: u32, v_off: u32, l_off: u32| {
-            CoordSystem::get_vertex_pos(
-                id.face,
-                id.u + u_off,
-                id.v + v_off,
-                id.layer + l_off,
-                data.profile,
-            )
-        };
-
-        // Diagonal A: from (u=0, v=0) to (u=1, v=1) — vertical strip along that diagonal.
-        let a_b0 = p(0, 0, 0);
-        let a_b1 = p(1, 1, 0);
-        let a_t1 = p(1, 1, 1);
-        let a_t0 = p(0, 0, 1);
-        // Diagonal B: from (u=1, v=0) to (u=0, v=1).
-        let b_b0 = p(1, 0, 0);
-        let b_b1 = p(0, 1, 0);
-        let b_t1 = p(0, 1, 1);
-        let b_t0 = p(1, 0, 1);
-
-        let packed = pack_material_flags(layer_index, FaceEdgeMask::default(), FLAG_ALPHA_TEST);
-        let colors = [color, color, color, color];
-
-        // flip_v=true so the texture's top row maps to the top of the voxel —
-        // matches the convention used by cube side faces.
-        // Plane A — both windings.
-        Self::quad(
-            verts,
-            inds,
-            idx,
-            [a_b0, a_b1, a_t1, a_t0],
-            colors,
-            false,
-            packed,
-            false,
-            true,
-        );
-        Self::quad(
-            verts,
-            inds,
-            idx,
-            [a_b1, a_b0, a_t0, a_t1],
-            colors,
-            false,
-            packed,
-            true,
-            true,
-        );
-        // Plane B — both windings.
-        Self::quad(
-            verts,
-            inds,
-            idx,
-            [b_b0, b_b1, b_t1, b_t0],
-            colors,
-            false,
-            packed,
-            false,
-            true,
-        );
-        Self::quad(
-            verts,
-            inds,
-            idx,
-            [b_b1, b_b0, b_t0, b_t1],
-            colors,
-            false,
-            packed,
-            true,
-            true,
-        );
     }
 
     fn quad(

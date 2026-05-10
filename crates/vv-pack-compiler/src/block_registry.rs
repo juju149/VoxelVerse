@@ -17,8 +17,6 @@ pub struct MaterialTextureSet {
 ///   `front = materials["pz"]`, `back = materials["nz"]`,
 ///   `right = materials["px"]`, `left = materials["nx"]`.
 /// - `CubeColumn` (default Y-axis): top/bottom = `end`, others = `side`.
-/// - `CrossPlane`: all six slots replicate `plane` for compatibility with
-///   the existing mesher; only one slot is actually consumed at draw time.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct BlockMaterialLayers {
     pub top: u32,
@@ -44,15 +42,12 @@ impl BlockModelId {
 }
 
 /// Compiled mesh kind, retained on the model for future state transforms
-/// and mesher inspection. The mesher currently dispatches on
-/// `CompiledBlockVisual::shape` for performance — this enum will become the
-/// single source of truth in a later sprint step.
+/// and mesher inspection.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CompiledMesh {
     None,
     Cube { ambient_occlusion: bool },
     CubeColumn { ambient_occlusion: bool },
-    CrossPlane,
 }
 
 /// Compiled collision shape attached to a model.

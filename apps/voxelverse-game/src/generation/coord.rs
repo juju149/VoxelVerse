@@ -93,6 +93,34 @@ impl CoordSystem {
         dir * radius
     }
 
+    /// Fractional version of [`get_vertex_pos`] used by the prop baker to
+    /// place sub-voxel geometry inside a terrain voxel cell.
+    pub fn get_vertex_pos_f32(face: u8, u: f32, v: f32, layer: f32, profile: PlanetProfile) -> Vec3 {
+        let res = profile.resolution as f64;
+        let uf = u as f64;
+        let vf = v as f64;
+
+        let x_local = (uf * 2.0 - res) / res;
+        let y_local = (vf * 2.0 - res) / res;
+
+        let (cx, cy, cz) = match face {
+            0 => (x_local, 1.0, y_local),
+            1 => (x_local, -1.0, y_local),
+            2 => (1.0, x_local, y_local),
+            3 => (-1.0, x_local, y_local),
+            4 => (x_local, y_local, 1.0),
+            _ => (x_local, y_local, -1.0),
+        };
+
+        let dir = crate::math::unit_cube_to_sphere(cx, cy, cz).normalize();
+        let layer_i = layer.floor() as u32;
+        let frac = layer - layer.floor();
+        let r0 = Self::get_layer_radius(layer_i, profile) as f64;
+        let r1 = Self::get_layer_radius(layer_i + 1, profile) as f64;
+        let radius = (r0 + frac as f64 * (r1 - r0)) as f32;
+        dir * radius
+    }
+
     pub fn get_block_center(face: u8, u: u32, v: u32, layer: u32, profile: PlanetProfile) -> Vec3 {
         let res = profile.resolution;
         let rf = res as f64;
