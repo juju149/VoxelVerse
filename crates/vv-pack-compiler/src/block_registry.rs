@@ -1,3 +1,4 @@
+use crate::block_family::{BlockStateValue, CompiledBlockFamily};
 use std::collections::HashMap;
 use vv_voxel::VoxelId;
 
@@ -86,6 +87,7 @@ impl CompiledBlockModel {
 }
 
 /// Registry of all compiled block models. Indexed densely by `BlockModelId`.
+#[derive(Debug)]
 pub struct BlockModelRegistry {
     models: Vec<CompiledBlockModel>,
     key_to_id: HashMap<String, BlockModelId>,
@@ -151,12 +153,19 @@ impl Default for CompiledBlockVisual {
 }
 
 /// A compiled block definition ready for runtime use.
+///
+/// One `CompiledBlock` is generated per state-variant of a family. All
+/// variants of the same block share `family_key`; their `state` field
+/// disambiguates them.
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub struct CompiledBlock {
     pub id: VoxelId,
-    /// Namespaced key derived from pack path, e.g. `"core:dirt"`.
-    pub key: String,
+    /// Namespaced key of the source block (the family). Multiple variants
+    /// share this key; their `state` distinguishes them.
+    pub family_key: String,
+    /// State assignment for this variant. Empty for stateless blocks.
+    pub state: BlockStateValue,
     pub display_name: String,
     pub solid: bool,
     /// RGB color used for voxel rendering until a texture atlas is in place.
@@ -169,9 +178,16 @@ pub struct CompiledBlock {
 
 /// Runtime registry of all compiled blocks.
 /// IDs are compact `u16` indices; `VoxelId(0)` is always air.
+#[derive(Debug)]
 pub struct BlockRegistry {
     blocks: Vec<CompiledBlock>,
-    key_to_id: HashMap<String, VoxelId>,
+    /// Maps a family_key (e.g. `"core:block/.../oak_log"`) to its
+    /// default-variant `VoxelId`. Used by `lookup` to keep the existing
+    /// "give me this block" call sites working transparently.
+    family_default: HashMap<String, VoxelId>,
+    families: Vec<CompiledBlockFamily>,
+    family_for_voxel: HashMap<VoxelId, usize>,
+    family_by_key: HashMap<String, usize>,
     material_sets: Vec<MaterialTextureSet>,
     material_colors: Vec<[f32; 4]>,
     default_place: VoxelId,
@@ -181,18 +197,32 @@ pub struct BlockRegistry {
 
 impl BlockRegistry {
     /// Constructed by `ContentCompiler::compile_blocks` — not by hand.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         blocks: Vec<CompiledBlock>,
-        key_to_id: HashMap<String, VoxelId>,
+        families: Vec<CompiledBlockFamily>,
         material_sets: Vec<MaterialTextureSet>,
         material_colors: Vec<[f32; 4]>,
         default_place: VoxelId,
         planet_core: VoxelId,
         models: BlockModelRegistry,
     ) -> Self {
+        let mut family_default = HashMap::with_capacity(families.len());
+        let mut family_for_voxel = HashMap::with_capacity(blocks.len());
+        let mut family_by_key = HashMap::with_capacity(families.len());
+        for (idx, fam) in families.iter().enumerate() {
+            family_default.insert(fam.family_key.clone(), fam.default_variant);
+            family_by_key.insert(fam.family_key.clone(), idx);
+            for variant_id in &fam.variants {
+                family_for_voxel.insert(*variant_id, idx);
+            }
+        }
         Self {
             blocks,
-            key_to_id,
+            family_default,
+            families,
+            family_for_voxel,
+            family_by_key,
             material_sets,
             material_colors,
             default_place,
@@ -201,8 +231,42 @@ impl BlockRegistry {
         }
     }
 
+    /// Look up the default-variant `VoxelId` for a family. Identical to the
+    /// pre-states behaviour: `lookup("core:block/.../oak_log")` resolves
+    /// to whatever the block's declared default state expands to.
     pub fn lookup(&self, key: &str) -> Option<VoxelId> {
-        self.key_to_id.get(key).copied()
+        self.family_default.get(key).copied()
+    }
+
+    /// Same as `lookup`, but explicit about returning the *default* variant.
+    pub fn lookup_default(&self, family_key: &str) -> Option<VoxelId> {
+        self.family_default.get(family_key).copied()
+    }
+
+    /// Look up a specific variant of a family by its state assignment.
+    pub fn lookup_variant(
+        &self,
+        family_key: &str,
+        state: &BlockStateValue,
+    ) -> Option<VoxelId> {
+        let idx = *self.family_by_key.get(family_key)?;
+        self.families[idx].lookup(state)
+    }
+
+    /// Resolve which family a runtime `VoxelId` belongs to.
+    pub fn family_of(&self, id: VoxelId) -> Option<&CompiledBlockFamily> {
+        let idx = *self.family_for_voxel.get(&id)?;
+        self.families.get(idx)
+    }
+
+    /// Resolve a runtime `VoxelId` to its `BlockStateValue`.
+    pub fn state_of(&self, id: VoxelId) -> Option<&BlockStateValue> {
+        let fam = self.family_of(id)?;
+        fam.state_of(id)
+    }
+
+    pub fn families(&self) -> &[CompiledBlockFamily] {
+        &self.families
     }
 
     pub fn block(&self, id: VoxelId) -> Option<&CompiledBlock> {

@@ -1,3 +1,4 @@
+mod block_family;
 mod block_registry;
 mod compiler;
 mod content_index;
@@ -7,6 +8,9 @@ mod procedural;
 mod procedural_registry;
 mod texture_registry;
 
+pub use block_family::{
+    BlockStateValue, CompiledBlockFamily, MAX_VARIANTS_PER_FAMILY,
+};
 pub use block_registry::{
     BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, CompiledBlock,
     CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, MaterialTextureSet,

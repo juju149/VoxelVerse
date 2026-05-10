@@ -1,3 +1,7 @@
+use crate::block_family::{
+    default_state, enumerate_variants, BlockStateValue, CompiledBlockFamily,
+    MAX_VARIANTS_PER_FAMILY,
+};
 use crate::block_registry::{
     BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, CompiledBlock,
     CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, MaterialTextureSet,
@@ -126,43 +130,19 @@ impl ContentCompiler {
         raw.sort_by(|(a, _), (b, _)| a.cmp(b));
         raw.insert(0, air_entry);
 
-        if raw.len() > MAX_BLOCK_COUNT {
-            return Err(vec![format!(
-                "Block count {} exceeds u16 VoxelId capacity ({}).",
-                raw.len(),
-                MAX_BLOCK_COUNT
-            )]);
-        }
-        if raw.len() > BLOCK_COUNT_WARNING {
-            eprintln!(
-                "[content warning] block count {} approaching u16 VoxelId limit ({}); plan a chunk-palette migration before reaching {}.",
-                raw.len(),
-                MAX_BLOCK_COUNT,
-                MAX_BLOCK_COUNT
-            );
-        }
-
         let mut blocks: Vec<CompiledBlock> = Vec::with_capacity(raw.len());
-        let mut key_to_id: HashMap<String, VoxelId> = HashMap::with_capacity(raw.len());
+        let mut families: Vec<CompiledBlockFamily> = Vec::with_capacity(raw.len());
         let mut material_sets: Vec<MaterialTextureSet> = Vec::new();
         let mut default_place = VoxelId::AIR;
         let mut planet_core = None;
+        let mut next_id: u32 = 0;
 
-        for (idx, (key, def)) in raw.into_iter().enumerate() {
-            let id = VoxelId::new(idx as u16);
-
+        for (key, def) in raw.into_iter() {
             if let Err(e) =
                 check_format_version(def.format_version, BLOCK_FORMAT_VERSION, "block", &key)
             {
                 errors.push(e);
                 continue;
-            }
-
-            if def.runtime.role == Some(BlockRole::DefaultPlace) {
-                default_place = id;
-            }
-            if def.runtime.role == Some(BlockRole::PlanetCore) && planet_core.replace(id).is_some() {
-                errors.push("Only one block may declare role = \"planet_core\".".into());
             }
 
             // Strict reference validation. New checks land here as their
@@ -193,55 +173,132 @@ impl ContentCompiler {
                 &mut errors,
             );
 
-            let Some(model_id) = models.lookup(&def.model.0) else {
-                // The strict ref check above already produced an error;
-                // emit a stub visual so the rest of the pipeline keeps going.
-                blocks.push(CompiledBlock {
-                    id,
-                    key: key.clone(),
-                    display_name: def.display_name,
-                    solid: def.physical.solid,
-                    color: category_color(&def.category),
-                    hardness: def.physical.hardness,
-                    visual: CompiledBlockVisual::default(),
-                });
-                key_to_id.insert(key, id);
+            // Validate state property defaults & enum sanity.
+            def.states
+                .validate_into(&format!("block '{}' states", key), &mut errors);
+
+            // Build the variant list. Stateless blocks return one empty value.
+            let variant_states = enumerate_variants(&def.states);
+            if variant_states.len() > MAX_VARIANTS_PER_FAMILY {
+                errors.push(format!(
+                    "block '{}': {} variants exceeds the per-family cap of {}",
+                    key,
+                    variant_states.len(),
+                    MAX_VARIANTS_PER_FAMILY
+                ));
                 continue;
+            }
+
+            // Resolve the model. If unknown, the strict ref check above
+            // already produced an error — emit stub variants and skip the
+            // visual compilation to keep the pipeline going.
+            let model_id_opt = models.lookup(&def.model.0);
+            let visual_template: CompiledBlockVisual = if let Some(model_id) = model_id_opt {
+                let model = models.get(model_id).expect("model id from same registry");
+                let color = category_color(&def.category);
+                match Self::compile_block_visual(
+                    &key,
+                    color,
+                    def.visual,
+                    model,
+                    model_id,
+                    &material_map,
+                    &mut material_sets,
+                ) {
+                    Ok(v) => v,
+                    Err(err) => {
+                        errors.extend(err);
+                        CompiledBlockVisual {
+                            layers: BlockMaterialLayers::default(),
+                            tint: [1.0, 1.0, 1.0],
+                            flat_color: color,
+                            model_id,
+                        }
+                    }
+                }
+            } else {
+                CompiledBlockVisual::default()
             };
-            let model = models.get(model_id).expect("model id from same registry");
+
+            // Pre-compute the per-family bookkeeping. Each variant gets the
+            // next sequential `VoxelId`.
+            let next_id_after =
+                next_id as usize + variant_states.len();
+            if next_id_after > MAX_BLOCK_COUNT {
+                errors.push(format!(
+                    "Block count would exceed u16 VoxelId capacity ({}) when compiling '{}' ({} variants).",
+                    MAX_BLOCK_COUNT,
+                    key,
+                    variant_states.len()
+                ));
+                continue;
+            }
+
+            let mut family_variants: Vec<VoxelId> = Vec::with_capacity(variant_states.len());
+            let mut state_to_id: HashMap<BlockStateValue, VoxelId> =
+                HashMap::with_capacity(variant_states.len());
+            let mut id_to_state: HashMap<VoxelId, BlockStateValue> =
+                HashMap::with_capacity(variant_states.len());
 
             let color = category_color(&def.category);
-            let visual = match Self::compile_block_visual(
-                &key,
-                color,
-                def.visual,
-                model,
-                model_id,
-                &material_map,
-                &mut material_sets,
-            ) {
-                Ok(visual) => visual,
-                Err(err) => {
-                    errors.extend(err);
-                    CompiledBlockVisual {
-                        layers: BlockMaterialLayers::default(),
-                        tint: [1.0, 1.0, 1.0],
-                        flat_color: color,
-                        model_id,
-                    }
+            for state in variant_states {
+                let id = VoxelId::new(next_id as u16);
+                next_id += 1;
+
+                blocks.push(CompiledBlock {
+                    id,
+                    family_key: key.clone(),
+                    state: state.clone(),
+                    display_name: def.display_name.clone(),
+                    solid: def.physical.solid,
+                    color,
+                    hardness: def.physical.hardness,
+                    visual: visual_template.clone(),
+                });
+                family_variants.push(id);
+                state_to_id.insert(state.clone(), id);
+                id_to_state.insert(id, state);
+            }
+
+            let default_state_value = default_state(&def.states);
+            let default_id = match state_to_id.get(&default_state_value) {
+                Some(id) => *id,
+                None => {
+                    errors.push(format!(
+                        "block '{}': default state '{}' not found among generated variants — likely an invalid declared default",
+                        key, default_state_value
+                    ));
+                    *family_variants.first().expect("at least one variant generated")
                 }
             };
 
-            key_to_id.insert(key.clone(), id);
-            blocks.push(CompiledBlock {
-                id,
-                key,
-                display_name: def.display_name,
-                solid: def.physical.solid,
-                color,
-                hardness: def.physical.hardness,
-                visual,
+            // Default-place / planet-core point at the *default variant*.
+            if def.runtime.role == Some(BlockRole::DefaultPlace) {
+                default_place = default_id;
+            }
+            if def.runtime.role == Some(BlockRole::PlanetCore)
+                && planet_core.replace(default_id).is_some()
+            {
+                errors.push("Only one block may declare role = \"planet_core\".".into());
+            }
+
+            families.push(CompiledBlockFamily {
+                family_key: key,
+                state_schema: def.states.properties.clone(),
+                variants: family_variants,
+                default_variant: default_id,
+                state_to_id,
+                id_to_state,
             });
+        }
+
+        if next_id as usize > BLOCK_COUNT_WARNING {
+            eprintln!(
+                "[content warning] block count {} approaching u16 VoxelId limit ({}); plan a chunk-palette migration before reaching {}.",
+                next_id,
+                MAX_BLOCK_COUNT,
+                MAX_BLOCK_COUNT
+            );
         }
 
         if default_place == VoxelId::AIR {
@@ -250,10 +307,12 @@ impl ContentCompiler {
             }
         }
 
-        let Some(planet_core) = planet_core else {
-            return Err(vec![
-                "Pack must define one block with role = \"planet_core\".".into(),
-            ]);
+        let planet_core = match planet_core {
+            Some(id) => id,
+            None => {
+                errors.push("Pack must define one block with role = \"planet_core\".".into());
+                VoxelId::AIR
+            }
         };
 
         if !errors.is_empty() {
@@ -284,7 +343,7 @@ impl ContentCompiler {
 
         Ok(BlockRegistry::new(
             blocks,
-            key_to_id,
+            families,
             material_sets,
             material_colors,
             default_place,
@@ -520,31 +579,74 @@ mod tests {
             "core:sound/step/stone",
             "core:sound/break/stone",
             "core:sound/place/stone",
+            "core:block_model/air",
             "core:block_model/cube",
+            "core:material/test/all",
         ])
     }
 
     fn synthetic_models() -> BlockModelRegistry {
-        ContentCompiler::compile_block_models(vec![(
-            "core:block_model/cube".to_string(),
-            RawBlockModelDef {
-                format_version: 1,
-                display_name: "Cube".to_string(),
-                mesh: RawBlockMesh::Cube {
-                    face_layers: vec![
-                        "py".into(),
-                        "ny".into(),
-                        "pz".into(),
-                        "nz".into(),
-                        "px".into(),
-                        "nx".into(),
-                    ],
-                    ambient_occlusion: true,
+        ContentCompiler::compile_block_models(vec![
+            (
+                "core:block_model/air".to_string(),
+                RawBlockModelDef {
+                    format_version: 1,
+                    display_name: "Air".into(),
+                    mesh: RawBlockMesh::None,
+                    collision: RawBlockCollisionShape::None,
                 },
-                collision: RawBlockCollisionShape::FullCube,
-            },
-        )])
+            ),
+            (
+                "core:block_model/cube".to_string(),
+                RawBlockModelDef {
+                    format_version: 1,
+                    display_name: "Cube".to_string(),
+                    mesh: RawBlockMesh::Cube {
+                        face_layers: vec![
+                            "py".into(),
+                            "ny".into(),
+                            "pz".into(),
+                            "nz".into(),
+                            "px".into(),
+                            "nx".into(),
+                        ],
+                        ambient_occlusion: true,
+                    },
+                    collision: RawBlockCollisionShape::FullCube,
+                },
+            ),
+        ])
         .expect("models compile")
+    }
+
+    fn synthetic_materials() -> Vec<(String, RawMaterialDef)> {
+        use vv_content_schema::{RawAuthoringDef, RawMaterialCategory, RawTextureSampling};
+        vec![(
+            "core:material/test/all".to_string(),
+            RawMaterialDef {
+                display_name: "Test material".into(),
+                category: RawMaterialCategory::BlockSurface,
+                albedo: ContentRef("core:texture/test/albedo".to_string()),
+                normal: None,
+                roughness: None,
+                tint: None,
+                render: RawRenderMode::Opaque,
+                sampling: RawTextureSampling::PixelArtNearest,
+                atlas: ContentRef("core:atlas/test".to_string()),
+                authoring: RawAuthoringDef {
+                    source: String::new(),
+                    generated_by: String::new(),
+                },
+            },
+        )]
+    }
+
+    fn cube_materials_map() -> HashMap<String, ContentRef> {
+        let mut m = HashMap::new();
+        for slot in ["py", "ny", "pz", "nz", "px", "nx"] {
+            m.insert(slot.into(), ContentRef("core:material/test/all".to_string()));
+        }
+        m
     }
 
     fn block(role: Option<BlockRole>) -> RawBlockDef {
@@ -562,8 +664,8 @@ mod tests {
                 restitution: 0.0,
             },
             visual: RawBlockVisual {
-                render: RawRenderMode::Invisible,
-                materials: HashMap::new(),
+                render: RawRenderMode::Opaque,
+                materials: cube_materials_map(),
             },
             gameplay: RawBlockGameplayDef {
                 preferred_tool: None,
@@ -588,17 +690,26 @@ mod tests {
         }
     }
 
+    fn air_block() -> RawBlockDef {
+        let mut a = block(None);
+        a.runtime.reserved_id = Some(0);
+        a.physical.solid = false;
+        a.physical.opaque = false;
+        a.model = ContentRef("core:block_model/air".to_string());
+        a.visual.render = RawRenderMode::Invisible;
+        a.visual.materials = HashMap::new();
+        a
+    }
+
     #[test]
     fn block_compilation_requires_planet_core_role() {
-        let mut air = block(None);
-        air.runtime.reserved_id = Some(0);
-        air.visual.render = RawRenderMode::Invisible;
+        let air = air_block();
         let err = match ContentCompiler::compile_blocks(
             vec![
                 ("core:block/air/air".to_string(), air),
                 ("core:block/terrain/stone".to_string(), block(None)),
             ],
-            Vec::new(),
+            synthetic_materials(),
             synthetic_models(),
             &synthetic_index(),
         ) {
@@ -611,8 +722,7 @@ mod tests {
 
     #[test]
     fn block_compilation_rejects_dangling_drops() {
-        let mut air = block(None);
-        air.runtime.reserved_id = Some(0);
+        let air = air_block();
         let mut stone = block(Some(BlockRole::PlanetCore));
         stone.gameplay.drops = ContentRef("core:loot/blocks/does_not_exist".to_string());
         let err = match ContentCompiler::compile_blocks(
@@ -620,7 +730,7 @@ mod tests {
                 ("core:block/air/air".to_string(), air),
                 ("core:block/terrain/stone".to_string(), stone),
             ],
-            Vec::new(),
+            synthetic_materials(),
             synthetic_models(),
             &synthetic_index(),
         ) {
@@ -650,12 +760,245 @@ mod tests {
 
         for block in blocks.blocks().iter().filter(|b| b.solid) {
             let layers = block.visual.layers;
-            assert!(layers.top > 0, "{} missing top material", block.key);
-            assert!(layers.bottom > 0, "{} missing bottom material", block.key);
-            assert!(layers.front > 0, "{} missing front material", block.key);
-            assert!(layers.back > 0, "{} missing back material", block.key);
-            assert!(layers.left > 0, "{} missing left material", block.key);
-            assert!(layers.right > 0, "{} missing right material", block.key);
+            assert!(layers.top > 0, "{} missing top material", block.family_key);
+            assert!(layers.bottom > 0, "{} missing bottom material", block.family_key);
+            assert!(layers.front > 0, "{} missing front material", block.family_key);
+            assert!(layers.back > 0, "{} missing back material", block.family_key);
+            assert!(layers.left > 0, "{} missing left material", block.family_key);
+            assert!(layers.right > 0, "{} missing right material", block.family_key);
         }
+    }
+
+    // -----------------------------------------------------------------
+    //  Variant pipeline (Jalon 5C)
+    // -----------------------------------------------------------------
+
+    use vv_content_schema::{RawBlockStateProperty, RawBlockStates};
+
+    fn axis_state(default: &str) -> RawBlockStates {
+        let mut s = RawBlockStates::default();
+        s.properties.insert(
+            "axis".into(),
+            RawBlockStateProperty::Axis {
+                default: default.into(),
+            },
+        );
+        s
+    }
+
+    fn axis_and_bool_state(axis_default: &str, bool_default: bool) -> RawBlockStates {
+        let mut s = RawBlockStates::default();
+        s.properties.insert(
+            "axis".into(),
+            RawBlockStateProperty::Axis {
+                default: axis_default.into(),
+            },
+        );
+        s.properties.insert(
+            "waterlogged".into(),
+            RawBlockStateProperty::Bool {
+                default: bool_default,
+            },
+        );
+        s
+    }
+
+    fn compile_pair(stone_states: RawBlockStates) -> BlockRegistry {
+        let air = air_block();
+        let mut stone = block(Some(BlockRole::PlanetCore));
+        stone.states = stone_states;
+        ContentCompiler::compile_blocks(
+            vec![
+                ("core:block/air/air".to_string(), air),
+                ("core:block/terrain/stone".to_string(), stone),
+            ],
+            synthetic_materials(),
+            synthetic_models(),
+            &synthetic_index(),
+        )
+        .expect("compile ok")
+    }
+
+    fn axis_value(axis: &str) -> BlockStateValue {
+        let mut m = std::collections::BTreeMap::new();
+        m.insert("axis".into(), axis.into());
+        BlockStateValue::from_btree(m)
+    }
+
+    fn axis_water_value(axis: &str, water: &str) -> BlockStateValue {
+        let mut m = std::collections::BTreeMap::new();
+        m.insert("axis".into(), axis.into());
+        m.insert("waterlogged".into(), water.into());
+        BlockStateValue::from_btree(m)
+    }
+
+    #[test]
+    fn block_with_no_states_yields_one_variant() {
+        let reg = compile_pair(RawBlockStates::default());
+        let stone_default = reg
+            .lookup_default("core:block/terrain/stone")
+            .expect("stone default");
+        let fam = reg
+            .family_of(stone_default)
+            .expect("stone family");
+        assert_eq!(fam.variants.len(), 1);
+        assert_eq!(fam.variants[0], stone_default);
+        assert!(reg.state_of(stone_default).unwrap().is_empty());
+    }
+
+    #[test]
+    fn axis_state_yields_three_variants() {
+        let reg = compile_pair(axis_state("y"));
+        let fam = reg
+            .family_of(reg.lookup_default("core:block/terrain/stone").unwrap())
+            .unwrap();
+        assert_eq!(fam.variants.len(), 3);
+        let x = reg
+            .lookup_variant("core:block/terrain/stone", &axis_value("x"))
+            .expect("axis=x");
+        let y = reg
+            .lookup_variant("core:block/terrain/stone", &axis_value("y"))
+            .expect("axis=y");
+        let z = reg
+            .lookup_variant("core:block/terrain/stone", &axis_value("z"))
+            .expect("axis=z");
+        assert_ne!(x, y);
+        assert_ne!(y, z);
+        // Default is axis=y by declaration.
+        assert_eq!(fam.default_variant, y);
+    }
+
+    #[test]
+    fn bool_state_yields_two_variants_false_then_true() {
+        let mut s = RawBlockStates::default();
+        s.properties.insert(
+            "powered".into(),
+            RawBlockStateProperty::Bool { default: false },
+        );
+        let reg = compile_pair(s);
+        let fam = reg
+            .family_of(reg.lookup_default("core:block/terrain/stone").unwrap())
+            .unwrap();
+        assert_eq!(fam.variants.len(), 2);
+        // false comes first canonically.
+        let mut false_state = std::collections::BTreeMap::new();
+        false_state.insert("powered".into(), "false".into());
+        let id_false = reg
+            .lookup_variant(
+                "core:block/terrain/stone",
+                &BlockStateValue::from_btree(false_state),
+            )
+            .unwrap();
+        assert_eq!(fam.variants[0], id_false);
+        assert_eq!(fam.default_variant, id_false);
+    }
+
+    #[test]
+    fn axis_and_bool_state_yields_six_variants() {
+        let reg = compile_pair(axis_and_bool_state("y", false));
+        let fam = reg
+            .family_of(reg.lookup_default("core:block/terrain/stone").unwrap())
+            .unwrap();
+        assert_eq!(fam.variants.len(), 6);
+        // Default = axis=y, waterlogged=false.
+        let id = reg
+            .lookup_variant(
+                "core:block/terrain/stone",
+                &axis_water_value("y", "false"),
+            )
+            .expect("default present");
+        assert_eq!(fam.default_variant, id);
+        // All combinations resolvable.
+        for axis in ["x", "y", "z"] {
+            for water in ["false", "true"] {
+                assert!(reg
+                    .lookup_variant(
+                        "core:block/terrain/stone",
+                        &axis_water_value(axis, water),
+                    )
+                    .is_some(), "missing {axis}/{water}");
+            }
+        }
+    }
+
+    #[test]
+    fn state_of_round_trips() {
+        let reg = compile_pair(axis_and_bool_state("y", true));
+        let id = reg
+            .lookup_variant(
+                "core:block/terrain/stone",
+                &axis_water_value("z", "true"),
+            )
+            .unwrap();
+        let state = reg.state_of(id).unwrap();
+        assert_eq!(state.get("axis"), Some("z"));
+        assert_eq!(state.get("waterlogged"), Some("true"));
+    }
+
+    #[test]
+    fn variant_compilation_is_deterministic_across_runs() {
+        let a = compile_pair(axis_and_bool_state("y", false));
+        let b = compile_pair(axis_and_bool_state("y", false));
+        let fam_a = a
+            .family_of(a.lookup_default("core:block/terrain/stone").unwrap())
+            .unwrap();
+        let fam_b = b
+            .family_of(b.lookup_default("core:block/terrain/stone").unwrap())
+            .unwrap();
+        assert_eq!(fam_a.variants, fam_b.variants);
+        assert_eq!(fam_a.default_variant, fam_b.default_variant);
+    }
+
+    #[test]
+    fn invalid_axis_default_is_rejected() {
+        let air = air_block();
+        let mut stone = block(Some(BlockRole::PlanetCore));
+        stone.states = axis_state("w"); // invalid axis value
+        let err = ContentCompiler::compile_blocks(
+            vec![
+                ("core:block/air/air".to_string(), air),
+                ("core:block/terrain/stone".to_string(), stone),
+            ],
+            synthetic_materials(),
+            synthetic_models(),
+            &synthetic_index(),
+        )
+        .expect_err("invalid default should be rejected");
+        assert!(
+            err.iter().any(|e| e.contains("axis") && e.contains("'w'")),
+            "expected axis-default error, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn variant_count_over_cap_is_rejected() {
+        // Build a 257-value Enum; cartesian product = 257 > 256.
+        let values: Vec<String> = (0..257).map(|i| format!("v{i}")).collect();
+        let mut s = RawBlockStates::default();
+        s.properties.insert(
+            "k".into(),
+            RawBlockStateProperty::Enum {
+                values: values.clone(),
+                default: "v0".into(),
+            },
+        );
+        let air = air_block();
+        let mut stone = block(Some(BlockRole::PlanetCore));
+        stone.states = s;
+        let err = ContentCompiler::compile_blocks(
+            vec![
+                ("core:block/air/air".to_string(), air),
+                ("core:block/terrain/stone".to_string(), stone),
+            ],
+            synthetic_materials(),
+            synthetic_models(),
+            &synthetic_index(),
+        )
+        .expect_err("over-cap variant count should be rejected");
+        assert!(
+            err.iter()
+                .any(|e| e.contains("exceeds the per-family cap of 256")),
+            "expected cap error, got: {err:?}"
+        );
     }
 }

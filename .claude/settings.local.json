@@ -19,7 +19,13 @@
       "Bash(xargs wc -l)",
       "Bash(grep -E \"\\\\.vox$\")",
       "Bash(grep -E \"\\\\.png|\\\\.mp3|\\\\.ogg|\\\\.wav$\")",
-      "Bash(xargs head -20)"
+      "Bash(xargs head -20)",
+      "Bash(git check-ignore *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(python3 tools/migrate_blocks_to_models.py)",
+      "Bash(git commit *)",
+      "Bash(grep -nB1 -A2 \"let mut air = block\" crates/vv-pack-compiler/src/compiler.rs)"
     ]
   }
 }

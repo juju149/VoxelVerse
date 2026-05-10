@@ -23,5 +23,6 @@ pub use props::*;
 pub use sound::*;
 pub use version::*;
 pub use visual::{
-    ContentRef, RawMaterialDef, RawMaterialTextureSet, RawRenderMode, TextureRef,
+    ContentRef, RawAuthoringDef, RawMaterialCategory, RawMaterialDef, RawMaterialTextureSet,
+    RawMaterialTint, RawRenderMode, RawTextureSampling, TextureRef,
 };
