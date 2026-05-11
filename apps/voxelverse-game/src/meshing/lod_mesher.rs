@@ -1,117 +1,234 @@
+//! Voxelized stair-step LOD mesher.
+//!
+//! Each LOD tile is divided into LOD_GRID_RES × LOD_GRID_RES "macro-voxels".
+//! One macro-voxel covers `tile_size / LOD_GRID_RES` base voxels per side, so
+//! the macro size doubles every LOD level (2, 4, 8, 16, 32… base voxels) — the
+//! progression the engine needs to keep the cubic voxel aesthetic continuous
+//! from the player all the way to the planet horizon.
+//!
+//! For each macro cell we emit:
+//!   * a top quad at the cell's height (max of its four corner samples), and
+//!   * up to four vertical side walls down to each neighbour's height (or a
+//!     fixed skirt depth when the neighbour belongs to a different LOD tile).
+//!
+//! Vertex colours are baked from the same biome / surface block tables the
+//! voxel mesher uses, so distant terrain reads as the same material seen up
+//! close — no texture sampling is performed (the LOD mesh stays on the
+//! `VERTEX_COLOR_MATERIAL_SENTINEL` material).
+
 use super::{CpuMesh, CpuVertex, MeshGen, VERTEX_COLOR_MATERIAL_SENTINEL};
 use crate::content::TerrainPalette;
 use crate::generation::CoordSystem;
-use crate::voxel::LodKey;
+use crate::voxel::{LodKey, CHUNK_SIZE};
 use crate::world::PlanetData;
+use glam::Vec3;
 
-const LOD_GRID_RES: u32 = 64;
-
-#[derive(Clone, Copy)]
-struct LodSample {
-    pos: glam::Vec3,
-    u: u32,
-    v: u32,
-    height: u32,
-}
+/// Cells per side per LOD tile.  Equal to `CHUNK_SIZE` so the macro-voxel size
+/// matches one base voxel chunk at the smallest LOD level and doubles cleanly
+/// from there.
+const LOD_GRID_RES: u32 = CHUNK_SIZE;
 
 impl MeshGen {
     pub fn generate_lod_mesh(key: LodKey, data: &PlanetData) -> CpuMesh {
-        let row_len = LOD_GRID_RES + 1;
-        let mut verts = Vec::with_capacity((row_len * row_len + row_len * 4) as usize);
-        let mut inds =
-            Vec::with_capacity(((LOD_GRID_RES * LOD_GRID_RES + LOD_GRID_RES * 4) * 6) as usize);
+        let n = LOD_GRID_RES;
+        // Base-voxel size of one macro cell.  `key.size` is the tile width in
+        // base voxels; `step` divides it into `n` cells.  Clamped to at least 1
+        // to keep things well-defined for tiles smaller than the grid (which
+        // the quadtree never emits today but the guard costs nothing).
+        let step = (key.size / n).max(1);
+        let res = data.resolution;
 
-        let sample_side = (LOD_GRID_RES + 3) as usize;
-        let samples = build_lod_samples(key, data, sample_side);
-
-        let sample_at = |gx: u32, gy: u32| -> LodSample {
-            samples[((gy + 1) as usize * sample_side) + (gx + 1) as usize]
+        // Sample heights at the (n+1) × (n+1) cell corners.  Cells later read
+        // four corners and take the max so the top sits on the upper envelope
+        // of the heightfield — prevents the LOD from punching below real
+        // terrain when ground rises steeply between samples.
+        let corner_side = (n + 1) as usize;
+        let mut h_corners = Vec::with_capacity(corner_side * corner_side);
+        for cj in 0..=n {
+            for ci in 0..=n {
+                let u = (key.x + ci * step).min(res.saturating_sub(1));
+                let v = (key.y + cj * step).min(res.saturating_sub(1));
+                h_corners.push(data.terrain.get_height(key.face, u, v));
+            }
+        }
+        let cell_h = |i: u32, j: u32| -> u32 {
+            let c00 = h_corners[(j as usize) * corner_side + i as usize];
+            let c10 = h_corners[(j as usize) * corner_side + (i + 1) as usize];
+            let c01 = h_corners[((j + 1) as usize) * corner_side + i as usize];
+            let c11 = h_corners[((j + 1) as usize) * corner_side + (i + 1) as usize];
+            c00.max(c10).max(c01).max(c11)
         };
-        let neighbor_at = |gx: i32, gy: i32| -> LodSample {
-            samples[((gy + 1) as usize * sample_side) + (gx + 1) as usize]
-        };
 
-        for vy in 0..=LOD_GRID_RES {
-            for ux in 0..=LOD_GRID_RES {
-                let sample = sample_at(ux, vy);
-                let pos = sample.pos;
+        let mut heights = vec![0u32; (n * n) as usize];
+        for j in 0..n {
+            for i in 0..n {
+                heights[(j * n + i) as usize] = cell_h(i, j);
+            }
+        }
 
-                let tangent_u = neighbor_at(ux as i32 + 1, vy as i32).pos
-                    - neighbor_at(ux as i32 - 1, vy as i32).pos;
-                let tangent_v = neighbor_at(ux as i32, vy as i32 + 1).pos
-                    - neighbor_at(ux as i32, vy as i32 - 1).pos;
+        // Skirt depth (layers) at tile boundary so neighbouring LOD tiles at
+        // different resolutions never reveal a gap underneath.
+        let radius = data.profile.surface_radius;
+        let tile_phys = (key.size as f32 / res as f32) * radius;
+        let skirt_layers = ((tile_phys * 0.10) / data.profile.layer_height.max(1e-3))
+            .clamp(4.0, 800.0) as u32;
 
-                let radial = pos.normalize();
-                let mut normal = tangent_u.cross(tangent_v).normalize();
-                if normal.dot(radial) < 0.0 {
-                    normal = -normal;
+        let mut verts: Vec<CpuVertex> = Vec::with_capacity(((n * n) * 5 * 4) as usize / 4);
+        let mut inds: Vec<u32> = Vec::with_capacity(((n * n) * 5 * 6) as usize / 4);
+
+        for cj in 0..n {
+            for ci in 0..n {
+                let h = heights[(cj * n + ci) as usize];
+
+                // Cell extent on the planet grid (in base voxels).  Clamped to
+                // the planet resolution so edge cells fall back onto the same
+                // boundary sample, matching what `cell_h` saw.
+                let u0 = (key.x + ci * step).min(res);
+                let u1 = (key.x + (ci + 1) * step).min(res);
+                let v0 = (key.y + cj * step).min(res);
+                let v1 = (key.y + (cj + 1) * step).min(res);
+
+                // Mid-sample drives colour / biome lookup.  Clamped to a valid
+                // grid index.
+                let mid_u = (u0 + (u1 - u0) / 2).min(res.saturating_sub(1));
+                let mid_v = (v0 + (v1 - v0) / 2).min(res.saturating_sub(1));
+
+                let p_bl = CoordSystem::get_vertex_pos(key.face, u0, v0, h, data.profile);
+                let p_br = CoordSystem::get_vertex_pos(key.face, u1, v0, h, data.profile);
+                let p_tr = CoordSystem::get_vertex_pos(key.face, u1, v1, h, data.profile);
+                let p_tl = CoordSystem::get_vertex_pos(key.face, u0, v1, h, data.profile);
+
+                let cell_center = (p_bl + p_br + p_tr + p_tl) * 0.25;
+                let radial = cell_center.normalize_or_zero();
+                let slope = 1.0_f32; // top face is by construction radial-aligned at LOD scale
+                let top_color = lod_surface_color(
+                    key.face, mid_u, mid_v, h, slope, data,
+                );
+                let wall_color = lod_wall_color(key.face, mid_u, mid_v, h, data);
+
+                push_quad(
+                    &mut verts,
+                    &mut inds,
+                    [p_bl, p_br, p_tr, p_tl],
+                    radial.to_array(),
+                    top_color,
+                );
+
+                let mut emit_wall = |bl: Vec3, br: Vec3, tr: Vec3, tl: Vec3| {
+                    let edge1 = br - bl;
+                    let edge2 = tl - bl;
+                    let mut nrm = edge1.cross(edge2).normalize_or_zero();
+                    let outward_hint = ((bl + br + tr + tl) * 0.25) - cell_center;
+                    if nrm.dot(outward_hint) < 0.0 {
+                        nrm = -nrm;
+                    }
+                    push_quad(&mut verts, &mut inds, [bl, br, tr, tl], nrm.to_array(), wall_color);
+                };
+
+                // -U wall (at u = u0)
+                let nh = if ci == 0 {
+                    h.saturating_sub(skirt_layers)
+                } else {
+                    heights[(cj * n + ci - 1) as usize]
+                };
+                if nh < h {
+                    let bl = CoordSystem::get_vertex_pos(key.face, u0, v0, nh, data.profile);
+                    let br = CoordSystem::get_vertex_pos(key.face, u0, v1, nh, data.profile);
+                    let tr = CoordSystem::get_vertex_pos(key.face, u0, v1, h, data.profile);
+                    let tl = CoordSystem::get_vertex_pos(key.face, u0, v0, h, data.profile);
+                    emit_wall(bl, br, tr, tl);
                 }
 
-                let slope = normal.dot(radial).abs();
-                let color = lod_vertex_color(key, data, sample, slope);
+                // +U wall (at u = u1)
+                let nh = if ci == n - 1 {
+                    h.saturating_sub(skirt_layers)
+                } else {
+                    heights[(cj * n + ci + 1) as usize]
+                };
+                if nh < h {
+                    let bl = CoordSystem::get_vertex_pos(key.face, u1, v1, nh, data.profile);
+                    let br = CoordSystem::get_vertex_pos(key.face, u1, v0, nh, data.profile);
+                    let tr = CoordSystem::get_vertex_pos(key.face, u1, v0, h, data.profile);
+                    let tl = CoordSystem::get_vertex_pos(key.face, u1, v1, h, data.profile);
+                    emit_wall(bl, br, tr, tl);
+                }
 
-                verts.push(CpuVertex {
-                    pos: pos.to_array(),
-                    uv: [0.0, 0.0],
-                    color,
-                    normal: normal.to_array(),
-                    tex_index: VERTEX_COLOR_MATERIAL_SENTINEL,
-                });
+                // -V wall (at v = v0)
+                let nh = if cj == 0 {
+                    h.saturating_sub(skirt_layers)
+                } else {
+                    heights[((cj - 1) * n + ci) as usize]
+                };
+                if nh < h {
+                    let bl = CoordSystem::get_vertex_pos(key.face, u1, v0, nh, data.profile);
+                    let br = CoordSystem::get_vertex_pos(key.face, u0, v0, nh, data.profile);
+                    let tr = CoordSystem::get_vertex_pos(key.face, u0, v0, h, data.profile);
+                    let tl = CoordSystem::get_vertex_pos(key.face, u1, v0, h, data.profile);
+                    emit_wall(bl, br, tr, tl);
+                }
+
+                // +V wall (at v = v1)
+                let nh = if cj == n - 1 {
+                    h.saturating_sub(skirt_layers)
+                } else {
+                    heights[((cj + 1) * n + ci) as usize]
+                };
+                if nh < h {
+                    let bl = CoordSystem::get_vertex_pos(key.face, u0, v1, nh, data.profile);
+                    let br = CoordSystem::get_vertex_pos(key.face, u1, v1, nh, data.profile);
+                    let tr = CoordSystem::get_vertex_pos(key.face, u1, v1, h, data.profile);
+                    let tl = CoordSystem::get_vertex_pos(key.face, u0, v1, h, data.profile);
+                    emit_wall(bl, br, tr, tl);
+                }
             }
         }
-
-        for y in 0..LOD_GRID_RES {
-            for x in 0..LOD_GRID_RES {
-                let tl = y * row_len + x;
-                let tr = tl + 1;
-                let bl = (y + 1) * row_len + x;
-                let br = bl + 1;
-
-                inds.extend_from_slice(&[tl, bl, tr, tr, bl, br]);
-            }
-        }
-
-        let radius = data.profile.surface_radius;
-        let chunk_phys_size = (key.size as f32 / data.resolution as f32) * radius;
-        let skirt_depth = (chunk_phys_size * 0.15).clamp(4.0, 500.0);
-
-        add_skirt_edge(&mut verts, &mut inds, row_len, 0, false, skirt_depth);
-        add_skirt_edge(&mut verts, &mut inds, row_len, 1, true, skirt_depth);
-        add_skirt_edge(&mut verts, &mut inds, row_len, 2, true, skirt_depth);
-        add_skirt_edge(&mut verts, &mut inds, row_len, 3, false, skirt_depth);
 
         CpuMesh::new(verts, inds)
     }
 }
 
-fn build_lod_samples(key: LodKey, data: &PlanetData, sample_side: usize) -> Vec<LodSample> {
-    let mut samples = Vec::with_capacity(sample_side * sample_side);
-    for gy in -1..=(LOD_GRID_RES as i32 + 1) {
-        for gx in -1..=(LOD_GRID_RES as i32 + 1) {
-            let step_u = (gx as i64 * key.size as i64) / LOD_GRID_RES as i64;
-            let step_v = (gy as i64 * key.size as i64) / LOD_GRID_RES as i64;
-            let u = (key.x as i64 + step_u).clamp(0, data.resolution as i64) as u32;
-            let v = (key.y as i64 + step_v).clamp(0, data.resolution as i64) as u32;
-            let height = data.terrain.get_height(key.face, u, v);
-            let pos = CoordSystem::get_vertex_pos(key.face, u, v, height, data.profile);
-            samples.push(LodSample { pos, u, v, height });
-        }
+fn push_quad(
+    verts: &mut Vec<CpuVertex>,
+    inds: &mut Vec<u32>,
+    pos: [Vec3; 4],
+    normal: [f32; 3],
+    color: [f32; 3],
+) {
+    let base = verts.len() as u32;
+    for p in pos {
+        verts.push(CpuVertex {
+            pos: p.to_array(),
+            uv: [0.0, 0.0],
+            color,
+            normal,
+            tex_index: VERTEX_COLOR_MATERIAL_SENTINEL,
+        });
     }
-    samples
+    // Pipeline runs with `cull_mode: None`, so either winding lights correctly
+    // (per-vertex normals carry the real orientation).  We use both windings to
+    // make sure the quad is solid from either side.
+    inds.extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
 }
 
-fn lod_vertex_color(key: LodKey, data: &PlanetData, sample: LodSample, slope: f32) -> [f32; 3] {
-    if data.has_core && sample.height < data.profile.core_layers {
+fn lod_surface_color(
+    face: u8,
+    u: u32,
+    v: u32,
+    height: u32,
+    slope: f32,
+    data: &PlanetData,
+) -> [f32; 3] {
+    if data.has_core && height < data.profile.core_layers {
         return TerrainPalette::LOD_CORE;
     }
-
-    let u = sample.u.min(data.resolution.saturating_sub(1));
-    let v = sample.v.min(data.resolution.saturating_sub(1));
+    let res = data.resolution;
+    let u = u.min(res.saturating_sub(1));
+    let v = v.min(res.saturating_sub(1));
     let biome = data
         .terrain
         .registry()
-        .biome(data.terrain.get_biome_id(key.face, u, v) as usize);
-    let (surface_block, subsurface_block) = data.terrain.lod_surface_blocks(key.face, u, v);
+        .biome(data.terrain.get_biome_id(face, u, v) as usize);
+    let (surface_block, subsurface_block) = data.terrain.lod_surface_blocks(face, u, v);
     let surface_color = data.terrain_visuals.block_color(surface_block);
     let subsurface_color = data.terrain_visuals.block_color(subsurface_block);
 
@@ -119,7 +236,7 @@ fn lod_vertex_color(key: LodKey, data: &PlanetData, sample: LodSample, slope: f3
     let height_norm = if data.profile.max_terrain_offset == 0 {
         0.0
     } else {
-        ((sample.height as f32 - data.profile.surface_layer as f32)
+        ((height as f32 - data.profile.surface_layer as f32)
             / data.profile.max_terrain_offset as f32)
             .clamp(0.0, 1.0)
     };
@@ -129,12 +246,7 @@ fn lod_vertex_color(key: LodKey, data: &PlanetData, sample: LodSample, slope: f3
     let is_cold = has_biome_tag(biome, "cold");
     let is_dry = has_biome_tag(biome, "dry") || has_biome_tag(biome, "desert");
 
-    // Distant terrain must read like the same textured blocks seen up close.
-    // Biome tint is a small push for grass-like surfaces, not a replacement
-    // for the material albedo.
-    let biome_ground = if is_frozen {
-        surface_color
-    } else if is_dry {
+    let biome_ground = if is_frozen || is_dry {
         surface_color
     } else {
         mix(surface_color, biome.color_tint.grass, 0.22)
@@ -155,10 +267,22 @@ fn lod_vertex_color(key: LodKey, data: &PlanetData, sample: LodSample, slope: f3
         color = mix(color, surface_color, snow_amount);
     }
 
-    // Tiny deterministic macro variation prevents planet-scale LOD tiles from
-    // looking like flat paint while keeping transitions stable across rebuilds.
-    let variation = 0.94 + hash01(key.face, u, v) * 0.12;
+    let variation = 0.94 + hash01(face, u, v) * 0.12;
     scale_color(color, variation)
+}
+
+fn lod_wall_color(face: u8, u: u32, v: u32, height: u32, data: &PlanetData) -> [f32; 3] {
+    if data.has_core && height < data.profile.core_layers {
+        return TerrainPalette::LOD_CORE;
+    }
+    let res = data.resolution;
+    let u = u.min(res.saturating_sub(1));
+    let v = v.min(res.saturating_sub(1));
+    let (_surface, subsurface) = data.terrain.lod_surface_blocks(face, u, v);
+    let base = data.terrain_visuals.block_color(subsurface);
+    // Walls are vertical → faked AO + slight darkening so steps read as cliffs
+    // rather than blending into the top face.
+    scale_color(base, 0.7)
 }
 
 fn has_biome_tag(biome: &crate::content::CompiledProceduralBiome, needle: &str) -> bool {
@@ -203,54 +327,4 @@ fn hash01(face: u8, u: u32, v: u32) -> f32 {
     x = x.wrapping_mul(0x846C_A68B);
     x ^= x >> 16;
     x as f32 / u32::MAX as f32
-}
-
-fn add_skirt_edge(
-    verts: &mut Vec<CpuVertex>,
-    inds: &mut Vec<u32>,
-    row_len: u32,
-    edge: u8,
-    reverse: bool,
-    skirt_depth: f32,
-) {
-    let base_idx = verts.len() as u32;
-
-    for i in 0..=LOD_GRID_RES {
-        let (ux, vy) = edge_coord(edge, i);
-        let src_v = verts[(vy * row_len + ux) as usize];
-        let p = glam::Vec3::from_array(src_v.pos);
-        let down = -p.normalize() * skirt_depth;
-
-        verts.push(CpuVertex {
-            pos: (p + down).to_array(),
-            uv: [0.0, 0.0],
-            color: src_v.color,
-            normal: src_v.normal,
-            tex_index: VERTEX_COLOR_MATERIAL_SENTINEL,
-        });
-    }
-
-    for i in 0..LOD_GRID_RES {
-        let (s1x, s1y) = edge_coord(edge, i);
-        let (s2x, s2y) = edge_coord(edge, i + 1);
-        let s1 = s1y * row_len + s1x;
-        let s2 = s2y * row_len + s2x;
-        let k1 = base_idx + i;
-        let k2 = base_idx + i + 1;
-
-        if reverse {
-            inds.extend_from_slice(&[s1, k2, k1, s1, s2, k2]);
-        } else {
-            inds.extend_from_slice(&[s1, k1, k2, s1, k2, s2]);
-        }
-    }
-}
-
-fn edge_coord(edge: u8, i: u32) -> (u32, u32) {
-    match edge {
-        0 => (i, 0),
-        1 => (i, LOD_GRID_RES),
-        2 => (0, i),
-        _ => (LOD_GRID_RES, i),
-    }
 }
