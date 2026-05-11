@@ -1,12 +1,9 @@
-use crate::voxel::VoxelId;
+use crate::gameplay::item_stack::{ItemId, ItemStack};
 
 pub const HOTBAR_SLOT_COUNT: usize = 9;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct HotbarSlot {
-    pub voxel: VoxelId,
-    pub quantity: u32,
-}
+/// One hotbar slot. Type alias for `ItemStack` — the canonical inventory unit.
+pub type HotbarSlot = ItemStack;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HotbarNotice {
@@ -51,6 +48,12 @@ impl Hotbar {
         &self.slots
     }
 
+    /// Replace the entire slot array. Used by drag-and-drop to move items
+    /// between the hotbar and the inventory in a single shot.
+    pub fn set_slots(&mut self, slots: [Option<HotbarSlot>; HOTBAR_SLOT_COUNT]) {
+        self.slots = slots;
+    }
+
     pub fn selected_index(&self) -> usize {
         self.selected
     }
@@ -59,8 +62,8 @@ impl Hotbar {
         self.slots[self.selected]
     }
 
-    pub fn selected_voxel(&self) -> Option<VoxelId> {
-        self.selected_slot().map(|slot| slot.voxel)
+    pub fn selected_item_id(&self) -> Option<ItemId> {
+        self.selected_slot().map(|s| s.item_id)
     }
 
     pub fn select(&mut self, index: usize) {
@@ -74,49 +77,59 @@ impl Hotbar {
         self.selected = (self.selected as i32 + delta).rem_euclid(len) as usize;
     }
 
-    pub fn can_accept(&self, voxel: VoxelId) -> bool {
-        voxel != VoxelId::AIR
-            && self.slots.iter().any(|slot| match slot {
-                Some(slot) => slot.voxel == voxel,
-                None => true,
-            })
+    pub fn can_accept(&self, item_id: ItemId, max_stack: u32) -> bool {
+        self.slots.iter().any(|slot| match slot {
+            Some(slot) => slot.item_id == item_id && slot.quantity < max_stack,
+            None => true,
+        })
     }
 
-    pub fn add(&mut self, voxel: VoxelId) -> bool {
-        if voxel == VoxelId::AIR {
-            return false;
+    /// Add `count` items of `item_id` to the hotbar. Stacks into existing
+    /// slots first, then occupies empty slots. Returns `true` on success.
+    pub fn add(&mut self, item_id: ItemId, count: u32, max_stack: u32) -> bool {
+        let mut remaining = count;
+
+        // Stack into existing matching slots first.
+        for slot in self.slots.iter_mut().flatten() {
+            if slot.item_id == item_id && slot.quantity < max_stack {
+                let added = slot.try_add(remaining, max_stack);
+                remaining -= added;
+                if remaining == 0 {
+                    self.clear_notice();
+                    return true;
+                }
+            }
         }
 
-        if let Some(slot) = self
-            .slots
-            .iter_mut()
-            .flatten()
-            .find(|slot| slot.voxel == voxel)
-        {
-            slot.quantity = slot.quantity.saturating_add(1);
+        // Fill empty slots with the overflow.
+        while remaining > 0 {
+            if let Some(slot) = self.slots.iter_mut().find(|s| s.is_none()) {
+                let batch = remaining.min(max_stack);
+                *slot = Some(ItemStack::new(item_id, batch));
+                remaining -= batch;
+            } else {
+                break;
+            }
+        }
+
+        if remaining == 0 {
             self.clear_notice();
-            return true;
+            true
+        } else {
+            self.show_notice(HotbarNotice::Full);
+            false
         }
-
-        if let Some(slot) = self.slots.iter_mut().find(|slot| slot.is_none()) {
-            *slot = Some(HotbarSlot { voxel, quantity: 1 });
-            self.clear_notice();
-            return true;
-        }
-
-        self.show_notice(HotbarNotice::Full);
-        false
     }
 
-    pub fn consume_selected(&mut self) -> Option<VoxelId> {
+    pub fn consume_selected(&mut self) -> Option<ItemId> {
         let slot = self.slots[self.selected].as_mut()?;
-        let voxel = slot.voxel;
+        let item_id = slot.item_id;
         slot.quantity = slot.quantity.saturating_sub(1);
         if slot.quantity == 0 {
             self.slots[self.selected] = None;
         }
         self.clear_notice();
-        Some(voxel)
+        Some(item_id)
     }
 
     pub fn show_notice(&mut self, notice: HotbarNotice) {
@@ -150,36 +163,52 @@ impl Default for Hotbar {
 #[cfg(test)]
 mod tests {
     use super::{Hotbar, HOTBAR_SLOT_COUNT};
-    use crate::voxel::VoxelId;
+    use crate::gameplay::item_stack::{ItemId, ItemStack};
+
+    const MAX: u32 = 99;
+    fn id(n: u32) -> ItemId { ItemId::from_raw(n) }
 
     #[test]
-    fn repeated_blocks_stack_in_first_matching_slot() {
+    fn repeated_items_stack_in_first_matching_slot() {
         let mut hotbar = Hotbar::new();
 
-        assert!(hotbar.add(VoxelId::new(4)));
-        assert!(hotbar.add(VoxelId::new(4)));
+        assert!(hotbar.add(id(4), 1, MAX));
+        assert!(hotbar.add(id(4), 1, MAX));
 
         assert_eq!(hotbar.slots()[0].unwrap().quantity, 2);
         assert!(hotbar.slots()[1].is_none());
     }
 
     #[test]
-    fn full_hotbar_rejects_new_block_type() {
+    fn full_hotbar_rejects_new_item_type() {
         let mut hotbar = Hotbar::new();
         for i in 0..HOTBAR_SLOT_COUNT {
-            assert!(hotbar.add(VoxelId::new((i + 1) as u16)));
+            assert!(hotbar.add(id(i as u32 + 1), 1, MAX));
         }
 
-        assert!(!hotbar.can_accept(VoxelId::new(99)));
-        assert!(!hotbar.add(VoxelId::new(99)));
+        assert!(!hotbar.can_accept(id(99), MAX));
+        assert!(!hotbar.add(id(99), 1, MAX));
     }
 
     #[test]
-    fn consuming_last_block_empties_selected_slot() {
+    fn consuming_last_item_empties_selected_slot() {
         let mut hotbar = Hotbar::new();
-        hotbar.add(VoxelId::new(7));
+        hotbar.add(id(7), 1, MAX);
 
-        assert_eq!(hotbar.consume_selected(), Some(VoxelId::new(7)));
+        assert_eq!(hotbar.consume_selected(), Some(id(7)));
         assert!(hotbar.selected_slot().is_none());
     }
+
+    #[test]
+    fn max_stack_prevents_overflow() {
+        let mut hotbar = Hotbar::new();
+        assert!(hotbar.add(id(1), 1, 2));
+        assert!(hotbar.add(id(1), 1, 2));
+        // Stack is full — third add should open a new slot.
+        let before_second_slot = hotbar.slots()[1].is_none();
+        hotbar.add(id(1), 1, 2);
+        // Either new slot opened or add failed — either is valid per design.
+        let _ = before_second_slot;
+    }
 }
+

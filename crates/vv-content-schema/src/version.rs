@@ -14,6 +14,7 @@ pub const LOOT_FORMAT_VERSION: u32 = 1;
 pub const SKELETON_FORMAT_VERSION: u32 = 1;
 pub const SOUND_EVENT_FORMAT_VERSION: u32 = 1;
 pub const TAG_FORMAT_VERSION: u32 = 1;
+pub const RECIPE_FORMAT_VERSION: u32 = 1;
 pub const WORLDGEN_FORMAT_VERSION: u32 = 1;
 
 /// Checks a `format_version` field against the expected constant.

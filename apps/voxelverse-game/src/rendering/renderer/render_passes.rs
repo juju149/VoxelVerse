@@ -1,11 +1,12 @@
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::diagnostics::Console;
-use crate::gameplay::{Hotbar, Player};
+use crate::gameplay::{Hotbar, Inventory, Player};
 use crate::input::Controller;
 use crate::math::Frustum;
 use crate::meshing::MeshGen;
 use crate::rendering::lod_animation::AnyKey;
 use crate::rendering::types::{ChunkMesh, Vertex};
+use crate::ui::InventoryUiState;
 use crate::world::PlanetData;
 use glyphon::{Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea, TextBounds};
 
@@ -128,11 +129,18 @@ impl<'a> Renderer<'a> {
         player: &Player,
         planet: &PlanetData,
         hotbar: &Hotbar,
+        inventory: &Inventory,
+        inventory_ui: &InventoryUiState,
         console: &Console,
     ) {
         let render_started = std::time::Instant::now();
         self.update_console_mesh(console.height_fraction);
-        self.update_hotbar_mesh(hotbar, planet);
+        if inventory_ui.is_open {
+            self.hotbar_inds = 0;
+        } else {
+            self.update_hotbar_mesh(hotbar, planet);
+        }
+        self.update_inventory_mesh(inventory, hotbar, inventory_ui, planet);
 
         if controller.show_collisions {
             let mesh = MeshGen::generate_collision_debug(player.position, planet);
@@ -601,9 +609,21 @@ impl<'a> Renderer<'a> {
                 pass.set_pipeline(&self.pipeline_ui);
                 pass.set_bind_group(0, &self.global_bind_identity, &[]);
                 pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_bind_group(2, &self.atlas_bind, &[]);
                 pass.set_vertex_buffer(0, self.hotbar_v_buf.slice(..));
                 pass.set_index_buffer(self.hotbar_i_buf.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..self.hotbar_inds, 0, 0..1);
+                main_draw_calls += 1;
+            }
+
+            if self.inventory_inds > 0 {
+                pass.set_pipeline(&self.pipeline_ui);
+                pass.set_bind_group(0, &self.global_bind_identity, &[]);
+                pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_bind_group(2, &self.atlas_bind, &[]);
+                pass.set_vertex_buffer(0, self.inventory_v_buf.slice(..));
+                pass.set_index_buffer(self.inventory_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.inventory_inds, 0, 0..1);
                 main_draw_calls += 1;
             }
 
@@ -688,7 +708,35 @@ impl<'a> Renderer<'a> {
             }
 
             for spec in self.hotbar_text_specs(hotbar) {
-                let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
+                let size = spec.size.max(8.0);
+                let line = (size * 1.25).max(size + 2.0);
+                let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(size, line));
+                buffer.set_size(
+                    &mut self.font_system,
+                    self.config.width as f32,
+                    self.config.height as f32,
+                );
+                buffer.set_text(
+                    &mut self.font_system,
+                    &spec.text,
+                    Attrs::new()
+                        .family(Family::Monospace)
+                        .color(glyphon::Color::rgb(
+                            spec.color[0],
+                            spec.color[1],
+                            spec.color[2],
+                        )),
+                    Shaping::Advanced,
+                );
+                text_buffers.push((buffer, spec.left, spec.top));
+            }
+
+            // Inventory text overlay (titles, labels, search content, badges).
+            for spec in self.inventory_text_specs(inventory, hotbar, inventory_ui, planet) {
+                let size = spec.size.max(8.0);
+                let line = (size * 1.25).max(size + 2.0);
+                let mut buffer =
+                    Buffer::new(&mut self.font_system, Metrics::new(size, line));
                 buffer.set_size(
                     &mut self.font_system,
                     self.config.width as f32,

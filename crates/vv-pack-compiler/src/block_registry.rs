@@ -159,7 +159,6 @@ pub struct CompiledBlock {
     #[allow(dead_code)]
     pub state: BlockStateValue,
     /// Human-readable name for UI and diagnostics.
-    #[allow(dead_code)]
     pub display_name: String,
     pub solid: bool,
     /// RGB color used for voxel rendering until a texture atlas is in place.
@@ -168,6 +167,17 @@ pub struct CompiledBlock {
     pub hardness: f32,
     /// Visual data — ready for the renderer without further lookup.
     pub visual: CompiledBlockVisual,
+    /// Category string from the raw block definition (e.g. "terrain", "ore",
+    /// "tool", "food"). Used for inventory filtering.
+    pub category: String,
+    /// Maximum number of this block that can stack in one inventory slot.
+    pub max_stack: u32,
+    /// Content key of the loot table to roll when this block is broken.
+    /// Resolved at runtime against `LootRegistry`.
+    pub drops_key: String,
+    /// Tag key of the preferred tool (e.g. `"core:tag/item/tool/pickaxe"`).
+    /// `None` means any tool (or bare hand) works equally.
+    pub preferred_tool_tag: Option<String>,
 }
 
 /// Runtime registry of all compiled blocks.
@@ -335,5 +345,16 @@ impl BlockRegistry {
 
     pub fn models(&self) -> &BlockModelRegistry {
         &self.models
+    }
+
+    /// Return the category string for a block (e.g. `"terrain"`, `"ore"`,
+    /// `"tool"`). Returns `""` for unknown ids.
+    pub fn category(&self, id: VoxelId) -> &str {
+        self.block(id).map(|b| b.category.as_str()).unwrap_or("")
+    }
+
+    /// Return the maximum stack size for a block. Defaults to 99 for unknown ids.
+    pub fn max_stack(&self, id: VoxelId) -> u32 {
+        self.block(id).map(|b| b.max_stack).unwrap_or(99)
     }
 }

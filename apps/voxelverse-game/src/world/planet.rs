@@ -1,4 +1,4 @@
-use crate::content::{BlockRegistry, CompiledPlanet, ProceduralRegistry};
+use crate::content::{BlockRegistry, CompiledPlanet, ItemRegistry, ProceduralRegistry};
 use crate::generation::{
     bake_for_chunk, procedural::ProceduralPlanetTerrain, ChunkFeatureMap, CoordSystem,
 };
@@ -41,6 +41,7 @@ pub trait VoxelRead {
 pub struct PlanetData {
     pub voxels: VoxelRuntime,
     pub content: Arc<BlockRegistry>,
+    pub items: Arc<ItemRegistry>,
     pub terrain_visuals: Arc<TerrainVisualPalette>,
     pub procedural: Arc<ProceduralRegistry>,
     pub procedural_planet_index: usize,
@@ -67,12 +68,14 @@ impl PlanetData {
     pub fn new(
         planet_def: CompiledPlanet,
         registry: Arc<BlockRegistry>,
+        items: Arc<ItemRegistry>,
         procedural: Arc<ProceduralRegistry>,
         procedural_planet_index: usize,
     ) -> Self {
         Self::new_with_progress(
             planet_def,
             registry.clone(),
+            items,
             Arc::new(TerrainVisualPalette::fallback_from_blocks(&registry)),
             procedural,
             procedural_planet_index,
@@ -84,6 +87,7 @@ impl PlanetData {
     pub fn new_with_progress(
         planet_def: CompiledPlanet,
         registry: Arc<BlockRegistry>,
+        items: Arc<ItemRegistry>,
         terrain_visuals: Arc<TerrainVisualPalette>,
         procedural: Arc<ProceduralRegistry>,
         procedural_planet_index: usize,
@@ -109,6 +113,7 @@ impl PlanetData {
             voxels: VoxelRuntime::new(),
             block_ids,
             content: registry,
+            items,
             terrain_visuals,
             procedural,
             procedural_planet_index,
@@ -171,6 +176,21 @@ impl PlanetData {
         self.voxels
             .get_override(coord)
             .unwrap_or_else(|| self.generated_voxel(coord))
+    }
+
+    /// Resolve an `ItemId` to the `VoxelId` it places, if the item is a
+    /// block-placement item. Returns `None` for tools, food, weapons, etc.
+    ///
+    /// This is the canonical bridge between the item inventory and the voxel
+    /// world: the renderer and placement logic use this to display or place
+    /// block-item stacks.
+    pub fn resolve_item_voxel(&self, item_id: vv_pack_compiler::ItemId) -> Option<VoxelId> {
+        use vv_pack_compiler::CompiledItemGameplay;
+        let item = self.items.get(item_id)?;
+        match &item.gameplay {
+            CompiledItemGameplay::PlaceBlock { block_key } => self.content.lookup(block_key),
+            _ => None,
+        }
     }
 
     pub fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult {

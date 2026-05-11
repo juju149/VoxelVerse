@@ -1,0 +1,22 @@
+// Wood Bow — shaped crafting.
+//
+// Pattern (3×3):
+//   _ S P
+//   S _ P
+//   _ S P
+//
+// S = plant_fiber (string substitute)
+// P = oak_log block item
+RecipeDef(
+    format_version: 1,
+    result: (item: "core:item/weapon/wood_bow", count: 1),
+    station: Some("core:tag/station/crafting_table"),
+    group: Some("weapons"),
+    recipe: Shaped((
+        pattern: [" SP", "S P", " SP"],
+        keys: {
+            "S": Item("core:item/resource/plant_fiber"),
+            "P": Item("core:item/block/oak_log"),
+        },
+    )),
+)

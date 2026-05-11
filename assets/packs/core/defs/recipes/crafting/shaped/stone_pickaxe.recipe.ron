@@ -1,0 +1,22 @@
+// Stone Pickaxe — shaped crafting.
+//
+// Pattern (3×3):
+//   S S S
+//   _ W _
+//   _ W _
+//
+// S = stone block item  (core:item/block/stone)
+// W = plant fiber       (core:item/resource/plant_fiber)
+RecipeDef(
+    format_version: 1,
+    result: (item: "core:item/tool/stone_pickaxe", count: 1),
+    station: Some("core:tag/station/crafting_table"),
+    group: Some("tools"),
+    recipe: Shaped((
+        pattern: ["SSS", " W ", " W "],
+        keys: {
+            "S": Item("core:item/block/stone"),
+            "W": Item("core:item/resource/plant_fiber"),
+        },
+    )),
+)

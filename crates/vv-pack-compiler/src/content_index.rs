@@ -70,6 +70,9 @@ impl ContentIndex {
         for (k, _) in &pack.sounds {
             keys.insert(k.clone());
         }
+        for (k, _) in &pack.recipes {
+            keys.insert(k.clone());
+        }
         if let Some(reg) = &pack.voxel_assets {
             for asset in &reg.assets {
                 keys.insert(asset.id.0.clone());

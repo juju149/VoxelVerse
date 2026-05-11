@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use vv_pack_compiler::{
-    BlockRegistry, CompiledPlanet, ContentCompiler, ProceduralRegistry, RenderRegistry,
-    TextureRegistry,
+    BlockRegistry, CompiledPlanet, ContentCompiler, ItemRegistry, LootRegistry, ProceduralRegistry,
+    RecipeRegistry, RenderRegistry, TagRegistry, TextureRegistry,
 };
 use vv_pack_loader::PackLoader;
 
@@ -11,6 +11,10 @@ use crate::world::TerrainVisualPalette;
 
 pub struct LoadedCoreContent {
     pub blocks: Arc<BlockRegistry>,
+    pub items: Arc<ItemRegistry>,
+    pub loot: Arc<LootRegistry>,
+    pub tags: Arc<TagRegistry>,
+    pub recipes: Arc<RecipeRegistry>,
     pub procedural: Arc<ProceduralRegistry>,
     pub procedural_planet_index: usize,
     pub textures: Arc<TextureRegistry>,
@@ -68,6 +72,37 @@ pub fn load_core_content() -> LoadedCoreContent {
         panic!("Block compilation failed; see errors above.");
     });
 
+    // ── Items, tags, loot, recipes ──────────────────────────────────────────
+    // Compile items first (other registries depend on ItemId).
+    let compiled_items = ContentCompiler::compile_items(pack.items).unwrap_or_else(|errors| {
+        for e in &errors {
+            eprintln!("[item error] {}", e);
+        }
+        panic!("Item compilation failed; see errors above.");
+    });
+
+    // Tags are independent of items/blocks; compiled in parallel logically.
+    let compiled_tags = ContentCompiler::compile_tags(pack.tag_sets);
+
+    // Loot tables need ItemRegistry to resolve item references.
+    let compiled_loot =
+        ContentCompiler::compile_loot_tables(pack.loot, &compiled_items).unwrap_or_else(|errors| {
+            for e in &errors {
+                eprintln!("[loot error] {}", e);
+            }
+            panic!("Loot table compilation failed; see errors above.");
+        });
+
+    // Recipes need both ItemRegistry and TagRegistry.
+    let compiled_recipes =
+        ContentCompiler::compile_recipes(pack.recipes, &compiled_items, &compiled_tags)
+            .unwrap_or_else(|errors| {
+                for e in &errors {
+                    eprintln!("[recipe error] {}", e);
+                }
+                panic!("Recipe compilation failed; see errors above.");
+            });
+
     let procedural_pack =
         PackLoader::load_procedural_from_dir(&core_pack_dir).unwrap_or_else(|e| {
             panic!("Failed to load {}/worldgen: {}", core_pack_dir.display(), e);
@@ -113,8 +148,13 @@ pub fn load_core_content() -> LoadedCoreContent {
         .collect();
 
     println!(
-        "Loaded {} blocks, {} procedural biomes, {} material layers, {} vox models needed, planet '{}' ({}) from pack 'core'.",
+        "Loaded {} blocks, {} items, {} loot tables, {} tags, {} recipes, \
+         {} biomes, {} material layers, {} vox models needed, planet '{}' ({}) from pack 'core'.",
         compiled_blocks.block_count(),
+        compiled_items.len(),
+        compiled_loot.len(),
+        compiled_tags.len(),
+        compiled_recipes.len(),
         procedural.biomes.len(),
         texture_registry.materials().len(),
         needed_vox_keys.len(),
@@ -124,6 +164,10 @@ pub fn load_core_content() -> LoadedCoreContent {
 
     LoadedCoreContent {
         blocks: Arc::new(compiled_blocks),
+        items: Arc::new(compiled_items),
+        loot: Arc::new(compiled_loot),
+        tags: Arc::new(compiled_tags),
+        recipes: Arc::new(compiled_recipes),
         procedural: Arc::new(procedural),
         procedural_planet_index,
         textures: Arc::new(texture_registry),

@@ -297,6 +297,21 @@ impl<'a> Renderer<'a> {
             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        // Inventory modal needs more vertices than the hotbar (45 slots, 3
+        // panels, scrim, buttons, drag ghost). 512 KiB / 32 B per vertex is
+        // plenty for the modal frame even at 4K with the maxed-out grid.
+        let inventory_v_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Inventory V"),
+            size: 512 * 1024,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let inventory_i_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Inventory I"),
+            size: 512 * 1024,
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
         let local_buf_identity = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Identity Uniform"),
@@ -642,6 +657,9 @@ impl<'a> Renderer<'a> {
             hotbar_v_buf,
             hotbar_i_buf,
             hotbar_inds: 0,
+            inventory_v_buf,
+            inventory_i_buf,
+            inventory_inds: 0,
             cross_v_buf,
             cross_i_buf,
             cross_inds: ci.len() as u32,

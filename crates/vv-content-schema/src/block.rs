@@ -46,6 +46,13 @@ pub struct RawBlockGameplayDef {
     pub drops: ContentRef,
     pub placement: RawBlockPlacement,
     pub replaceable: bool,
+    /// Maximum items that can stack in a single inventory slot. Defaults to 99.
+    #[serde(default = "default_max_stack")]
+    pub max_stack: u32,
+}
+
+fn default_max_stack() -> u32 {
+    99
 }
 
 #[derive(Debug, Clone, Deserialize)]

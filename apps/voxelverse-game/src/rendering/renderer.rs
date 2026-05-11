@@ -73,6 +73,9 @@ pub struct Renderer<'a> {
     hotbar_v_buf: wgpu::Buffer,
     hotbar_i_buf: wgpu::Buffer,
     hotbar_inds: u32,
+    inventory_v_buf: wgpu::Buffer,
+    inventory_i_buf: wgpu::Buffer,
+    inventory_inds: u32,
 
     // --- SKY ---
     pipeline_sky: wgpu::RenderPipeline,
@@ -184,6 +187,7 @@ struct MeshJobResult<K> {
 }
 
 mod debug_draw;
+mod inventory;
 mod lod_selection;
 mod metrics;
 mod pipelines;

@@ -7,11 +7,15 @@ use crate::block_registry::{
     CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, MaterialTextureSet,
 };
 use crate::content_index::ContentIndex;
+use crate::item_registry::{compile_items, ItemRegistry};
+use crate::loot_registry::{compile_loot_tables, LootRegistry};
+use crate::recipe_registry::{compile_recipes, RecipeRegistry};
+use crate::tag_registry::{compile_tags, TagRegistry};
 use std::collections::{HashMap, HashSet};
 use vv_content_schema::{
     check_format_version, BlockRole, RawBlockCollisionShape, RawBlockDef, RawBlockMesh,
-    RawBlockModelDef, RawBlockVisual, RawMaterialDef, RawRenderMode, BLOCK_FORMAT_VERSION,
-    BLOCK_MODEL_FORMAT_VERSION,
+    RawBlockModelDef, RawBlockVisual, RawItemDef, RawLootTableDef, RawMaterialDef, RawRecipeDef,
+    RawRenderMode, RawTagSetDef, BLOCK_FORMAT_VERSION, BLOCK_MODEL_FORMAT_VERSION,
 };
 use vv_voxel::VoxelId;
 
@@ -242,6 +246,10 @@ impl ContentCompiler {
                     color,
                     hardness: def.physical.hardness,
                     visual: visual_template.clone(),
+                    category: def.category.clone(),
+                    max_stack: def.gameplay.max_stack,
+                    drops_key: def.gameplay.drops.0.clone(),
+                    preferred_tool_tag: def.gameplay.preferred_tool.as_ref().map(|r| r.0.clone()),
                 });
                 family_variants.push(id);
                 state_to_id.insert(state.clone(), id);
@@ -485,6 +493,39 @@ impl ContentCompiler {
             material_sets.push(material);
             material_sets.len() as u32
         }
+    }
+
+    /// Compile raw item definitions into a runtime `ItemRegistry`.
+    pub fn compile_items(raw: Vec<(String, RawItemDef)>) -> Result<ItemRegistry, Vec<String>> {
+        compile_items(raw)
+    }
+
+    /// Compile raw loot table definitions into a runtime `LootRegistry`.
+    ///
+    /// Must be called **after** `compile_items` so that item references resolve.
+    pub fn compile_loot_tables(
+        raw: Vec<(String, RawLootTableDef)>,
+        items: &ItemRegistry,
+    ) -> Result<LootRegistry, Vec<String>> {
+        compile_loot_tables(raw, items)
+    }
+
+    /// Compile tag sets into a runtime `TagRegistry`.
+    ///
+    /// No dependencies — tags can be compiled independently.
+    pub fn compile_tags(raw: Vec<(String, RawTagSetDef)>) -> TagRegistry {
+        compile_tags(raw)
+    }
+
+    /// Compile raw recipe definitions into a runtime `RecipeRegistry`.
+    ///
+    /// Must be called **after** both `compile_items` and `compile_tags`.
+    pub fn compile_recipes(
+        raw: Vec<(String, RawRecipeDef)>,
+        items: &ItemRegistry,
+        tags: &TagRegistry,
+    ) -> Result<RecipeRegistry, Vec<String>> {
+        compile_recipes(raw, items, tags)
     }
 }
 
