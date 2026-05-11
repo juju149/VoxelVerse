@@ -32,7 +32,8 @@
       "Bash(find /mnt/c/DEV/projects/Voxel/VoxelVerse/assets/packs/core/defs/worldgen -name \"*.ron\" -type f | head -50)",
       "Read(//mnt/c/DEV/projects/Voxel/VoxelVerse/assets/packs/core/defs/**)",
       "Bash(cargo fmt *)",
-      "Bash(cargo clippy *)"
+      "Bash(cargo clippy *)",
+      "Bash(dir /B)"
     ]
   }
 }

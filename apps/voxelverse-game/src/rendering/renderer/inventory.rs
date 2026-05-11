@@ -557,10 +557,13 @@ impl<'a> Renderer<'a> {
             theme.slot.selected_border_width.max(2.0) * layout.scale,
             radius,
         );
-        let (base, layers) = planet
-            .resolve_item_voxel(held.stack.item_id)
-            .map(|v| (planet.content.color(v), planet.content.visual(v).layers))
-            .unwrap_or(([0.6, 0.6, 0.6], BlockMaterialLayers::default()));
+        let (base, layers) = match planet.resolve_item_voxel(held.stack.item_id) {
+            Some(v) => (
+                planet.content.color(v),
+                Some(planet.content.visual(v).layers),
+            ),
+            None => ([0.6, 0.6, 0.6], None),
+        };
         self.draw_iso_block(verts, inds, ghost, base, 1.0, layers);
     }
 }
@@ -748,15 +751,13 @@ impl<'a> Renderer<'a> {
             );
         }
         if let Some(slot) = content {
-            let base_color;
-            let layers;
-            if let Some(voxel) = planet.resolve_item_voxel(slot.item_id) {
-                base_color = planet.content.color(voxel);
-                layers = planet.content.visual(voxel).layers;
-            } else {
-                base_color = [0.6, 0.6, 0.6];
-                layers = BlockMaterialLayers::default();
-            }
+            let (base_color, layers) = match planet.resolve_item_voxel(slot.item_id) {
+                Some(voxel) => (
+                    planet.content.color(voxel),
+                    Some(planet.content.visual(voxel).layers),
+                ),
+                None => ([0.6, 0.6, 0.6], None),
+            };
             let dim = if state == ComponentState::Disabled {
                 0.45
             } else {
@@ -1483,9 +1484,14 @@ impl<'a> Renderer<'a> {
         self.draw_line_thick(verts, inds, x0, y0, x1, y1, thickness, color);
     }
 
-    /// Draw an isometric voxel block using 3 shaded faces. Single base
-    /// color, three brightness levels — produces a clean iso block look
-    /// without sampling the texture atlas.
+    /// Draw an isometric voxel block using 3 shaded faces.
+    ///
+    /// When `texture` is `Some`, each face samples its assigned atlas layer
+    /// and the vertex color carries pure grayscale shading. The UI shader
+    /// expects 1-based atlas indices (0 = "no material"), so each layer is
+    /// shifted by +1 at this boundary — the registry stores them 0-based.
+    ///
+    /// When `texture` is `None`, the cube is flat-colored from `base_rgb`.
     pub(super) fn draw_iso_block(
         &self,
         verts: &mut Vec<Vertex>,
@@ -1493,20 +1499,17 @@ impl<'a> Renderer<'a> {
         slot: UiRect,
         base_rgb: [f32; 3],
         dim: f32,
-        layers: BlockMaterialLayers,
+        texture: Option<BlockMaterialLayers>,
     ) {
         let cx = slot.x + slot.w * 0.5;
         let cy = slot.y + slot.h * 0.5;
         let span = slot.w.min(slot.h) * 0.70;
         let u = span / 4.0;
 
-        // Per-face brightness factors (iso cube lighting simulation).
-        // When the face has a real material layer the vertex color becomes a
-        // pure grayscale scale factor so the shader can multiply it onto the
-        // texture sample. When there is no layer we fall back to flat color.
-        let face_color = |layer: u32, factor: f32| -> [f32; 3] {
+        let textured = texture.is_some();
+        let face_color = |factor: f32| -> [f32; 3] {
             let m = (factor * dim).clamp(0.0, 1.6);
-            if layer > 0 {
+            if textured {
                 [m.min(1.0); 3]
             } else {
                 [
@@ -1517,9 +1520,15 @@ impl<'a> Renderer<'a> {
             }
         };
 
-        let top_color   = face_color(layers.top,   1.18);
-        let left_color  = face_color(layers.left,  0.70);
-        let right_color = face_color(layers.right, 0.95);
+        // UI shader is 1-based; world atlas index 0 → tex_index 1.
+        let face_tex = |layer: u32| -> u32 {
+            if textured { layer + 1 } else { 0 }
+        };
+
+        let layers = texture.unwrap_or_default();
+        let top_color   = face_color(1.18);
+        let left_color  = face_color(0.70);
+        let right_color = face_color(0.95);
 
         let p_top   = (cx, cy - 2.0 * u);
         let p_right = (cx + 2.0 * u, cy - u);
@@ -1531,28 +1540,30 @@ impl<'a> Renderer<'a> {
             verts, inds,
             [p_top, p_right, p_front, p_left],
             [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-            top_color, layers.top,
+            top_color, face_tex(layers.top),
         );
 
         let p_bottom      = (cx, cy + 2.0 * u);
         let p_left_bottom = (cx - 2.0 * u, cy + u);
 
-        // Left face: p_left(TL) → p_front(TR) → p_bottom(BR) → p_left_bottom(BL)
+        // Left face uses the block's "left" (nx) material — the iso cube's
+        // visible left side. UV is mapped so the texture's top edge sits at
+        // the cube's top edge.
         self.add_ui_quad_tex(
             verts, inds,
             [p_left, p_front, p_bottom, p_left_bottom],
             [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-            left_color, layers.left,
+            left_color, face_tex(layers.left),
         );
 
         let p_right_bottom = (cx + 2.0 * u, cy + u);
 
-        // Right face: p_right(TL) → p_right_bottom(BL) → p_bottom(BR) → p_front(TR)
+        // Right face uses the block's "right" (px) material.
         self.add_ui_quad_tex(
             verts, inds,
             [p_right, p_right_bottom, p_bottom, p_front],
             [[1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]],
-            right_color, layers.right,
+            right_color, face_tex(layers.right),
         );
 
         // Top-front rim highlight (always flat, no texture).
