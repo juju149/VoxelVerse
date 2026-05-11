@@ -1,0 +1,124 @@
+{
+  "pack": "assets/packs/core",
+  "health_score": 60,
+  "summary": {
+    "errors": 3,
+    "warnings": 10,
+    "blocks": 27,
+    "items": 34,
+    "materials": 16,
+    "textures": 48,
+    "recipes": 4,
+    "loot_tables": 27
+  },
+  "errors": [
+    {
+      "check": "filesystem",
+      "message": "empty directory: render/techniques/foliage",
+      "path": "render/techniques/foliage",
+      "id": null
+    },
+    {
+      "check": "filesystem",
+      "message": "empty directory: render/techniques/particles",
+      "path": "render/techniques/particles",
+      "id": null
+    },
+    {
+      "check": "filesystem",
+      "message": "empty directory: render/techniques/shadows",
+      "path": "render/techniques/shadows",
+      "id": null
+    }
+  ],
+  "warnings": [
+    {
+      "check": "textures",
+      "message": "block-surface texture 'media/textures/blocks/oak_log/oak_log_top_albedo.png' is 1254x1254, expected 256x256",
+      "path": "media/textures/blocks/oak_log/oak_log_top_albedo.png",
+      "id": null
+    },
+    {
+      "check": "blocks",
+      "message": "placeable block 'core:block/terrain/bedrock' has no item",
+      "path": null,
+      "id": "core:block/terrain/bedrock"
+    },
+    {
+      "check": "blocks",
+      "message": "placeable block 'core:block/terrain/core' has no item",
+      "path": null,
+      "id": "core:block/terrain/core"
+    },
+    {
+      "check": "blocks",
+      "message": "block 'core:block/terrain/bedrock' is not referenced by worldgen, loot, items, or recipes",
+      "path": null,
+      "id": "core:block/terrain/bedrock"
+    },
+    {
+      "check": "items",
+      "message": "item 'core:item/consumable/health_potion' has no source (no recipe, no loot, no PlaceBlock)",
+      "path": null,
+      "id": "core:item/consumable/health_potion"
+    },
+    {
+      "check": "items",
+      "message": "item 'core:item/food/apple' has no source (no recipe, no loot, no PlaceBlock)",
+      "path": null,
+      "id": "core:item/food/apple"
+    },
+    {
+      "check": "items",
+      "message": "item 'core:item/misc/flower' is not consumed by any recipe, placement, or equip use",
+      "path": null,
+      "id": "core:item/misc/flower"
+    },
+    {
+      "check": "items",
+      "message": "item 'core:item/misc/mushroom' has no source (no recipe, no loot, no PlaceBlock)",
+      "path": null,
+      "id": "core:item/misc/mushroom"
+    },
+    {
+      "check": "items",
+      "message": "item 'core:item/resource/iron_ingot' is not consumed by any recipe, placement, or equip use",
+      "path": null,
+      "id": "core:item/resource/iron_ingot"
+    },
+    {
+      "check": "loot",
+      "message": "loot table 'core:loot/entities/rabbit' is not referenced by any block",
+      "path": null,
+      "id": "core:loot/entities/rabbit"
+    }
+  ],
+  "unused": {
+    "textures": [],
+    "materials": [],
+    "items": [
+      "core:item/misc/flower",
+      "core:item/resource/iron_ingot"
+    ],
+    "blocks": [
+      "core:block/terrain/bedrock"
+    ],
+    "loot_tables": [
+      "core:loot/entities/rabbit"
+    ]
+  },
+  "missing": {
+    "block_items": [
+      "core:block/terrain/bedrock",
+      "core:block/terrain/core"
+    ],
+    "loot_tables": [],
+    "textures": []
+  },
+  "progression": {
+    "basic_loop_reachable": true,
+    "notes": [
+      "Basic loop blocks all present (grass, dirt, stone, oak_log, coal_ore, iron_ore)."
+    ]
+  }
+}

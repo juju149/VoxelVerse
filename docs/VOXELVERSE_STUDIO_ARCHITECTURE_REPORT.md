@@ -73,8 +73,19 @@ Use:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\validate_content.ps1
+powershell -ExecutionPolicy Bypass -File tools\pack_doctor.ps1
 cargo test -p vv-pack-loader -p vv-pack-compiler
 ```
 
-The loader test parses every core schema group. The compiler tests validate
-block materialization and texture registry loading from the current pack.
+- `validate_content.ps1` is the fast filesystem-level validator.
+- `pack_doctor.ps1` runs the deeper Rust validator (`vv-pack-doctor`),
+  emitting `generated/reports/core_pack_report.json` and a sibling HTML
+  report. See [`content_rules.md`](content_rules.md) and
+  [`CONTENT_PIPELINE.md`](CONTENT_PIPELINE.md) for the rules Pack Doctor
+  enforces.
+- The loader test parses every core schema group. The compiler tests
+  validate block materialization and texture registry loading from the
+  current pack.
+
+The future studio UI will sit on top of Pack Doctor's JSON report - see
+[`voxelverse_studio_pack_dashboard.md`](voxelverse_studio_pack_dashboard.md).

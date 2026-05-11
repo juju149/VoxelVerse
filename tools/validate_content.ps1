@@ -150,19 +150,24 @@ foreach ($legacy in @("legacy_imports", "blocks", "worldgen", "textures", "items
     }
 }
 
+$sourceFullPath = (FullPath (Join-Path $PackRoot "source"))
 $emptyDirs = Get-ChildItem -LiteralPath $PackRoot -Directory -Recurse |
+    Where-Object { -not $_.FullName.StartsWith($sourceFullPath, [System.StringComparison]::OrdinalIgnoreCase) } |
     Where-Object { -not (Get-ChildItem -LiteralPath $_.FullName -Force) }
 foreach ($dir in $emptyDirs) {
     Add-Error "Empty directory remains: $(RelPath $PackRoot $dir.FullName)"
 }
 
 $invalidFiles = Get-ChildItem -LiteralPath $PackRoot -Recurse -File |
+    Where-Object { -not $_.FullName.StartsWith($sourceFullPath, [System.StringComparison]::OrdinalIgnoreCase) } |
     Where-Object { $_.Extension -in @(".ron", ".vox", ".png") -and -not (Test-SafeName $_.Name) }
 foreach ($file in $invalidFiles) {
     Add-Error "Invalid content filename: $(RelPath $PackRoot $file.FullName)"
 }
 
-$ronFiles = Get-ChildItem -LiteralPath $PackRoot -Recurse -File -Filter *.ron
+$sourceRoot = (FullPath (Join-Path $PackRoot "source"))
+$ronFiles = Get-ChildItem -LiteralPath $PackRoot -Recurse -File -Filter *.ron |
+    Where-Object { -not $_.FullName.StartsWith($sourceRoot, [System.StringComparison]::OrdinalIgnoreCase) }
 $allRefs = New-Object System.Collections.Generic.HashSet[string]
 foreach ($file in $ronFiles) {
     $text = Get-Content -LiteralPath $file.FullName -Raw

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>VoxelVerse Pack Doctor Report</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 1080px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  header { border-bottom: 1px solid #ddd; padding-bottom: 1rem; margin-bottom: 1rem; }
+  h1 { margin: 0 0 0.5rem; }
+  h2 { margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid #eee; }
+  .summary th { width: 12rem; }
+  .diagnostics.error tbody tr { background: #fff4f4; }
+  .diagnostics.warning tbody tr { background: #fff9e6; }
+  code { background: #f4f4f4; padding: 1px 4px; border-radius: 3px; }
+  .empty { color: #888; }
+  details { margin: 0.5rem 0; }
+  summary { cursor: pointer; font-weight: 600; }
+</style>
+</head><body>
+<header>
+<h1>VoxelVerse Pack Doctor</h1>
+<p><strong>Pack:</strong> assets/packs/core</p>
+<p><strong>Health score:</strong> 60/100</p>
+</header>
+<section class="summary">
+<h2>Summary</h2>
+<table>
+<tr><th>Errors</th><td>3</td></tr>
+<tr><th>Warnings</th><td>10</td></tr>
+<tr><th>Blocks</th><td>27</td></tr>
+<tr><th>Items</th><td>34</td></tr>
+<tr><th>Materials</th><td>16</td></tr>
+<tr><th>Textures</th><td>48</td></tr>
+<tr><th>Recipes</th><td>4</td></tr>
+<tr><th>Loot tables</th><td>27</td></tr>
+</table>
+</section>
+<section><h2>Errors (3)</h2>
+<table class="diagnostics error">
+<thead><tr><th>Check</th><th>Message</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td>filesystem</td><td>empty directory: render/techniques/foliage</td><td>render/techniques/foliage</td></tr>
+<tr><td>filesystem</td><td>empty directory: render/techniques/particles</td><td>render/techniques/particles</td></tr>
+<tr><td>filesystem</td><td>empty directory: render/techniques/shadows</td><td>render/techniques/shadows</td></tr>
+</tbody></table>
+</section>
+<section><h2>Warnings (10)</h2>
+<table class="diagnostics warning">
+<thead><tr><th>Check</th><th>Message</th><th>Where</th></tr></thead>
+<tbody>
+<tr><td>textures</td><td>block-surface texture &#39;media/textures/blocks/oak_log/oak_log_top_albedo.png&#39; is 1254x1254, expected 256x256</td><td>media/textures/blocks/oak_log/oak_log_top_albedo.png</td></tr>
+<tr><td>blocks</td><td>placeable block &#39;core:block/terrain/bedrock&#39; has no item</td><td>core:block/terrain/bedrock</td></tr>
+<tr><td>blocks</td><td>placeable block &#39;core:block/terrain/core&#39; has no item</td><td>core:block/terrain/core</td></tr>
+<tr><td>blocks</td><td>block &#39;core:block/terrain/bedrock&#39; is not referenced by worldgen, loot, items, or recipes</td><td>core:block/terrain/bedrock</td></tr>
+<tr><td>items</td><td>item &#39;core:item/consumable/health_potion&#39; has no source (no recipe, no loot, no PlaceBlock)</td><td>core:item/consumable/health_potion</td></tr>
+<tr><td>items</td><td>item &#39;core:item/food/apple&#39; has no source (no recipe, no loot, no PlaceBlock)</td><td>core:item/food/apple</td></tr>
+<tr><td>items</td><td>item &#39;core:item/misc/flower&#39; is not consumed by any recipe, placement, or equip use</td><td>core:item/misc/flower</td></tr>
+<tr><td>items</td><td>item &#39;core:item/misc/mushroom&#39; has no source (no recipe, no loot, no PlaceBlock)</td><td>core:item/misc/mushroom</td></tr>
+<tr><td>items</td><td>item &#39;core:item/resource/iron_ingot&#39; is not consumed by any recipe, placement, or equip use</td><td>core:item/resource/iron_ingot</td></tr>
+<tr><td>loot</td><td>loot table &#39;core:loot/entities/rabbit&#39; is not referenced by any block</td><td>core:loot/entities/rabbit</td></tr>
+</tbody></table>
+</section>
+<section><h2>Unused</h2>
+<details><summary>Textures (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Materials (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details open><summary>Items (2)</summary>
+<ul>
+<li><code>core:item/misc/flower</code></li>
+<li><code>core:item/resource/iron_ingot</code></li>
+</ul>
+</details>
+<details open><summary>Blocks (1)</summary>
+<ul>
+<li><code>core:block/terrain/bedrock</code></li>
+</ul>
+</details>
+<details open><summary>Loot tables (1)</summary>
+<ul>
+<li><code>core:loot/entities/rabbit</code></li>
+</ul>
+</details>
+</section>
+<section><h2>Missing</h2>
+<details open><summary>Block items (2)</summary>
+<ul>
+<li><code>core:block/terrain/bedrock</code></li>
+<li><code>core:block/terrain/core</code></li>
+</ul>
+</details>
+<details><summary>Loot tables (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Textures (0)</summary>
+<p class="empty">None.</p>
+</details>
+</section>
+<section><h2>Progression</h2>
+<p><strong>Basic loop reachable:</strong> yes</p>
+<ul>
+<li>Basic loop blocks all present (grass, dirt, stone, oak_log, coal_ore, iron_ore).</li>
+</ul>
+</section>
+</body></html>

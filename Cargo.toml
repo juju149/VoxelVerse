@@ -5,6 +5,7 @@ members = [
     "crates/vv-diagnostics",
     "crates/vv-math",
     "crates/vv-pack-compiler",
+    "crates/vv-pack-doctor",
     "crates/vv-pack-loader",
     "crates/vv-voxel",
 ]

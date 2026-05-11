@@ -33,7 +33,11 @@
       "Read(//mnt/c/DEV/projects/Voxel/VoxelVerse/assets/packs/core/defs/**)",
       "Bash(cargo fmt *)",
       "Bash(cargo clippy *)",
-      "Bash(dir /B)"
+      "Bash(dir /B)",
+      "Bash(git stash *)",
+      "Bash(powershell -ExecutionPolicy Bypass -File tools/validate_content.ps1)",
+      "Bash(powershell -ExecutionPolicy Bypass -File tools/pack_doctor.ps1)",
+      "Bash(cargo run *)"
     ]
   }
 }

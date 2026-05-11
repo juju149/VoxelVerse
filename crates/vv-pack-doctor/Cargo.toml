@@ -1,0 +1,20 @@
+[package]
+name = "vv-pack-doctor"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "vv-pack-doctor"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+vv-content-schema = { path = "../vv-content-schema" }
+vv-pack-loader = { path = "../vv-pack-loader" }
+ron = { workspace = true }
+serde = { workspace = true }
+png = { workspace = true }
+
+[dev-dependencies]

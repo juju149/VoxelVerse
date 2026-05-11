@@ -1915,6 +1915,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vv-pack-doctor"
+version = "0.1.0"
+dependencies = [
+ "png",
+ "ron",
+ "serde",
+ "vv-content-schema",
+ "vv-pack-loader",
+]
+
+[[package]]
 name = "vv-pack-loader"
 version = "0.1.0"
 dependencies = [
