@@ -7,11 +7,14 @@ use vv_pack_compiler::{
 };
 use vv_pack_loader::PackLoader;
 
+use crate::world::TerrainVisualPalette;
+
 pub struct LoadedCoreContent {
     pub blocks: Arc<BlockRegistry>,
     pub procedural: Arc<ProceduralRegistry>,
     pub procedural_planet_index: usize,
     pub textures: Arc<TextureRegistry>,
+    pub terrain_visuals: Arc<TerrainVisualPalette>,
     pub render: Arc<RenderRegistry>,
     pub planet: CompiledPlanet,
     /// Maps content ref strings to file paths relative to the core pack directory.
@@ -90,6 +93,7 @@ pub fn load_core_content() -> LoadedCoreContent {
             }
             panic!("Texture loading failed; see errors above.");
         });
+    let terrain_visuals = TerrainVisualPalette::from_textures(&compiled_blocks, &texture_registry);
 
     // Build vox asset path index from the registry (content_ref -> relative path).
     let vox_asset_paths: HashMap<String, String> = pack
@@ -123,6 +127,7 @@ pub fn load_core_content() -> LoadedCoreContent {
         procedural: Arc::new(procedural),
         procedural_planet_index,
         textures: Arc::new(texture_registry),
+        terrain_visuals: Arc::new(terrain_visuals),
         render: Arc::new(compiled_render.registry),
         planet,
         vox_asset_paths,

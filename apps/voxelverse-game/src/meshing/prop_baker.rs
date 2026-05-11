@@ -13,14 +13,9 @@
 //! * **sRGB colours in vertex buffer** — the shader applies gamma-expansion so
 //!   prop colours are treated consistently with terrain vertex colours.
 
-use super::{CpuMesh, CpuVertex};
+use super::{CpuMesh, CpuVertex, VERTEX_COLOR_MATERIAL_SENTINEL};
 use crate::generation::{procedural::PropStamp, CoordSystem};
 use crate::world::{PlanetProfile, VoxModel, VoxModelRegistry};
-
-/// Sentinel value packed into `tex_index` for prop voxels.
-/// The shader skips all texture lookups and uses vertex colour as-is.
-/// Material layer 0xFFFF (65535) is reserved — no real material will use it.
-pub const PROP_MATERIAL_SENTINEL: u32 = 0x0000_FFFF;
 
 /// Maximum visible faces a single prop may contribute to a chunk mesh.
 /// A grass blade has ~10-20, a mushroom ~50.  Hard-capping prevents a single
@@ -139,7 +134,7 @@ fn bake_stamp(
                 // sRGB colour — shader applies pow(2.2) like terrain vertices.
                 color: face.rgb,
                 // Sentinel: shader skips texture lookup for this material index.
-                tex_index: PROP_MATERIAL_SENTINEL,
+                tex_index: VERTEX_COLOR_MATERIAL_SENTINEL,
             });
         }
         inds.extend_from_slice(&[

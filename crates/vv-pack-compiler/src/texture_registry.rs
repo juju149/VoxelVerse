@@ -78,6 +78,13 @@ impl TextureRegistry {
         &self.materials
     }
 
+    pub fn average_albedo_color(&self, layer: u32) -> [f32; 3] {
+        let Some(material) = self.materials.get(layer as usize) else {
+            return [1.0, 1.0, 1.0];
+        };
+        average_srgb_image_linear(&material.albedo)
+    }
+
     fn load_material(
         pack_root: &Path,
         material: &MaterialTextureSet,
@@ -225,6 +232,40 @@ impl TextureRegistry {
     }
 }
 
+fn average_srgb_image_linear(image: &TextureImage) -> [f32; 3] {
+    let mut sum = [0.0_f32; 3];
+    let mut weight_sum = 0.0_f32;
+    for px in image.rgba.chunks_exact(4) {
+        let alpha = px[3] as f32 / 255.0;
+        if alpha <= 0.0 {
+            continue;
+        }
+        sum[0] += srgb_u8_to_linear(px[0]) * alpha;
+        sum[1] += srgb_u8_to_linear(px[1]) * alpha;
+        sum[2] += srgb_u8_to_linear(px[2]) * alpha;
+        weight_sum += alpha;
+    }
+
+    if weight_sum <= 0.0 {
+        [1.0, 1.0, 1.0]
+    } else {
+        [
+            sum[0] / weight_sum,
+            sum[1] / weight_sum,
+            sum[2] / weight_sum,
+        ]
+    }
+}
+
+fn srgb_u8_to_linear(value: u8) -> f32 {
+    let c = value as f32 / 255.0;
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::TextureRegistry;
@@ -245,6 +286,27 @@ mod tests {
 
         assert!(textures.materials().len() > 10);
         assert!(textures.tile_size() >= 128);
+    }
+
+    #[test]
+    fn average_albedo_color_reads_decoded_material_texture() {
+        let pack_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs");
+        let pack = PackLoader::load_from_dir(&pack_root.join("core")).expect("core pack");
+        let index = crate::ContentIndex::build(&pack);
+        let models =
+            ContentCompiler::compile_block_models(pack.block_models).expect("block_models");
+        let blocks = ContentCompiler::compile_blocks(pack.blocks, pack.materials, models, &index)
+            .expect("blocks");
+        let textures = TextureRegistry::load(&pack_root, &blocks).expect("textures");
+
+        let grass = blocks
+            .lookup_default("core:block/terrain/grass")
+            .expect("grass block");
+        let grass_top = blocks.visual(grass).layers.top;
+        let color = textures.average_albedo_color(grass_top);
+
+        assert!(color[1] > color[0], "grass should stay visibly green");
+        assert!(color[1] > color[2], "grass should stay visibly green");
     }
 
     #[test]

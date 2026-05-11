@@ -10,4 +10,7 @@ mod voxel_mesher;
 pub use cpu_mesh::{CpuMesh, CpuVertex};
 pub use rounded_edges::{pack_material_edges, FaceEdgeMask};
 
+/// Material sentinel for geometry whose albedo is already baked into vertex color.
+pub const VERTEX_COLOR_MATERIAL_SENTINEL: u32 = 0x0000_FFFF;
+
 pub struct MeshGen;

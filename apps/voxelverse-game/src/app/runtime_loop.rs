@@ -1,15 +1,15 @@
 use crate::app::content_bootstrap::load_core_content;
 use crate::diagnostics::{Console, SystemDiagnostics};
 use crate::gameplay::{
-    BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, PlanetResize,
-    PlanetResizeIntent, Player, PlayerController,
+    BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, Hotbar, HotbarNotice,
+    PlanetResize, PlanetResizeIntent, Player, PlayerController,
 };
 use crate::input::Controller;
 use crate::rendering::Renderer;
 use crate::world::{PlanetData, VoxModelRegistry};
 use std::sync::Arc;
 use std::time::Instant;
-use winit::event::{DeviceEvent, ElementState, Event, MouseButton, WindowEvent};
+use winit::event::{DeviceEvent, ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::EventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{CursorGrabMode, Fullscreen, Window, WindowBuilder};
@@ -31,6 +31,7 @@ pub fn run() {
     renderer.render_loading(0.0, "Initialisation planète");
     let mut controller = Controller::new();
     let mut player = Player::new();
+    let mut hotbar = Hotbar::new();
 
     // Pre-load only the .vox prop models referenced by scatter variant defs.
     renderer.render_loading(0.05, "Chargement des modèles vox…");
@@ -43,6 +44,7 @@ pub fn run() {
     let mut planet = PlanetData::new_with_progress(
         content.planet,
         content.blocks,
+        content.terrain_visuals,
         content.procedural,
         content.procedural_planet_index,
         prop_models,
@@ -77,6 +79,7 @@ pub fn run() {
                         &controller,
                         &player,
                         &planet,
+                        &hotbar,
                         &console,
                     );
                     return;
@@ -90,6 +93,7 @@ pub fn run() {
                     &mut controller,
                     &mut player,
                     &mut planet,
+                    &mut hotbar,
                     &console,
                 );
             }
@@ -110,6 +114,7 @@ pub fn run() {
                     &mut controller,
                     &mut player,
                     &mut planet,
+                    &mut hotbar,
                     &mut console,
                 );
             }
@@ -191,12 +196,15 @@ fn handle_console_window_event(
     controller: &Controller,
     player: &Player,
     planet: &PlanetData,
+    hotbar: &Hotbar,
     console: &Console,
 ) {
     match event {
         WindowEvent::CloseRequested => target.exit(),
         WindowEvent::Resized(size) => renderer.resize(size.width, size.height),
-        WindowEvent::RedrawRequested => renderer.render(controller, player, planet, console),
+        WindowEvent::RedrawRequested => {
+            renderer.render(controller, player, planet, hotbar, console)
+        }
         _ => {}
     }
 }
@@ -208,6 +216,7 @@ fn handle_game_window_event(
     controller: &mut Controller,
     player: &mut Player,
     planet: &mut PlanetData,
+    hotbar: &mut Hotbar,
     console: &Console,
 ) {
     match event {
@@ -222,11 +231,16 @@ fn handle_game_window_event(
             state: ElementState::Pressed,
             button,
             ..
-        } => handle_mouse_action(button, renderer, controller, player, planet),
-        WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
-            handle_pressed_key(event.physical_key, renderer, player, planet);
+        } => handle_mouse_action(button, renderer, controller, player, planet, hotbar),
+        WindowEvent::MouseWheel { delta, .. } if controller.first_person => {
+            handle_hotbar_scroll(delta, hotbar);
         }
-        WindowEvent::RedrawRequested => renderer.render(controller, player, planet, console),
+        WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
+            handle_pressed_key(event.physical_key, renderer, player, planet, hotbar);
+        }
+        WindowEvent::RedrawRequested => {
+            renderer.render(controller, player, planet, hotbar, console)
+        }
         _ => {}
     }
 }
@@ -237,6 +251,7 @@ fn handle_mouse_action(
     controller: &mut Controller,
     player: &Player,
     planet: &mut PlanetData,
+    hotbar: &mut Hotbar,
 ) {
     let intent = match button {
         MouseButton::Right => Some(BlockActionIntent::Place),
@@ -246,6 +261,19 @@ fn handle_mouse_action(
 
     let Some(intent) = intent else {
         return;
+    };
+
+    let active_voxel = if intent == BlockActionIntent::Place {
+        match hotbar.selected_voxel() {
+            Some(voxel) => Some(voxel),
+            None => {
+                hotbar.show_notice(HotbarNotice::EmptySlot);
+                renderer.window.request_redraw();
+                return;
+            }
+        }
+    } else {
+        None
     };
 
     let placement = if intent == BlockActionIntent::Place {
@@ -265,11 +293,52 @@ fn handle_mouse_action(
         None
     };
 
-    if let Some(action) = BlockInteraction::resolve(intent, controller.cursor_id, placement) {
-        let edit = BlockInteraction::apply(action, planet);
-        let _changed_voxel = edit.changed;
-        renderer.refresh_dirty_chunks(edit.dirty_chunks);
+    let mined_voxel = if intent == BlockActionIntent::Mine {
+        let Some(coord) = controller.cursor_id else {
+            if controller.first_person {
+                grab_cursor(renderer.window);
+            }
+            return;
+        };
+        let voxel = planet.get_voxel(coord);
+        if !hotbar.can_accept(voxel) {
+            hotbar.show_notice(HotbarNotice::Full);
+            renderer.window.request_redraw();
+            return;
+        }
+        Some(voxel)
+    } else {
+        None
+    };
+
+    if intent == BlockActionIntent::Place && placement.is_none() {
+        hotbar.show_notice(HotbarNotice::InvalidPlacement);
         renderer.window.request_redraw();
+        return;
+    }
+
+    if let Some(action) =
+        BlockInteraction::resolve(intent, controller.cursor_id, placement, active_voxel)
+    {
+        let edit = BlockInteraction::apply(action, planet);
+        let changed = !edit.dirty_chunks.is_empty();
+        if changed {
+            match intent {
+                BlockActionIntent::Mine => {
+                    if let Some(voxel) = mined_voxel {
+                        hotbar.add(voxel);
+                    }
+                }
+                BlockActionIntent::Place => {
+                    hotbar.consume_selected();
+                }
+            }
+            renderer.refresh_dirty_chunks(edit.dirty_chunks);
+            renderer.window.request_redraw();
+        } else if intent == BlockActionIntent::Mine {
+            hotbar.show_notice(HotbarNotice::ProtectedBlock);
+            renderer.window.request_redraw();
+        }
     } else if controller.cursor_id.is_none() && controller.first_person {
         grab_cursor(renderer.window);
     }
@@ -280,7 +349,14 @@ fn handle_pressed_key(
     renderer: &mut Renderer<'_>,
     player: &mut Player,
     planet: &mut PlanetData,
+    hotbar: &mut Hotbar,
 ) {
+    if let Some(index) = hotbar_index_for_key(key) {
+        hotbar.select(index);
+        renderer.window.request_redraw();
+        return;
+    }
+
     let resize = match key {
         PhysicalKey::Code(KeyCode::BracketRight) => Some(PlanetResizeIntent::Grow),
         PhysicalKey::Code(KeyCode::BracketLeft) => Some(PlanetResizeIntent::Shrink),
@@ -329,6 +405,31 @@ fn handle_pressed_key(
     }
 }
 
+fn hotbar_index_for_key(key: PhysicalKey) -> Option<usize> {
+    match key {
+        PhysicalKey::Code(KeyCode::Digit1) => Some(0),
+        PhysicalKey::Code(KeyCode::Digit2) => Some(1),
+        PhysicalKey::Code(KeyCode::Digit3) => Some(2),
+        PhysicalKey::Code(KeyCode::Digit4) => Some(3),
+        PhysicalKey::Code(KeyCode::Digit5) => Some(4),
+        PhysicalKey::Code(KeyCode::Digit6) => Some(5),
+        PhysicalKey::Code(KeyCode::Digit7) => Some(6),
+        PhysicalKey::Code(KeyCode::Digit8) => Some(7),
+        PhysicalKey::Code(KeyCode::Digit9) => Some(8),
+        _ => None,
+    }
+}
+
+fn handle_hotbar_scroll(delta: MouseScrollDelta, hotbar: &mut Hotbar) {
+    let y = match delta {
+        MouseScrollDelta::LineDelta(_, y) => y,
+        MouseScrollDelta::PixelDelta(p) => p.y as f32 * 0.01,
+    };
+    if y.abs() > f32::EPSILON {
+        hotbar.select_offset(if y > 0.0 { -1 } else { 1 });
+    }
+}
+
 fn sync_cursor_mode(
     window: &Window,
     first_person: bool,
@@ -354,9 +455,11 @@ fn tick_game_frame(
     controller: &mut Controller,
     player: &mut Player,
     planet: &mut PlanetData,
+    hotbar: &mut Hotbar,
     console: &mut Console,
 ) {
     console.update_animation(dt);
+    hotbar.update(dt);
 
     if !console.is_open {
         let player_input = controller.sample_player_input();

@@ -1,4 +1,4 @@
-use super::{CpuMesh, CpuVertex, MeshGen};
+use super::{CpuMesh, CpuVertex, MeshGen, VERTEX_COLOR_MATERIAL_SENTINEL};
 use crate::content::TerrainPalette;
 use crate::generation::CoordSystem;
 use crate::voxel::LodKey;
@@ -55,7 +55,7 @@ impl MeshGen {
                     uv: [0.0, 0.0],
                     color,
                     normal: normal.to_array(),
-                    tex_index: 0,
+                    tex_index: VERTEX_COLOR_MATERIAL_SENTINEL,
                 });
             }
         }
@@ -112,8 +112,8 @@ fn lod_vertex_color(key: LodKey, data: &PlanetData, sample: LodSample, slope: f3
         .registry()
         .biome(data.terrain.get_biome_id(key.face, u, v) as usize);
     let (surface_block, subsurface_block) = data.terrain.lod_surface_blocks(key.face, u, v);
-    let surface_color = data.content.color(surface_block);
-    let subsurface_color = data.content.color(subsurface_block);
+    let surface_color = data.terrain_visuals.block_color(surface_block);
+    let subsurface_color = data.terrain_visuals.block_color(subsurface_block);
 
     let steepness = (1.0 - slope).clamp(0.0, 1.0);
     let height_norm = if data.profile.max_terrain_offset == 0 {
@@ -129,15 +129,15 @@ fn lod_vertex_color(key: LodKey, data: &PlanetData, sample: LodSample, slope: f3
     let is_cold = has_biome_tag(biome, "cold");
     let is_dry = has_biome_tag(biome, "dry") || has_biome_tag(biome, "desert");
 
-    // Gentle distant terrain should read as a biome patch, not only as a block
-    // fallback color. The palette is authored in biome data and is therefore
-    // the correct far-distance source for forests, meadows, cold slopes, etc.
+    // Distant terrain must read like the same textured blocks seen up close.
+    // Biome tint is a small push for grass-like surfaces, not a replacement
+    // for the material albedo.
     let biome_ground = if is_frozen {
-        biome.color_tint.grass
+        surface_color
     } else if is_dry {
         surface_color
     } else {
-        mix(surface_color, biome.color_tint.grass, 0.55)
+        mix(surface_color, biome.color_tint.grass, 0.22)
     };
 
     let mut color = mix(
@@ -226,7 +226,7 @@ fn add_skirt_edge(
             uv: [0.0, 0.0],
             color: src_v.color,
             normal: src_v.normal,
-            tex_index: 0,
+            tex_index: VERTEX_COLOR_MATERIAL_SENTINEL,
         });
     }
 

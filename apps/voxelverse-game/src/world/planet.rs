@@ -3,7 +3,9 @@ use crate::generation::{
     bake_for_chunk, procedural::ProceduralPlanetTerrain, ChunkFeatureMap, CoordSystem,
 };
 use crate::voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use crate::world::{BrokenPropLayer, PlanetProfile, VoxModelRegistry, VoxelRuntime};
+use crate::world::{
+    BrokenPropLayer, PlanetProfile, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime,
+};
 use std::sync::Arc;
 
 /// Cached runtime block ID for the planet core (deep underground).
@@ -39,6 +41,7 @@ pub trait VoxelRead {
 pub struct PlanetData {
     pub voxels: VoxelRuntime,
     pub content: Arc<BlockRegistry>,
+    pub terrain_visuals: Arc<TerrainVisualPalette>,
     pub procedural: Arc<ProceduralRegistry>,
     pub procedural_planet_index: usize,
     pub profile: PlanetProfile,
@@ -69,7 +72,8 @@ impl PlanetData {
     ) -> Self {
         Self::new_with_progress(
             planet_def,
-            registry,
+            registry.clone(),
+            Arc::new(TerrainVisualPalette::fallback_from_blocks(&registry)),
             procedural,
             procedural_planet_index,
             Arc::new(VoxModelRegistry::default()),
@@ -80,6 +84,7 @@ impl PlanetData {
     pub fn new_with_progress(
         planet_def: CompiledPlanet,
         registry: Arc<BlockRegistry>,
+        terrain_visuals: Arc<TerrainVisualPalette>,
         procedural: Arc<ProceduralRegistry>,
         procedural_planet_index: usize,
         prop_models: Arc<VoxModelRegistry>,
@@ -104,6 +109,7 @@ impl PlanetData {
             voxels: VoxelRuntime::new(),
             block_ids,
             content: registry,
+            terrain_visuals,
             procedural,
             procedural_planet_index,
             profile,
@@ -141,8 +147,7 @@ impl PlanetData {
         );
     }
 
-    pub fn add_block(&mut self, coord: VoxelCoord) -> VoxelEditResult {
-        let voxel = self.content.default_place_voxel();
+    pub fn place_block(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult {
         self.set_voxel(coord, voxel)
     }
 

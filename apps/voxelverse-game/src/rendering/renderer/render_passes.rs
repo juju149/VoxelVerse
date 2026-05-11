@@ -1,6 +1,6 @@
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::diagnostics::Console;
-use crate::gameplay::Player;
+use crate::gameplay::{Hotbar, Player};
 use crate::input::Controller;
 use crate::math::Frustum;
 use crate::meshing::MeshGen;
@@ -127,10 +127,12 @@ impl<'a> Renderer<'a> {
         controller: &Controller,
         player: &Player,
         planet: &PlanetData,
+        hotbar: &Hotbar,
         console: &Console,
     ) {
         let render_started = std::time::Instant::now();
         self.update_console_mesh(console.height_fraction);
+        self.update_hotbar_mesh(hotbar, planet);
 
         if controller.show_collisions {
             let mesh = MeshGen::generate_collision_debug(player.position, planet);
@@ -309,8 +311,18 @@ impl<'a> Renderer<'a> {
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, self.quality.pack()],
             // w component carries per-planet fog density (read in shader via sun_dir.w).
             sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, fog_density],
-            sky_horizon: [sky_horizon_rgb.x, sky_horizon_rgb.y, sky_horizon_rgb.z, time_of_day],
-            sky_zenith: [sky_zenith_rgb.x, sky_zenith_rgb.y, sky_zenith_rgb.z, sun_intensity],
+            sky_horizon: [
+                sky_horizon_rgb.x,
+                sky_horizon_rgb.y,
+                sky_horizon_rgb.z,
+                time_of_day,
+            ],
+            sky_zenith: [
+                sky_zenith_rgb.x,
+                sky_zenith_rgb.y,
+                sky_zenith_rgb.z,
+                sun_intensity,
+            ],
         };
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
@@ -321,8 +333,18 @@ impl<'a> Renderer<'a> {
             light_view_proj: light_view_proj.to_cols_array(),
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, self.quality.pack()],
             sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, fog_density],
-            sky_horizon: [sky_horizon_rgb.x, sky_horizon_rgb.y, sky_horizon_rgb.z, time_of_day],
-            sky_zenith: [sky_zenith_rgb.x, sky_zenith_rgb.y, sky_zenith_rgb.z, sun_intensity],
+            sky_horizon: [
+                sky_horizon_rgb.x,
+                sky_horizon_rgb.y,
+                sky_horizon_rgb.z,
+                time_of_day,
+            ],
+            sky_zenith: [
+                sky_zenith_rgb.x,
+                sky_zenith_rgb.y,
+                sky_zenith_rgb.z,
+                sun_intensity,
+            ],
         };
         self.queue.write_buffer(
             &self.shadow_global_buf,
@@ -575,6 +597,16 @@ impl<'a> Renderer<'a> {
                 main_draw_calls += 1;
             }
 
+            if self.hotbar_inds > 0 {
+                pass.set_pipeline(&self.pipeline_ui);
+                pass.set_bind_group(0, &self.global_bind_identity, &[]);
+                pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_vertex_buffer(0, self.hotbar_v_buf.slice(..));
+                pass.set_index_buffer(self.hotbar_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.hotbar_inds, 0, 0..1);
+                main_draw_calls += 1;
+            }
+
             if self.console_inds > 0 {
                 pass.set_pipeline(&self.pipeline_ui);
                 pass.set_bind_group(0, &self.global_bind_identity, &[]);
@@ -625,7 +657,7 @@ impl<'a> Renderer<'a> {
                             )),
                         Shaping::Advanced,
                     );
-                    text_buffers.push((buffer, y));
+                    text_buffers.push((buffer, 10.0, y));
                 }
 
                 let input_y = console_pixel_height - 20.0;
@@ -652,7 +684,29 @@ impl<'a> Renderer<'a> {
                         .color(glyphon::Color::rgb(255, 255, 0)),
                     Shaping::Advanced,
                 );
-                text_buffers.push((input_buf, input_y));
+                text_buffers.push((input_buf, 10.0, input_y));
+            }
+
+            for spec in self.hotbar_text_specs(hotbar) {
+                let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
+                buffer.set_size(
+                    &mut self.font_system,
+                    self.config.width as f32,
+                    self.config.height as f32,
+                );
+                buffer.set_text(
+                    &mut self.font_system,
+                    &spec.text,
+                    Attrs::new()
+                        .family(Family::Monospace)
+                        .color(glyphon::Color::rgb(
+                            spec.color[0],
+                            spec.color[1],
+                            spec.color[2],
+                        )),
+                    Shaping::Advanced,
+                );
+                text_buffers.push((buffer, spec.left, spec.top));
             }
 
             // 2. FPS Text
@@ -708,9 +762,9 @@ impl<'a> Renderer<'a> {
             // create text areas
             let mut text_areas: Vec<TextArea> = text_buffers
                 .iter()
-                .map(|(buf, y)| TextArea {
+                .map(|(buf, x, y)| TextArea {
                     buffer: buf,
-                    left: 10.0,
+                    left: *x,
                     top: *y,
                     scale: 1.0,
                     bounds: TextBounds {

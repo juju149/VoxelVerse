@@ -285,6 +285,18 @@ impl<'a> Renderer<'a> {
             usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let hotbar_v_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Hotbar V"),
+            size: 65536,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let hotbar_i_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Hotbar I"),
+            size: 65536,
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
         let local_buf_identity = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Identity Uniform"),
@@ -427,20 +439,19 @@ impl<'a> Renderer<'a> {
         // --- SKY PIPELINE ---
         // Fullscreen sky rendered with a separate, simple pipeline that only needs
         // the global uniform (no shadow sampler, no atlas, no vertex buffer).
-        let sky_global_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("sky_global_layout"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-            });
+        let sky_global_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("sky_global_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
 
         let sky_global_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Sky Global Bind"),
@@ -628,6 +639,9 @@ impl<'a> Renderer<'a> {
             console_v_buf,
             console_i_buf,
             console_inds: 0,
+            hotbar_v_buf,
+            hotbar_i_buf,
+            hotbar_inds: 0,
             cross_v_buf,
             cross_i_buf,
             cross_inds: ci.len() as u32,

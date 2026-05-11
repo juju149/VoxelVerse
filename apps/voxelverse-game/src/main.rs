@@ -9,6 +9,7 @@ mod meshing;
 mod physics;
 mod rendering;
 mod streaming;
+mod ui;
 mod voxel;
 mod world;
 

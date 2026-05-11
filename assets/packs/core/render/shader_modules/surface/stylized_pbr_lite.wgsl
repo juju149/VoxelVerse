@@ -36,7 +36,7 @@ struct Global {
 @group(2) @binding(4) var<storage, read> material_colors: array<vec4<f32>>;
 
 const MATERIAL_INDEX_MASK:   u32 = 0x0000FFFFu;
-const PROP_VERTEX_COLOR_ONLY: u32 = 0xFFFFu;
+const VERTEX_COLOR_ONLY: u32 = 0xFFFFu;
 
 // Quality bit layout (packed into camera_pos.w as f32):
 //   bit 0      : triplanar grain enabled
@@ -166,7 +166,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     var albedo:    vec3<f32>;
     var roughness: f32;
 
-    if layer == PROP_VERTEX_COLOR_ONLY {
+    if layer == VERTEX_COLOR_ONLY {
         albedo    = in.color;
         roughness = 0.78;
     } else if color_only {

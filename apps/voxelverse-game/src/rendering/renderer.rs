@@ -21,12 +21,12 @@ use winit::window::Window;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct GlobalUniform {
-    pub view_proj: [f32; 16],        // bytes   0–63
-    pub light_view_proj: [f32; 16],  // bytes  64–127
-    pub cam_pos: [f32; 4],           // bytes 128–143  (w = quality_bits)
-    pub sun_dir: [f32; 4],           // bytes 144–159  (w = fog_density)
-    pub sky_horizon: [f32; 4],       // bytes 160–175  (rgb = horizon sky color, w = time_of_day 0-1)
-    pub sky_zenith: [f32; 4],        // bytes 176–191  (rgb = zenith sky color, w = sun_intensity 0-1)
+    pub view_proj: [f32; 16],       // bytes   0–63
+    pub light_view_proj: [f32; 16], // bytes  64–127
+    pub cam_pos: [f32; 4],          // bytes 128–143  (w = quality_bits)
+    pub sun_dir: [f32; 4],          // bytes 144–159  (w = fog_density)
+    pub sky_horizon: [f32; 4],      // bytes 160–175  (rgb = horizon sky color, w = time_of_day 0-1)
+    pub sky_zenith: [f32; 4], // bytes 176–191  (rgb = zenith sky color, w = sun_intensity 0-1)
 }
 
 /// Compile-time guard: buffer sizes in setup.rs / setup_resources.rs use
@@ -70,6 +70,9 @@ pub struct Renderer<'a> {
     console_v_buf: wgpu::Buffer,
     console_i_buf: wgpu::Buffer,
     console_inds: u32,
+    hotbar_v_buf: wgpu::Buffer,
+    hotbar_i_buf: wgpu::Buffer,
+    hotbar_inds: u32,
 
     // --- SKY ---
     pipeline_sky: wgpu::RenderPipeline,
