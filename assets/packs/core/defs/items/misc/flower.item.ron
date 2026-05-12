@@ -1,8 +1,7 @@
-ItemDef(
-    display_name: "Wild Flower",
-    category: "misc",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/items/misc/flower", world_model: None),
-    gameplay: CraftingIngredient(()),
-    tags: ["core:tag/item/misc", "core:tag/item/plant"],
+Item(
+    name: "Flower",
+    icon: "items/misc/flower",
+    model: "voxel/vegetation/flowers/flower_blue_1",
+    stack: 64,
+    tags: [misc, plant],
 )

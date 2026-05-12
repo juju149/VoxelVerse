@@ -1,31 +1,24 @@
-BiomeDef(
-    display_name: "Sandy Beach",
-    surface: (
-        top: "core:block/terrain/red_sand",
-        under: "core:block/terrain/red_sand",
-        depth_voxels: (2, 5),
-        slope_override: None,
-    ),
+Biome(
+    name: "Sandy Beach",
+
+    surface: (top: red_sand, under: red_sand, depth: (2, 5)),
+
     terrain: (
-        base_height: -0.04,
-        amplitude: 0.05,
-        flatness: 0.90,
-        hill_field: "core:field/soft_hills",
-        ridge_field: None,
-        terrace_strength: 0.0,
-        height_curve: Some(linear),
-        mountain_intensity: 0.0,
-        slope_smoothing: 0.8,
+        height:    -0.04,
+        amplitude:  0.05,
+        flatness:   0.90,
+        noise:      soft_hills,
+        curve:      linear,
+        mountain:   0.0,
+        slope_smooth: 0.8,
     ),
+
     palette: (
-        grass: (0.86, 0.74, 0.46),
+        grass:   (0.86, 0.74, 0.46),
         foliage: (0.60, 0.52, 0.28),
-        fog_bias: (0.04, 0.02, 0.01),
     ),
-    placement: (
-        vegetation_tags: [],
-        fauna_tags: ["core:tag/fauna/small_herbivore"],
-        structure_tags: [],
-    ),
-    tags: ["core:tag/biome/beach", "core:tag/biome/coastal"],
+
+    fauna: [small_herbivore],
+
+    tags: [beach, coastal],
 )

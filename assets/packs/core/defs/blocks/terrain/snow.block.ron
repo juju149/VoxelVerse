@@ -1,40 +1,16 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/cube",
-    display_name: "Snow Block",
-    category: "terrain",
-    physical: (
-        solid: true,
-        opaque: true,
-        hardness: 0.4,
-        blast_resistance: 1.2,
-        friction: 0.82,
-        restitution: 0.0,
-    ),
-    visual: (
-        render: opaque,
-        materials: {
-            "py": "core:material/blocks/powder_snow/powder_snow_all",
-            
-"ny": "core:material/blocks/powder_snow/powder_snow_all",
-            "pz": "core:material/blocks/powder_snow/powder_snow_all",
-            
-"nz": "core:material/blocks/powder_snow/powder_snow_all",
-            "px": "core:material/blocks/powder_snow/powder_snow_all",
-            
-"nx": "core:material/blocks/powder_snow/powder_snow_all",
-        },
-    ),
-    gameplay: (
-        preferred_tool: Some("core:tag/item/tool/shovel"),
-        drops: "core:loot/blocks/snow",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/snow",
-        break: "core:sound/break/snow",
-        place: "core:sound/place/snow",
-    ),
-    tags: ["core:tag/block/terrain", "core:tag/block/snow"],
+Block(
+    name: "Snow",
+
+    texture: "blocks/powder_snow/all",
+    render: opaque,
+
+    hardness: 0.2,
+    blast_resistance: 0.6,
+
+    tool: shovel,
+    drops: self,
+    stack: 99,
+    sound: snow,
+
+    tags: [terrain, snow],
 )

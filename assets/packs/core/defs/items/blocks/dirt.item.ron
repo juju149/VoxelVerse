@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Dirt",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/dirt", world_model: BlockItem("core:block/terrain/dirt")),
-    gameplay: PlaceBlock("core:block/terrain/dirt"),
-    tags: ["core:tag/item/block"],
-)

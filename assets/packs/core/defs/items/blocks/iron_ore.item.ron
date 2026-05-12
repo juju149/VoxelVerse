@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Iron Ore",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/iron_ore", world_model: BlockItem("core:block/ores/iron_ore")),
-    gameplay: PlaceBlock("core:block/ores/iron_ore"),
-    tags: ["core:tag/item/block"],
-)

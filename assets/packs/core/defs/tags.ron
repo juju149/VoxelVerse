@@ -1,0 +1,56 @@
+// Tags group content for worldgen, sound routing, AI, crafting, and filters.
+// Blocks/items reference tags by short keyword; the compiler resolves them
+// to the full namespaced id at build time.
+Tags(
+    blocks: {
+        // Terrain layers
+        terrain:   [grass, stone, dirt, coarse_dirt, bedrock, deepslate, andesite, podzol, powder_snow, red_sand, snow, core],
+        soil:      [grass, dirt, coarse_dirt, podzol],
+        stone:     [stone, andesite, deepslate],
+        sand:      [red_sand],
+        snow:      [snow, powder_snow],
+        ore:       [coal_ore, iron_ore],
+        // Trees
+        log:       [oak_log, birch_log, spruce_log, acacia_log, dark_oak_log, jungle_log],
+        wood:      [oak_log, birch_log, spruce_log, acacia_log, dark_oak_log, jungle_log],
+        leaves:    [oak_leaves, birch_leaves, spruce_leaves, acacia_leaves, dark_oak_leaves, jungle_leaves],
+        foliage:   [oak_leaves, birch_leaves, spruce_leaves, acacia_leaves, dark_oak_leaves, jungle_leaves],
+        flammable: [oak_log, birch_log, spruce_log, acacia_log, dark_oak_log, jungle_log,
+                    oak_leaves, birch_leaves, spruce_leaves, acacia_leaves, dark_oak_leaves, jungle_leaves],
+        // Special
+        unbreakable: [bedrock, core],
+        supports_vegetation: [grass, dirt, coarse_dirt, podzol],
+    },
+    items: {
+        tool:    [stone_pickaxe],
+        pickaxe: [stone_pickaxe],
+        weapon:  [wood_bow],
+        bow:     [wood_bow],
+        food:    [apple],
+        fuel:    [coal],
+        resource: [coal, iron_ingot, iron_ore_chunk, plant_fiber],
+    },
+    biomes: {
+        temperate: [plains, temperate_forest, birch_forest, dark_forest, meadow, swamp],
+        forest:    [temperate_forest, birch_forest, dark_forest, snowy_taiga, jungle],
+        cold:      [snowy_plains, snowy_taiga, alpine, frozen_peaks],
+        mountain:  [alpine, frozen_peaks],
+        desert:    [desert, badlands],
+        dry:       [desert, badlands, savanna],
+        ocean:     [ocean],
+        jungle:    [jungle],
+        savanna:   [savanna],
+        swamp:     [swamp],
+    },
+    stations: {
+        crafting_table: [],
+        furnace: [],
+        hand: [],
+    },
+    fauna: {
+        small_herbivore: [],
+    },
+    structure: {
+        small: [],
+    },
+)

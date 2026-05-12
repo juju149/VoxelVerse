@@ -1,6 +1,0 @@
-﻿LootTableDef(
-    rolls: 1,
-    entries: [
-        (item: "core:item/block/oak_log", count: (1, 1), chance: 1.0),
-    ],
-)

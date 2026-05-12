@@ -1,8 +1,8 @@
-﻿ItemDef(
-    display_name: "Apple",
-    category: "food",
-    stack_size: 16,
-    visual: (inventory_icon: "core:icon/items/food/apple", world_model: Voxel("core:voxel/items/food/fruit/apple")),
-    gameplay: Food((nutrition: 4, saturation: 1.2, eat_seconds: 1.0)),
-    tags: ["core:tag/item/food", "core:tag/item/plant_food"],
+Item(
+    name: "Apple",
+    icon: "items/food/apple",
+    model: "voxel/items/food/fruit/apple",
+    stack: 16,
+    food: (hunger: 4, saturation: 2.4),
+    tags: [food, fruit],
 )

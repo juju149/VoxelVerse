@@ -1,9 +1,0 @@
-BlockModelDef(
-    format_version: 1,
-    display_name: "Leaf cube (full cube mesh, leaf-volume collision)",
-    mesh: cube(
-        face_layers: ["py", "ny", "pz", "nz", "px", "nx"],
-        ambient_occlusion: true,
-    ),
-    collision: leaf_volume,
-)

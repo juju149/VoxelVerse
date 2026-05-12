@@ -1,8 +1,8 @@
-﻿ItemDef(
-    display_name: "Stone Pickaxe",
-    category: "tool",
-    stack_size: 1,
-    visual: (inventory_icon: "core:icon/items/tools/stone_pickaxe", world_model: Voxel("core:voxel/equipment/tools/pickaxe_stone"), hand_model: Some("core:voxel/equipment/tools/pickaxe_stone")),
-    gameplay: Tool((tool_tags: ["core:tag/item/tool/pickaxe"], tier: 1, mining_speed: 4.0, durability: 132)),
-    tags: ["core:tag/item/tool", "core:tag/item/tool/pickaxe"],
+Item(
+    name: "Stone Pickaxe",
+    icon: "items/tools/stone_pickaxe",
+    model: "voxel/equipment/tools/pickaxe_stone",
+    stack: 1,
+    tool: (type: pickaxe, tier: 1, speed: 4.0, durability: 132),
+    tags: [tool, pickaxe],
 )

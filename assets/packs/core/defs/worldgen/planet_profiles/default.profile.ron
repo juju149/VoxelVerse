@@ -1,5 +1,5 @@
-﻿PlanetProfileDef(
-    display_name: "Default Living Planet",
+PlanetProfile(
+    name: "Default Living Planet",
     seed: 1,
     shape: SphericalVoxelPlanet((
         resolution: 10000,
@@ -10,31 +10,27 @@
         sea_level_offset: -6,
         max_terrain_offset: 240,
     )),
-    climate: "core:climate/earthlike",
-    biome_set: "core:biome_set/earthlike",
-    terrain_layers: "core:terrain_layers/earth_crust",
-    caves: ["core:cave/default"],
-    ores: ["core:ore/coal", "core:ore/iron"],
-    vegetation: ["core:vegetation/oak_tree", "core:vegetation/birch_tree", "core:vegetation/spruce_tree"],
-    structures: ["core:structure/small_ruin"],
-    spawns: ["core:spawn/rabbit"],
-    visual_details: [
-        "core:prop_scatter/grass_scatter",
-        "core:prop_scatter/savanna_scatter",
-        "core:prop_scatter/snow_scatter",
-        "core:prop_scatter/desert_scatter",
-        "core:prop_scatter/jungle_scatter",
-        "core:prop_scatter/mushroom_scatter",
+    climate: earthlike,
+    biome_set: earthlike,
+    terrain_layers: earth_crust,
+    caves: [default],
+    ores: [coal, iron],
+    trees: [oak, birch, spruce, acacia, dark_oak, jungle],
+    structures: [small_ruin],
+    spawns: [rabbit],
+    prop_scatters: [
+        grass_scatter,
+        savanna_scatter,
+        snow_scatter,
+        desert_scatter,
+        jungle_scatter,
+        mushroom_scatter,
     ],
     streaming: (
         near_voxel_lod_radius: 12,
         far_surface_lod_radius: 192,
         upload_budget_chunks_per_frame: 8,
-        // Side length of one lazy surface-cache tile.  Smaller = finer
-        // memory granularity but more per-cell overhead.  64 ≈ 4 KiB.
         region_cell_voxels: 64,
-        // Soft cap of placed features (trees + props) per surface chunk.
-        // Keeps draw-call count predictable even in dense biomes.
         feature_budget_per_chunk: 384,
     ),
 )

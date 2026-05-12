@@ -1,8 +1,7 @@
-﻿ItemDef(
-    display_name: "Plant Fiber",
-    category: "resource",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/items/resources/plant_fiber", world_model: Voxel("core:voxel/items/crafting/plant_fiber")),
-    gameplay: CraftingIngredient(()),
-    tags: ["core:tag/item/resource", "core:tag/material/fiber"],
+Item(
+    name: "Plant Fiber",
+    icon: "items/resources/plant_fiber",
+    model: "voxel/items/crafting/plant_fiber",
+    stack: 64,
+    tags: [resource, plant],
 )

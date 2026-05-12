@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Grass",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/grass", world_model: BlockItem("core:block/terrain/grass")),
-    gameplay: PlaceBlock("core:block/terrain/grass"),
-    tags: ["core:tag/item/block"],
-)

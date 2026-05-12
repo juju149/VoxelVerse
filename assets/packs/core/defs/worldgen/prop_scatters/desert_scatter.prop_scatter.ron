@@ -1,25 +1,26 @@
-VoxPropScatterDef(
-    display_name: "Desert Sparse Plants",
+PropScatter(
+    name: "Desert Sparse Plants",
     placement: (
         allowed_surface_blocks: [
-            "core:block/terrain/red_sand",
-            "core:block/terrain/coarse_dirt",
+            "red_sand",
+            "coarse_dirt",
         ],
-        biome_tags: ["core:tag/biome/desert", "core:tag/biome/badlands"],
+        biome_tags: ["desert", "badlands"],
         density: 0.07,
         slope_max_degrees: 20,
-        scatter_field: "core:field/dune_ridges",
+        scatter_field: "dune_ridges",
         min_spacing_voxels: 3.0,
         jitter_strength: 0.95,
-        clump_field: Some("core:field/prop_clump"),
+        clump_field: Some("prop_clump"),
         clump_strength: 0.45,
         altitude_range: Some((-2.0, 150.0)),
         rotation_variance: 1.0,
     ),
     variants: [
-        (model: "core:voxel/vegetation/bushes/dead_bush/dead_bush_01", weight: 5),
-        (model: "core:voxel/vegetation/bushes/dead_bush/dead_bush_02", weight: 5),
-        (model: "core:voxel/vegetation/bushes/welwitch/welwitch_01", weight: 3),
-        (model: "core:voxel/vegetation/bushes/dead_plant/dead_plant_1", weight: 2),
+        (model: "voxel/vegetation/bushes/dead_bush/dead_bush_01", weight: 5),
+        (model: "voxel/vegetation/bushes/dead_bush/dead_bush_02", weight: 5),
+        (model: "voxel/vegetation/bushes/welwitch/welwitch_01", weight: 3),
+        (model: "voxel/vegetation/bushes/dead_plant/dead_plant_1", weight: 2),
     ],
 )
+

@@ -1,8 +1,8 @@
-﻿ItemDef(
-    display_name: "Health Potion",
-    category: "consumable",
-    stack_size: 8,
-    visual: (inventory_icon: "core:icon/items/consumables/health_potion", world_model: Voxel("core:voxel/items/consumables/potions/potion_red")),
-    gameplay: Consumable((effect: "core:effect/heal", magnitude: 8.0, use_seconds: 1.2)),
-    tags: ["core:tag/item/consumable", "core:tag/item/potion"],
+Item(
+    name: "Health Potion",
+    icon: "items/consumables/health_potion",
+    model: "voxel/items/consumables/potions/potion_red",
+    stack: 8,
+    consumable: (effect: heal, amount: 20),
+    tags: [consumable, potion],
 )

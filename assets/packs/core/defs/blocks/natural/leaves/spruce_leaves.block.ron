@@ -1,38 +1,19 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/leaf_block",
-    display_name: "Spruce Leaves",
-    category: "natural/leaves",
-    physical: (
-        solid: true,
-        opaque: false,
-        hardness: 0.25,
-        blast_resistance: 0.75,
-        friction: 0.82,
-        restitution: 0.0,
-    ),
-    visual: (
-        render: alpha_test,
-        materials: {
-            "py": "core:material/blocks/oak_leaves/oak_leaves_all",
-            "ny": "core:material/blocks/oak_leaves/oak_leaves_all",
-            "pz": "core:material/blocks/oak_leaves/oak_leaves_all",
-            "nz": "core:material/blocks/oak_leaves/oak_leaves_all",
-            "px": "core:material/blocks/oak_leaves/oak_leaves_all",
-            "nx": "core:material/blocks/oak_leaves/oak_leaves_all",
-        },
-    ),
-    gameplay: (
-        preferred_tool: Some("core:tag/item/tool/shears"),
-        drops: "core:loot/blocks/spruce_leaves",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/leaves",
-        break: "core:sound/break/leaves",
-        place: "core:sound/place/leaves",
-    ),
-    tags: ["core:tag/block/leaves", "core:tag/block/foliage"],
-    simulation: (decays_without_log: true, supports_biome_tint: true),
+Block(
+    name: "Spruce Leaves",
+
+    texture: "blocks/oak_leaves/all",
+    render: alpha_test,
+    tint: foliage,
+
+    hardness: 0.25,
+    blast_resistance: 0.75,
+    solid: true,
+
+    tool: shears,
+    drops: nothing,
+    stack: 99,
+    sound: leaves,
+
+    decays: true,
+    tags: [leaves, foliage, flammable],
 )

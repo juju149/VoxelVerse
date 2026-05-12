@@ -1,4 +1,4 @@
-﻿SpawnRuleDef(
+SpawnRuleDef(
     entity: "core:entity/animals/rabbit",
     biome_tags: ["core:tag/biome/plains", "core:tag/biome/forest"],
     density: 0.025,
@@ -6,3 +6,4 @@
     light: daylight,
     surface_tags: ["core:tag/block/soil"],
 )
+

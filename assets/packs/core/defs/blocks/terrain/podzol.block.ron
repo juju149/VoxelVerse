@@ -1,40 +1,16 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/cube",
-    display_name: "Podzol",
-    category: "terrain",
-    physical: (
-        solid: true,
-        opaque: true,
-        hardness: 0.6,
-        blast_resistance: 1.8,
-        friction: 0.82,
-        restitution: 0.0,
-    ),
-    visual: (
-        render: opaque,
-        materials: {
-            "py": "core:material/blocks/grass_block/grass_block_top",
-            
-"ny": "core:material/blocks/dirt/dirt_all",
-            "pz": "core:material/blocks/dirt/dirt_all",
-            
-"nz": "core:material/blocks/dirt/dirt_all",
-            "px": "core:material/blocks/dirt/dirt_all",
-            
-"nx": "core:material/blocks/dirt/dirt_all",
-        },
-    ),
-    gameplay: (
-        preferred_tool: Some("core:tag/item/tool/shovel"),
-        drops: "core:loot/blocks/podzol",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/grass",
-        break: "core:sound/break/grass",
-        place: "core:sound/place/grass",
-    ),
-    tags: ["core:tag/block/terrain", "core:tag/block/soil", "core:tag/block/forest_floor"],
+Block(
+    name: "Podzol",
+
+    texture: "blocks/dirt/all",
+    render: opaque,
+
+    hardness: 0.5,
+    blast_resistance: 1.5,
+
+    tool: shovel,
+    drops: self,
+    stack: 99,
+    sound: dirt,
+
+    tags: [terrain, soil],
 )

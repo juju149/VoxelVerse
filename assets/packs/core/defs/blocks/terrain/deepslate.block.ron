@@ -1,40 +1,20 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/cube",
-    display_name: "Deepslate",
-    category: "terrain",
-    physical: (
-        solid: true,
-        opaque: true,
-        hardness: 2.3,
-        blast_resistance: 6.9,
-        friction: 0.82,
-        restitution: 0.0,
+Block(
+    name: "Deepslate",
+    shape: column,
+
+    texture: Column(
+        top:  "blocks/deepslate/top",
+        side: "blocks/deepslate/side",
     ),
-    visual: (
-        render: opaque,
-        materials: {
-            "py": "core:material/blocks/deepslate/deepslate_top",
-            
-"ny": "core:material/blocks/deepslate/deepslate_top",
-            "pz": "core:material/blocks/deepslate/deepslate_side",
-            
-"nz": "core:material/blocks/deepslate/deepslate_side",
-            "px": "core:material/blocks/deepslate/deepslate_side",
-            
-"nx": "core:material/blocks/deepslate/deepslate_side",
-        },
-    ),
-    gameplay: (
-        preferred_tool: Some("core:tag/item/tool/pickaxe"),
-        drops: "core:loot/blocks/deepslate",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/stone",
-        break: "core:sound/break/stone",
-        place: "core:sound/place/stone",
-    ),
-    tags: ["core:tag/block/terrain", "core:tag/block/stone", "core:tag/block/deep_layer"],
+    render: opaque,
+
+    hardness: 3.0,
+    blast_resistance: 9.0,
+
+    tool: pickaxe,
+    drops: self,
+    stack: 99,
+    sound: stone,
+
+    tags: [terrain, stone],
 )

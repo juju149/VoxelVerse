@@ -1,5 +1,5 @@
-﻿EntityDef(
-    display_name: "Rabbit",
+EntityDef(
+    name: "Rabbit",
     category: animal,
     body: ModularVoxelBody((
         skeleton: "core:skeleton/quadruped_small",
@@ -14,3 +14,4 @@
     spawn: Some("core:spawn/rabbit"),
     tags: ["core:tag/entity/animal", "core:tag/entity/passive"],
 )
+

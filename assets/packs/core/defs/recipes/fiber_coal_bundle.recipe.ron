@@ -1,0 +1,6 @@
+// Fiber + Coal bundle — placeholder for torch recipe.
+Recipe(
+    result: (item: "flower", count: 4),
+    station: hand,
+    shapeless: [coal, plant_fiber],
+)

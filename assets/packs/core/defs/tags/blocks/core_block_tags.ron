@@ -1,8 +1,0 @@
-﻿TagSetDef(
-    tags: [
-        (id_hint: "terrain", values: ["core:block/terrain/grass", "core:block/terrain/dirt", "core:block/terrain/stone"]),
-        (id_hint: "soil", values: ["core:block/terrain/grass", "core:block/terrain/dirt", "core:block/terrain/coarse_dirt", "core:block/terrain/podzol"]),
-        (id_hint: "stone", values: ["core:block/terrain/stone", "core:block/terrain/andesite", "core:block/terrain/deepslate"]),
-        (id_hint: "ore", values: ["core:block/ores/coal_ore", "core:block/ores/iron_ore"]),
-    ],
-)

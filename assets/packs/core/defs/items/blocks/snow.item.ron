@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Snow",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/snow", world_model: BlockItem("core:block/terrain/snow")),
-    gameplay: PlaceBlock("core:block/terrain/snow"),
-    tags: ["core:tag/item/block"],
-)

@@ -1,5 +1,5 @@
-﻿EntityDef(
-    display_name: "Player",
+EntityDef(
+    name: "Player",
     category: player,
     body: CharacterBody((skeleton: "core:skeleton/humanoid_player", model_root: "core:voxel/characters/humanoids")),
     gameplay: (
@@ -10,3 +10,4 @@
     ),
     tags: ["core:tag/entity/player"],
 )
+

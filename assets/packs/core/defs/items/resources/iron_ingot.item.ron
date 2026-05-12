@@ -1,8 +1,7 @@
-﻿ItemDef(
-    display_name: "Iron Ingot",
-    category: "resource",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/items/resources/iron_ingot", world_model: None),
-    gameplay: CraftingIngredient(()),
-    tags: ["core:tag/item/resource", "core:tag/material/iron"],
+Item(
+    name: "Iron Ingot",
+    icon: "items/resources/iron_ingot",
+    model: "voxel/items/resources/mineral/ingot/iron",
+    stack: 64,
+    tags: [resource, metal, iron],
 )

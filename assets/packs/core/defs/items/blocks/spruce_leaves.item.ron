@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Spruce Leaves",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/spruce_leaves", world_model: BlockItem("core:block/natural/leaves/spruce_leaves")),
-    gameplay: PlaceBlock("core:block/natural/leaves/spruce_leaves"),
-    tags: ["core:tag/item/block"],
-)

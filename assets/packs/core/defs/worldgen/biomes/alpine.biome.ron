@@ -1,31 +1,29 @@
-﻿BiomeDef(
-    display_name: "Alpine Heights",
-    surface: (
-        top: "core:block/terrain/snow",
-        under: "core:block/terrain/stone",
-        depth_voxels: (1, 4),
-        slope_override: Some((above_degrees: 30, top: "core:block/terrain/stone")),
-    ),
+Biome(
+    name: "Alpine Heights",
+
+    surface: (top: snow, under: stone, depth: (1, 4)),
+    slope: (above: 30, use: stone),
+
     terrain: (
-        base_height: 0.26,
+        height:    0.26,
         amplitude: 0.72,
-        flatness: 0.06,
-        hill_field: "core:field/rolling_hills",
-        ridge_field: Some("core:field/mountain_sharp"),
-        terrace_strength: 0.22,
-        height_curve: Some(mountain_spike(sharpness: 0.7)),
-        mountain_intensity: 1.6,
-        slope_smoothing: 0.0,
+        flatness:  0.06,
+        noise:     rolling_hills,
+        ridges:    mountain_sharp,
+        terraces:  0.22,
+        curve:     mountain_spike(sharpness: 0.7),
+        mountain:  1.6,
+        slope_smooth: 0.0,
     ),
+
     palette: (
-        grass: (0.50, 0.62, 0.45),
+        grass:   (0.50, 0.62, 0.45),
         foliage: (0.32, 0.44, 0.34),
-        fog_bias: (-0.02, -0.01, 0.04),
     ),
-    placement: (
-        vegetation_tags: ["core:tag/biome/cold", "core:tag/biome/mountain"],
-        fauna_tags: ["core:tag/fauna/small_herbivore"],
-        structure_tags: ["core:tag/structure/small"],
-    ),
-    tags: ["core:tag/biome/cold", "core:tag/biome/mountain"],
+
+    vegetation: [cold, mountain],
+    fauna: [small_herbivore],
+    structures: [small],
+
+    tags: [cold, mountain],
 )

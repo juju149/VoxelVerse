@@ -1,8 +1,7 @@
-﻿ItemDef(
-    display_name: "Iron Ore Chunk",
-    category: "resource",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/items/resources/iron_ore_chunk", world_model: Voxel("core:voxel/items/resources/mineral/deposit/iron_1")),
-    gameplay: CraftingIngredient((smelts_to: Some("core:item/resource/iron_ingot"))),
-    tags: ["core:tag/item/resource", "core:tag/resource/iron"],
+Item(
+    name: "Iron Ore Chunk",
+    icon: "items/resources/iron_ore_chunk",
+    model: "voxel/items/resources/mineral/ore/iron",
+    stack: 64,
+    tags: [resource, ore, iron],
 )

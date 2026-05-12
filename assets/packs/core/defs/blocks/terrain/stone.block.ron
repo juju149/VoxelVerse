@@ -1,40 +1,16 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/cube",
-    display_name: "Smooth Stone",
-    category: "terrain",
-    physical: (
-        solid: true,
-        opaque: true,
-        hardness: 1.5,
-        blast_resistance: 4.5,
-        friction: 0.82,
-        restitution: 0.0,
-    ),
-    visual: (
-        render: opaque,
-        materials: {
-            "py": "core:material/blocks/smooth_stone/smooth_stone_all",
-            
-"ny": "core:material/blocks/smooth_stone/smooth_stone_all",
-            "pz": "core:material/blocks/smooth_stone/smooth_stone_all",
-            
-"nz": "core:material/blocks/smooth_stone/smooth_stone_all",
-            "px": "core:material/blocks/smooth_stone/smooth_stone_all",
-            
-"nx": "core:material/blocks/smooth_stone/smooth_stone_all",
-        },
-    ),
-    gameplay: (
-        preferred_tool: Some("core:tag/item/tool/pickaxe"),
-        drops: "core:loot/blocks/stone",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/stone",
-        break: "core:sound/break/stone",
-        place: "core:sound/place/stone",
-    ),
-    tags: ["core:tag/block/terrain", "core:tag/block/stone"],
+Block(
+    name: "Stone",
+
+    texture: "blocks/smooth_stone/all",
+    render: opaque,
+
+    hardness: 1.5,
+    blast_resistance: 4.5,
+
+    tool: pickaxe,
+    drops: self,
+    stack: 99,
+    sound: stone,
+
+    tags: [terrain, stone],
 )

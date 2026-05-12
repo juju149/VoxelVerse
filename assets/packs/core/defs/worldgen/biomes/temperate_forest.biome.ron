@@ -1,31 +1,26 @@
-﻿BiomeDef(
-    display_name: "Temperate Forest",
-    surface: (
-        top: "core:block/terrain/grass",
-        under: "core:block/terrain/dirt",
-        depth_voxels: (2, 6),
-        slope_override: Some((above_degrees: 42, top: "core:block/terrain/stone")),
-    ),
+Biome(
+    name: "Temperate Forest",
+
+    surface: (top: grass, under: dirt, depth: (2, 6)),
+    slope: (above: 42, use: stone),
+
     terrain: (
-        base_height: 0.05,
+        height:    0.05,
         amplitude: 0.36,
-        flatness: 0.36,
-        hill_field: "core:field/rolling_hills",
-        ridge_field: None,
-        terrace_strength: 0.0,
-        height_curve: Some(smoothstep),
-        mountain_intensity: 0.6,
-        slope_smoothing: 0.3,
+        flatness:  0.36,
+        noise:     rolling_hills,
+        mountain:  0.6,
+        slope_smooth: 0.3,
     ),
+
     palette: (
-        grass: (0.36, 0.66, 0.28),
+        grass:   (0.36, 0.66, 0.28),
         foliage: (0.22, 0.52, 0.22),
-        fog_bias: (0.0, 0.02, 0.0),
     ),
-    placement: (
-        vegetation_tags: ["core:tag/biome/temperate", "core:tag/biome/forest"],
-        fauna_tags: ["core:tag/fauna/small_herbivore"],
-        structure_tags: ["core:tag/structure/small"],
-    ),
-    tags: ["core:tag/biome/temperate", "core:tag/biome/forest"],
+
+    vegetation: [temperate, forest],
+    fauna: [small_herbivore],
+    structures: [small],
+
+    tags: [temperate, forest],
 )

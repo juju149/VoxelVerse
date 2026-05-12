@@ -1,40 +1,17 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/cube",
-    display_name: "Bedrock",
-    category: "terrain",
-    physical: (
-        solid: true,
-        opaque: true,
-        hardness: 999.0,
-        blast_resistance: 2997,
-        friction: 0.82,
-        restitution: 0.0,
-    ),
-    visual: (
-        render: opaque,
-        materials: {
-            "py": "core:material/blocks/bedrock/bedrock_all",
-            
-"ny": "core:material/blocks/bedrock/bedrock_all",
-            "pz": "core:material/blocks/bedrock/bedrock_all",
-            
-"nz": "core:material/blocks/bedrock/bedrock_all",
-            "px": "core:material/blocks/bedrock/bedrock_all",
-            
-"nx": "core:material/blocks/bedrock/bedrock_all",
-        },
-    ),
-    gameplay: (
-        preferred_tool: None,
-        drops: "core:loot/blocks/empty",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/stone",
-        break: "core:sound/break/stone",
-        place: "core:sound/place/stone",
-    ),
-    tags: ["core:tag/block/unbreakable"],
+// Bedrock — unbreakable planet boundary layer.
+Block(
+    name: "Bedrock",
+
+    texture: "blocks/bedrock/all",
+    render: opaque,
+
+    hardness: -1.0,
+    blast_resistance: 3600000.0,
+
+    tool: hand,
+    drops: nothing,
+    stack: 99,
+    sound: stone,
+
+    tags: [terrain, unbreakable],
 )

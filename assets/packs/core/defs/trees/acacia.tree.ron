@@ -1,0 +1,16 @@
+// Acacia Tree — flat-canopy savanna tree.
+Tree(
+    name: "Acacia Tree",
+
+    trunk: acacia_log,
+    leaves: acacia_leaves,
+    height: (4, 7),
+    canopy: (radius: (3, 5), density: 0.50),
+
+    grows_on: [grass, coarse_dirt],
+    biomes: [savanna, dry],
+    density: 0.018,
+    scatter: acacia_scatter,
+    altitude: (-8.0, 60.0),
+    scale_variance: (0.80, 1.10),
+)

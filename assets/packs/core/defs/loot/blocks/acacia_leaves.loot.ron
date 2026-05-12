@@ -1,6 +1,0 @@
-﻿LootTableDef(
-    rolls: 1,
-    entries: [
-        (item: "core:item/block/acacia_leaves", count: (1, 1), chance: 1.0),
-    ],
-)

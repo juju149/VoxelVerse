@@ -1,9 +1,9 @@
-﻿OreDistributionDef(
-    block: "core:block/ores/coal_ore",
-    replace: ["core:block/terrain/stone", "core:block/terrain/deepslate", "core:block/terrain/andesite"],
-    depth_voxels: (12, 180),
+Ore(
+    block: coal_ore,
+    replaces: [stone, deepslate, andesite],
+    depth: (12, 180),
     density: 0.065,
-    vein_size: (4, 18),
-    field: "core:field/coal_veins",
-    biome_tags: ["core:tag/biome/any"],
+    vein: (4, 18),
+    field: coal_veins,
+    biomes: any,
 )

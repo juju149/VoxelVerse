@@ -1,33 +1,20 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/cube_column",
-    display_name: "Acacia Log",
-    category: "natural/log",
-    physical: (
-        solid: true,
-        opaque: true,
-        hardness: 1.5,
-        blast_resistance: 4.5,
-        friction: 0.82,
-        restitution: 0.0,
+Block(
+    name: "Acacia Log",
+    shape: column,
+
+    texture: Column(
+        top:  "blocks/oak_log/top",
+        side: "blocks/oak_log/side",
     ),
-    visual: (
-        render: opaque,
-        materials: {
-            "end": "core:material/blocks/oak_log/oak_log_top",
-            "side": "core:material/blocks/oak_log/oak_log_side",
-        },
-    ),
-    gameplay: (
-        preferred_tool: Some("core:tag/item/tool/axe"),
-        drops: "core:loot/blocks/acacia_log",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/wood",
-        break: "core:sound/break/wood",
-        place: "core:sound/place/wood",
-    ),
-    tags: ["core:tag/block/log", "core:tag/block/wood"],
+    render: opaque,
+
+    hardness: 1.5,
+    blast_resistance: 4.5,
+
+    tool: axe,
+    drops: self,
+    stack: 99,
+    sound: wood,
+
+    tags: [log, wood, flammable],
 )

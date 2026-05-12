@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Acacia Log",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/acacia_log", world_model: BlockItem("core:block/natural/logs/acacia_log")),
-    gameplay: PlaceBlock("core:block/natural/logs/acacia_log"),
-    tags: ["core:tag/item/block"],
-)

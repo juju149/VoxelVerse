@@ -1,40 +1,16 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/cube",
-    display_name: "Iron Ore",
-    category: "ore",
-    physical: (
-        solid: true,
-        opaque: true,
-        hardness: 3.0,
-        blast_resistance: 9,
-        friction: 0.82,
-        restitution: 0.0,
-    ),
-    visual: (
-        render: opaque,
-        materials: {
-            "py": "core:material/blocks/iron_ore/iron_ore_all",
-            
-"ny": "core:material/blocks/iron_ore/iron_ore_all",
-            "pz": "core:material/blocks/iron_ore/iron_ore_all",
-            
-"nz": "core:material/blocks/iron_ore/iron_ore_all",
-            "px": "core:material/blocks/iron_ore/iron_ore_all",
-            
-"nx": "core:material/blocks/iron_ore/iron_ore_all",
-        },
-    ),
-    gameplay: (
-        preferred_tool: Some("core:tag/item/tool/pickaxe"),
-        drops: "core:loot/blocks/iron_ore",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/stone",
-        break: "core:sound/break/stone",
-        place: "core:sound/place/stone",
-    ),
-    tags: ["core:tag/block/ore", "core:tag/resource/iron"],
+Block(
+    name: "Iron Ore",
+
+    texture: "blocks/iron_ore/all",
+    render: opaque,
+
+    hardness: 3.0,
+    blast_resistance: 9.0,
+
+    tool: pickaxe,
+    drops: "iron_ore_chunk",
+    stack: 99,
+    sound: stone,
+
+    tags: [terrain, ore, stone],
 )

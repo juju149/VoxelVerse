@@ -1,40 +1,18 @@
-BlockDef(
-    format_version: 1,
-    model: "core:block_model/soft_cube",
-    display_name: "Powder Snow",
-    category: "terrain",
-    physical: (
-        solid: true,
-        opaque: false,
-        hardness: 0.2,
-        blast_resistance: 0.6,
-        friction: 0.82,
-        restitution: 0.0,
-    ),
-    visual: (
-        render: alpha_test,
-        materials: {
-            "py": "core:material/blocks/powder_snow/powder_snow_all",
-            
-"ny": "core:material/blocks/powder_snow/powder_snow_all",
-            "pz": "core:material/blocks/powder_snow/powder_snow_all",
-            
-"nz": "core:material/blocks/powder_snow/powder_snow_all",
-            "px": "core:material/blocks/powder_snow/powder_snow_all",
-            
-"nx": "core:material/blocks/powder_snow/powder_snow_all",
-        },
-    ),
-    gameplay: (
-        preferred_tool: Some("core:tag/item/tool/shovel"),
-        drops: "core:loot/blocks/powder_snow",
-        placement: grid_aligned,
-        replaceable: false,
-    ),
-    audio: (
-        footstep: "core:sound/step/snow",
-        break: "core:sound/break/snow",
-        place: "core:sound/place/snow",
-    ),
-    tags: ["core:tag/block/terrain", "core:tag/block/snow", "core:tag/block/soft"],
+// Powder Snow — soft snow, not solid; entities sink through it.
+Block(
+    name: "Powder Snow",
+
+    texture: "blocks/powder_snow/all",
+    render: translucent,
+
+    hardness: 0.25,
+    blast_resistance: 0.5,
+    solid: false,
+
+    tool: shovel,
+    drops: nothing,
+    stack: 99,
+    sound: snow,
+
+    tags: [terrain, snow],
 )

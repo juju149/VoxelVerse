@@ -1,8 +1,0 @@
-﻿ItemDef(
-    display_name: "Podzol",
-    category: "block",
-    stack_size: 99,
-    visual: (inventory_icon: "core:icon/blocks/podzol", world_model: BlockItem("core:block/terrain/podzol")),
-    gameplay: PlaceBlock("core:block/terrain/podzol"),
-    tags: ["core:tag/item/block"],
-)

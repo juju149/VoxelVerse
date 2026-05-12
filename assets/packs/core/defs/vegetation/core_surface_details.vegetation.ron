@@ -1,8 +1,9 @@
-﻿VegetationDef(
+VegetationDef(
     groups: [
-        (id_hint: "grass", models: ["core:voxel/vegetation/grass"], placement: surface_only, render: instanced_voxel_prop),
-        (id_hint: "flowers", models: ["core:voxel/vegetation/flowers"], placement: surface_only, render: instanced_voxel_prop),
-        (id_hint: "cave_flora", models: ["core:voxel/vegetation/cave"], placement: cave_surface_or_ceiling, render: instanced_voxel_prop),
-        (id_hint: "underwater", models: ["core:voxel/vegetation/underwater"], placement: underwater_surface, render: instanced_voxel_prop),
+        (id_hint: "grass", models: ["voxel/vegetation/grass"], placement: surface_only, render: instanced_voxel_prop),
+        (id_hint: "flowers", models: ["voxel/vegetation/flowers"], placement: surface_only, render: instanced_voxel_prop),
+        (id_hint: "cave_flora", models: ["voxel/vegetation/cave"], placement: cave_surface_or_ceiling, render: instanced_voxel_prop),
+        (id_hint: "underwater", models: ["voxel/vegetation/underwater"], placement: underwater_surface, render: instanced_voxel_prop),
     ],
 )
+

@@ -1,31 +1,26 @@
-BiomeDef(
-    display_name: "Birch Forest",
-    surface: (
-        top: "core:block/terrain/grass",
-        under: "core:block/terrain/dirt",
-        depth_voxels: (2, 6),
-        slope_override: Some((above_degrees: 42, top: "core:block/terrain/stone")),
-    ),
+Biome(
+    name: "Birch Forest",
+
+    surface: (top: grass, under: dirt, depth: (2, 6)),
+    slope: (above: 42, use: stone),
+
     terrain: (
-        base_height: 0.05,
+        height:    0.05,
         amplitude: 0.25,
-        flatness: 0.44,
-        hill_field: "core:field/rolling_hills",
-        ridge_field: None,
-        terrace_strength: 0.0,
-        height_curve: Some(smoothstep),
-        mountain_intensity: 0.5,
-        slope_smoothing: 0.35,
+        flatness:  0.44,
+        noise:     rolling_hills,
+        mountain:  0.5,
+        slope_smooth: 0.35,
     ),
+
     palette: (
-        grass: (0.42, 0.72, 0.30),
+        grass:   (0.42, 0.72, 0.30),
         foliage: (0.28, 0.58, 0.22),
-        fog_bias: (0.01, 0.02, 0.00),
     ),
-    placement: (
-        vegetation_tags: ["core:tag/biome/temperate", "core:tag/biome/forest"],
-        fauna_tags: ["core:tag/fauna/small_herbivore"],
-        structure_tags: ["core:tag/structure/small"],
-    ),
-    tags: ["core:tag/biome/temperate", "core:tag/biome/forest", "core:tag/biome/birch"],
+
+    vegetation: [temperate, forest],
+    fauna: [small_herbivore],
+    structures: [small],
+
+    tags: [temperate, forest, birch],
 )
