@@ -5,10 +5,6 @@
 //! are deterministic across reloads and packs applied in the same order.
 
 use std::collections::HashMap;
-use vv_content_schema::{
-    RawConsumableDef, RawFoodDef, RawItemDef, RawItemGameplayDef, RawItemWorldModel, RawToolDef,
-    RawWeaponClass, RawWeaponDef,
-};
 
 // ─── ItemId ─────────────────────────────────────────────────────────────────
 
@@ -26,7 +22,7 @@ impl ItemId {
         self.0
     }
 
-    pub(crate) fn from_raw(id: u32) -> Self {
+    pub fn from_raw(id: u32) -> Self {
         Self(id)
     }
 }
@@ -186,111 +182,4 @@ impl ItemRegistry {
         self.items.is_empty()
     }
 }
-
-// ─── Compilation helpers ─────────────────────────────────────────────────────
-
-/// Compile a sorted list of raw item definitions into an `ItemRegistry`.
-/// Errors are collected and returned all at once.
-pub fn compile_items(mut raw: Vec<(String, RawItemDef)>) -> Result<ItemRegistry, Vec<String>> {
-    raw.sort_by(|(a, _), (b, _)| a.cmp(b));
-
-    let mut errors = Vec::new();
-    let mut items = Vec::with_capacity(raw.len());
-
-    for (idx, (key, def)) in raw.into_iter().enumerate() {
-        let visual = compile_visual(&key, def.visual, &mut errors);
-        let gameplay = compile_gameplay(&key, def.gameplay, &mut errors);
-
-        items.push(CompiledItem {
-            id: ItemId::from_raw(idx as u32),
-            key,
-            display_name: def.display_name,
-            category: def.category,
-            stack_size: StackSize(def.stack_size),
-            visual,
-            gameplay,
-            tag_keys: def.tags.into_iter().map(|r| r.0).collect(),
-        });
-    }
-
-    if !errors.is_empty() {
-        return Err(errors);
-    }
-    Ok(ItemRegistry::new(items))
-}
-
-fn compile_visual(
-    key: &str,
-    raw: vv_content_schema::RawItemVisualDef,
-    _errors: &mut Vec<String>,
-) -> CompiledItemVisual {
-    let world_model = match raw.world_model {
-        RawItemWorldModel::None => CompiledItemWorldModel::None,
-        RawItemWorldModel::BlockItem(r) => CompiledItemWorldModel::BlockItem(r.0),
-        RawItemWorldModel::Voxel(r) => CompiledItemWorldModel::Voxel(r.0),
-    };
-    CompiledItemVisual {
-        icon_key: raw.inventory_icon.0,
-        world_model,
-        hand_model_key: raw.hand_model.map(|r| r.0),
-    }
-}
-
-fn compile_gameplay(
-    key: &str,
-    raw: RawItemGameplayDef,
-    errors: &mut Vec<String>,
-) -> CompiledItemGameplay {
-    match raw {
-        RawItemGameplayDef::PlaceBlock(block_ref) => CompiledItemGameplay::PlaceBlock {
-            block_key: block_ref.0,
-        },
-        RawItemGameplayDef::CraftingIngredient(raw_ci) => {
-            CompiledItemGameplay::CraftingIngredient(CompiledIngredientData {
-                fuel_value: raw_ci.fuel_value,
-                smelts_to_key: raw_ci.smelts_to.map(|r| r.0),
-            })
-        }
-        RawItemGameplayDef::Tool(raw_tool) => {
-            if raw_tool.mining_speed <= 0.0 {
-                errors.push(format!(
-                    "item '{}': tool mining_speed must be > 0 (got {})",
-                    key, raw_tool.mining_speed
-                ));
-            }
-            CompiledItemGameplay::Tool(CompiledToolData {
-                tool_tag_keys: raw_tool.tool_tags.into_iter().map(|r| r.0).collect(),
-                tier: raw_tool.tier,
-                mining_speed: raw_tool.mining_speed,
-                durability: raw_tool.durability,
-            })
-        }
-        RawItemGameplayDef::Weapon(raw_w) => {
-            let class = match raw_w.class {
-                RawWeaponClass::Bow => CompiledWeaponClass::Bow,
-                RawWeaponClass::Sword => CompiledWeaponClass::Sword,
-            };
-            CompiledItemGameplay::Weapon(CompiledWeaponData {
-                class,
-                damage: raw_w.damage,
-                attack_speed: raw_w.attack_speed,
-                durability: raw_w.durability,
-                projectile_key: raw_w.projectile.map(|r| r.0),
-            })
-        }
-        RawItemGameplayDef::Food(raw_f) => {
-            CompiledItemGameplay::Food(CompiledFoodData {
-                nutrition: raw_f.nutrition,
-                saturation: raw_f.saturation,
-                eat_seconds: raw_f.eat_seconds,
-            })
-        }
-        RawItemGameplayDef::Consumable(raw_c) => {
-            CompiledItemGameplay::Consumable(CompiledConsumableData {
-                effect_key: raw_c.effect.0,
-                magnitude: raw_c.magnitude,
-                use_seconds: raw_c.use_seconds,
-            })
-        }
-    }
-}
+

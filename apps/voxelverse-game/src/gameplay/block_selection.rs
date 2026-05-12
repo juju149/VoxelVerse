@@ -56,24 +56,21 @@ mod tests {
     use crate::math::Ray;
     use crate::world::PlanetData;
     use glam::Vec3;
+    use std::sync::Arc;
 
     #[test]
     fn empty_ray_returns_no_hit() {
         use crate::content::compile::ContentCompiler;
         use crate::content::pack::PackLoader;
-        use std::sync::Arc;
+        use vv_pack_compiler::compile_objects;
         let core_pack_dir = asset_pack_root().join("core");
         let pack = PackLoader::load_from_dir(&core_pack_dir)
             .expect("assets/packs/core must exist for tests");
-        let index = vv_pack_compiler::ContentIndex::build(&pack);
-        let models =
-            ContentCompiler::compile_block_models(pack.block_models).expect("block_models");
-        let registry = Arc::new(
-            ContentCompiler::compile_blocks(pack.blocks, pack.materials, models, &index)
-                .expect("blocks"),
-        );
         let procedural_pack =
             PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
+        let compiled = compile_objects(pack.objects).expect("compile_objects");
+        let registry = Arc::new(compiled.blocks);
+        let items = Arc::new(compiled.items);
         let procedural = Arc::new(
             ContentCompiler::compile_procedural(procedural_pack, &registry).expect("procedural"),
         );
@@ -82,12 +79,11 @@ mod tests {
             .expect("procedural planet")
             .base
             .with_resolution(16);
-        let planet = PlanetData::new(planet_def, registry, procedural, 0);
+        let planet = PlanetData::new(planet_def, registry, items, procedural, 0);
         let ray = Ray {
             origin: Vec3::new(0.0, 0.0, 10_000.0),
             direction: Vec3::Z,
         };
-
         assert_eq!(
             BlockSelection::trace(ray, 8.0, &planet, BlockSelectionMode::HitSolid),
             None

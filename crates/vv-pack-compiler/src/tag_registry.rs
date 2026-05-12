@@ -9,7 +9,6 @@
 //! every referenced content key exists in the known content index.
 
 use std::collections::{HashMap, HashSet};
-use vv_content_schema::RawTagSetDef;
 
 // ─── TagId ───────────────────────────────────────────────────────────────────
 
@@ -116,76 +115,4 @@ impl TagRegistry {
         self.tags.is_empty()
     }
 }
-
-// ─── Compilation ─────────────────────────────────────────────────────────────
-
-/// Compile all `RawTagSetDef` files into a flat `TagRegistry`.
-///
-/// Each tag set file declares one or more tag groups.  Each group has an
-/// `id_hint` (e.g. `"stone"`) that is used verbatim as the tag key suffix
-/// under the pack namespace convention (`namespace:tag/<sub-path>/<id_hint>`).
-/// The tag file's own content key provides the sub-path context.
-///
-/// Because `id_hint` is a free string and multiple files may define tags in
-/// the same namespace, duplicate keys are merged (values are unioned).
-/// References to unknown content are currently warnings, not hard errors —
-/// content authoring is iterative and tags often lead defs.
-pub fn compile_tags(raw: Vec<(String, RawTagSetDef)>) -> TagRegistry {
-    // key → accumulated value set
-    let mut accumulator: HashMap<String, HashSet<String>> = HashMap::new();
-
-    for (file_key, def) in raw {
-        // Derive the tag namespace from the file key. The file key is
-        // `namespace:tag/<sub-path>/<filename>` — we strip the final component
-        // and use `namespace:tag/<sub-path>` as the prefix.
-        let prefix = derive_tag_prefix(&file_key);
-
-        for group in def.tags {
-            let tag_key = if prefix.is_empty() {
-                group.id_hint.clone()
-            } else {
-                format!("{}/{}", prefix, group.id_hint)
-            };
-
-            let entry = accumulator.entry(tag_key).or_default();
-            for value in group.values {
-                entry.insert(value.0);
-            }
-        }
-    }
-
-    // Sort for deterministic IDs.
-    let mut sorted: Vec<(String, HashSet<String>)> = accumulator.into_iter().collect();
-    sorted.sort_by(|(a, _), (b, _)| a.cmp(b));
-
-    let tags = sorted
-        .into_iter()
-        .enumerate()
-        .map(|(idx, (key, values))| CompiledTag {
-            id: TagId(idx as u32),
-            key,
-            values,
-        })
-        .collect();
-
-    TagRegistry::new(tags)
-}
-
-/// Extract the canonical tag prefix from a tag-set file content key.
-///
-/// File key:  `core:tag/blocks/core_block_tags`
-/// Prefix:    `core:tag/blocks`
-fn derive_tag_prefix(file_key: &str) -> String {
-    // Split on ':' to separate namespace from path.
-    let Some((ns, path)) = file_key.split_once(':') else {
-        return file_key.to_string();
-    };
-
-    // Remove the last path component (the filename).
-    let prefix_path = match path.rfind('/') {
-        Some(idx) => &path[..idx],
-        None => path,
-    };
-
-    format!("{}:{}", ns, prefix_path)
-}
+

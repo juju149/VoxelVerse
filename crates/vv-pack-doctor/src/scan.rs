@@ -5,36 +5,22 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use vv_content_schema::{
-    ContentRef, RawBlockDef, RawItemDef, RawLootTableDef, RawMaterialDef, RawObjectDef,
-    RawPackManifest, RawRecipeDef, RawTagSetDef,
-};
+use vv_content_schema::{ContentRef, RawObjectDef, RawPackManifest};
 use vv_pack_loader::{LoadedPack, PackLoader, RawProceduralPack};
 
-/// A scanned pack, ready for inspection.
 pub struct PackScan {
     pub pack_root: PathBuf,
     pub manifest: RawPackManifest,
-    pub blocks: Vec<(String, RawBlockDef)>,
-    pub materials: Vec<(String, RawMaterialDef)>,
-    pub items: Vec<(String, RawItemDef)>,
-    pub loot: Vec<(String, RawLootTableDef)>,
-    pub recipes: Vec<(String, RawRecipeDef)>,
-    pub tag_sets: Vec<(String, RawTagSetDef)>,
-    /// Unified object definitions (new .object.ron format).
     pub objects: Vec<(String, RawObjectDef)>,
     pub procedural: RawProceduralPack,
-    pub block_model_ids: HashSet<String>,
     pub texture_files: Vec<TextureFile>,
     pub voxel_files: Vec<PathBuf>,
     pub all_ron_files: Vec<PathBuf>,
 }
 
 pub struct TextureFile {
-    /// Pack-relative path with forward slashes.
     pub rel_path: String,
     pub abs_path: PathBuf,
-    /// `core:texture/...` reference id, derived from the path under `media/textures/`.
     pub texture_ref: String,
 }
 
@@ -48,12 +34,6 @@ impl PackScan {
         let procedural = PackLoader::load_procedural_from_dir(&pack_root)
             .unwrap_or_else(|_| RawProceduralPack::default());
 
-        let block_model_ids = loaded
-            .block_models
-            .iter()
-            .map(|(id, _)| id.clone())
-            .collect::<HashSet<_>>();
-
         let texture_files = collect_texture_files(&pack_root, &loaded.manifest.namespace)?;
         let voxel_files = collect_files_with_ext(&pack_root.join("media").join("voxel"), "vox")?;
         let all_ron_files = collect_files_with_ext(&pack_root, "ron")?;
@@ -61,44 +41,16 @@ impl PackScan {
         Ok(Self {
             pack_root,
             manifest: loaded.manifest,
-            blocks: loaded.blocks,
-            materials: loaded.materials,
-            items: loaded.items,
-            loot: loaded.loot,
-            recipes: loaded.recipes,
-            tag_sets: loaded.tag_sets,
             objects: loaded.objects,
             procedural,
-            block_model_ids,
             texture_files,
             voxel_files,
             all_ron_files,
         })
     }
 
-    /// `true` if the given content reference resolves to a known content id.
-    /// Tag and icon references are recognized as namespaced even when they
-    /// are not declared, since the loader does not load them explicitly.
-    pub fn block_id_exists(&self, id: &str) -> bool {
-        self.blocks.iter().any(|(known, _)| known == id)
-            || self.objects.iter().any(|(known, d)| known == id && d.block.is_some())
-    }
-
-    pub fn item_id_exists(&self, id: &str) -> bool {
-        self.items.iter().any(|(known, _)| known == id)
-            || self.objects.iter().any(|(known, _)| known == id)
-    }
-
-    pub fn material_id_exists(&self, id: &str) -> bool {
-        self.materials.iter().any(|(known, _)| known == id)
-    }
-
-    pub fn loot_id_exists(&self, id: &str) -> bool {
-        self.loot.iter().any(|(known, _)| known == id)
-    }
-
-    pub fn block_model_id_exists(&self, id: &str) -> bool {
-        self.block_model_ids.contains(id)
+    pub fn object_id_exists(&self, id: &str) -> bool {
+        self.objects.iter().any(|(known, _)| known == id)
     }
 
     pub fn texture_id_exists(&self, id: &str) -> bool {
@@ -112,8 +64,6 @@ impl PackScan {
     }
 }
 
-/// Trait alias for content references so we can pass `ContentRef` or `&str`
-/// interchangeably to the check modules.
 pub trait AsRefStr {
     fn as_str(&self) -> &str;
 }

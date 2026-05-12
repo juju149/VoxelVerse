@@ -1,29 +1,12 @@
 //! Cross-domain index of every content key declared by a loaded pack.
 //!
-//! The compiler builds this index once before any compilation pass so that any
-//! `ContentRef` encountered later (drops, audio events, materials, tags, …) can
-//! be checked for existence, not just for syntactic validity. A reference that
-//! does not resolve to a real definition is a hard error.
+//! The compiler builds this index once before any compilation pass so that
+//! any `ContentRef` encountered later can be checked for existence.
 //!
-//! Domains currently indexed:
-//!  - `core:block/...`       (block defs)
-//!  - `core:block_model/...` (block model defs)
-//!  - `core:material/...`    (material defs)
-//!  - `core:item/...`        (item defs)
-//!  - `core:entity/...`      (entity defs)
-//!  - `core:loot/...`        (loot tables)
-//!  - `core:skeleton/...`    (skeleton defs)
-//!  - `core:props/...`       (prop collection defs)
-//!  - `core:vegetation/...`  (vegetation catalog defs)
-//!  - `core:sound/...`       (sound event defs — typed registry, no audio yet)
+//! Domains indexed:
+//!  - `core:object/...`      (unified object defs)
 //!  - `core:voxel/...`       (generated voxel asset registry)
 //!  - `core:render/...`      (render profiles, shader modules, techniques)
-//!
-//! Domains *not yet* indexed (deferred to later sprint steps because they
-//! require their own refactor):
-//!  - `core:tag/...`    → tags are currently anonymous `id_hint` strings; will
-//!    be reworked into addressable defs.
-//!  - `core:texture/...` → resolved by `TextureRegistry` from media paths.
 
 use std::collections::HashSet;
 use vv_content_schema::ContentRef;
@@ -40,37 +23,7 @@ impl ContentIndex {
     pub fn build(pack: &LoadedPack) -> Self {
         let mut keys = HashSet::new();
 
-        for (k, _) in &pack.blocks {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.block_models {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.materials {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.items {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.entities {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.loot {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.skeletons {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.prop_collections {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.vegetation_catalogs {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.sounds {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.recipes {
+        for (k, _) in &pack.objects {
             keys.insert(k.clone());
         }
         if let Some(reg) = &pack.voxel_assets {
@@ -94,10 +47,6 @@ impl ContentIndex {
             keys.insert(k.clone());
         }
         for (k, _) in &pack.render.render_graphs {
-            keys.insert(k.clone());
-        }
-        // Object-format definitions (unified block+item+recipe per file).
-        for (k, _) in &pack.objects {
             keys.insert(k.clone());
         }
 

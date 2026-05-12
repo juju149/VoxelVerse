@@ -22,8 +22,7 @@ const BASIC_BLOCK_SUFFIXES: &[&str] = &[
 pub fn run(scan: &PackScan, report: &mut Report) {
     let mut missing = Vec::new();
     for suffix in BASIC_BLOCK_SUFFIXES {
-        let found = scan.blocks.iter().any(|(id, _)| id.ends_with(suffix))
-            || scan.objects.iter().any(|(id, d)| id.ends_with(suffix) && d.block.is_some());
+        let found = scan.objects.iter().any(|(id, d)| id.ends_with(suffix) && d.block.is_some());
         if !found {
             missing.push((*suffix).to_string());
         }

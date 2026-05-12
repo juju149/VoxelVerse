@@ -640,13 +640,14 @@ fn resolve_block(
     key: &ContentRef,
     errors: &mut Vec<String>,
 ) -> Option<VoxelId> {
-    match blocks.lookup(&key.0) {
-        Some(id) => Some(id),
-        None => {
-            errors.push(format!("Procedural '{}': unknown block '{}'", owner, key.0));
-            None
-        }
+    if let Some(id) = blocks.lookup(&key.0) {
+        return Some(id);
     }
+    if let Some(id) = blocks.lookup_stem(&key.0) {
+        return Some(id);
+    }
+    errors.push(format!("Procedural '{}': unknown block '{}'", owner, key.0));
+    None
 }
 
 fn key_map<T>(

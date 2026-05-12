@@ -235,16 +235,22 @@ impl BlockRegistry {
         }
     }
 
-    /// Look up the default-variant `VoxelId` for a family. Identical to the
-    /// pre-states behaviour: `lookup("core:block/.../oak_log")` resolves
-    /// to whatever the block's declared default state expands to.
     pub fn lookup(&self, key: &str) -> Option<VoxelId> {
         self.family_default.get(key).copied()
     }
 
-    /// Same as `lookup`, but explicit about returning the *default* variant.
     pub fn lookup_default(&self, family_key: &str) -> Option<VoxelId> {
         self.family_default.get(family_key).copied()
+    }
+
+    pub fn lookup_stem(&self, stem: &str) -> Option<VoxelId> {
+        self.family_default.iter().find_map(|(key, &id)| {
+            if key.rsplit('/').next() == Some(stem) {
+                Some(id)
+            } else {
+                None
+            }
+        })
     }
 
     /// Look up a specific variant of a family by its state assignment.

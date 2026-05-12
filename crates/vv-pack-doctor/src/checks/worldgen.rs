@@ -9,7 +9,7 @@ const CHECK: &str = "worldgen";
 pub fn run(scan: &PackScan, report: &mut Report) {
     for (id, set) in &scan.procedural.terrain_layers {
         for (i, layer) in set.layers.iter().enumerate() {
-            if !scan.block_id_exists(&layer.block.0) {
+            if !scan.object_id_exists(&layer.block.0) {
                 report.error_id(
                     CHECK,
                     format!(
@@ -23,7 +23,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
     }
 
     for (id, ore) in &scan.procedural.ores {
-        if !scan.block_id_exists(&ore.block.0) {
+        if !scan.object_id_exists(&ore.block.0) {
             report.error_id(
                 CHECK,
                 format!("ore '{}' references missing block '{}'", id, ore.block.0),
@@ -31,7 +31,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
             );
         }
         for r in &ore.replace {
-            if !scan.block_id_exists(&r.0) {
+            if !scan.object_id_exists(&r.0) {
                 report.error_id(
                     CHECK,
                     format!("ore '{}' replace target '{}' does not exist", id, r.0),
@@ -42,7 +42,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
     }
 
     for (id, veg) in &scan.procedural.vegetation {
-        if !scan.block_id_exists(&veg.stamp.trunk.0) {
+        if !scan.object_id_exists(&veg.stamp.trunk.0) {
             report.error_id(
                 CHECK,
                 format!(
@@ -52,7 +52,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
                 id.clone(),
             );
         }
-        if !scan.block_id_exists(&veg.stamp.leaves.0) {
+        if !scan.object_id_exists(&veg.stamp.leaves.0) {
             report.error_id(
                 CHECK,
                 format!(
@@ -65,7 +65,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
     }
 
     for (id, biome) in &scan.procedural.biomes {
-        if !scan.block_id_exists(&biome.surface.top.0) {
+        if !scan.object_id_exists(&biome.surface.top.0) {
             report.error_id(
                 CHECK,
                 format!(
@@ -75,7 +75,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
                 id.clone(),
             );
         }
-        if !scan.block_id_exists(&biome.surface.under.0) {
+        if !scan.object_id_exists(&biome.surface.under.0) {
             report.error_id(
                 CHECK,
                 format!(
@@ -86,7 +86,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
             );
         }
         if let Some(slope) = &biome.surface.slope_override {
-            if !scan.block_id_exists(&slope.top.0) {
+            if !scan.object_id_exists(&slope.top.0) {
                 report.error_id(
                     CHECK,
                     format!(
@@ -99,3 +99,4 @@ pub fn run(scan: &PackScan, report: &mut Report) {
         }
     }
 }
+

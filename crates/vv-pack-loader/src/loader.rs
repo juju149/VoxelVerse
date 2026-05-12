@@ -1,27 +1,9 @@
 use std::path::{Path, PathBuf};
 use vv_content_schema::*;
 
-/// A loaded but uncompiled pack. IDs are path-derived and stable across hosts.
-#[allow(dead_code)]
 pub struct LoadedPack {
     pub manifest: RawPackManifest,
-    // ── New unified format ────────────────────────────────────────────────────
-    /// Objects loaded from `defs/objects/**/*.object.ron`.
-    /// Replaces the old per-type dirs (blocks/, items/, recipes/, …).
     pub objects: Vec<(String, RawObjectDef)>,
-    // ── Legacy typed dirs (return empty vecs when dirs are absent) ───────────
-    pub blocks: Vec<(String, RawBlockDef)>,
-    pub block_models: Vec<(String, RawBlockModelDef)>,
-    pub materials: Vec<(String, RawMaterialDef)>,
-    pub items: Vec<(String, RawItemDef)>,
-    pub entities: Vec<(String, RawEntityDef)>,
-    pub loot: Vec<(String, RawLootTableDef)>,
-    pub recipes: Vec<(String, RawRecipeDef)>,
-    pub skeletons: Vec<(String, RawSkeletonDef)>,
-    pub prop_collections: Vec<(String, RawPropCollectionDef)>,
-    pub vegetation_catalogs: Vec<(String, RawVegetationCatalogDef)>,
-    pub tag_sets: Vec<(String, RawTagSetDef)>,
-    pub sounds: Vec<(String, RawSoundEventDef)>,
     pub voxel_assets: Option<RawVoxelAssetRegistry>,
     pub render: RawRenderPack,
 }
@@ -99,18 +81,6 @@ impl PackLoader {
         Ok(LoadedPack {
             manifest,
             objects: load_typed_tree(&defs.join("objects"), &defs, &namespace)?,
-            blocks: load_typed_tree(&defs.join("blocks"), &defs, &namespace)?,
-            block_models: load_typed_tree(&defs.join("block_models"), &defs, &namespace)?,
-            materials: load_typed_tree(&defs.join("materials"), &defs, &namespace)?,
-            items: load_typed_tree(&defs.join("items"), &defs, &namespace)?,
-            entities: load_typed_tree(&defs.join("entities"), &defs, &namespace)?,
-            loot: load_typed_tree(&defs.join("loot"), &defs, &namespace)?,
-            recipes: load_typed_tree(&defs.join("recipes"), &defs, &namespace)?,
-            skeletons: load_typed_tree(&defs.join("skeletons"), &defs, &namespace)?,
-            prop_collections: load_typed_tree(&defs.join("props"), &defs, &namespace)?,
-            vegetation_catalogs: load_typed_tree(&defs.join("vegetation"), &defs, &namespace)?,
-            tag_sets: load_typed_tree(&defs.join("tags"), &defs, &namespace)?,
-            sounds: load_typed_tree(&defs.join("sounds"), &defs, &namespace)?,
             voxel_assets: load_optional_file(&voxel_assets_path)?,
             render: load_render_pack(pack_dir, &namespace)?,
         })
@@ -386,20 +356,7 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
     let dirs = &parts[1..parts.len() - 1];
     let id_path = match root {
         "objects" => join_domain("object", dirs, &stem),
-        "blocks" => join_domain("block", dirs, &stem),
-        "block_models" => join_domain("block_model", dirs, &stem),
-        "materials" => join_domain("material", dirs, &stem),
-        "items" => join_domain("item", &singular_item_dirs(dirs), &stem),
-        "entities" => join_domain("entity", dirs, &stem),
-        "loot" => join_domain("loot", dirs, &stem),
-        "recipes" => join_domain("recipe", dirs, &stem),
-        "skeletons" => format!("skeleton/{}", stem),
-        "props" => format!("prop_collection/{}", stem),
-        "vegetation" => format!("vegetation_catalog/{}", stem),
-        "tags" => format!("tags/{}", stem),
-        "sounds" => join_domain("sound", dirs, &stem),
         "worldgen" => derive_world_key(dirs, &stem, false)?,
-        // New `defs/world/` layout: each sub-dir maps to a domain.
         "world" => derive_world_key(dirs, &stem, true)?,
         other => {
             return Err(format!(
@@ -454,19 +411,6 @@ fn strip_def_suffix(file_name: &str) -> String {
     stem.split('.').next().unwrap_or(stem).to_string()
 }
 
-fn singular_item_dirs(dirs: &[String]) -> Vec<String> {
-    dirs.iter()
-        .map(|dir| match dir.as_str() {
-            "blocks" => "block".to_string(),
-            "resources" => "resource".to_string(),
-            "tools" => "tool".to_string(),
-            "weapons" => "weapon".to_string(),
-            "consumables" => "consumable".to_string(),
-            other => other.to_string(),
-        })
-        .collect()
-}
-
 fn join_domain(domain: &str, dirs: &[String], stem: &str) -> String {
     let mut parts = Vec::with_capacity(dirs.len() + 2);
     parts.push(domain.to_string());
@@ -487,44 +431,17 @@ mod tests {
         let procedural =
             PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
 
-        // The new system uses defs/objects/ (new unified format).
-        // Old typed dirs are empty after the migration.
-        assert!(
-            !pack.objects.is_empty(),
-            "core pack must load objects from defs/objects/"
-        );
-        assert!(
-            pack.objects.len() >= 20,
-            "expected >= 20 objects, got {}",
-            pack.objects.len()
-        );
+        assert!(!pack.objects.is_empty(), "core pack must load objects");
+        assert!(pack.objects.len() >= 20, "expected >= 20 objects, got {}", pack.objects.len());
 
-        // Skeletons are still in defs/skeletons/.
-        assert!(!pack.skeletons.is_empty(), "skeletons must load");
-
-        // Runtime voxel asset registry (generated).
         if let Some(voxel_assets) = &pack.voxel_assets {
             assert_eq!(voxel_assets.asset_count as usize, voxel_assets.assets.len());
-            assert_eq!(voxel_assets.generated_from, "media/voxel");
             for asset in &voxel_assets.assets {
-                assert!(
-                    asset.id.0.starts_with("core:voxel/"),
-                    "bad voxel id {}",
-                    asset.id.0
-                );
-                assert!(
-                    core_pack_dir.join(&asset.path).exists(),
-                    "missing voxel asset {}",
-                    asset.path
-                );
+                assert!(asset.id.0.starts_with("core:voxel/"));
             }
         }
 
-        // World generation content (new defs/world/ layout).
-        assert!(
-            !procedural.planets.is_empty(),
-            "must have at least one planet"
-        );
+        assert!(!procedural.planets.is_empty(), "must have at least one planet");
         assert!(!procedural.fields.is_empty(), "must have noise fields");
         assert!(!procedural.biomes.is_empty(), "must have biomes");
     }

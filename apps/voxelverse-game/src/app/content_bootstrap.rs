@@ -45,7 +45,6 @@ pub fn load_core_content() -> LoadedCoreContent {
         panic!("Failed to load {}: {}", core_pack_dir.display(), e);
     });
 
-    let content_index = vv_pack_compiler::ContentIndex::build(&pack);
     let compiled_render = ContentCompiler::compile_render_content(&pack).unwrap_or_else(|errors| {
         for e in &errors {
             eprintln!("[render content error] {}", e);

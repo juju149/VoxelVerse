@@ -5,7 +5,6 @@
 
 use crate::item_registry::ItemId;
 use std::collections::HashMap;
-use vv_content_schema::RawLootTableDef;
 
 // ─── LootTableId ─────────────────────────────────────────────────────────────
 
@@ -118,68 +117,4 @@ impl LootRegistry {
         self.tables.is_empty()
     }
 }
-
-// ─── Compilation ─────────────────────────────────────────────────────────────
-
-/// Compile raw loot table definitions into a `LootRegistry`.
-///
-/// Every `item` reference is resolved against `item_registry`. Unknown items
-/// produce errors rather than silent fallbacks.
-pub fn compile_loot_tables(
-    mut raw: Vec<(String, RawLootTableDef)>,
-    item_registry: &crate::ItemRegistry,
-) -> Result<LootRegistry, Vec<String>> {
-    raw.sort_by(|(a, _), (b, _)| a.cmp(b));
-
-    let mut errors = Vec::new();
-    let mut tables: Vec<CompiledLootTable> = Vec::with_capacity(raw.len());
-
-    for (idx, (key, def)) in raw.into_iter().enumerate() {
-        if def.rolls == 0 {
-            errors.push(format!("loot table '{}': rolls must be ≥ 1", key));
-            continue;
-        }
-
-        let mut entries = Vec::with_capacity(def.entries.len());
-        for entry in def.entries {
-            let item_key = &entry.item.0;
-            match item_registry.lookup(item_key) {
-                Some(item_id) => {
-                    let (count_min, count_max) = entry.count;
-                    if count_min > count_max {
-                        errors.push(format!(
-                            "loot table '{}': entry '{}' has count_min {} > count_max {}",
-                            key, item_key, count_min, count_max
-                        ));
-                        continue;
-                    }
-                    let chance = entry.chance.clamp(0.0, 1.0);
-                    entries.push(CompiledLootEntry {
-                        item_id,
-                        count_min,
-                        count_max,
-                        chance,
-                    });
-                }
-                None => {
-                    errors.push(format!(
-                        "loot table '{}': unknown item ref '{}'",
-                        key, item_key
-                    ));
-                }
-            }
-        }
-
-        tables.push(CompiledLootTable {
-            id: LootTableId(idx as u32),
-            key,
-            rolls: def.rolls,
-            entries,
-        });
-    }
-
-    if !errors.is_empty() {
-        return Err(errors);
-    }
-    Ok(LootRegistry::new(tables))
-}
+

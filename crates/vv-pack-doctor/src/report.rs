@@ -154,12 +154,12 @@ impl Report {
         let obj_blocks = scan.objects.iter().filter(|(_, d)| d.block.is_some()).count();
         let obj_items = scan.objects.len();
         let obj_recipes = scan.objects.iter().filter(|(_, d)| d.recipe.is_some()).count();
-        self.summary.blocks = scan.blocks.len() + obj_blocks;
-        self.summary.items = scan.items.len() + obj_items;
-        self.summary.materials = scan.materials.len();
+        self.summary.blocks = obj_blocks;
+        self.summary.items = obj_items;
+        self.summary.materials = 0;
         self.summary.textures = scan.texture_files.len();
-        self.summary.recipes = scan.recipes.len() + obj_recipes;
-        self.summary.loot_tables = scan.loot.len();
+        self.summary.recipes = obj_recipes;
+        self.summary.loot_tables = 0;
         self.summary.errors = self.errors.len();
         self.summary.warnings = self.warnings.len();
         self.health_score = self.compute_health_score();

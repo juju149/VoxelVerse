@@ -27,9 +27,7 @@ pub use item_registry::{
     CompiledItemGameplay, CompiledItemVisual, CompiledItemWorldModel, CompiledToolData,
     CompiledWeaponClass, CompiledWeaponData, ItemId, ItemRegistry, StackSize,
 };
-pub use loot_registry::{
-    CompiledLootEntry, CompiledLootTable, LootRegistry, LootTableId,
-};
+pub use loot_registry::{CompiledLootEntry, CompiledLootTable, LootRegistry, LootTableId};
 pub use materials::TerrainPalette;
 pub use object_compiler::{compile_objects, CompiledObjects};
 pub use planet_registry::CompiledPlanet;
