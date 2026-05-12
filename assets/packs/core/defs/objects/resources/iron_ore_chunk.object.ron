@@ -1,0 +1,11 @@
+// Iron Ore Chunk — raw ore dropped by mining; smelt to get ingots.
+Object(
+    name: "Iron Ore Chunk",
+    tags: [resource, raw_ore],
+
+    item: (
+        stack: 64,
+        icon: "items/resources/iron_ore_chunk",
+        model: "voxel/items/iron_ore_chunk",
+    ),
+)

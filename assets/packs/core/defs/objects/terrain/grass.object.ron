@@ -1,0 +1,24 @@
+// Grass Block — biome-tinted top, dirt bottom.
+Object(
+    name: "Grass Block",
+    tags: [terrain, soil, supports_vegetation],
+
+    block: (
+        texture: Cube(
+            top:    "blocks/grass_block/top",
+            side:   "blocks/grass_block/side",
+            bottom: "blocks/grass_block/bottom",
+        ),
+        render: opaque,
+        tint: grass,         // top face receives biome grass colour
+        hardness: 0.6,
+        sound: grass,
+    ),
+
+    item: ( stack: 99 ),
+
+    mining: (
+        tool: shovel,
+        drops: [(item: dirt, count: 1)],
+    ),
+)

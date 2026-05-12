@@ -1,0 +1,24 @@
+Object(
+    name: "Jungle Log",
+    tags: [log, wood, flammable],
+
+    block: (
+        shape: column,
+        texture: Column(
+            top:  "blocks/jungle_log/top",
+            side: "blocks/jungle_log/side",
+        ),
+        render: opaque,
+        hardness: 1.5,
+        sound: wood,
+    ),
+
+    item: ( stack: 99 ),
+
+    fuel: ( duration: 300 ),
+
+    mining: (
+        tool: axe,
+        drops: [self],
+    ),
+)

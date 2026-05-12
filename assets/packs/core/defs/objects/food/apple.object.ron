@@ -1,0 +1,17 @@
+// Apple — dropped by oak leaves; restores a small amount of hunger.
+Object(
+    name: "Apple",
+    tags: [food, fruit],
+
+    item: (
+        stack: 64,
+        icon: "items/food/apple",
+        model: "voxel/items/apple",
+    ),
+
+    food: (
+        hunger: 4,
+        saturation: 0.3,
+        eat_time: 1.6,
+    ),
+)

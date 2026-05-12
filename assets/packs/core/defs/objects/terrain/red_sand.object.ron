@@ -1,0 +1,18 @@
+Object(
+    name: "Red Sand",
+    tags: [terrain, sand],
+
+    block: (
+        texture: "blocks/red_sand/all",
+        render: opaque,
+        hardness: 0.5,
+        sound: sand,
+    ),
+
+    item: ( stack: 99 ),
+
+    mining: (
+        tool: shovel,
+        drops: [self],
+    ),
+)

@@ -1,8 +1,0 @@
-Item(
-    name: "Stone Pickaxe",
-    icon: "items/tools/stone_pickaxe",
-    model: "voxel/equipment/tools/pickaxe_stone",
-    stack: 1,
-    tool: (type: pickaxe, tier: 1, speed: 4.0, durability: 132),
-    tags: [tool, pickaxe],
-)

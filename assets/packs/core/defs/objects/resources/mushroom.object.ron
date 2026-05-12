@@ -1,0 +1,10 @@
+Object(
+    name: "Mushroom",
+    tags: [resource, food_ingredient, plant],
+
+    item: (
+        stack: 64,
+        icon: "items/misc/mushroom",
+        model: "voxel/items/mushroom",
+    ),
+)

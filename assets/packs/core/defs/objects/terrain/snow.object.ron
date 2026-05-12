@@ -1,0 +1,18 @@
+Object(
+    name: "Snow",
+    tags: [terrain, snow],
+
+    block: (
+        texture: "blocks/powder_snow/all",
+        render: opaque,
+        hardness: 0.2,
+        sound: snow,
+    ),
+
+    item: ( stack: 99 ),
+
+    mining: (
+        tool: shovel,
+        drops: [self],
+    ),
+)

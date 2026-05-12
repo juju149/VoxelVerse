@@ -9,26 +9,20 @@
     license: "project-internal",
     load_priority: 0,
     dependencies: [],
+    // One entry per defs/ subtree scanned by the compiler.
     features: [
-        "blocks",
-        "materials",
-        "items",
-        "entities",
-        "props",
-        "vegetation",
-        "worldgen",
-        "loot",
-        "recipes",
-        "tags",
+        "objects",       // defs/objects/**   — all gameplay objects (block+item+recipe+entity)
+        "world",         // defs/world/**     — worldgen rules (biomes, ores, climate, vegetation …)
+        "skeletons",     // defs/skeletons/** — character rig definitions
     ],
     content_roots: (
         definitions: "defs",
-        media: "media",
-        generated: "generated",
+        media:       "media",
+        generated:   "generated",
     ),
     rules: (
-        identity: path_derived,
-        id_style: "namespace:domain/category/name",
+        identity:              path_derived,
+        id_style:              "namespace:category/name",
         runtime_loads_raw_files: false,
     ),
 )

@@ -1,8 +1,0 @@
-Item(
-    name: "Wooden Bow",
-    icon: "items/weapons/wood_bow",
-    model: "voxel/equipment/weapons/bow/wood",
-    stack: 1,
-    weapon: (type: bow, damage: 5.0, durability: 384),
-    tags: [weapon, bow],
-)

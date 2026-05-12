@@ -1,0 +1,11 @@
+// Plant Fiber — harvested from tall grass; used as cord in recipes.
+Object(
+    name: "Plant Fiber",
+    tags: [resource, natural],
+
+    item: (
+        stack: 64,
+        icon: "items/resources/plant_fiber",
+        model: "voxel/items/plant_fiber",
+    ),
+)

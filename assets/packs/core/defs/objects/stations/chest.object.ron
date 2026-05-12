@@ -1,0 +1,40 @@
+// Chest — 27-slot storage container.
+Object(
+    name: "Chest",
+    tags: [storage, furniture, wood],
+
+    block: (
+        texture: Cube(
+            top:    "blocks/chest/top",
+            front:  "blocks/chest/front",
+            side:   "blocks/chest/side",
+            bottom: "blocks/chest/bottom",
+        ),
+        render: opaque,
+        hardness: 2.5,
+        sound: wood,
+    ),
+
+    item: ( stack: 1 ),
+
+    storage: (
+        slots: 27,
+        persistent: true,
+    ),
+
+    mining: (
+        tool: axe,
+        drops: [self],
+    ),
+
+    recipe: (
+        station: "#station.construction",
+        shaped: [
+            "LLL",
+            "L L",
+            "LLL",
+        ],
+        legend: { L: oak_log },
+        output: (item: chest, count: 1),
+    ),
+)

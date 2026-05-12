@@ -1,0 +1,10 @@
+Object(
+    name: "Flower",
+    tags: [resource, decorative, plant],
+
+    item: (
+        stack: 64,
+        icon: "items/misc/flower",
+        model: "voxel/items/flower",
+    ),
+)

@@ -1,0 +1,14 @@
+// Bedrock — unbreakable planet boundary.
+Object(
+    name: "Bedrock",
+    tags: [terrain, unbreakable],
+
+    block: (
+        texture: "blocks/bedrock/all",
+        render: opaque,
+        hardness: -1.0,      // negative = unbreakable
+        sound: stone,
+    ),
+
+    item: ( stack: 99 ),
+)

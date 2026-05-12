@@ -1,0 +1,20 @@
+// Powder Snow — not solid, entities sink through it.
+Object(
+    name: "Powder Snow",
+    tags: [terrain, snow],
+
+    block: (
+        texture: "blocks/powder_snow/all",
+        render: translucent,
+        solid: false,
+        hardness: 0.25,
+        sound: snow,
+    ),
+
+    item: ( stack: 99 ),
+
+    mining: (
+        tool: shovel,
+        drops: [],           // melts, drops nothing
+    ),
+)

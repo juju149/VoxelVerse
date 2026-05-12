@@ -1,0 +1,19 @@
+Object(
+    name: "Jungle Leaves",
+    tags: [leaves, flammable],
+
+    block: (
+        texture: "blocks/jungle_leaves/all",
+        render: cutout,
+        tint: foliage,
+        hardness: 0.2,
+        sound: grass,
+    ),
+
+    item: ( stack: 99 ),
+
+    mining: (
+        tool: any,
+        drops: [],
+    ),
+)

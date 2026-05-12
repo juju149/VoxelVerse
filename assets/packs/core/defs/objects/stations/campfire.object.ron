@@ -1,0 +1,36 @@
+// Campfire — cooks food slowly; emits warm light.
+Object(
+    name: "Campfire",
+    tags: [station.campfire, furniture, light_source, flammable],
+
+    block: (
+        texture: "blocks/campfire/all",
+        render: opaque,
+        hardness: 2.0,
+        sound: wood,
+    ),
+
+    item: ( stack: 1 ),
+
+    light: (
+        level: 15,
+        flicker: true,
+        colour: (1.0, 0.6, 0.2),
+    ),
+
+    station: (
+        type: campfire_cooking,
+        slots: 4,
+    ),
+
+    mining: (
+        tool: axe,
+        drops: [(item: coal, count: 2)],
+    ),
+
+    recipe: (
+        station: "#station.construction",
+        shapeless: [oak_log, oak_log, coal],
+        output: (item: campfire, count: 1),
+    ),
+)

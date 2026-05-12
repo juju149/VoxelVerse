@@ -1,0 +1,11 @@
+Vegetation(
+    name: "Acacia Tree",
+    type: tree,
+    trunk:  acacia_log,
+    leaves: acacia_leaves,
+    height: (5, 8),
+    biomes: [savanna],
+    density: 0.04,
+    noise:   acacia_scatter,
+    soil:    "#tag.soil",
+)

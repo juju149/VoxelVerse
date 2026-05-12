@@ -1,0 +1,28 @@
+// Construction Workbench — unlocks all tier-1 tool and building recipes.
+Object(
+    name: "Construction Workbench",
+    tags: [station.construction, furniture, wood],
+
+    block: (
+        texture: Cube(
+            top:    "blocks/crafting_bench/top",
+            side:   "blocks/crafting_bench/front",
+            bottom: "blocks/crafting_bench/bottom",
+        ),
+        render: opaque,
+        hardness: 2.5,
+        sound: wood,
+    ),
+
+    item: ( stack: 1 ),
+
+    station: (
+        type: crafting,
+        grid: 3x3,
+    ),
+
+    mining: (
+        tool: axe,
+        drops: [self],
+    ),
+)

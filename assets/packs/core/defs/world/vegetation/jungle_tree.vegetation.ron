@@ -1,0 +1,11 @@
+Vegetation(
+    name: "Jungle Tree",
+    type: tree,
+    trunk:  jungle_log,
+    leaves: jungle_leaves,
+    height: (10, 20),
+    biomes: [jungle],
+    density: 0.12,
+    noise:   jungle_scatter,
+    soil:    "#tag.soil",
+)

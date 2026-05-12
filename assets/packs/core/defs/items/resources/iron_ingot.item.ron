@@ -1,7 +1,0 @@
-Item(
-    name: "Iron Ingot",
-    icon: "items/resources/iron_ingot",
-    model: "voxel/items/resources/mineral/ingot/iron",
-    stack: 64,
-    tags: [resource, metal, iron],
-)

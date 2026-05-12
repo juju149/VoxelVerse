@@ -1,0 +1,12 @@
+// Air — the empty block. Not solid, not an item, fully replaceable.
+Object(
+    name: "Air",
+    tags: [air],
+
+    block: (
+        texture: none,
+        render: invisible,
+        solid: false,
+        replaceable: true,
+    ),
+)

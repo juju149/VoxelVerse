@@ -1,0 +1,18 @@
+Object(
+    name: "Andesite",
+    tags: [terrain, stone],
+
+    block: (
+        texture: "blocks/andesite/all",
+        render: opaque,
+        hardness: 1.5,
+        sound: stone,
+    ),
+
+    item: ( stack: 99 ),
+
+    mining: (
+        tool: pickaxe,
+        drops: [self],
+    ),
+)

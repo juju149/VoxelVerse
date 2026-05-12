@@ -1,0 +1,12 @@
+// Oak Tree — common temperate tree, 5-9 blocks tall.
+Vegetation(
+    name: "Oak Tree",
+    type: tree,
+    trunk:  oak_log,
+    leaves: oak_leaves,
+    height: (5, 9),
+    biomes: [plains, temperate_forest, meadow, birch_forest],
+    density: 0.05,
+    noise:   oak_scatter,
+    soil:    "#tag.soil",
+)

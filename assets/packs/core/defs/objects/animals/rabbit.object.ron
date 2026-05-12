@@ -1,0 +1,27 @@
+// Rabbit — small passive herbivore; common in plains and forest biomes.
+Object(
+    name: "Rabbit",
+    tags: [animal, passive, small_herbivore],
+
+    entity: (
+        model:     "voxel/creatures/rabbit/male",
+        ai:        passive_wanderer,
+        health:    6,
+        move_speed: 1.8,
+        jump:      0.6,
+    ),
+
+    loot: (
+        when_killed: [
+            (item: plant_fiber, count: (1, 2), chance: 0.8),
+        ],
+    ),
+
+    spawn: (
+        density: 0.025,
+        group:   (min: 1, max: 3),
+        biomes:  [plains, forest],
+        surface: "#tag.soil",
+        light:   daylight,
+    ),
+)

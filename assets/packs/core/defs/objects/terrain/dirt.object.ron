@@ -1,0 +1,18 @@
+Object(
+    name: "Dirt",
+    tags: [terrain, soil],
+
+    block: (
+        texture: "blocks/dirt/all",
+        render: opaque,
+        hardness: 0.5,
+        sound: dirt,
+    ),
+
+    item: ( stack: 99 ),
+
+    mining: (
+        tool: shovel,
+        drops: [self],
+    ),
+)

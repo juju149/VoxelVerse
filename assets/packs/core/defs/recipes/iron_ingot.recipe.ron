@@ -1,6 +1,0 @@
-// Smelt iron ore chunks into ingots.
-Recipe(
-    result: (item: "iron_ingot", count: 1),
-    station: furnace,
-    smelt: (input: iron_ore_chunk, fuel: 800, seconds: 10.0),
-)

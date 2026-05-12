@@ -1,0 +1,14 @@
+// Player — the controlled entity. Health, reach and movement defined here.
+Object(
+    name: "Player",
+    tags: [player],
+
+    entity: (
+        model:     "voxel/characters/player/default",
+        ai:        player_controlled,
+        health:    20,
+        move_speed: 1.0,
+        reach:     7.0,
+        gravity:   planet_surface,
+    ),
+)

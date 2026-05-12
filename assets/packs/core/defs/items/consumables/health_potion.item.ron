@@ -1,8 +1,0 @@
-Item(
-    name: "Health Potion",
-    icon: "items/consumables/health_potion",
-    model: "voxel/items/consumables/potions/potion_red",
-    stack: 8,
-    consumable: (effect: heal, amount: 20),
-    tags: [consumable, potion],
-)

@@ -1,0 +1,12 @@
+// Planet Core — the innermost unbreakable layer.
+Object(
+    name: "Planet Core",
+    tags: [terrain, unbreakable, core],
+
+    block: (
+        texture: "blocks/bedrock/all",
+        render: opaque,
+        hardness: -1.0,
+        sound: stone,
+    ),
+)

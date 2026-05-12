@@ -1,0 +1,23 @@
+Object(
+    name: "Deepslate",
+    tags: [terrain, stone],
+
+    block: (
+        shape: column,
+        texture: Column(
+            top:  "blocks/deepslate/top",
+            side: "blocks/deepslate/side",
+        ),
+        render: opaque,
+        hardness: 3.0,
+        sound: stone,
+    ),
+
+    item: ( stack: 99 ),
+
+    mining: (
+        tool: pickaxe,
+        tier: 1,
+        drops: [self],
+    ),
+)

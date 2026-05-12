@@ -1,8 +1,0 @@
-Item(
-    name: "Coal",
-    icon: "items/resources/coal",
-    model: "voxel/items/resources/mineral/ore/coal",
-    stack: 64,
-    fuel: (duration: 1600),
-    tags: [resource, fuel],
-)

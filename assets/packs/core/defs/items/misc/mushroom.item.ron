@@ -1,7 +1,0 @@
-Item(
-    name: "Mushroom",
-    icon: "items/misc/mushroom",
-    model: "voxel/vegetation/mushrooms/mushroom_0",
-    stack: 64,
-    tags: [misc, plant],
-)

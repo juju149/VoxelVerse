@@ -1,0 +1,24 @@
+Object(
+    name: "Oak Log",
+    tags: [log, wood, flammable],
+
+    block: (
+        shape: column,
+        texture: Column(
+            top:  "blocks/oak_log/top",
+            side: "blocks/oak_log/side",
+        ),
+        render: opaque,
+        hardness: 1.5,
+        sound: wood,
+    ),
+
+    item: ( stack: 99 ),
+
+    fuel: ( duration: 300 ),
+
+    mining: (
+        tool: axe,
+        drops: [self],
+    ),
+)

@@ -1,8 +1,0 @@
-Item(
-    name: "Apple",
-    icon: "items/food/apple",
-    model: "voxel/items/food/fruit/apple",
-    stack: 16,
-    food: (hunger: 4, saturation: 2.4),
-    tags: [food, fruit],
-)

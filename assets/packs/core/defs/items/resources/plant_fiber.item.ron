@@ -1,7 +1,0 @@
-Item(
-    name: "Plant Fiber",
-    icon: "items/resources/plant_fiber",
-    model: "voxel/items/crafting/plant_fiber",
-    stack: 64,
-    tags: [resource, plant],
-)

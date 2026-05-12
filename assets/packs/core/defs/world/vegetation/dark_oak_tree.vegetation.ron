@@ -1,0 +1,11 @@
+Vegetation(
+    name: "Dark Oak Tree",
+    type: tree,
+    trunk:  dark_oak_log,
+    leaves: dark_oak_leaves,
+    height: (5, 7),
+    biomes: [dark_forest],
+    density: 0.10,
+    noise:   dark_oak_scatter,
+    soil:    "#tag.soil",
+)
