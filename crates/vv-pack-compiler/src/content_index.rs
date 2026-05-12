@@ -96,6 +96,10 @@ impl ContentIndex {
         for (k, _) in &pack.render.render_graphs {
             keys.insert(k.clone());
         }
+        // Object-format definitions (unified block+item+recipe per file).
+        for (k, _) in &pack.objects {
+            keys.insert(k.clone());
+        }
 
         Self { keys }
     }

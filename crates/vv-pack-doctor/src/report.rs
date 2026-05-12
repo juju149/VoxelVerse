@@ -151,11 +151,14 @@ impl Report {
     }
 
     pub fn finalize(&mut self, scan: &PackScan) {
-        self.summary.blocks = scan.blocks.len();
-        self.summary.items = scan.items.len();
+        let obj_blocks = scan.objects.iter().filter(|(_, d)| d.block.is_some()).count();
+        let obj_items = scan.objects.len();
+        let obj_recipes = scan.objects.iter().filter(|(_, d)| d.recipe.is_some()).count();
+        self.summary.blocks = scan.blocks.len() + obj_blocks;
+        self.summary.items = scan.items.len() + obj_items;
         self.summary.materials = scan.materials.len();
         self.summary.textures = scan.texture_files.len();
-        self.summary.recipes = scan.recipes.len();
+        self.summary.recipes = scan.recipes.len() + obj_recipes;
         self.summary.loot_tables = scan.loot.len();
         self.summary.errors = self.errors.len();
         self.summary.warnings = self.warnings.len();

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use vv_pack_compiler::{
-    BlockRegistry, CompiledPlanet, ContentCompiler, ItemRegistry, LootRegistry, ProceduralRegistry,
-    RecipeRegistry, RenderRegistry, TagRegistry, TextureRegistry,
+    compile_objects, BlockRegistry, CompiledPlanet, ContentCompiler, ItemRegistry, LootRegistry,
+    ProceduralRegistry, RecipeRegistry, RenderRegistry, TagRegistry, TextureRegistry,
 };
 use vv_pack_loader::PackLoader;
 
@@ -52,56 +52,19 @@ pub fn load_core_content() -> LoadedCoreContent {
         }
         panic!("Render content compilation failed; see errors above.");
     });
-    let compiled_models =
-        ContentCompiler::compile_block_models(pack.block_models).unwrap_or_else(|errors| {
-            for e in &errors {
-                eprintln!("[content error] {}", e);
-            }
-            panic!("Block model compilation failed; see errors above.");
-        });
-    let compiled_blocks = ContentCompiler::compile_blocks(
-        pack.blocks,
-        pack.materials,
-        compiled_models,
-        &content_index,
-    )
-    .unwrap_or_else(|errors| {
+
+    // ── Unified object compilation (.object.ron format) ─────────────────────
+    let compiled = compile_objects(pack.objects).unwrap_or_else(|errors| {
         for e in &errors {
-            eprintln!("[content error] {}", e);
+            eprintln!("[object compilation error] {}", e);
         }
-        panic!("Block compilation failed; see errors above.");
+        panic!("Object compilation failed; see errors above.");
     });
-
-    // ── Items, tags, loot, recipes ──────────────────────────────────────────
-    // Compile items first (other registries depend on ItemId).
-    let compiled_items = ContentCompiler::compile_items(pack.items).unwrap_or_else(|errors| {
-        for e in &errors {
-            eprintln!("[item error] {}", e);
-        }
-        panic!("Item compilation failed; see errors above.");
-    });
-
-    // Tags are independent of items/blocks; compiled in parallel logically.
-    let compiled_tags = ContentCompiler::compile_tags(pack.tag_sets);
-
-    // Loot tables need ItemRegistry to resolve item references.
-    let compiled_loot =
-        ContentCompiler::compile_loot_tables(pack.loot, &compiled_items).unwrap_or_else(|errors| {
-            for e in &errors {
-                eprintln!("[loot error] {}", e);
-            }
-            panic!("Loot table compilation failed; see errors above.");
-        });
-
-    // Recipes need both ItemRegistry and TagRegistry.
-    let compiled_recipes =
-        ContentCompiler::compile_recipes(pack.recipes, &compiled_items, &compiled_tags)
-            .unwrap_or_else(|errors| {
-                for e in &errors {
-                    eprintln!("[recipe error] {}", e);
-                }
-                panic!("Recipe compilation failed; see errors above.");
-            });
+    let compiled_blocks = compiled.blocks;
+    let compiled_items = compiled.items;
+    let compiled_tags = compiled.tags;
+    let compiled_loot = compiled.loot;
+    let compiled_recipes = compiled.recipes;
 
     let procedural_pack =
         PackLoader::load_procedural_from_dir(&core_pack_dir).unwrap_or_else(|e| {

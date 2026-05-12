@@ -5,6 +5,7 @@ mod content_index;
 mod item_registry;
 mod loot_registry;
 mod materials;
+mod object_compiler;
 mod planet_registry;
 mod procedural;
 mod procedural_registry;
@@ -30,6 +31,7 @@ pub use loot_registry::{
     CompiledLootEntry, CompiledLootTable, LootRegistry, LootTableId,
 };
 pub use materials::TerrainPalette;
+pub use object_compiler::{compile_objects, CompiledObjects};
 pub use planet_registry::CompiledPlanet;
 pub use procedural_registry::*;
 pub use recipe_registry::{

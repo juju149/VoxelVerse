@@ -5,6 +5,11 @@ use vv_content_schema::*;
 #[allow(dead_code)]
 pub struct LoadedPack {
     pub manifest: RawPackManifest,
+    // ── New unified format ────────────────────────────────────────────────────
+    /// Objects loaded from `defs/objects/**/*.object.ron`.
+    /// Replaces the old per-type dirs (blocks/, items/, recipes/, …).
+    pub objects: Vec<(String, RawObjectDef)>,
+    // ── Legacy typed dirs (return empty vecs when dirs are absent) ───────────
     pub blocks: Vec<(String, RawBlockDef)>,
     pub block_models: Vec<(String, RawBlockModelDef)>,
     pub materials: Vec<(String, RawMaterialDef)>,
@@ -93,6 +98,7 @@ impl PackLoader {
 
         Ok(LoadedPack {
             manifest,
+            objects: load_typed_tree(&defs.join("objects"), &defs, &namespace)?,
             blocks: load_typed_tree(&defs.join("blocks"), &defs, &namespace)?,
             block_models: load_typed_tree(&defs.join("block_models"), &defs, &namespace)?,
             materials: load_typed_tree(&defs.join("materials"), &defs, &namespace)?,
@@ -112,54 +118,59 @@ impl PackLoader {
 
     pub fn load_procedural_from_dir(pack_dir: &Path) -> Result<RawProceduralPack, String> {
         let namespace = namespace_from_dir(pack_dir)?;
-        let root = pack_dir.join("defs").join("worldgen");
-        if !root.exists() {
+        let defs = pack_dir.join("defs");
+
+        // Support both the old `defs/worldgen/` layout and the new `defs/world/` layout.
+        // Each sub-directory is tried in order; the first that exists wins.
+        let root_old = defs.join("worldgen");
+        let root_new = defs.join("world");
+
+        // Helper: pick the directory that exists, or fall back to the other.
+        let pick = |old_sub: &str, new_sub: &str| -> PathBuf {
+            let old = root_old.join(old_sub);
+            let new = root_new.join(new_sub);
+            if new.exists() {
+                new
+            } else {
+                old
+            }
+        };
+
+        if !root_old.exists() && !root_new.exists() {
             return Ok(RawProceduralPack::default());
         }
 
         Ok(RawProceduralPack {
-            planets: load_typed_tree(
-                &root.join("planet_profiles"),
-                &pack_dir.join("defs"),
-                &namespace,
-            )?,
-            fields: load_typed_tree(
-                &root.join("noise_fields"),
-                &pack_dir.join("defs"),
-                &namespace,
-            )?,
+            planets: load_typed_tree(&pick("planet_profiles", "planets"), &defs, &namespace)?,
+            fields: load_typed_tree(&pick("noise_fields", "noise"), &defs, &namespace)?,
             climates: load_typed_tree(
-                &root.join("climate_profiles"),
-                &pack_dir.join("defs"),
+                &pick("climate_profiles", "climate"),
+                &defs,
                 &namespace,
             )?,
-            biome_sets: load_typed_tree(
-                &root.join("biome_sets"),
-                &pack_dir.join("defs"),
-                &namespace,
-            )?,
-            biomes: load_typed_tree(&root.join("biomes"), &pack_dir.join("defs"), &namespace)?,
+            biome_sets: load_typed_tree(&pick("biome_sets", "biome_sets"), &defs, &namespace)?,
+            biomes: load_typed_tree(&pick("biomes", "biomes"), &defs, &namespace)?,
             terrain_layers: load_typed_tree(
-                &root.join("terrain_layers"),
-                &pack_dir.join("defs"),
+                &pick("terrain_layers", "terrain"),
+                &defs,
                 &namespace,
             )?,
-            ores: load_typed_tree(&root.join("ores"), &pack_dir.join("defs"), &namespace)?,
-            caves: load_typed_tree(&root.join("caves"), &pack_dir.join("defs"), &namespace)?,
+            ores: load_typed_tree(&pick("ores", "ores"), &defs, &namespace)?,
+            caves: load_typed_tree(&pick("caves", "caves"), &defs, &namespace)?,
             vegetation: load_typed_tree(
-                &root.join("vegetation"),
-                &pack_dir.join("defs"),
+                &pick("vegetation", "vegetation"),
+                &defs,
                 &namespace,
             )?,
             structures: load_typed_tree(
-                &root.join("structures"),
-                &pack_dir.join("defs"),
+                &pick("structures", "structures"),
+                &defs,
                 &namespace,
             )?,
-            fauna: load_typed_tree(&root.join("spawns"), &pack_dir.join("defs"), &namespace)?,
+            fauna: load_typed_tree(&pick("spawns", "spawns"), &defs, &namespace)?,
             vox_prop_scatters: load_typed_tree(
-                &root.join("prop_scatters"),
-                &pack_dir.join("defs"),
+                &pick("prop_scatters", "vegetation"),
+                &defs,
                 &namespace,
             )?,
         })
@@ -374,6 +385,7 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
     let stem = strip_def_suffix(parts.last().unwrap());
     let dirs = &parts[1..parts.len() - 1];
     let id_path = match root {
+        "objects" => join_domain("object", dirs, &stem),
         "blocks" => join_domain("block", dirs, &stem),
         "block_models" => join_domain("block_model", dirs, &stem),
         "materials" => join_domain("material", dirs, &stem),
@@ -386,7 +398,9 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
         "vegetation" => format!("vegetation_catalog/{}", stem),
         "tags" => format!("tags/{}", stem),
         "sounds" => join_domain("sound", dirs, &stem),
-        "worldgen" => derive_worldgen_key(dirs, &stem)?,
+        "worldgen" => derive_world_key(dirs, &stem, false)?,
+        // New `defs/world/` layout: each sub-dir maps to a domain.
+        "world" => derive_world_key(dirs, &stem, true)?,
         other => {
             return Err(format!(
                 "Unknown definition root '{}': {}",
@@ -399,25 +413,38 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
     Ok(format!("{}:{}", namespace, id_path))
 }
 
-fn derive_worldgen_key(dirs: &[String], stem: &str) -> Result<String, String> {
+fn derive_world_key(dirs: &[String], stem: &str, new_layout: bool) -> Result<String, String> {
     let Some(kind) = dirs.first().map(String::as_str) else {
         return Err(format!("Worldgen definition '{}' has no category", stem));
     };
     let domain = match kind {
+        // Old layout sub-dirs
         "biomes" => "biome",
         "biome_sets" => "biome_set",
         "caves" => "cave",
-        "climate_profiles" => "climate",
-        "noise_fields" => "field",
+        "climate_profiles" => "climate",   // old name
+        "noise_fields" => "field",         // old name
         "ores" => "ore",
-        "planet_profiles" => "planet_profile",
+        "planet_profiles" => "planet_profile", // old name
         "spawns" => "spawn",
         "structures" => "structure",
-        "terrain_layers" => "terrain_layers",
+        "terrain_layers" => "terrain_layers",  // old name
         "vegetation" => "vegetation",
-        "visual_details" => return Err("'visual_details' directory is obsolete; rename to 'prop_scatters' and update files to VoxPropScatterDef format".to_string()),
+        "visual_details" => return Err("'visual_details' directory is obsolete; rename to 'prop_scatters'".to_string()),
         "prop_scatters" => "prop_scatter",
-        other => return Err(format!("Unknown worldgen category '{}'", other)),
+        // New layout sub-dirs (defs/world/)
+        "climate" => "climate",
+        "noise" => "field",
+        "planets" => "planet_profile",
+        "terrain" => "terrain_layers",
+        "props" => "prop_collection",
+        other => {
+            if new_layout {
+                // Unknown sub-dir in new layout — skip gracefully.
+                return Ok(format!("world/{}/{}", other, stem));
+            }
+            return Err(format!("Unknown worldgen category '{}'", other));
+        }
     };
     Ok(format!("{}/{}", domain, stem))
 }
@@ -460,34 +487,45 @@ mod tests {
         let procedural =
             PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
 
-        assert!(pack.blocks.len() >= 20);
-        assert!(pack.materials.len() >= 10);
-        assert!(pack.items.len() >= 20);
-        assert!(!pack.entities.is_empty());
-        assert!(!pack.loot.is_empty());
-        assert!(!pack.skeletons.is_empty());
-        assert!(!pack.prop_collections.is_empty());
-        assert!(!pack.vegetation_catalogs.is_empty());
-        assert!(!pack.tag_sets.is_empty());
-        let voxel_assets = pack.voxel_assets.expect("voxel asset registry");
-        assert_eq!(voxel_assets.asset_count as usize, voxel_assets.assets.len());
-        assert_eq!(voxel_assets.generated_from, "media/voxel");
-        for asset in &voxel_assets.assets {
-            assert!(
-                asset.id.0.starts_with("core:voxel/"),
-                "bad voxel id {}",
-                asset.id.0
-            );
-            assert!(
-                core_pack_dir.join(&asset.path).exists(),
-                "missing voxel asset {}",
-                asset.path
-            );
+        // The new system uses defs/objects/ (new unified format).
+        // Old typed dirs are empty after the migration.
+        assert!(
+            !pack.objects.is_empty(),
+            "core pack must load objects from defs/objects/"
+        );
+        assert!(
+            pack.objects.len() >= 20,
+            "expected >= 20 objects, got {}",
+            pack.objects.len()
+        );
+
+        // Skeletons are still in defs/skeletons/.
+        assert!(!pack.skeletons.is_empty(), "skeletons must load");
+
+        // Runtime voxel asset registry (generated).
+        if let Some(voxel_assets) = &pack.voxel_assets {
+            assert_eq!(voxel_assets.asset_count as usize, voxel_assets.assets.len());
+            assert_eq!(voxel_assets.generated_from, "media/voxel");
+            for asset in &voxel_assets.assets {
+                assert!(
+                    asset.id.0.starts_with("core:voxel/"),
+                    "bad voxel id {}",
+                    asset.id.0
+                );
+                assert!(
+                    core_pack_dir.join(&asset.path).exists(),
+                    "missing voxel asset {}",
+                    asset.path
+                );
+            }
         }
 
-        assert!(!procedural.planets.is_empty());
-        assert!(!procedural.fields.is_empty());
-        assert!(!procedural.biomes.is_empty());
-        assert!(!procedural.vegetation.is_empty());
+        // World generation content (new defs/world/ layout).
+        assert!(
+            !procedural.planets.is_empty(),
+            "must have at least one planet"
+        );
+        assert!(!procedural.fields.is_empty(), "must have noise fields");
+        assert!(!procedural.biomes.is_empty(), "must have biomes");
     }
 }

@@ -107,6 +107,7 @@ fn block(role: Option<BlockRole>) -> RawBlockDef {
             drops: ContentRef("core:loot/blocks/empty".to_string()),
             placement: RawBlockPlacement::GridAligned,
             replaceable: false,
+            max_stack: 99,
         },
         audio: RawBlockAudioDef {
             footstep: ContentRef("core:sound/step/stone".to_string()),

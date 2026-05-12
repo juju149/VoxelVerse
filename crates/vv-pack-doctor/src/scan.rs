@@ -6,8 +6,8 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use vv_content_schema::{
-    ContentRef, RawBlockDef, RawItemDef, RawLootTableDef, RawMaterialDef, RawPackManifest,
-    RawRecipeDef, RawTagSetDef,
+    ContentRef, RawBlockDef, RawItemDef, RawLootTableDef, RawMaterialDef, RawObjectDef,
+    RawPackManifest, RawRecipeDef, RawTagSetDef,
 };
 use vv_pack_loader::{LoadedPack, PackLoader, RawProceduralPack};
 
@@ -21,6 +21,8 @@ pub struct PackScan {
     pub loot: Vec<(String, RawLootTableDef)>,
     pub recipes: Vec<(String, RawRecipeDef)>,
     pub tag_sets: Vec<(String, RawTagSetDef)>,
+    /// Unified object definitions (new .object.ron format).
+    pub objects: Vec<(String, RawObjectDef)>,
     pub procedural: RawProceduralPack,
     pub block_model_ids: HashSet<String>,
     pub texture_files: Vec<TextureFile>,
@@ -65,6 +67,7 @@ impl PackScan {
             loot: loaded.loot,
             recipes: loaded.recipes,
             tag_sets: loaded.tag_sets,
+            objects: loaded.objects,
             procedural,
             block_model_ids,
             texture_files,
@@ -78,10 +81,12 @@ impl PackScan {
     /// are not declared, since the loader does not load them explicitly.
     pub fn block_id_exists(&self, id: &str) -> bool {
         self.blocks.iter().any(|(known, _)| known == id)
+            || self.objects.iter().any(|(known, d)| known == id && d.block.is_some())
     }
 
     pub fn item_id_exists(&self, id: &str) -> bool {
         self.items.iter().any(|(known, _)| known == id)
+            || self.objects.iter().any(|(known, _)| known == id)
     }
 
     pub fn material_id_exists(&self, id: &str) -> bool {

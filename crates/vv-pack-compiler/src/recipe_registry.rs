@@ -22,6 +22,9 @@ impl RecipeId {
     pub fn raw(self) -> u32 {
         self.0
     }
+    pub(crate) fn from_raw(id: u32) -> Self {
+        Self(id)
+    }
 }
 
 // ─── Compiled ingredient ─────────────────────────────────────────────────────
