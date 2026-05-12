@@ -117,4 +117,4 @@ impl LootRegistry {
         self.tables.is_empty()
     }
 }
-
+

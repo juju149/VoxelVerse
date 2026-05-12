@@ -263,4 +263,4 @@ impl RecipeRegistry {
         self.recipes.is_empty()
     }
 }
-
+
