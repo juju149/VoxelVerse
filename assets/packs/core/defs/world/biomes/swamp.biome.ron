@@ -18,7 +18,7 @@ Biome(
         foliage: (0.20, 0.40, 0.20),
     ),
 
-    vegetation: ["swamp", "wet"],
+    vegetation: ["swamp", "wet", "temperate", "reeds"],
     fauna: ["small_herbivore"],
 
     tags: ["swamp", "wet", "temperate"],

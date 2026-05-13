@@ -1,0 +1,26 @@
+Biome(
+    name: "Wind-Cut Tundra",
+
+    surface: (top: "snow", under: "dirt", depth: (1, 4)),
+    slope: (above: 36, use: "stone"),
+
+    terrain: (
+        height: 0.01,
+        amplitude: 0.18,
+        flatness: 0.68,
+        noise: "soft_hills",
+        ridges: "alpine_detail",
+        mountain: 0.18,
+        slope_smooth: 0.48,
+    ),
+
+    palette: (
+        grass: (0.72, 0.78, 0.78),
+        foliage: (0.52, 0.62, 0.62),
+    ),
+
+    vegetation: ["cold", "snowy", "tundra"],
+    fauna: ["small_herbivore"],
+
+    tags: ["cold", "snowy", "tundra"],
+)

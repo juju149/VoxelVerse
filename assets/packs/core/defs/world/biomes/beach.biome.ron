@@ -18,6 +18,7 @@ Biome(
         foliage: (0.60, 0.52, 0.28),
     ),
 
+    vegetation: ["beach", "coastal", "dry"],
     fauna: ["small_herbivore"],
 
     tags: ["beach", "coastal"],

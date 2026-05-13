@@ -1,11 +1,11 @@
 Cave(
-    name: "Default Cave Network",
-    fields: ["cave_worms", "cave_chambers"],
+    name: "Layered Cave Network",
+    fields: ["cave_worms", "cave_chambers", "cave_rifts", "cave_pockets"],
     carve: (
-        min_depth_voxels: 18,
-        max_depth_voxels: 420,
-        tunnel_radius: (2.0, 7.0),
-        chamber_radius: (6.0, 24.0),
+        min_depth_voxels: 14,
+        max_depth_voxels: 520,
+        tunnel_radius: (2.0, 9.0),
+        chamber_radius: (7.0, 32.0),
         air_block: "air",
     ),
 )

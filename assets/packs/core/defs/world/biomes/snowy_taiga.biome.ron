@@ -18,9 +18,9 @@ Biome(
         foliage: (0.36, 0.50, 0.40),
     ),
 
-    vegetation: ["cold", "forest"],
+    vegetation: ["cold", "forest", "taiga", "snowy"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["cold", "forest"],
+    tags: ["cold", "forest", "taiga", "snowy"],
 )

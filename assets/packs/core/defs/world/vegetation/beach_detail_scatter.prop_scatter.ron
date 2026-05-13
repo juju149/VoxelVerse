@@ -1,0 +1,24 @@
+PropScatter(
+    name: "Beach Shells And Dune Grass",
+    placement: (
+        allowed_surface_blocks: ["red_sand", "coarse_dirt", "stone"],
+        biome_tags: ["coastal", "beach", "rocky"],
+        density: 0.085,
+        slope_max_degrees: 14,
+        scatter_field: "beach_detail",
+        min_spacing_voxels: 2.4,
+        jitter_strength: 0.95,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.36,
+        altitude_range: Some((-8.0, 24.0)),
+        scale_variance: Some((0.90, 1.12)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/props/decoration/seashells/shell_0", weight: 2),
+        (model: "voxel/props/decoration/seashells/shell_1", weight: 2),
+        (model: "voxel/vegetation/grass/grass/grass_savanna_0", weight: 4, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.18)]),
+        (model: "voxel/vegetation/grass/grass/grass_savanna_1", weight: 4, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.18)]),
+        (model: "voxel/vegetation/bushes/dead_plant/dead_plant_0", weight: 1),
+    ],
+)

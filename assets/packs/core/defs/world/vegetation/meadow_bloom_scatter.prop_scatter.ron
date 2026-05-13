@@ -1,0 +1,27 @@
+PropScatter(
+    name: "Meadow Bloom Patches",
+    placement: (
+        allowed_surface_blocks: ["grass", "dirt"],
+        biome_tags: ["meadow", "plains", "alpine"],
+        density: 0.18,
+        slope_max_degrees: 26,
+        scatter_field: "meadow_bloom",
+        min_spacing_voxels: 1.4,
+        jitter_strength: 0.96,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.62,
+        humidity_range: Some((0.28, 0.76)),
+        temperature_range: Some((0.30, 0.78)),
+        scale_variance: Some((0.88, 1.12)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/vegetation/flowers/flower_blue_1", weight: 4, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/flower_blue_3", weight: 3, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/flower_pink_1", weight: 4, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/flower_purple_1", weight: 3, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/flower_yellow_0", weight: 3, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/flower_white_1", weight: 2, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/sunflower_1", weight: 1, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+    ],
+)

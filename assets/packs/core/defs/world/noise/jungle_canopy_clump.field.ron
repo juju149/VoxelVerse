@@ -1,0 +1,10 @@
+NoiseFieldDef(
+    kind: opensimplex2s,
+    frequency: 0.55,
+    amplitude: 1.0,
+    octaves: 4,
+    persistence: 0.58,
+    lacunarity: 2.02,
+    seed_salt: "jungle_canopy_clump",
+    domain_warp: Some((field: "core:field/warp_large", strength: 0.22)),
+)

@@ -1,0 +1,26 @@
+PropScatter(
+    name: "Temperate Grass Mosaic",
+    placement: (
+        allowed_surface_blocks: ["grass", "dirt", "podzol"],
+        biome_tags: ["temperate", "plains", "meadow", "forest"],
+        density: 0.28,
+        slope_max_degrees: 34,
+        scatter_field: "soft_hills",
+        min_spacing_voxels: 1.0,
+        jitter_strength: 0.95,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.32,
+        humidity_range: Some((0.22, 0.88)),
+        temperature_range: Some((0.22, 0.82)),
+        scale_variance: Some((0.86, 1.16)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/vegetation/grass/grass/grass_short_1", weight: 9, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.18)]),
+        (model: "voxel/vegetation/grass/grass/grass_short_2", weight: 9, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.18)]),
+        (model: "voxel/vegetation/grass/grass/grass_med_1", weight: 7, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.22)]),
+        (model: "voxel/vegetation/grass/grass/grass_med_2", weight: 7, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.22)]),
+        (model: "voxel/vegetation/grass/grass/grass_long_1", weight: 4, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.28)]),
+        (model: "voxel/vegetation/grass/grass/grass_long_2", weight: 4, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.28)]),
+    ],
+)

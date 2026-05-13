@@ -1,0 +1,25 @@
+PropScatter(
+    name: "Snow Tundra Plants",
+    placement: (
+        allowed_surface_blocks: ["snow", "dirt", "powder_snow"],
+        biome_tags: ["cold", "snowy", "tundra"],
+        density: 0.085,
+        slope_max_degrees: 24,
+        scatter_field: "alpine_detail",
+        min_spacing_voxels: 2.3,
+        jitter_strength: 0.92,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.42,
+        temperature_range: Some((0.00, 0.36)),
+        scale_variance: Some((0.84, 1.12)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/vegetation/grass/grass/grass_snow_0", weight: 5, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.16)]),
+        (model: "voxel/vegetation/grass/grass/grass_snow_1", weight: 5, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.16)]),
+        (model: "voxel/vegetation/bushes/snow_bush/snow_bush_0", weight: 3),
+        (model: "voxel/vegetation/bushes/snow_bush/snow_bush_1", weight: 3),
+        (model: "voxel/vegetation/flowers/snow_crocus_0", weight: 1, drops: [(item: "flower", count: (1, 1), chance: 0.75)]),
+        (model: "voxel/vegetation/flowers/snow_rose_1", weight: 1, drops: [(item: "flower", count: (1, 1), chance: 0.75)]),
+    ],
+)

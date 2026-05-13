@@ -1,0 +1,23 @@
+PropScatter(
+    name: "Readable Surface Rocks",
+    placement: (
+        allowed_surface_blocks: ["stone", "andesite", "coarse_dirt", "grass", "snow"],
+        biome_tags: ["mountain", "rocky", "badlands", "dry", "cold"],
+        density: 0.040,
+        slope_min_degrees: Some(6),
+        slope_max_degrees: 44,
+        scatter_field: "mountain_scree",
+        min_spacing_voxels: 5.0,
+        jitter_strength: 0.86,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.30,
+        scale_variance: Some((0.78, 1.36)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/props/decoration/rocks/rock_0", weight: 5),
+        (model: "voxel/props/decoration/rocks/rock_1", weight: 5),
+        (model: "voxel/props/decoration/rocks/rock_2", weight: 4),
+        (model: "voxel/props/decoration/snow_pebbles/snow_pebbles_1", weight: 2),
+    ],
+)

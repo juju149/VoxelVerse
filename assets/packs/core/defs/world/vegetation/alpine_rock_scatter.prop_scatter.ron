@@ -1,0 +1,25 @@
+PropScatter(
+    name: "Alpine Scree And Flowers",
+    placement: (
+        allowed_surface_blocks: ["stone", "andesite", "snow", "grass"],
+        biome_tags: ["mountain", "alpine", "frozen", "rocky"],
+        density: 0.070,
+        slope_min_degrees: Some(8),
+        slope_max_degrees: 48,
+        scatter_field: "mountain_scree",
+        min_spacing_voxels: 3.2,
+        jitter_strength: 0.88,
+        clump_field: Some("alpine_detail"),
+        clump_strength: 0.42,
+        altitude_range: Some((18.0, 260.0)),
+        scale_variance: Some((0.82, 1.32)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/props/decoration/rocks/rock_0", weight: 5),
+        (model: "voxel/props/decoration/rocks/rock_1", weight: 4),
+        (model: "voxel/props/decoration/rocks/rock_2", weight: 3),
+        (model: "voxel/props/decoration/snow_pebbles/snow_pebbles_0", weight: 3),
+        (model: "voxel/vegetation/flowers/snow_forsythia_0", weight: 1, drops: [(item: "flower", count: (1, 1), chance: 0.65)]),
+    ],
+)

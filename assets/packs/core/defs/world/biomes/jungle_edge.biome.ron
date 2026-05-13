@@ -1,0 +1,27 @@
+Biome(
+    name: "Jungle Edge",
+
+    surface: (top: "grass", under: "dirt", depth: (2, 6)),
+    slope: (above: 42, use: "stone"),
+
+    terrain: (
+        height: 0.04,
+        amplitude: 0.34,
+        flatness: 0.34,
+        noise: "rolling_hills",
+        curve: smoothstep,
+        mountain: 0.55,
+        slope_smooth: 0.22,
+    ),
+
+    palette: (
+        grass: (0.34, 0.66, 0.24),
+        foliage: (0.18, 0.52, 0.16),
+    ),
+
+    vegetation: ["jungle", "tropical", "wet", "forest", "edge"],
+    fauna: ["small_herbivore"],
+    structures: ["small"],
+
+    tags: ["jungle", "tropical", "transition"],
+)

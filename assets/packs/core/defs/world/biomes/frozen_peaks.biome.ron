@@ -21,5 +21,7 @@ Biome(
         foliage: (0.70, 0.80, 0.88),
     ),
 
-    tags: ["cold", "mountain", "frozen"],
+    vegetation: ["cold", "mountain", "frozen", "snowy"],
+
+    tags: ["cold", "mountain", "frozen", "snowy"],
 )

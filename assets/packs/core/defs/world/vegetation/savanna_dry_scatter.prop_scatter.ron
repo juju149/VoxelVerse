@@ -1,0 +1,26 @@
+PropScatter(
+    name: "Savanna Dry Grass And Brush",
+    placement: (
+        allowed_surface_blocks: ["grass", "coarse_dirt", "dirt"],
+        biome_tags: ["savanna", "dry", "warm"],
+        density: 0.16,
+        slope_max_degrees: 26,
+        scatter_field: "soft_hills",
+        min_spacing_voxels: 2.0,
+        jitter_strength: 0.92,
+        clump_field: Some("savanna_grove_clump"),
+        clump_strength: 0.38,
+        humidity_range: Some((0.06, 0.48)),
+        temperature_range: Some((0.58, 1.00)),
+        scale_variance: Some((0.82, 1.24)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/vegetation/grass/grass/grass_savanna_1", weight: 7, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.22)]),
+        (model: "voxel/vegetation/grass/grass/grass_savanna_2", weight: 7, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.22)]),
+        (model: "voxel/vegetation/grass/grass/grass_savanna_tall_0", weight: 4, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.28)]),
+        (model: "voxel/vegetation/bushes/savanna_bush/savanna_bush_01", weight: 3),
+        (model: "voxel/vegetation/bushes/savanna_bush/savanna_bush_02", weight: 3),
+        (model: "voxel/vegetation/flowers/flower_yellow_1", weight: 1, drops: [(item: "flower", count: (1, 1), chance: 0.9)]),
+    ],
+)

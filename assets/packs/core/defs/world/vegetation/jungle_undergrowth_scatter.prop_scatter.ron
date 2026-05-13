@@ -1,0 +1,27 @@
+PropScatter(
+    name: "Jungle Undergrowth",
+    placement: (
+        allowed_surface_blocks: ["grass", "dirt", "podzol"],
+        biome_tags: ["jungle", "tropical", "wet"],
+        density: 0.34,
+        slope_max_degrees: 36,
+        scatter_field: "jungle_scatter",
+        min_spacing_voxels: 1.1,
+        jitter_strength: 0.96,
+        clump_field: Some("jungle_canopy_clump"),
+        clump_strength: 0.34,
+        humidity_range: Some((0.66, 1.00)),
+        temperature_range: Some((0.62, 1.00)),
+        scale_variance: Some((0.82, 1.22)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/vegetation/grass/junglefern/junglefern_01", weight: 7, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.25)]),
+        (model: "voxel/vegetation/grass/junglefern/junglefern_02", weight: 6, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.25)]),
+        (model: "voxel/vegetation/grass/leafy_plant/jungle_plant_0", weight: 5, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        (model: "voxel/vegetation/grass/leafy_plant/jungle_plant_1", weight: 5, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        (model: "voxel/vegetation/grass/jungleredgrass/jungle_grass_red_0", weight: 3, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.25)]),
+        (model: "voxel/vegetation/flowers/jungle_flower_red_0", weight: 2, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/grass/lianas/liana_0", weight: 1, y_offset: 1),
+    ],
+)

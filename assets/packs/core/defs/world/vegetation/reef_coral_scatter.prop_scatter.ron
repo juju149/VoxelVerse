@@ -1,0 +1,26 @@
+PropScatter(
+    name: "Warm Reef Corals",
+    placement: (
+        allowed_surface_blocks: ["stone", "deepslate"],
+        biome_tags: ["reef", "aquatic", "tropical"],
+        density: 0.13,
+        slope_max_degrees: 22,
+        scatter_field: "reef_coral",
+        min_spacing_voxels: 2.8,
+        jitter_strength: 0.92,
+        clump_field: Some("ocean_garden"),
+        clump_strength: 0.64,
+        altitude_range: Some((-90.0, -3.0)),
+        temperature_range: Some((0.62, 1.00)),
+        scale_variance: Some((0.84, 1.18)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/vegetation/underwater/coral/blue_ricordea_1", weight: 3),
+        (model: "voxel/vegetation/underwater/coral/green_brain_coral_0", weight: 3),
+        (model: "voxel/vegetation/underwater/coral/pink_brain_coral_0", weight: 3),
+        (model: "voxel/vegetation/underwater/coral/red_fire_coral_0", weight: 2),
+        (model: "voxel/vegetation/underwater/coral/yellow_gorgonian_0", weight: 2),
+        (model: "voxel/vegetation/underwater/sea_urchins/sea_urchin", weight: 1),
+    ],
+)

@@ -1,0 +1,28 @@
+Biome(
+    name: "Stony Shore",
+
+    surface: (top: "stone", under: "andesite", depth: (1, 4)),
+    slope: (above: 32, use: "stone"),
+
+    terrain: (
+        height: -0.02,
+        amplitude: 0.12,
+        flatness: 0.66,
+        noise: "beach_detail",
+        ridges: "mountain_scree",
+        terraces: 0.10,
+        curve: smoothstep,
+        mountain: 0.15,
+        slope_smooth: 0.45,
+    ),
+
+    palette: (
+        grass: (0.50, 0.56, 0.48),
+        foliage: (0.36, 0.46, 0.34),
+    ),
+
+    vegetation: ["coastal", "rocky", "temperate"],
+    fauna: ["small_herbivore"],
+
+    tags: ["coastal", "rocky"],
+)

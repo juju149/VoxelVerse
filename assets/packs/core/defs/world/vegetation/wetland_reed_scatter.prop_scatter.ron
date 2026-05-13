@@ -1,0 +1,26 @@
+PropScatter(
+    name: "Wetland Reeds And Lilies",
+    placement: (
+        allowed_surface_blocks: ["podzol", "dirt", "grass"],
+        biome_tags: ["wet", "swamp", "reeds"],
+        density: 0.22,
+        slope_max_degrees: 12,
+        scatter_field: "wetland_reed_scatter",
+        min_spacing_voxels: 1.5,
+        jitter_strength: 0.94,
+        clump_field: Some("wetland_clump"),
+        clump_strength: 0.70,
+        altitude_range: Some((-18.0, 18.0)),
+        humidity_range: Some((0.76, 1.00)),
+        temperature_range: Some((0.22, 0.82)),
+        scale_variance: Some((0.86, 1.18)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/vegetation/grass/reed/reed_0", weight: 7, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.35)]),
+        (model: "voxel/vegetation/grass/reed/reed_1", weight: 7, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.35)]),
+        (model: "voxel/vegetation/grass/reed/reed_2", weight: 5, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.35)]),
+        (model: "voxel/vegetation/underwater/lillypads/temperate_lilypad_1", weight: 2, y_offset: 1),
+        (model: "voxel/vegetation/underwater/lillypads/temperate_reeds_1", weight: 3),
+    ],
+)

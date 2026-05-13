@@ -1,0 +1,27 @@
+Biome(
+    name: "Reed Wetland",
+
+    surface: (top: "podzol", under: "dirt", depth: (2, 5)),
+
+    terrain: (
+        height: -0.08,
+        amplitude: 0.08,
+        flatness: 0.86,
+        noise: "valley_floor",
+        curve: power(exponent: 0.65),
+        mountain: 0.0,
+        slope_smooth: 0.72,
+    ),
+
+    palette: (
+        grass: (0.38, 0.56, 0.30),
+        foliage: (0.22, 0.44, 0.20),
+        fog_bias: (0.03, 0.05, 0.02),
+    ),
+
+    vegetation: ["wet", "swamp", "temperate", "reeds"],
+    fauna: ["small_herbivore"],
+    structures: ["small"],
+
+    tags: ["wet", "swamp", "coastal"],
+)

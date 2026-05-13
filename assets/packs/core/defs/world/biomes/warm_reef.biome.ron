@@ -1,0 +1,27 @@
+Biome(
+    name: "Warm Reef Shelf",
+
+    surface: (top: "stone", under: "deepslate", depth: (1, 3)),
+
+    terrain: (
+        height: -0.24,
+        amplitude: 0.16,
+        flatness: 0.70,
+        noise: "ocean_garden",
+        ridges: "reef_coral",
+        terraces: 0.16,
+        curve: smoothstep,
+        mountain: 0.0,
+        slope_smooth: 0.30,
+    ),
+
+    palette: (
+        grass: (0.12, 0.42, 0.48),
+        foliage: (0.10, 0.36, 0.38),
+        fog_bias: (0.02, 0.06, 0.08),
+    ),
+
+    vegetation: ["aquatic", "reef", "tropical", "wet"],
+
+    tags: ["ocean", "aquatic", "reef"],
+)

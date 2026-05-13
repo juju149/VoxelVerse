@@ -1,0 +1,10 @@
+NoiseFieldDef(
+    kind: opensimplex2s,
+    frequency: 1.6,
+    amplitude: 1.0,
+    octaves: 3,
+    persistence: 0.48,
+    lacunarity: 2.12,
+    seed_salt: "wetland_reed_scatter",
+    domain_warp: Some((field: "core:field/warp_medium", strength: 0.12)),
+)

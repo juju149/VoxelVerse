@@ -1,78 +1,128 @@
 BiomeSet(
     name: "Earthlike Planet Biomes",
-    blend_radius: 0.22,
+    blend_radius: 0.24,
     selection: ClimateMap((
         entries: [
-            // ── OCEAN / COASTAL ──────────────────────────────────────────────
+            // Ocean shelves and basins.
+            (biome: "warm_reef",
+             temperature: (0.68, 1.00), humidity: (0.56, 1.00),
+             elevation: (0.00, 0.46),
+             continentality: (0.00, 0.34), erosion: (0.18, 0.70), weight: 1.18),
+
+            (biome: "kelp_forest",
+             temperature: (0.00, 0.42), humidity: (0.46, 1.00),
+             elevation: (0.00, 0.48),
+             continentality: (0.00, 0.34), weight: 1.08),
+
             (biome: "ocean",
-             temperature: (0.12, 0.88), humidity: (0.38, 1.00),
-             continentality: (0.00, 0.36), weight: 1.20),
+             temperature: (0.10, 0.90), humidity: (0.34, 1.00),
+             elevation: (0.00, 0.44),
+             continentality: (0.00, 0.32), weight: 1.00),
 
+            // Coast and low wetland transition.
             (biome: "beach",
-             temperature: (0.18, 0.82), humidity: (0.12, 1.00),
-             continentality: (0.28, 0.54), weight: 0.70),
+             temperature: (0.20, 0.88), humidity: (0.08, 0.82),
+             elevation: (0.30, 0.54),
+             continentality: (0.26, 0.52), erosion: (0.34, 1.00), weight: 0.78),
 
-            // ── COLD / FROZEN ─────────────────────────────────────────────────
+            (biome: "stony_shore",
+             temperature: (0.06, 0.72), humidity: (0.28, 0.96),
+             elevation: (0.32, 0.58),
+             continentality: (0.28, 0.56), erosion: (0.00, 0.58), weight: 0.82),
+
+            (biome: "wetland",
+             temperature: (0.28, 0.78), humidity: (0.78, 1.00),
+             elevation: (0.30, 0.56),
+             continentality: (0.34, 0.70), erosion: (0.00, 0.46), weight: 0.92),
+
+            // Cold and alpine.
             (biome: "frozen_peaks",
-             temperature: (0.00, 0.14), humidity: (0.15, 0.90),
+             temperature: (0.00, 0.15), humidity: (0.16, 0.94),
              elevation: (0.58, 1.00),
-             continentality: (0.38, 1.00), weight: 1.10),
-
-            (biome: "snowy_plains",
-             temperature: (0.00, 0.26), humidity: (0.25, 0.80),
-             continentality: (0.38, 1.00), weight: 0.85),
-
-            (biome: "snowy_taiga",
-             temperature: (0.06, 0.34), humidity: (0.40, 0.96),
-             continentality: (0.38, 1.00), weight: 0.82),
+             continentality: (0.38, 1.00), weight: 1.14),
 
             (biome: "alpine",
-             temperature: (0.04, 0.50), humidity: (0.14, 0.86),
-             elevation: (0.60, 1.00),
-             continentality: (0.38, 1.00), weight: 0.92),
+             temperature: (0.04, 0.48), humidity: (0.14, 0.88),
+             elevation: (0.58, 1.00),
+             continentality: (0.38, 1.00), weight: 0.94),
 
-            // ── TEMPERATE ─────────────────────────────────────────────────────
+            (biome: "mountain_meadow",
+             temperature: (0.28, 0.66), humidity: (0.30, 0.76),
+             elevation: (0.48, 0.78),
+             continentality: (0.42, 1.00), erosion: (0.24, 0.86), weight: 0.88),
+
+            (biome: "tundra",
+             temperature: (0.00, 0.24), humidity: (0.04, 0.42),
+             elevation: (0.30, 0.70),
+             continentality: (0.38, 1.00), weight: 0.86),
+
+            (biome: "snowy_plains",
+             temperature: (0.00, 0.28), humidity: (0.24, 0.78),
+             elevation: (0.26, 0.66),
+             continentality: (0.38, 1.00), weight: 0.82),
+
+            (biome: "snowy_taiga",
+             temperature: (0.06, 0.34), humidity: (0.42, 0.98),
+             elevation: (0.28, 0.74),
+             continentality: (0.38, 1.00), weight: 0.88),
+
+            // Temperate inland.
             (biome: "dark_forest",
              temperature: (0.26, 0.62), humidity: (0.70, 1.00),
-             continentality: (0.40, 1.00), weight: 0.88),
+             elevation: (0.30, 0.78),
+             continentality: (0.40, 1.00), weight: 0.90),
 
             (biome: "temperate_forest",
              temperature: (0.30, 0.70), humidity: (0.50, 0.92),
-             continentality: (0.40, 1.00), weight: 0.95),
+             elevation: (0.30, 0.78),
+             continentality: (0.40, 1.00), weight: 0.98),
 
             (biome: "birch_forest",
-             temperature: (0.36, 0.70), humidity: (0.38, 0.78),
-             continentality: (0.40, 1.00), weight: 0.82),
+             temperature: (0.36, 0.72), humidity: (0.36, 0.78),
+             elevation: (0.30, 0.76),
+             continentality: (0.40, 1.00), weight: 0.84),
 
             (biome: "meadow",
-             temperature: (0.38, 0.78), humidity: (0.30, 0.62),
-             continentality: (0.40, 1.00), weight: 0.90),
+             temperature: (0.38, 0.78), humidity: (0.30, 0.64),
+             elevation: (0.28, 0.70),
+             continentality: (0.40, 1.00), erosion: (0.34, 1.00), weight: 0.92),
 
             (biome: "plains",
-             temperature: (0.32, 0.78), humidity: (0.16, 0.52),
+             temperature: (0.30, 0.80), humidity: (0.14, 0.54),
+             elevation: (0.26, 0.68),
              continentality: (0.38, 1.00), weight: 0.82),
 
             (biome: "swamp",
-             temperature: (0.32, 0.72), humidity: (0.82, 1.00),
-             continentality: (0.34, 0.68), weight: 0.78),
+             temperature: (0.34, 0.74), humidity: (0.82, 1.00),
+             elevation: (0.24, 0.60),
+             continentality: (0.42, 0.76), erosion: (0.22, 0.74), weight: 0.82),
 
-            // ── HOT / TROPICAL ────────────────────────────────────────────────
+            // Warm and tropical.
             (biome: "jungle",
-             temperature: (0.70, 1.00), humidity: (0.72, 1.00),
-             continentality: (0.42, 1.00), weight: 1.08),
+             temperature: (0.72, 1.00), humidity: (0.74, 1.00),
+             elevation: (0.30, 0.82),
+             continentality: (0.42, 1.00), weirdness: (0.34, 1.00), weight: 1.10),
+
+            (biome: "jungle_edge",
+             temperature: (0.62, 0.88), humidity: (0.60, 0.90),
+             elevation: (0.28, 0.76),
+             continentality: (0.40, 1.00), weirdness: (0.00, 0.62), weight: 0.90),
 
             (biome: "savanna",
-             temperature: (0.64, 1.00), humidity: (0.08, 0.38),
-             continentality: (0.38, 1.00), weight: 0.90),
+             temperature: (0.64, 1.00), humidity: (0.08, 0.42),
+             elevation: (0.26, 0.72),
+             continentality: (0.38, 1.00), weight: 0.92),
 
             (biome: "badlands",
-             temperature: (0.60, 1.00), humidity: (0.00, 0.28),
+             temperature: (0.60, 1.00), humidity: (0.00, 0.30),
+             elevation: (0.30, 0.82),
              erosion: (0.52, 1.00),
-             continentality: (0.38, 1.00), weight: 0.76),
+             continentality: (0.38, 1.00), weight: 0.80),
 
             (biome: "desert",
-             temperature: (0.66, 1.00), humidity: (0.00, 0.22),
-             continentality: (0.38, 1.00), weight: 0.78),
+             temperature: (0.66, 1.00), humidity: (0.00, 0.24),
+             elevation: (0.26, 0.72),
+             continentality: (0.38, 1.00), erosion: (0.00, 0.72), weight: 0.78),
         ],
     )),
 )

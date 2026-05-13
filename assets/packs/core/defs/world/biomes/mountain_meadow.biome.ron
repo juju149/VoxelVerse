@@ -1,0 +1,29 @@
+Biome(
+    name: "Mountain Meadow",
+
+    surface: (top: "grass", under: "dirt", depth: (2, 5)),
+    slope: (above: 34, use: "stone"),
+
+    terrain: (
+        height: 0.18,
+        amplitude: 0.38,
+        flatness: 0.34,
+        noise: "rolling_hills",
+        ridges: "mountain_ridges",
+        terraces: 0.08,
+        curve: smoothstep,
+        mountain: 0.95,
+        slope_smooth: 0.22,
+    ),
+
+    palette: (
+        grass: (0.46, 0.70, 0.32),
+        foliage: (0.30, 0.54, 0.28),
+    ),
+
+    vegetation: ["temperate", "meadow", "mountain", "alpine"],
+    fauna: ["small_herbivore"],
+    structures: ["small"],
+
+    tags: ["mountain", "meadow", "temperate"],
+)

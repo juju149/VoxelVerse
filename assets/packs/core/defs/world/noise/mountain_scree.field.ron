@@ -1,0 +1,10 @@
+NoiseFieldDef(
+    kind: ridged,
+    frequency: 3.4,
+    amplitude: 1.0,
+    octaves: 4,
+    persistence: 0.46,
+    lacunarity: 2.24,
+    seed_salt: "mountain_scree",
+    domain_warp: Some((field: "core:field/warp_medium", strength: 0.12)),
+)

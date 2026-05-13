@@ -1,0 +1,26 @@
+PropScatter(
+    name: "Forest Ferns And Berries",
+    placement: (
+        allowed_surface_blocks: ["grass", "dirt", "podzol"],
+        biome_tags: ["forest", "temperate", "birch"],
+        density: 0.16,
+        slope_max_degrees: 32,
+        scatter_field: "flower_noise",
+        min_spacing_voxels: 1.6,
+        jitter_strength: 0.92,
+        clump_field: Some("forest_clump"),
+        clump_strength: 0.50,
+        humidity_range: Some((0.42, 0.94)),
+        temperature_range: Some((0.24, 0.76)),
+        scale_variance: Some((0.86, 1.20)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        (model: "voxel/vegetation/grass/ferns/ferns_01", weight: 6, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        (model: "voxel/vegetation/grass/ferns/ferns_02", weight: 6, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        (model: "voxel/vegetation/grass/ferns/ferns_03", weight: 5, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        (model: "voxel/vegetation/grass/leafy_plant/leafy_plant_01", weight: 3, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.25)]),
+        (model: "voxel/vegetation/bushes/blueberry/blueberry_01", weight: 2),
+        (model: "voxel/vegetation/bushes/lingonberry/lingonberry_01", weight: 2),
+    ],
+)
