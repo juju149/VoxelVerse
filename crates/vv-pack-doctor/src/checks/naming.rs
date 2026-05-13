@@ -1,8 +1,10 @@
 //! Naming checks for content files.
 //!
-//! Mirrors the rules in `docs/content_rules.md` section 2.
+//! Filenames must be lowercase, hyphen-free, non-numeric, and free of banned
+//! placeholder stems (`test`, `tmp`, etc.). Applies to every .ron / .png /
+//! .vox we discovered during the scan.
 
-use crate::report::Report;
+use crate::report::{Diagnostic, Report};
 use crate::scan::PackScan;
 
 const CHECK: &str = "naming";
@@ -13,59 +15,41 @@ const BANNED_STEMS: &[&str] = &[
 
 pub fn run(scan: &PackScan, report: &mut Report) {
     for path in &scan.all_ron_files {
-        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
-            continue;
-        };
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else { continue };
         let rel = scan.relative(path);
-        if !is_safe_name(name) {
-            report.error_path(CHECK, format!("invalid filename: {}", name), rel.clone());
-        }
-        let stem = stem_of(name);
-        if BANNED_STEMS.iter().any(|b| stem == *b) {
-            report.error_path(
-                CHECK,
-                format!("banned stem '{}' in filename", stem),
-                rel.clone(),
-            );
-        }
+        check_name(name, &rel, report);
     }
-
     for tex in &scan.texture_files {
-        let Some(name) = tex
-            .abs_path
-            .file_name()
-            .and_then(|s| s.to_str())
-        else {
-            continue;
-        };
-        if !is_safe_name(name) {
-            report.error_path(
-                CHECK,
-                format!("invalid texture filename: {}", name),
-                tex.rel_path.clone(),
-            );
-        }
-        let stem = stem_of(name);
-        if BANNED_STEMS.iter().any(|b| stem == *b) {
-            report.error_path(
-                CHECK,
-                format!("banned stem '{}' in texture filename", stem),
-                tex.rel_path.clone(),
-            );
-        }
+        let Some(name) = tex.abs_path.file_name().and_then(|s| s.to_str()) else { continue };
+        check_name(name, &tex.rel_path, report);
     }
+    for v in &scan.voxel_files {
+        let Some(name) = v.abs_path.file_name().and_then(|s| s.to_str()) else { continue };
+        check_name(name, &v.rel_path, report);
+    }
+}
 
-    for path in &scan.voxel_files {
-        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
-            continue;
-        };
-        if !is_safe_name(name) {
-            report.error_path(
-                CHECK,
-                format!("invalid voxel filename: {}", name),
-                scan.relative(path),
-            );
-        }
+fn check_name(name: &str, rel: &str, report: &mut Report) {
+    if !is_safe_name(name) {
+        report.error(
+            Diagnostic::new(CHECK, format!("invalid filename: {}", name))
+                .with_path(rel.to_string())
+                .with_suggestion(
+                    "use lowercase letters, digits and underscores only; no spaces, hyphens, or numeric-only stems"
+                        .to_string(),
+                ),
+        );
+    }
+    let stem = stem_of(name);
+    if BANNED_STEMS.iter().any(|b| stem == *b) {
+        report.error(
+            Diagnostic::new(CHECK, format!("banned stem '{}' in filename", stem))
+                .with_path(rel.to_string())
+                .with_suggestion(
+                    "rename the file to something descriptive — placeholder names ship to runtime"
+                        .to_string(),
+                ),
+        );
     }
 }
 

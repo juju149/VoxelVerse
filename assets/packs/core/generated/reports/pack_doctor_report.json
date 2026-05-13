@@ -1,0 +1,954 @@
+{
+  "pack": "assets/packs/core",
+  "health_score": 0,
+  "summary": {
+    "errors": 97,
+    "warnings": 10,
+    "blocks": 0,
+    "items": 0,
+    "materials": 0,
+    "textures": 48,
+    "recipes": 0,
+    "loot_tables": 0,
+    "voxels": 0,
+    "shader_modules": 15,
+    "techniques": 7,
+    "world_files": 66
+  },
+  "errors": [
+    {
+      "check": "parse",
+      "message": "defs/objects/animals/rabbit.object.ron:3:12: Expected string",
+      "path": "defs/objects/animals/rabbit.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/food/apple.object.ron:3:12: Expected string",
+      "path": "defs/objects/food/apple.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/ores/coal_ore.object.ron:3:12: Expected string",
+      "path": "defs/objects/ores/coal_ore.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/ores/iron_ore.object.ron:3:12: Expected string",
+      "path": "defs/objects/ores/iron_ore.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/player/player.object.ron:3:12: Expected string",
+      "path": "defs/objects/player/player.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/potions/health_potion.object.ron:3:12: Expected string",
+      "path": "defs/objects/potions/health_potion.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/resources/coal.object.ron:3:13: Expected string",
+      "path": "defs/objects/resources/coal.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/resources/flower.object.ron:3:13: Expected string",
+      "path": "defs/objects/resources/flower.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/resources/iron_ingot.object.ron:3:13: Expected string",
+      "path": "defs/objects/resources/iron_ingot.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/resources/iron_ore_chunk.object.ron:3:13: Expected string",
+      "path": "defs/objects/resources/iron_ore_chunk.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/resources/mushroom.object.ron:3:13: Expected string",
+      "path": "defs/objects/resources/mushroom.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/resources/plant_fiber.object.ron:3:13: Expected string",
+      "path": "defs/objects/resources/plant_fiber.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/stations/armor_workbench.object.ron:3:12: Expected string",
+      "path": "defs/objects/stations/armor_workbench.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/stations/campfire.object.ron:3:12: Expected string",
+      "path": "defs/objects/stations/campfire.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/stations/chest.object.ron:3:12: Expected string",
+      "path": "defs/objects/stations/chest.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/stations/construction_workbench.object.ron:3:12: Expected string",
+      "path": "defs/objects/stations/construction_workbench.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/stations/furnace.object.ron:3:12: Expected string",
+      "path": "defs/objects/stations/furnace.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/stations/weapon_workbench.object.ron:3:12: Expected string",
+      "path": "defs/objects/stations/weapon_workbench.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/air.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/air.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/andesite.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/andesite.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/bedrock.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/bedrock.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/coarse_dirt.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/coarse_dirt.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/core_block.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/core_block.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/deepslate.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/deepslate.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/dirt.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/dirt.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/grass.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/grass.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/podzol.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/podzol.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/powder_snow.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/powder_snow.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/red_sand.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/red_sand.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/snow.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/snow.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/terrain/stone.object.ron:3:12: Expected string",
+      "path": "defs/objects/terrain/stone.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/tools/stone_axe.object.ron:3:12: Expected string",
+      "path": "defs/objects/tools/stone_axe.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/tools/stone_pickaxe.object.ron:3:12: Expected string",
+      "path": "defs/objects/tools/stone_pickaxe.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/tools/stone_shovel.object.ron:3:12: Expected string",
+      "path": "defs/objects/tools/stone_shovel.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/acacia_leaves.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/acacia_leaves.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/acacia_log.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/acacia_log.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/birch_leaves.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/birch_leaves.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/birch_log.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/birch_log.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/dark_oak_leaves.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/dark_oak_leaves.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/dark_oak_log.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/dark_oak_log.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/jungle_leaves.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/jungle_leaves.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/jungle_log.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/jungle_log.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/oak_leaves.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/oak_leaves.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/oak_log.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/oak_log.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/spruce_leaves.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/spruce_leaves.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/trees/spruce_log.object.ron:3:12: Expected string",
+      "path": "defs/objects/trees/spruce_log.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "parse",
+      "message": "defs/objects/weapons/wood_bow.object.ron:3:12: Expected string",
+      "path": "defs/objects/weapons/wood_bow.object.ron",
+      "id": null,
+      "field": null,
+      "suggestion": "wrap bare identifiers in double quotes (e.g. `\"plains\"` instead of `plains`)"
+    },
+    {
+      "check": "filesystem",
+      "message": "missing required file: README.md",
+      "path": "README.md",
+      "id": null,
+      "field": null,
+      "suggestion": "create README.md at the pack root"
+    },
+    {
+      "check": "filesystem",
+      "message": "missing required directory: media/voxel",
+      "path": "media/voxel",
+      "id": null,
+      "field": null,
+      "suggestion": "create media/voxel/ at the pack root"
+    },
+    {
+      "check": "references",
+      "message": "world file references unknown 'air'",
+      "path": "defs/world/caves/default.cave.ron",
+      "id": "world/caves/default",
+      "field": "carve.air_block",
+      "suggestion": "declare an object, biome, ore or world entity whose short name is 'air'"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'core:voxel/props/interactables/camps/tent' is missing on disk",
+      "path": "defs/world/props/core_props.prop_collection.ron",
+      "id": "world/props/core_props",
+      "field": "props.[0].model",
+      "suggestion": "create media/voxel/props/interactables/camps/tent.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'core:voxel/props/lights/street_lamp' is missing on disk",
+      "path": "defs/world/props/core_props.prop_collection.ron",
+      "id": "world/props/core_props",
+      "field": "props.[1].model",
+      "suggestion": "create media/voxel/props/lights/street_lamp.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'core:voxel/props/interactables/bells/bell' is missing on disk",
+      "path": "defs/world/props/core_props.prop_collection.ron",
+      "id": "world/props/core_props",
+      "field": "props.[2].model",
+      "suggestion": "create media/voxel/props/interactables/bells/bell.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'core:voxel/props/structure_parts/ladders/ladder' is missing on disk",
+      "path": "defs/world/props/core_props.prop_collection.ron",
+      "id": "world/props/core_props",
+      "field": "props.[3].model",
+      "suggestion": "create media/voxel/props/structure_parts/ladders/ladder.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/dead_bush/dead_bush_01' is missing on disk",
+      "path": "defs/world/vegetation/desert_scatter.prop_scatter.ron",
+      "id": "world/vegetation/desert_scatter",
+      "field": "variants.[0].model",
+      "suggestion": "create media/voxel/vegetation/bushes/dead_bush/dead_bush_01.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/dead_bush/dead_bush_02' is missing on disk",
+      "path": "defs/world/vegetation/desert_scatter.prop_scatter.ron",
+      "id": "world/vegetation/desert_scatter",
+      "field": "variants.[1].model",
+      "suggestion": "create media/voxel/vegetation/bushes/dead_bush/dead_bush_02.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/welwitch/welwitch_01' is missing on disk",
+      "path": "defs/world/vegetation/desert_scatter.prop_scatter.ron",
+      "id": "world/vegetation/desert_scatter",
+      "field": "variants.[2].model",
+      "suggestion": "create media/voxel/vegetation/bushes/welwitch/welwitch_01.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/dead_plant/dead_plant_1' is missing on disk",
+      "path": "defs/world/vegetation/desert_scatter.prop_scatter.ron",
+      "id": "world/vegetation/desert_scatter",
+      "field": "variants.[3].model",
+      "suggestion": "create media/voxel/vegetation/bushes/dead_plant/dead_plant_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_med_1' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[0].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_med_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_med_2' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[1].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_med_2.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_long_1' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[2].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_long_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_long_2' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[3].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_long_2.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/ferns/ferns_01' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[4].model",
+      "suggestion": "create media/voxel/vegetation/grass/ferns/ferns_01.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/flowers/flower_blue_1' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[5].model",
+      "suggestion": "create media/voxel/vegetation/flowers/flower_blue_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/flowers/flower_pink_1' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[6].model",
+      "suggestion": "create media/voxel/vegetation/flowers/flower_pink_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/flowers/flower_purple_1' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[7].model",
+      "suggestion": "create media/voxel/vegetation/flowers/flower_purple_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/flowers/flower_yellow_0' is missing on disk",
+      "path": "defs/world/vegetation/grass_scatter.prop_scatter.ron",
+      "id": "world/vegetation/grass_scatter",
+      "field": "variants.[8].model",
+      "suggestion": "create media/voxel/vegetation/flowers/flower_yellow_0.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/ferns/ferns_01' is missing on disk",
+      "path": "defs/world/vegetation/jungle_scatter.prop_scatter.ron",
+      "id": "world/vegetation/jungle_scatter",
+      "field": "variants.[0].model",
+      "suggestion": "create media/voxel/vegetation/grass/ferns/ferns_01.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/ferns/ferns_02' is missing on disk",
+      "path": "defs/world/vegetation/jungle_scatter.prop_scatter.ron",
+      "id": "world/vegetation/jungle_scatter",
+      "field": "variants.[1].model",
+      "suggestion": "create media/voxel/vegetation/grass/ferns/ferns_02.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/ferns/ferns_03' is missing on disk",
+      "path": "defs/world/vegetation/jungle_scatter.prop_scatter.ron",
+      "id": "world/vegetation/jungle_scatter",
+      "field": "variants.[2].model",
+      "suggestion": "create media/voxel/vegetation/grass/ferns/ferns_03.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/junglefern/junglefern_01' is missing on disk",
+      "path": "defs/world/vegetation/jungle_scatter.prop_scatter.ron",
+      "id": "world/vegetation/jungle_scatter",
+      "field": "variants.[3].model",
+      "suggestion": "create media/voxel/vegetation/grass/junglefern/junglefern_01.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_large_0' is missing on disk",
+      "path": "defs/world/vegetation/jungle_scatter.prop_scatter.ron",
+      "id": "world/vegetation/jungle_scatter",
+      "field": "variants.[4].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_large_0.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_large_1' is missing on disk",
+      "path": "defs/world/vegetation/jungle_scatter.prop_scatter.ron",
+      "id": "world/vegetation/jungle_scatter",
+      "field": "variants.[5].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_large_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/lingonberry/lingonberry_01' is missing on disk",
+      "path": "defs/world/vegetation/jungle_scatter.prop_scatter.ron",
+      "id": "world/vegetation/jungle_scatter",
+      "field": "variants.[6].model",
+      "suggestion": "create media/voxel/vegetation/bushes/lingonberry/lingonberry_01.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/flowers/flower_pink_1' is missing on disk",
+      "path": "defs/world/vegetation/jungle_scatter.prop_scatter.ron",
+      "id": "world/vegetation/jungle_scatter",
+      "field": "variants.[7].model",
+      "suggestion": "create media/voxel/vegetation/flowers/flower_pink_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/mushrooms/mushroom_0' is missing on disk",
+      "path": "defs/world/vegetation/mushroom_scatter.prop_scatter.ron",
+      "id": "world/vegetation/mushroom_scatter",
+      "field": "variants.[0].model",
+      "suggestion": "create media/voxel/vegetation/mushrooms/mushroom_0.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/mushrooms/mushroom_1' is missing on disk",
+      "path": "defs/world/vegetation/mushroom_scatter.prop_scatter.ron",
+      "id": "world/vegetation/mushroom_scatter",
+      "field": "variants.[1].model",
+      "suggestion": "create media/voxel/vegetation/mushrooms/mushroom_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/mushrooms/mushroom_2' is missing on disk",
+      "path": "defs/world/vegetation/mushroom_scatter.prop_scatter.ron",
+      "id": "world/vegetation/mushroom_scatter",
+      "field": "variants.[2].model",
+      "suggestion": "create media/voxel/vegetation/mushrooms/mushroom_2.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/mushrooms/mushroom_3' is missing on disk",
+      "path": "defs/world/vegetation/mushroom_scatter.prop_scatter.ron",
+      "id": "world/vegetation/mushroom_scatter",
+      "field": "variants.[3].model",
+      "suggestion": "create media/voxel/vegetation/mushrooms/mushroom_3.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_long_3' is missing on disk",
+      "path": "defs/world/vegetation/savanna_scatter.prop_scatter.ron",
+      "id": "world/vegetation/savanna_scatter",
+      "field": "variants.[0].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_long_3.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_long_4' is missing on disk",
+      "path": "defs/world/vegetation/savanna_scatter.prop_scatter.ron",
+      "id": "world/vegetation/savanna_scatter",
+      "field": "variants.[1].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_long_4.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/savanna_bush/savanna_bush_01' is missing on disk",
+      "path": "defs/world/vegetation/savanna_scatter.prop_scatter.ron",
+      "id": "world/vegetation/savanna_scatter",
+      "field": "variants.[2].model",
+      "suggestion": "create media/voxel/vegetation/bushes/savanna_bush/savanna_bush_01.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/savanna_bush/savanna_bush_02' is missing on disk",
+      "path": "defs/world/vegetation/savanna_scatter.prop_scatter.ron",
+      "id": "world/vegetation/savanna_scatter",
+      "field": "variants.[3].model",
+      "suggestion": "create media/voxel/vegetation/bushes/savanna_bush/savanna_bush_02.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/dead_bush/dead_bush_01' is missing on disk",
+      "path": "defs/world/vegetation/savanna_scatter.prop_scatter.ron",
+      "id": "world/vegetation/savanna_scatter",
+      "field": "variants.[4].model",
+      "suggestion": "create media/voxel/vegetation/bushes/dead_bush/dead_bush_01.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/dead_bush/dead_bush_02' is missing on disk",
+      "path": "defs/world/vegetation/savanna_scatter.prop_scatter.ron",
+      "id": "world/vegetation/savanna_scatter",
+      "field": "variants.[5].model",
+      "suggestion": "create media/voxel/vegetation/bushes/dead_bush/dead_bush_02.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/flowers/flower_yellow_0' is missing on disk",
+      "path": "defs/world/vegetation/savanna_scatter.prop_scatter.ron",
+      "id": "world/vegetation/savanna_scatter",
+      "field": "variants.[6].model",
+      "suggestion": "create media/voxel/vegetation/flowers/flower_yellow_0.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/grass/grass/grass_med_1' is missing on disk",
+      "path": "defs/world/vegetation/snow_scatter.prop_scatter.ron",
+      "id": "world/vegetation/snow_scatter",
+      "field": "variants.[0].model",
+      "suggestion": "create media/voxel/vegetation/grass/grass/grass_med_1.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/snow_bush/snow_bush_0' is missing on disk",
+      "path": "defs/world/vegetation/snow_scatter.prop_scatter.ron",
+      "id": "world/vegetation/snow_scatter",
+      "field": "variants.[1].model",
+      "suggestion": "create media/voxel/vegetation/bushes/snow_bush/snow_bush_0.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/dead_bush/dead_bush_03' is missing on disk",
+      "path": "defs/world/vegetation/snow_scatter.prop_scatter.ron",
+      "id": "world/vegetation/snow_scatter",
+      "field": "variants.[2].model",
+      "suggestion": "create media/voxel/vegetation/bushes/dead_bush/dead_bush_03.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/bushes/dead_plant/dead_plant_0' is missing on disk",
+      "path": "defs/world/vegetation/snow_scatter.prop_scatter.ron",
+      "id": "world/vegetation/snow_scatter",
+      "field": "variants.[3].model",
+      "suggestion": "create media/voxel/vegetation/bushes/dead_plant/dead_plant_0.vox"
+    },
+    {
+      "check": "references",
+      "message": "voxel model 'voxel/vegetation/flowers/flower_blue_1' is missing on disk",
+      "path": "defs/world/vegetation/snow_scatter.prop_scatter.ron",
+      "id": "world/vegetation/snow_scatter",
+      "field": "variants.[4].model",
+      "suggestion": "create media/voxel/vegetation/flowers/flower_blue_1.vox"
+    },
+    {
+      "check": "tags",
+      "message": "unknown tag '#tag.soil' — no object declares it",
+      "path": "defs/world/vegetation/acacia_tree.vegetation.ron",
+      "id": "world/vegetation/acacia_tree",
+      "field": null,
+      "suggestion": "add `tag.soil` to the `tags:` list of the relevant object"
+    },
+    {
+      "check": "tags",
+      "message": "unknown tag '#tag.soil' — no object declares it",
+      "path": "defs/world/vegetation/birch_tree.vegetation.ron",
+      "id": "world/vegetation/birch_tree",
+      "field": null,
+      "suggestion": "add `tag.soil` to the `tags:` list of the relevant object"
+    },
+    {
+      "check": "tags",
+      "message": "unknown tag '#tag.soil' — no object declares it",
+      "path": "defs/world/vegetation/dark_oak_tree.vegetation.ron",
+      "id": "world/vegetation/dark_oak_tree",
+      "field": null,
+      "suggestion": "add `tag.soil` to the `tags:` list of the relevant object"
+    },
+    {
+      "check": "tags",
+      "message": "unknown tag '#tag.soil' — no object declares it",
+      "path": "defs/world/vegetation/jungle_tree.vegetation.ron",
+      "id": "world/vegetation/jungle_tree",
+      "field": null,
+      "suggestion": "add `tag.soil` to the `tags:` list of the relevant object"
+    },
+    {
+      "check": "tags",
+      "message": "unknown tag '#tag.soil' — no object declares it",
+      "path": "defs/world/vegetation/oak_tree.vegetation.ron",
+      "id": "world/vegetation/oak_tree",
+      "field": null,
+      "suggestion": "add `tag.soil` to the `tags:` list of the relevant object"
+    },
+    {
+      "check": "tags",
+      "message": "unknown tag '#tag.soil' — no object declares it",
+      "path": "defs/world/vegetation/spruce_tree.vegetation.ron",
+      "id": "world/vegetation/spruce_tree",
+      "field": null,
+      "suggestion": "add `tag.soil` to the `tags:` list of the relevant object"
+    }
+  ],
+  "warnings": [
+    {
+      "check": "filesystem",
+      "message": "empty directory: media/voxels",
+      "path": "media/voxels",
+      "id": null,
+      "field": null,
+      "suggestion": "remove the empty directory or fill it with content"
+    },
+    {
+      "check": "filesystem",
+      "message": "empty directory: render/techniques/foliage",
+      "path": "render/techniques/foliage",
+      "id": null,
+      "field": null,
+      "suggestion": "remove the empty directory or fill it with content"
+    },
+    {
+      "check": "filesystem",
+      "message": "empty directory: render/techniques/particles",
+      "path": "render/techniques/particles",
+      "id": null,
+      "field": null,
+      "suggestion": "remove the empty directory or fill it with content"
+    },
+    {
+      "check": "filesystem",
+      "message": "empty directory: render/techniques/shadows",
+      "path": "render/techniques/shadows",
+      "id": null,
+      "field": null,
+      "suggestion": "remove the empty directory or fill it with content"
+    },
+    {
+      "check": "progression",
+      "message": "MVP block 'grass' missing",
+      "path": null,
+      "id": null,
+      "field": null,
+      "suggestion": null
+    },
+    {
+      "check": "progression",
+      "message": "MVP block 'dirt' missing",
+      "path": null,
+      "id": null,
+      "field": null,
+      "suggestion": null
+    },
+    {
+      "check": "progression",
+      "message": "MVP block 'stone' missing",
+      "path": null,
+      "id": null,
+      "field": null,
+      "suggestion": null
+    },
+    {
+      "check": "progression",
+      "message": "MVP block 'coal_ore' missing",
+      "path": null,
+      "id": null,
+      "field": null,
+      "suggestion": null
+    },
+    {
+      "check": "progression",
+      "message": "MVP block 'iron_ore' missing",
+      "path": null,
+      "id": null,
+      "field": null,
+      "suggestion": null
+    },
+    {
+      "check": "progression",
+      "message": "MVP block 'oak_log' missing",
+      "path": null,
+      "id": null,
+      "field": null,
+      "suggestion": null
+    }
+  ],
+  "unused": {
+    "textures": [
+      "media/textures/blocks/andesite/all.albedo.png",
+      "media/textures/blocks/andesite/all.normal.png",
+      "media/textures/blocks/andesite/all.roughness.png",
+      "media/textures/blocks/bedrock/all.albedo.png",
+      "media/textures/blocks/bedrock/all.normal.png",
+      "media/textures/blocks/bedrock/all.roughness.png",
+      "media/textures/blocks/coal_ore/all.albedo.png",
+      "media/textures/blocks/coal_ore/all.normal.png",
+      "media/textures/blocks/coal_ore/all.roughness.png",
+      "media/textures/blocks/deepslate/side.albedo.png",
+      "media/textures/blocks/deepslate/side.normal.png",
+      "media/textures/blocks/deepslate/side.roughness.png",
+      "media/textures/blocks/deepslate/top.albedo.png",
+      "media/textures/blocks/deepslate/top.normal.png",
+      "media/textures/blocks/deepslate/top.roughness.png",
+      "media/textures/blocks/dirt/all.albedo.png",
+      "media/textures/blocks/dirt/all.normal.png",
+      "media/textures/blocks/dirt/all.roughness.png",
+      "media/textures/blocks/grass_block/bottom.albedo.png",
+      "media/textures/blocks/grass_block/bottom.normal.png",
+      "media/textures/blocks/grass_block/bottom.roughness.png",
+      "media/textures/blocks/grass_block/side.albedo.png",
+      "media/textures/blocks/grass_block/side.normal.png",
+      "media/textures/blocks/grass_block/side.roughness.png",
+      "media/textures/blocks/grass_block/top.albedo.png",
+      "media/textures/blocks/grass_block/top.normal.png",
+      "media/textures/blocks/grass_block/top.roughness.png",
+      "media/textures/blocks/iron_ore/all.albedo.png",
+      "media/textures/blocks/iron_ore/all.normal.png",
+      "media/textures/blocks/iron_ore/all.roughness.png",
+      "media/textures/blocks/oak_leaves/all.albedo.png",
+      "media/textures/blocks/oak_leaves/all.normal.png",
+      "media/textures/blocks/oak_leaves/all.roughness.png",
+      "media/textures/blocks/oak_log/side.albedo.png",
+      "media/textures/blocks/oak_log/side.normal.png",
+      "media/textures/blocks/oak_log/side.roughness.png",
+      "media/textures/blocks/oak_log/top.albedo.png",
+      "media/textures/blocks/oak_log/top.normal.png",
+      "media/textures/blocks/oak_log/top.roughness.png",
+      "media/textures/blocks/powder_snow/all.albedo.png",
+      "media/textures/blocks/powder_snow/all.normal.png",
+      "media/textures/blocks/powder_snow/all.roughness.png",
+      "media/textures/blocks/red_sand/all.albedo.png",
+      "media/textures/blocks/red_sand/all.normal.png",
+      "media/textures/blocks/red_sand/all.roughness.png",
+      "media/textures/blocks/smooth_stone/all.albedo.png",
+      "media/textures/blocks/smooth_stone/all.normal.png",
+      "media/textures/blocks/smooth_stone/all.roughness.png"
+    ],
+    "materials": [],
+    "items": [],
+    "blocks": [],
+    "loot_tables": [],
+    "voxels": [],
+    "shaders": []
+  },
+  "missing": {
+    "block_items": [],
+    "loot_tables": [],
+    "textures": [],
+    "voxels": [],
+    "shaders": []
+  },
+  "progression": {
+    "basic_loop_reachable": false,
+    "notes": [
+      "MVP block 'grass' is missing - first-hour loop is broken.",
+      "MVP block 'dirt' is missing - first-hour loop is broken.",
+      "MVP block 'stone' is missing - first-hour loop is broken.",
+      "MVP block 'coal_ore' is missing - first-hour loop is broken.",
+      "MVP block 'iron_ore' is missing - first-hour loop is broken.",
+      "MVP block 'oak_log' is missing - first-hour loop is broken."
+    ]
+  }
+}

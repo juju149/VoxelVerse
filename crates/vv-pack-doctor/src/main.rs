@@ -49,18 +49,10 @@ fn main() -> ExitCode {
         report.summary.errors, report.summary.warnings, report.health_score
     );
     for err in &report.errors {
-        match (&err.id, &err.path) {
-            (Some(id), _) => println!("ERROR [{}] {} ({})", err.check, err.message, id),
-            (None, Some(p)) => println!("ERROR [{}] {} ({})", err.check, err.message, p),
-            _ => println!("ERROR [{}] {}", err.check, err.message),
-        }
+        print_diagnostic("ERROR", err);
     }
     for warn in &report.warnings {
-        match (&warn.id, &warn.path) {
-            (Some(id), _) => println!("WARN  [{}] {} ({})", warn.check, warn.message, id),
-            (None, Some(p)) => println!("WARN  [{}] {} ({})", warn.check, warn.message, p),
-            _ => println!("WARN  [{}] {}", warn.check, warn.message),
-        }
+        print_diagnostic("WARN ", warn);
     }
 
     if report.ok() {
@@ -116,4 +108,25 @@ fn write_file(path: &Path, content: &str) -> std::io::Result<()> {
         std::fs::create_dir_all(parent)?;
     }
     std::fs::write(path, content)
+}
+
+fn print_diagnostic(severity: &str, d: &vv_pack_doctor::report::Diagnostic) {
+    let location = match (&d.path, &d.id) {
+        (Some(p), Some(id)) if p != id => format!("{} ({})", p, id),
+        (Some(p), _) => p.clone(),
+        (None, Some(id)) => id.clone(),
+        _ => "-".to_string(),
+    };
+    let field = d
+        .field
+        .as_deref()
+        .map(|f| format!(" .{}", f))
+        .unwrap_or_default();
+    println!(
+        "{} [{}] {} :: {}{}",
+        severity, d.check, location, d.message, field
+    );
+    if let Some(s) = &d.suggestion {
+        println!("       fix: {}", s);
+    }
 }

@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::report::Report;
+use crate::report::{Diagnostic, Report};
 use crate::scan::PackScan;
 
 const CHECK: &str = "filesystem";
@@ -12,8 +12,7 @@ const REQUIRED_DIRS: &[&str] = &[
     "media",
     "media/textures",
     "media/voxel",
-    "generated",
-    "generated/registries",
+    "render",
 ];
 
 const REQUIRED_FILES: &[&str] = &["pack.ron", "README.md"];
@@ -32,22 +31,33 @@ pub fn run(scan: &PackScan, report: &mut Report) {
     for f in REQUIRED_FILES {
         let path = scan.pack_root.join(f);
         if !path.exists() {
-            report.error_path(CHECK, format!("missing required file: {}", f), f.to_string());
+            report.error(
+                Diagnostic::new(CHECK, format!("missing required file: {}", f))
+                    .with_path((*f).to_string())
+                    .with_suggestion(format!("create {} at the pack root", f)),
+            );
         }
     }
     for d in REQUIRED_DIRS {
         let path = scan.pack_root.join(d);
         if !path.is_dir() {
-            report.error_path(CHECK, format!("missing required directory: {}", d), d.to_string());
+            report.error(
+                Diagnostic::new(CHECK, format!("missing required directory: {}", d))
+                    .with_path((*d).to_string())
+                    .with_suggestion(format!("create {}/ at the pack root", d)),
+            );
         }
     }
     for legacy in FORBIDDEN_LEGACY {
         let path = scan.pack_root.join(legacy);
         if path.exists() {
-            report.error_path(
-                CHECK,
-                format!("legacy path still exists: {}", legacy),
-                legacy.to_string(),
+            report.error(
+                Diagnostic::new(CHECK, format!("legacy path still exists: {}", legacy))
+                    .with_path((*legacy).to_string())
+                    .with_suggestion(format!(
+                        "remove {} — the new layout is defs/ + media/ + render/",
+                        legacy
+                    )),
             );
         }
     }
@@ -60,14 +70,11 @@ fn check_empty_dirs(pack_root: &Path, dir: &Path, report: &mut Report) {
         .map(|p| p.to_string_lossy().replace('\\', "/"))
         .unwrap_or_else(|_| dir.to_string_lossy().to_string());
 
-    // Skip subtrees Pack Doctor owns or that intentionally hold human notes.
-    if rel.starts_with("source") || rel == "generated/reports" {
+    if rel.starts_with("source") || rel == "generated/reports" || rel.starts_with("target") {
         return;
     }
 
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
     let mut had_child = false;
     let mut children = Vec::new();
     for entry in entries.flatten() {
@@ -78,7 +85,11 @@ fn check_empty_dirs(pack_root: &Path, dir: &Path, report: &mut Report) {
         }
     }
     if !had_child && dir != pack_root {
-        report.error_path(CHECK, format!("empty directory: {}", rel), rel);
+        report.warn(
+            Diagnostic::new(CHECK, format!("empty directory: {}", rel))
+                .with_path(rel.clone())
+                .with_suggestion("remove the empty directory or fill it with content".to_string()),
+        );
     }
     for child in children {
         check_empty_dirs(pack_root, &child, report);

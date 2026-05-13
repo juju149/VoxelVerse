@@ -41,12 +41,16 @@ pub fn render(report: &Report) -> String {
     push_list(&mut out, "Items", &report.unused.items);
     push_list(&mut out, "Blocks", &report.unused.blocks);
     push_list(&mut out, "Loot tables", &report.unused.loot_tables);
+    push_list(&mut out, "Voxels", &report.unused.voxels);
+    push_list(&mut out, "Shaders", &report.unused.shaders);
     out.push_str("</section>\n");
 
     out.push_str("<section><h2>Missing</h2>\n");
     push_list(&mut out, "Block items", &report.missing.block_items);
     push_list(&mut out, "Loot tables", &report.missing.loot_tables);
     push_list(&mut out, "Textures", &report.missing.textures);
+    push_list(&mut out, "Voxels", &report.missing.voxels);
+    push_list(&mut out, "Shaders", &report.missing.shaders);
     out.push_str("</section>\n");
 
     out.push_str("<section><h2>Progression</h2>\n");
@@ -100,7 +104,7 @@ fn push_diagnostics(out: &mut String, title: &str, diags: &[Diagnostic], class: 
     } else {
         out.push_str("<table class=\"diagnostics ");
         out.push_str(class);
-        out.push_str("\">\n<thead><tr><th>Check</th><th>Message</th><th>Where</th></tr></thead>\n<tbody>\n");
+        out.push_str("\">\n<thead><tr><th>Check</th><th>Message</th><th>Where</th><th>Field</th><th>Fix</th></tr></thead>\n<tbody>\n");
         for d in diags {
             out.push_str("<tr><td>");
             escape(out, d.check);
@@ -108,9 +112,27 @@ fn push_diagnostics(out: &mut String, title: &str, diags: &[Diagnostic], class: 
             escape(out, &d.message);
             out.push_str("</td><td>");
             match (&d.id, &d.path) {
-                (Some(id), _) => escape(out, id),
+                (Some(id), Some(path)) => {
+                    escape(out, path);
+                    out.push_str(" <small>");
+                    escape(out, id);
+                    out.push_str("</small>");
+                }
+                (Some(id), None) => escape(out, id),
                 (None, Some(path)) => escape(out, path),
                 (None, None) => out.push('-'),
+            }
+            out.push_str("</td><td>");
+            if let Some(f) = &d.field {
+                escape(out, f);
+            } else {
+                out.push('-');
+            }
+            out.push_str("</td><td>");
+            if let Some(s) = &d.suggestion {
+                escape(out, s);
+            } else {
+                out.push('-');
             }
             out.push_str("</td></tr>\n");
         }

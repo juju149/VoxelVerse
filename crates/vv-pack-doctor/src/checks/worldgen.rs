@@ -1,102 +1,91 @@
-//! Worldgen reference checks: every block referenced by terrain, ores,
-//! vegetation, and biomes must exist.
+//! World-files cross-checks.
+//!
+//! References inside world files are largely handled by `references.rs`
+//! (because the world schema is in flux). This module adds higher-level
+//! sanity checks that don't need typed access:
+//!
+//!   - the pack must have at least one planet profile
+//!   - each planet profile must list at least one biome via `biome_set`
+//!   - every biome must declare a `surface.top` value
 
-use crate::report::Report;
-use crate::scan::PackScan;
+use crate::index::PackIndex;
+use crate::report::{Diagnostic, Report};
+use crate::scan::WorldCategory;
 
 const CHECK: &str = "worldgen";
 
-pub fn run(scan: &PackScan, report: &mut Report) {
-    for (id, set) in &scan.procedural.terrain_layers {
-        for (i, layer) in set.layers.iter().enumerate() {
-            if !scan.object_id_exists(&layer.block.0) {
-                report.error_id(
-                    CHECK,
-                    format!(
-                        "terrain layers '{}' layer {} references missing block '{}'",
-                        id, i, layer.block.0
-                    ),
-                    id.clone(),
-                );
-            }
-        }
+pub fn run(index: &PackIndex<'_>, report: &mut Report) {
+    let planets: Vec<_> = index
+        .scan
+        .world_files
+        .iter()
+        .filter(|f| f.category == WorldCategory::Planets)
+        .collect();
+    if planets.is_empty() {
+        report.error(
+            Diagnostic::new(CHECK, "pack contains no planet profiles")
+                .with_path("defs/world/planets/".to_string())
+                .with_suggestion(
+                    "add at least one `defs/world/planets/*.profile.ron` so the world can spawn"
+                        .to_string(),
+                ),
+        );
     }
-
-    for (id, ore) in &scan.procedural.ores {
-        if !scan.object_id_exists(&ore.block.0) {
-            report.error_id(
-                CHECK,
-                format!("ore '{}' references missing block '{}'", id, ore.block.0),
-                id.clone(),
+    for planet in planets {
+        if value_field(&planet.value, "biome_set").is_none() {
+            report.error(
+                Diagnostic::new(
+                    CHECK,
+                    "planet profile has no `biome_set` field",
+                )
+                .with_path(planet.rel_path.clone())
+                .with_id(planet.id.clone())
+                .with_field("biome_set"),
             );
         }
-        for r in &ore.replace {
-            if !scan.object_id_exists(&r.0) {
-                report.error_id(
+        if value_field(&planet.value, "terrain_layers").is_none() {
+            report.error(
+                Diagnostic::new(
                     CHECK,
-                    format!("ore '{}' replace target '{}' does not exist", id, r.0),
-                    id.clone(),
-                );
-            }
-        }
-    }
-
-    for (id, veg) in &scan.procedural.vegetation {
-        if !scan.object_id_exists(&veg.stamp.trunk.0) {
-            report.error_id(
-                CHECK,
-                format!(
-                    "vegetation '{}' trunk '{}' does not exist",
-                    id, veg.stamp.trunk.0
-                ),
-                id.clone(),
-            );
-        }
-        if !scan.object_id_exists(&veg.stamp.leaves.0) {
-            report.error_id(
-                CHECK,
-                format!(
-                    "vegetation '{}' leaves '{}' does not exist",
-                    id, veg.stamp.leaves.0
-                ),
-                id.clone(),
+                    "planet profile has no `terrain_layers` field",
+                )
+                .with_path(planet.rel_path.clone())
+                .with_id(planet.id.clone())
+                .with_field("terrain_layers"),
             );
         }
     }
 
-    for (id, biome) in &scan.procedural.biomes {
-        if !scan.object_id_exists(&biome.surface.top.0) {
-            report.error_id(
-                CHECK,
-                format!(
-                    "biome '{}' surface top '{}' does not exist",
-                    id, biome.surface.top.0
-                ),
-                id.clone(),
+    for biome in index
+        .scan
+        .world_files
+        .iter()
+        .filter(|f| f.category == WorldCategory::Biome)
+    {
+        let surface = value_field(&biome.value, "surface");
+        let top_ok = surface
+            .as_ref()
+            .map(|v| value_field(v, "top").is_some())
+            .unwrap_or(false);
+        if !top_ok {
+            report.error(
+                Diagnostic::new(CHECK, "biome has no `surface.top` block")
+                    .with_path(biome.rel_path.clone())
+                    .with_id(biome.id.clone())
+                    .with_field("surface.top"),
             );
-        }
-        if !scan.object_id_exists(&biome.surface.under.0) {
-            report.error_id(
-                CHECK,
-                format!(
-                    "biome '{}' surface under '{}' does not exist",
-                    id, biome.surface.under.0
-                ),
-                id.clone(),
-            );
-        }
-        if let Some(slope) = &biome.surface.slope_override {
-            if !scan.object_id_exists(&slope.top.0) {
-                report.error_id(
-                    CHECK,
-                    format!(
-                        "biome '{}' slope override top '{}' does not exist",
-                        id, slope.top.0
-                    ),
-                    id.clone(),
-                );
-            }
         }
     }
 }
 
+fn value_field<'a>(value: &'a ron::Value, key: &str) -> Option<&'a ron::Value> {
+    let ron::Value::Map(map) = value else { return None };
+    for (k, v) in map.iter() {
+        if let ron::Value::String(s) = k {
+            if s == key {
+                return Some(v);
+            }
+        }
+    }
+    None
+}

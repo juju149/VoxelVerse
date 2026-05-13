@@ -1,15 +1,15 @@
 //! Progression sanity check.
 //!
-//! V1 is intentionally narrow: it confirms the canonical first-hour loop
-//! pieces exist. It is not a full reachability solver.
+//! V1 confirms that the canonical first-hour gameplay loop is reachable.
+//! Each canonical block id (suffix-match) must exist and have a `block`
+//! section. The list is data-derived (objects in the pack) — we just check
+//! suffixes so different category prefixes still work.
 
-use crate::report::Report;
+use crate::report::{Diagnostic, Report};
 use crate::scan::PackScan;
 
 const CHECK: &str = "progression";
 
-/// Blocks the basic loop relies on (core MVP). Each entry is the block id
-/// suffix - we match by `ends_with` so different category prefixes still work.
 const BASIC_BLOCK_SUFFIXES: &[&str] = &[
     "/grass",
     "/dirt",
@@ -22,7 +22,10 @@ const BASIC_BLOCK_SUFFIXES: &[&str] = &[
 pub fn run(scan: &PackScan, report: &mut Report) {
     let mut missing = Vec::new();
     for suffix in BASIC_BLOCK_SUFFIXES {
-        let found = scan.objects.iter().any(|(id, d)| id.ends_with(suffix) && d.block.is_some());
+        let found = scan
+            .objects
+            .iter()
+            .any(|o| o.id.ends_with(suffix) && o.def.block.is_some());
         if !found {
             missing.push((*suffix).to_string());
         }
@@ -37,14 +40,12 @@ pub fn run(scan: &PackScan, report: &mut Report) {
     } else {
         report.progression.basic_loop_reachable = false;
         for s in &missing {
+            let name = s.trim_start_matches('/');
             report.progression.notes.push(format!(
                 "MVP block '{}' is missing - first-hour loop is broken.",
-                s.trim_start_matches('/')
+                name
             ));
-            report.warn(
-                CHECK,
-                format!("MVP block '{}' missing", s.trim_start_matches('/')),
-            );
+            report.warn(Diagnostic::new(CHECK, format!("MVP block '{}' missing", name)));
         }
     }
 }

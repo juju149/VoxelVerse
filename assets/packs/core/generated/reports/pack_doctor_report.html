@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>VoxelVerse Pack Doctor Report</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 1080px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  header { border-bottom: 1px solid #ddd; padding-bottom: 1rem; margin-bottom: 1rem; }
+  h1 { margin: 0 0 0.5rem; }
+  h2 { margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid #eee; }
+  .summary th { width: 12rem; }
+  .diagnostics.error tbody tr { background: #fff4f4; }
+  .diagnostics.warning tbody tr { background: #fff9e6; }
+  code { background: #f4f4f4; padding: 1px 4px; border-radius: 3px; }
+  .empty { color: #888; }
+  details { margin: 0.5rem 0; }
+  summary { cursor: pointer; font-weight: 600; }
+</style>
+</head><body>
+<header>
+<h1>VoxelVerse Pack Doctor</h1>
+<p><strong>Pack:</strong> assets/packs/core</p>
+<p><strong>Health score:</strong> 0/100</p>
+</header>
+<section class="summary">
+<h2>Summary</h2>
+<table>
+<tr><th>Errors</th><td>97</td></tr>
+<tr><th>Warnings</th><td>10</td></tr>
+<tr><th>Blocks</th><td>0</td></tr>
+<tr><th>Items</th><td>0</td></tr>
+<tr><th>Materials</th><td>0</td></tr>
+<tr><th>Textures</th><td>48</td></tr>
+<tr><th>Recipes</th><td>0</td></tr>
+<tr><th>Loot tables</th><td>0</td></tr>
+</table>
+</section>
+<section><h2>Errors (97)</h2>
+<table class="diagnostics error">
+<thead><tr><th>Check</th><th>Message</th><th>Where</th><th>Field</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>parse</td><td>defs/objects/animals/rabbit.object.ron:3:12: Expected string</td><td>defs/objects/animals/rabbit.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/food/apple.object.ron:3:12: Expected string</td><td>defs/objects/food/apple.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/ores/coal_ore.object.ron:3:12: Expected string</td><td>defs/objects/ores/coal_ore.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/ores/iron_ore.object.ron:3:12: Expected string</td><td>defs/objects/ores/iron_ore.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/player/player.object.ron:3:12: Expected string</td><td>defs/objects/player/player.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/potions/health_potion.object.ron:3:12: Expected string</td><td>defs/objects/potions/health_potion.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/resources/coal.object.ron:3:13: Expected string</td><td>defs/objects/resources/coal.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/resources/flower.object.ron:3:13: Expected string</td><td>defs/objects/resources/flower.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/resources/iron_ingot.object.ron:3:13: Expected string</td><td>defs/objects/resources/iron_ingot.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/resources/iron_ore_chunk.object.ron:3:13: Expected string</td><td>defs/objects/resources/iron_ore_chunk.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/resources/mushroom.object.ron:3:13: Expected string</td><td>defs/objects/resources/mushroom.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/resources/plant_fiber.object.ron:3:13: Expected string</td><td>defs/objects/resources/plant_fiber.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/stations/armor_workbench.object.ron:3:12: Expected string</td><td>defs/objects/stations/armor_workbench.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/stations/campfire.object.ron:3:12: Expected string</td><td>defs/objects/stations/campfire.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/stations/chest.object.ron:3:12: Expected string</td><td>defs/objects/stations/chest.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/stations/construction_workbench.object.ron:3:12: Expected string</td><td>defs/objects/stations/construction_workbench.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/stations/furnace.object.ron:3:12: Expected string</td><td>defs/objects/stations/furnace.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/stations/weapon_workbench.object.ron:3:12: Expected string</td><td>defs/objects/stations/weapon_workbench.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/air.object.ron:3:12: Expected string</td><td>defs/objects/terrain/air.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/andesite.object.ron:3:12: Expected string</td><td>defs/objects/terrain/andesite.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/bedrock.object.ron:3:12: Expected string</td><td>defs/objects/terrain/bedrock.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/coarse_dirt.object.ron:3:12: Expected string</td><td>defs/objects/terrain/coarse_dirt.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/core_block.object.ron:3:12: Expected string</td><td>defs/objects/terrain/core_block.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/deepslate.object.ron:3:12: Expected string</td><td>defs/objects/terrain/deepslate.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/dirt.object.ron:3:12: Expected string</td><td>defs/objects/terrain/dirt.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/grass.object.ron:3:12: Expected string</td><td>defs/objects/terrain/grass.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/podzol.object.ron:3:12: Expected string</td><td>defs/objects/terrain/podzol.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/powder_snow.object.ron:3:12: Expected string</td><td>defs/objects/terrain/powder_snow.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/red_sand.object.ron:3:12: Expected string</td><td>defs/objects/terrain/red_sand.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/snow.object.ron:3:12: Expected string</td><td>defs/objects/terrain/snow.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/terrain/stone.object.ron:3:12: Expected string</td><td>defs/objects/terrain/stone.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/tools/stone_axe.object.ron:3:12: Expected string</td><td>defs/objects/tools/stone_axe.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/tools/stone_pickaxe.object.ron:3:12: Expected string</td><td>defs/objects/tools/stone_pickaxe.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/tools/stone_shovel.object.ron:3:12: Expected string</td><td>defs/objects/tools/stone_shovel.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/acacia_leaves.object.ron:3:12: Expected string</td><td>defs/objects/trees/acacia_leaves.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/acacia_log.object.ron:3:12: Expected string</td><td>defs/objects/trees/acacia_log.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/birch_leaves.object.ron:3:12: Expected string</td><td>defs/objects/trees/birch_leaves.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/birch_log.object.ron:3:12: Expected string</td><td>defs/objects/trees/birch_log.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/dark_oak_leaves.object.ron:3:12: Expected string</td><td>defs/objects/trees/dark_oak_leaves.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/dark_oak_log.object.ron:3:12: Expected string</td><td>defs/objects/trees/dark_oak_log.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/jungle_leaves.object.ron:3:12: Expected string</td><td>defs/objects/trees/jungle_leaves.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/jungle_log.object.ron:3:12: Expected string</td><td>defs/objects/trees/jungle_log.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/oak_leaves.object.ron:3:12: Expected string</td><td>defs/objects/trees/oak_leaves.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/oak_log.object.ron:3:12: Expected string</td><td>defs/objects/trees/oak_log.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/spruce_leaves.object.ron:3:12: Expected string</td><td>defs/objects/trees/spruce_leaves.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/trees/spruce_log.object.ron:3:12: Expected string</td><td>defs/objects/trees/spruce_log.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>parse</td><td>defs/objects/weapons/wood_bow.object.ron:3:12: Expected string</td><td>defs/objects/weapons/wood_bow.object.ron</td><td>-</td><td>wrap bare identifiers in double quotes (e.g. `&quot;plains&quot;` instead of `plains`)</td></tr>
+<tr><td>filesystem</td><td>missing required file: README.md</td><td>README.md</td><td>-</td><td>create README.md at the pack root</td></tr>
+<tr><td>filesystem</td><td>missing required directory: media/voxel</td><td>media/voxel</td><td>-</td><td>create media/voxel/ at the pack root</td></tr>
+<tr><td>references</td><td>world file references unknown &#39;air&#39;</td><td>defs/world/caves/default.cave.ron <small>world/caves/default</small></td><td>carve.air_block</td><td>declare an object, biome, ore or world entity whose short name is &#39;air&#39;</td></tr>
+<tr><td>references</td><td>voxel model &#39;core:voxel/props/interactables/camps/tent&#39; is missing on disk</td><td>defs/world/props/core_props.prop_collection.ron <small>world/props/core_props</small></td><td>props.[0].model</td><td>create media/voxel/props/interactables/camps/tent.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;core:voxel/props/lights/street_lamp&#39; is missing on disk</td><td>defs/world/props/core_props.prop_collection.ron <small>world/props/core_props</small></td><td>props.[1].model</td><td>create media/voxel/props/lights/street_lamp.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;core:voxel/props/interactables/bells/bell&#39; is missing on disk</td><td>defs/world/props/core_props.prop_collection.ron <small>world/props/core_props</small></td><td>props.[2].model</td><td>create media/voxel/props/interactables/bells/bell.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;core:voxel/props/structure_parts/ladders/ladder&#39; is missing on disk</td><td>defs/world/props/core_props.prop_collection.ron <small>world/props/core_props</small></td><td>props.[3].model</td><td>create media/voxel/props/structure_parts/ladders/ladder.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/dead_bush/dead_bush_01&#39; is missing on disk</td><td>defs/world/vegetation/desert_scatter.prop_scatter.ron <small>world/vegetation/desert_scatter</small></td><td>variants.[0].model</td><td>create media/voxel/vegetation/bushes/dead_bush/dead_bush_01.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/dead_bush/dead_bush_02&#39; is missing on disk</td><td>defs/world/vegetation/desert_scatter.prop_scatter.ron <small>world/vegetation/desert_scatter</small></td><td>variants.[1].model</td><td>create media/voxel/vegetation/bushes/dead_bush/dead_bush_02.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/welwitch/welwitch_01&#39; is missing on disk</td><td>defs/world/vegetation/desert_scatter.prop_scatter.ron <small>world/vegetation/desert_scatter</small></td><td>variants.[2].model</td><td>create media/voxel/vegetation/bushes/welwitch/welwitch_01.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/dead_plant/dead_plant_1&#39; is missing on disk</td><td>defs/world/vegetation/desert_scatter.prop_scatter.ron <small>world/vegetation/desert_scatter</small></td><td>variants.[3].model</td><td>create media/voxel/vegetation/bushes/dead_plant/dead_plant_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_med_1&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[0].model</td><td>create media/voxel/vegetation/grass/grass/grass_med_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_med_2&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[1].model</td><td>create media/voxel/vegetation/grass/grass/grass_med_2.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_long_1&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[2].model</td><td>create media/voxel/vegetation/grass/grass/grass_long_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_long_2&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[3].model</td><td>create media/voxel/vegetation/grass/grass/grass_long_2.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/ferns/ferns_01&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[4].model</td><td>create media/voxel/vegetation/grass/ferns/ferns_01.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/flowers/flower_blue_1&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[5].model</td><td>create media/voxel/vegetation/flowers/flower_blue_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/flowers/flower_pink_1&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[6].model</td><td>create media/voxel/vegetation/flowers/flower_pink_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/flowers/flower_purple_1&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[7].model</td><td>create media/voxel/vegetation/flowers/flower_purple_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/flowers/flower_yellow_0&#39; is missing on disk</td><td>defs/world/vegetation/grass_scatter.prop_scatter.ron <small>world/vegetation/grass_scatter</small></td><td>variants.[8].model</td><td>create media/voxel/vegetation/flowers/flower_yellow_0.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/ferns/ferns_01&#39; is missing on disk</td><td>defs/world/vegetation/jungle_scatter.prop_scatter.ron <small>world/vegetation/jungle_scatter</small></td><td>variants.[0].model</td><td>create media/voxel/vegetation/grass/ferns/ferns_01.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/ferns/ferns_02&#39; is missing on disk</td><td>defs/world/vegetation/jungle_scatter.prop_scatter.ron <small>world/vegetation/jungle_scatter</small></td><td>variants.[1].model</td><td>create media/voxel/vegetation/grass/ferns/ferns_02.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/ferns/ferns_03&#39; is missing on disk</td><td>defs/world/vegetation/jungle_scatter.prop_scatter.ron <small>world/vegetation/jungle_scatter</small></td><td>variants.[2].model</td><td>create media/voxel/vegetation/grass/ferns/ferns_03.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/junglefern/junglefern_01&#39; is missing on disk</td><td>defs/world/vegetation/jungle_scatter.prop_scatter.ron <small>world/vegetation/jungle_scatter</small></td><td>variants.[3].model</td><td>create media/voxel/vegetation/grass/junglefern/junglefern_01.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_large_0&#39; is missing on disk</td><td>defs/world/vegetation/jungle_scatter.prop_scatter.ron <small>world/vegetation/jungle_scatter</small></td><td>variants.[4].model</td><td>create media/voxel/vegetation/grass/grass/grass_large_0.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_large_1&#39; is missing on disk</td><td>defs/world/vegetation/jungle_scatter.prop_scatter.ron <small>world/vegetation/jungle_scatter</small></td><td>variants.[5].model</td><td>create media/voxel/vegetation/grass/grass/grass_large_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/lingonberry/lingonberry_01&#39; is missing on disk</td><td>defs/world/vegetation/jungle_scatter.prop_scatter.ron <small>world/vegetation/jungle_scatter</small></td><td>variants.[6].model</td><td>create media/voxel/vegetation/bushes/lingonberry/lingonberry_01.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/flowers/flower_pink_1&#39; is missing on disk</td><td>defs/world/vegetation/jungle_scatter.prop_scatter.ron <small>world/vegetation/jungle_scatter</small></td><td>variants.[7].model</td><td>create media/voxel/vegetation/flowers/flower_pink_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/mushrooms/mushroom_0&#39; is missing on disk</td><td>defs/world/vegetation/mushroom_scatter.prop_scatter.ron <small>world/vegetation/mushroom_scatter</small></td><td>variants.[0].model</td><td>create media/voxel/vegetation/mushrooms/mushroom_0.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/mushrooms/mushroom_1&#39; is missing on disk</td><td>defs/world/vegetation/mushroom_scatter.prop_scatter.ron <small>world/vegetation/mushroom_scatter</small></td><td>variants.[1].model</td><td>create media/voxel/vegetation/mushrooms/mushroom_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/mushrooms/mushroom_2&#39; is missing on disk</td><td>defs/world/vegetation/mushroom_scatter.prop_scatter.ron <small>world/vegetation/mushroom_scatter</small></td><td>variants.[2].model</td><td>create media/voxel/vegetation/mushrooms/mushroom_2.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/mushrooms/mushroom_3&#39; is missing on disk</td><td>defs/world/vegetation/mushroom_scatter.prop_scatter.ron <small>world/vegetation/mushroom_scatter</small></td><td>variants.[3].model</td><td>create media/voxel/vegetation/mushrooms/mushroom_3.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_long_3&#39; is missing on disk</td><td>defs/world/vegetation/savanna_scatter.prop_scatter.ron <small>world/vegetation/savanna_scatter</small></td><td>variants.[0].model</td><td>create media/voxel/vegetation/grass/grass/grass_long_3.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_long_4&#39; is missing on disk</td><td>defs/world/vegetation/savanna_scatter.prop_scatter.ron <small>world/vegetation/savanna_scatter</small></td><td>variants.[1].model</td><td>create media/voxel/vegetation/grass/grass/grass_long_4.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/savanna_bush/savanna_bush_01&#39; is missing on disk</td><td>defs/world/vegetation/savanna_scatter.prop_scatter.ron <small>world/vegetation/savanna_scatter</small></td><td>variants.[2].model</td><td>create media/voxel/vegetation/bushes/savanna_bush/savanna_bush_01.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/savanna_bush/savanna_bush_02&#39; is missing on disk</td><td>defs/world/vegetation/savanna_scatter.prop_scatter.ron <small>world/vegetation/savanna_scatter</small></td><td>variants.[3].model</td><td>create media/voxel/vegetation/bushes/savanna_bush/savanna_bush_02.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/dead_bush/dead_bush_01&#39; is missing on disk</td><td>defs/world/vegetation/savanna_scatter.prop_scatter.ron <small>world/vegetation/savanna_scatter</small></td><td>variants.[4].model</td><td>create media/voxel/vegetation/bushes/dead_bush/dead_bush_01.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/dead_bush/dead_bush_02&#39; is missing on disk</td><td>defs/world/vegetation/savanna_scatter.prop_scatter.ron <small>world/vegetation/savanna_scatter</small></td><td>variants.[5].model</td><td>create media/voxel/vegetation/bushes/dead_bush/dead_bush_02.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/flowers/flower_yellow_0&#39; is missing on disk</td><td>defs/world/vegetation/savanna_scatter.prop_scatter.ron <small>world/vegetation/savanna_scatter</small></td><td>variants.[6].model</td><td>create media/voxel/vegetation/flowers/flower_yellow_0.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/grass/grass/grass_med_1&#39; is missing on disk</td><td>defs/world/vegetation/snow_scatter.prop_scatter.ron <small>world/vegetation/snow_scatter</small></td><td>variants.[0].model</td><td>create media/voxel/vegetation/grass/grass/grass_med_1.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/snow_bush/snow_bush_0&#39; is missing on disk</td><td>defs/world/vegetation/snow_scatter.prop_scatter.ron <small>world/vegetation/snow_scatter</small></td><td>variants.[1].model</td><td>create media/voxel/vegetation/bushes/snow_bush/snow_bush_0.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/dead_bush/dead_bush_03&#39; is missing on disk</td><td>defs/world/vegetation/snow_scatter.prop_scatter.ron <small>world/vegetation/snow_scatter</small></td><td>variants.[2].model</td><td>create media/voxel/vegetation/bushes/dead_bush/dead_bush_03.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/bushes/dead_plant/dead_plant_0&#39; is missing on disk</td><td>defs/world/vegetation/snow_scatter.prop_scatter.ron <small>world/vegetation/snow_scatter</small></td><td>variants.[3].model</td><td>create media/voxel/vegetation/bushes/dead_plant/dead_plant_0.vox</td></tr>
+<tr><td>references</td><td>voxel model &#39;voxel/vegetation/flowers/flower_blue_1&#39; is missing on disk</td><td>defs/world/vegetation/snow_scatter.prop_scatter.ron <small>world/vegetation/snow_scatter</small></td><td>variants.[4].model</td><td>create media/voxel/vegetation/flowers/flower_blue_1.vox</td></tr>
+<tr><td>tags</td><td>unknown tag &#39;#tag.soil&#39; — no object declares it</td><td>defs/world/vegetation/acacia_tree.vegetation.ron <small>world/vegetation/acacia_tree</small></td><td>-</td><td>add `tag.soil` to the `tags:` list of the relevant object</td></tr>
+<tr><td>tags</td><td>unknown tag &#39;#tag.soil&#39; — no object declares it</td><td>defs/world/vegetation/birch_tree.vegetation.ron <small>world/vegetation/birch_tree</small></td><td>-</td><td>add `tag.soil` to the `tags:` list of the relevant object</td></tr>
+<tr><td>tags</td><td>unknown tag &#39;#tag.soil&#39; — no object declares it</td><td>defs/world/vegetation/dark_oak_tree.vegetation.ron <small>world/vegetation/dark_oak_tree</small></td><td>-</td><td>add `tag.soil` to the `tags:` list of the relevant object</td></tr>
+<tr><td>tags</td><td>unknown tag &#39;#tag.soil&#39; — no object declares it</td><td>defs/world/vegetation/jungle_tree.vegetation.ron <small>world/vegetation/jungle_tree</small></td><td>-</td><td>add `tag.soil` to the `tags:` list of the relevant object</td></tr>
+<tr><td>tags</td><td>unknown tag &#39;#tag.soil&#39; — no object declares it</td><td>defs/world/vegetation/oak_tree.vegetation.ron <small>world/vegetation/oak_tree</small></td><td>-</td><td>add `tag.soil` to the `tags:` list of the relevant object</td></tr>
+<tr><td>tags</td><td>unknown tag &#39;#tag.soil&#39; — no object declares it</td><td>defs/world/vegetation/spruce_tree.vegetation.ron <small>world/vegetation/spruce_tree</small></td><td>-</td><td>add `tag.soil` to the `tags:` list of the relevant object</td></tr>
+</tbody></table>
+</section>
+<section><h2>Warnings (10)</h2>
+<table class="diagnostics warning">
+<thead><tr><th>Check</th><th>Message</th><th>Where</th><th>Field</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>filesystem</td><td>empty directory: media/voxels</td><td>media/voxels</td><td>-</td><td>remove the empty directory or fill it with content</td></tr>
+<tr><td>filesystem</td><td>empty directory: render/techniques/foliage</td><td>render/techniques/foliage</td><td>-</td><td>remove the empty directory or fill it with content</td></tr>
+<tr><td>filesystem</td><td>empty directory: render/techniques/particles</td><td>render/techniques/particles</td><td>-</td><td>remove the empty directory or fill it with content</td></tr>
+<tr><td>filesystem</td><td>empty directory: render/techniques/shadows</td><td>render/techniques/shadows</td><td>-</td><td>remove the empty directory or fill it with content</td></tr>
+<tr><td>progression</td><td>MVP block &#39;grass&#39; missing</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>progression</td><td>MVP block &#39;dirt&#39; missing</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>progression</td><td>MVP block &#39;stone&#39; missing</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>progression</td><td>MVP block &#39;coal_ore&#39; missing</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>progression</td><td>MVP block &#39;iron_ore&#39; missing</td><td>-</td><td>-</td><td>-</td></tr>
+<tr><td>progression</td><td>MVP block &#39;oak_log&#39; missing</td><td>-</td><td>-</td><td>-</td></tr>
+</tbody></table>
+</section>
+<section><h2>Unused</h2>
+<details open><summary>Textures (48)</summary>
+<ul>
+<li><code>media/textures/blocks/andesite/all.albedo.png</code></li>
+<li><code>media/textures/blocks/andesite/all.normal.png</code></li>
+<li><code>media/textures/blocks/andesite/all.roughness.png</code></li>
+<li><code>media/textures/blocks/bedrock/all.albedo.png</code></li>
+<li><code>media/textures/blocks/bedrock/all.normal.png</code></li>
+<li><code>media/textures/blocks/bedrock/all.roughness.png</code></li>
+<li><code>media/textures/blocks/coal_ore/all.albedo.png</code></li>
+<li><code>media/textures/blocks/coal_ore/all.normal.png</code></li>
+<li><code>media/textures/blocks/coal_ore/all.roughness.png</code></li>
+<li><code>media/textures/blocks/deepslate/side.albedo.png</code></li>
+<li><code>media/textures/blocks/deepslate/side.normal.png</code></li>
+<li><code>media/textures/blocks/deepslate/side.roughness.png</code></li>
+<li><code>media/textures/blocks/deepslate/top.albedo.png</code></li>
+<li><code>media/textures/blocks/deepslate/top.normal.png</code></li>
+<li><code>media/textures/blocks/deepslate/top.roughness.png</code></li>
+<li><code>media/textures/blocks/dirt/all.albedo.png</code></li>
+<li><code>media/textures/blocks/dirt/all.normal.png</code></li>
+<li><code>media/textures/blocks/dirt/all.roughness.png</code></li>
+<li><code>media/textures/blocks/grass_block/bottom.albedo.png</code></li>
+<li><code>media/textures/blocks/grass_block/bottom.normal.png</code></li>
+<li><code>media/textures/blocks/grass_block/bottom.roughness.png</code></li>
+<li><code>media/textures/blocks/grass_block/side.albedo.png</code></li>
+<li><code>media/textures/blocks/grass_block/side.normal.png</code></li>
+<li><code>media/textures/blocks/grass_block/side.roughness.png</code></li>
+<li><code>media/textures/blocks/grass_block/top.albedo.png</code></li>
+<li><code>media/textures/blocks/grass_block/top.normal.png</code></li>
+<li><code>media/textures/blocks/grass_block/top.roughness.png</code></li>
+<li><code>media/textures/blocks/iron_ore/all.albedo.png</code></li>
+<li><code>media/textures/blocks/iron_ore/all.normal.png</code></li>
+<li><code>media/textures/blocks/iron_ore/all.roughness.png</code></li>
+<li><code>media/textures/blocks/oak_leaves/all.albedo.png</code></li>
+<li><code>media/textures/blocks/oak_leaves/all.normal.png</code></li>
+<li><code>media/textures/blocks/oak_leaves/all.roughness.png</code></li>
+<li><code>media/textures/blocks/oak_log/side.albedo.png</code></li>
+<li><code>media/textures/blocks/oak_log/side.normal.png</code></li>
+<li><code>media/textures/blocks/oak_log/side.roughness.png</code></li>
+<li><code>media/textures/blocks/oak_log/top.albedo.png</code></li>
+<li><code>media/textures/blocks/oak_log/top.normal.png</code></li>
+<li><code>media/textures/blocks/oak_log/top.roughness.png</code></li>
+<li><code>media/textures/blocks/powder_snow/all.albedo.png</code></li>
+<li><code>media/textures/blocks/powder_snow/all.normal.png</code></li>
+<li><code>media/textures/blocks/powder_snow/all.roughness.png</code></li>
+<li><code>media/textures/blocks/red_sand/all.albedo.png</code></li>
+<li><code>media/textures/blocks/red_sand/all.normal.png</code></li>
+<li><code>media/textures/blocks/red_sand/all.roughness.png</code></li>
+<li><code>media/textures/blocks/smooth_stone/all.albedo.png</code></li>
+<li><code>media/textures/blocks/smooth_stone/all.normal.png</code></li>
+<li><code>media/textures/blocks/smooth_stone/all.roughness.png</code></li>
+</ul>
+</details>
+<details><summary>Materials (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Items (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Blocks (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Loot tables (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Voxels (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Shaders (0)</summary>
+<p class="empty">None.</p>
+</details>
+</section>
+<section><h2>Missing</h2>
+<details><summary>Block items (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Loot tables (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Textures (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Voxels (0)</summary>
+<p class="empty">None.</p>
+</details>
+<details><summary>Shaders (0)</summary>
+<p class="empty">None.</p>
+</details>
+</section>
+<section><h2>Progression</h2>
+<p><strong>Basic loop reachable:</strong> no</p>
+<ul>
+<li>MVP block &#39;grass&#39; is missing - first-hour loop is broken.</li>
+<li>MVP block &#39;dirt&#39; is missing - first-hour loop is broken.</li>
+<li>MVP block &#39;stone&#39; is missing - first-hour loop is broken.</li>
+<li>MVP block &#39;coal_ore&#39; is missing - first-hour loop is broken.</li>
+<li>MVP block &#39;iron_ore&#39; is missing - first-hour loop is broken.</li>
+<li>MVP block &#39;oak_log&#39; is missing - first-hour loop is broken.</li>
+</ul>
+</section>
+</body></html>

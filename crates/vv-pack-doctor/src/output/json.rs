@@ -120,7 +120,11 @@ fn field_summary(out: &mut String, summary: &Summary, depth: usize, comma: bool)
     field_num(out, "materials", summary.materials as i64, depth + 1, true);
     field_num(out, "textures", summary.textures as i64, depth + 1, true);
     field_num(out, "recipes", summary.recipes as i64, depth + 1, true);
-    field_num(out, "loot_tables", summary.loot_tables as i64, depth + 1, false);
+    field_num(out, "loot_tables", summary.loot_tables as i64, depth + 1, true);
+    field_num(out, "voxels", summary.voxels as i64, depth + 1, true);
+    field_num(out, "shader_modules", summary.shader_modules as i64, depth + 1, true);
+    field_num(out, "techniques", summary.techniques as i64, depth + 1, true);
+    field_num(out, "world_files", summary.world_files as i64, depth + 1, false);
     indent(out, depth);
     out.push('}');
     if comma {
@@ -162,6 +166,20 @@ fn field_diagnostics(
                 Some(p) => write_string(out, p),
                 None => out.push_str("null"),
             }
+            out.push_str(",\n");
+            indent(out, depth + 2);
+            out.push_str("\"field\": ");
+            match &d.field {
+                Some(f) => write_string(out, f),
+                None => out.push_str("null"),
+            }
+            out.push_str(",\n");
+            indent(out, depth + 2);
+            out.push_str("\"suggestion\": ");
+            match &d.suggestion {
+                Some(s) => write_string(out, s),
+                None => out.push_str("null"),
+            }
             out.push('\n');
             indent(out, depth + 1);
             out.push('}');
@@ -186,7 +204,9 @@ fn field_unused(out: &mut String, unused: &Unused, depth: usize, comma: bool) {
     field_string_array(out, "materials", &unused.materials, depth + 1, true);
     field_string_array(out, "items", &unused.items, depth + 1, true);
     field_string_array(out, "blocks", &unused.blocks, depth + 1, true);
-    field_string_array(out, "loot_tables", &unused.loot_tables, depth + 1, false);
+    field_string_array(out, "loot_tables", &unused.loot_tables, depth + 1, true);
+    field_string_array(out, "voxels", &unused.voxels, depth + 1, true);
+    field_string_array(out, "shaders", &unused.shaders, depth + 1, false);
     indent(out, depth);
     out.push('}');
     if comma {
@@ -200,7 +220,9 @@ fn field_missing(out: &mut String, missing: &Missing, depth: usize, comma: bool)
     out.push_str("\"missing\": {\n");
     field_string_array(out, "block_items", &missing.block_items, depth + 1, true);
     field_string_array(out, "loot_tables", &missing.loot_tables, depth + 1, true);
-    field_string_array(out, "textures", &missing.textures, depth + 1, false);
+    field_string_array(out, "textures", &missing.textures, depth + 1, true);
+    field_string_array(out, "voxels", &missing.voxels, depth + 1, true);
+    field_string_array(out, "shaders", &missing.shaders, depth + 1, false);
     indent(out, depth);
     out.push('}');
     if comma {

@@ -1,27 +1,94 @@
-//! Pack scanning: parses content via the regular `PackLoader` and walks the
-//! filesystem to enumerate raw media. Other check modules consume the
-//! resulting `PackScan` and never re-read the pack from disk.
+//! Filesystem scan + tolerant parse of a content pack.
+//!
+//! Everything the rest of Pack Doctor inspects is collected here in a single
+//! pass. The scan never fails on a bad file; failures are turned into
+//! `ParseError`s and propagated to the diagnostics layer so the report keeps
+//! going.
 
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use vv_content_schema::{ContentRef, RawObjectDef, RawPackManifest};
-use vv_pack_loader::{LoadedPack, PackLoader, RawProceduralPack};
+use vv_content_schema::{
+    RawObjectDef, RawPackManifest, RawRenderGraph, RawRenderProfile, RawRenderTechnique,
+    RawShaderModule,
+};
+
+use crate::parse::{pack_relative, parse_string, parse_value, read_typed, ParseError};
 
 pub struct PackScan {
     pub pack_root: PathBuf,
-    pub manifest: RawPackManifest,
-    pub objects: Vec<(String, RawObjectDef)>,
-    pub procedural: RawProceduralPack,
+    pub manifest: Option<RawPackManifest>,
+    pub namespace: String,
+
+    pub objects: Vec<ParsedObject>,
+    pub world_files: Vec<ParsedWorldFile>,
+    pub render: RenderScan,
+
     pub texture_files: Vec<TextureFile>,
-    pub voxel_files: Vec<PathBuf>,
+    pub voxel_files: Vec<MediaFile>,
+    pub wgsl_files: Vec<MediaFile>,
+
     pub all_ron_files: Vec<PathBuf>,
+    pub parse_errors: Vec<ParseError>,
+}
+
+pub struct ParsedObject {
+    pub id: String,
+    pub rel_path: String,
+    pub def: RawObjectDef,
+}
+
+/// Files under `defs/world/...` use a small custom schema that is still being
+/// stabilised. We keep them as untyped values so reference checks can still
+/// look up short names while the typed schemas catch up.
+pub struct ParsedWorldFile {
+    pub id: String,
+    pub rel_path: String,
+    pub category: WorldCategory,
+    pub value: ron::Value,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum WorldCategory {
+    Biome,
+    BiomeSet,
+    Caves,
+    Climate,
+    Noise,
+    Ores,
+    Planets,
+    Props,
+    Structures,
+    Terrain,
+    Vegetation,
+    PropScatter,
+    Other,
+}
+
+#[derive(Default)]
+pub struct RenderScan {
+    pub shader_modules: Vec<RenderItem<RawShaderModule>>,
+    pub shader_contracts: Vec<RenderItem<ron::Value>>,
+    pub material_families: Vec<RenderItem<ron::Value>>,
+    pub techniques: Vec<RenderItem<RawRenderTechnique>>,
+    pub profiles: Vec<RenderItem<RawRenderProfile>>,
+    pub render_graphs: Vec<RenderItem<RawRenderGraph>>,
+    pub validation: Vec<RenderItem<ron::Value>>,
+}
+
+pub struct RenderItem<T> {
+    pub id: String,
+    pub rel_path: String,
+    pub value: T,
 }
 
 pub struct TextureFile {
     pub rel_path: String,
     pub abs_path: PathBuf,
-    pub texture_ref: String,
+}
+
+pub struct MediaFile {
+    pub rel_path: String,
+    pub abs_path: PathBuf,
 }
 
 impl PackScan {
@@ -30,119 +97,355 @@ impl PackScan {
             .canonicalize()
             .map_err(|e| format!("Cannot resolve pack root '{}': {}", pack_root.display(), e))?;
 
-        let loaded: LoadedPack = PackLoader::load_from_dir(&pack_root)?;
-        let procedural = PackLoader::load_procedural_from_dir(&pack_root)
-            .unwrap_or_else(|_| RawProceduralPack::default());
+        let mut errors = Vec::new();
+        let manifest = load_manifest(&pack_root, &mut errors);
+        let namespace = manifest
+            .as_ref()
+            .map(|m| m.namespace.clone())
+            .unwrap_or_else(|| derive_namespace(&pack_root));
 
-        let texture_files = collect_texture_files(&pack_root, &loaded.manifest.namespace)?;
-        let voxel_files = collect_files_with_ext(&pack_root.join("media").join("voxel"), "vox")?;
-        let all_ron_files = collect_files_with_ext(&pack_root, "ron")?;
+        let mut all_ron = Vec::new();
+        collect_files(&pack_root, "ron", &mut all_ron, &SOURCE_SKIP);
+
+        let objects = load_objects(&pack_root, &mut errors);
+        let world_files = load_world(&pack_root, &mut errors);
+        let render = load_render(&pack_root, &namespace, &mut errors);
+
+        let mut texture_files = Vec::new();
+        collect_textures(&pack_root.join("media").join("textures"), &pack_root, &mut texture_files);
+        let mut voxel_files = Vec::new();
+        collect_media(&pack_root.join("media").join("voxel"), "vox", &pack_root, &mut voxel_files);
+        let mut wgsl_files = Vec::new();
+        collect_media(&pack_root.join("render"), "wgsl", &pack_root, &mut wgsl_files);
 
         Ok(Self {
             pack_root,
-            manifest: loaded.manifest,
-            objects: loaded.objects,
-            procedural,
+            manifest,
+            namespace,
+            objects,
+            world_files,
+            render,
             texture_files,
             voxel_files,
-            all_ron_files,
+            wgsl_files,
+            all_ron_files: all_ron,
+            parse_errors: errors,
         })
     }
 
-    pub fn object_id_exists(&self, id: &str) -> bool {
-        self.objects.iter().any(|(known, _)| known == id)
-    }
-
-    pub fn texture_id_exists(&self, id: &str) -> bool {
-        self.texture_files.iter().any(|t| t.texture_ref == id)
-    }
-
-    pub fn relative(&self, path: &Path) -> String {
-        path.strip_prefix(&self.pack_root)
-            .map(|p| p.to_string_lossy().replace('\\', "/"))
-            .unwrap_or_else(|_| path.to_string_lossy().replace('\\', "/"))
+    pub fn relative(&self, abs_path: &Path) -> String {
+        pack_relative(&self.pack_root, abs_path)
     }
 }
 
-pub trait AsRefStr {
-    fn as_str(&self) -> &str;
-}
+const SOURCE_SKIP: &[&str] = &["source", "generated/reports", "target"];
 
-impl AsRefStr for ContentRef {
-    fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl AsRefStr for str {
-    fn as_str(&self) -> &str {
-        self
-    }
-}
-
-fn collect_texture_files(pack_root: &Path, namespace: &str) -> Result<Vec<TextureFile>, String> {
-    let textures_root = pack_root.join("media").join("textures");
-    if !textures_root.exists() {
-        return Ok(Vec::new());
-    }
-
-    let mut out = Vec::new();
-    walk_dir(&textures_root, &mut |path| {
-        if path.extension().and_then(|s| s.to_str()) != Some("png") {
-            return Ok(());
-        }
-        let rel = path
-            .strip_prefix(&textures_root)
-            .map_err(|_| format!("texture path outside root: {}", path.display()))?;
-        let rel_no_ext = rel.with_extension("");
-        let id_path = rel_no_ext.to_string_lossy().replace('\\', "/");
-        let texture_ref = format!("{}:texture/{}", namespace, id_path);
-        let rel_full = path
-            .strip_prefix(pack_root)
-            .unwrap_or(path)
-            .to_string_lossy()
-            .replace('\\', "/");
-        out.push(TextureFile {
-            rel_path: rel_full,
-            abs_path: path.to_path_buf(),
-            texture_ref,
+fn load_manifest(pack_root: &Path, errors: &mut Vec<ParseError>) -> Option<RawPackManifest> {
+    let path = pack_root.join("pack.ron");
+    if !path.exists() {
+        errors.push(ParseError {
+            rel_path: "pack.ron".to_string(),
+            line: 0,
+            column: 0,
+            message: "missing pack manifest".to_string(),
+            suggestion: Some("create pack.ron at the pack root".to_string()),
         });
-        Ok(())
-    })?;
-    out.sort_by(|a, b| a.rel_path.cmp(&b.rel_path));
-    Ok(out)
-}
-
-fn collect_files_with_ext(root: &Path, ext: &str) -> Result<Vec<PathBuf>, String> {
-    if !root.exists() {
-        return Ok(Vec::new());
+        return None;
     }
-    let mut out = Vec::new();
-    walk_dir(root, &mut |path| {
-        if path.extension().and_then(|s| s.to_str()) == Some(ext) {
-            out.push(path.to_path_buf());
+    match read_typed::<RawPackManifest>(pack_root, &path) {
+        Ok(m) => Some(m),
+        Err(e) => {
+            errors.push(e);
+            None
         }
-        Ok(())
-    })?;
-    out.sort();
-    Ok(out)
+    }
 }
 
-fn walk_dir(
-    dir: &Path,
-    visit: &mut dyn FnMut(&Path) -> Result<(), String>,
-) -> Result<(), String> {
-    let entries = std::fs::read_dir(dir)
-        .map_err(|e| format!("Cannot read directory {}: {}", dir.display(), e))?;
-    for entry in entries {
-        let entry =
-            entry.map_err(|e| format!("Dir entry error in {}: {}", dir.display(), e))?;
+fn load_objects(pack_root: &Path, errors: &mut Vec<ParseError>) -> Vec<ParsedObject> {
+    let root = pack_root.join("defs").join("objects");
+    let mut paths = Vec::new();
+    collect_files(&root, "ron", &mut paths, &[]);
+    let mut out = Vec::with_capacity(paths.len());
+    for path in paths {
+        let rel = pack_relative(pack_root, &path);
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                errors.push(ParseError {
+                    rel_path: rel,
+                    line: 0,
+                    column: 0,
+                    message: format!("cannot read file: {e}"),
+                    suggestion: None,
+                });
+                continue;
+            }
+        };
+        match parse_string::<RawObjectDef>(rel.clone(), &text) {
+            Ok(def) => {
+                let id = derive_object_id(pack_root, &path);
+                out.push(ParsedObject { id, rel_path: rel, def });
+            }
+            Err(e) => errors.push(e),
+        }
+    }
+    out
+}
+
+fn load_world(pack_root: &Path, errors: &mut Vec<ParseError>) -> Vec<ParsedWorldFile> {
+    let root = pack_root.join("defs").join("world");
+    let mut paths = Vec::new();
+    collect_files(&root, "ron", &mut paths, &[]);
+    let mut out = Vec::with_capacity(paths.len());
+    for path in paths {
+        let rel = pack_relative(pack_root, &path);
+        let category = classify_world_path(&rel);
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                errors.push(ParseError {
+                    rel_path: rel,
+                    line: 0,
+                    column: 0,
+                    message: format!("cannot read file: {e}"),
+                    suggestion: None,
+                });
+                continue;
+            }
+        };
+        match parse_value(rel.clone(), &text) {
+            Ok(value) => {
+                let id = derive_world_id(pack_root, &path);
+                out.push(ParsedWorldFile { id, rel_path: rel, category, value });
+            }
+            Err(e) => errors.push(e),
+        }
+    }
+    out
+}
+
+fn load_render(pack_root: &Path, namespace: &str, errors: &mut Vec<ParseError>) -> RenderScan {
+    let root = pack_root.join("render");
+    let mut scan = RenderScan::default();
+    if !root.exists() {
+        return scan;
+    }
+    scan.shader_modules =
+        load_render_typed::<RawShaderModule>(&root, "shader_modules", namespace, errors);
+    scan.shader_contracts = load_render_value(&root, "shader_contracts", namespace, errors);
+    scan.material_families = load_render_value(&root, "material_families", namespace, errors);
+    scan.techniques =
+        load_render_typed::<RawRenderTechnique>(&root, "techniques", namespace, errors);
+    scan.profiles = load_render_typed::<RawRenderProfile>(&root, "profiles", namespace, errors);
+    scan.render_graphs = load_render_typed::<RawRenderGraph>(&root, "render_graph", namespace, errors);
+    scan.validation = load_render_value(&root, "validation", namespace, errors);
+    scan
+}
+
+fn load_render_typed<T: serde::de::DeserializeOwned>(
+    render_root: &Path,
+    sub: &str,
+    namespace: &str,
+    errors: &mut Vec<ParseError>,
+) -> Vec<RenderItem<T>> {
+    let dir = render_root.join(sub);
+    let mut paths = Vec::new();
+    collect_files(&dir, "ron", &mut paths, &[]);
+    let mut out = Vec::with_capacity(paths.len());
+    for path in paths {
+        let rel = pack_relative(render_root.parent().unwrap_or(render_root), &path);
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                errors.push(ParseError {
+                    rel_path: rel,
+                    line: 0,
+                    column: 0,
+                    message: format!("cannot read file: {e}"),
+                    suggestion: None,
+                });
+                continue;
+            }
+        };
+        match parse_string::<T>(rel.clone(), &text) {
+            Ok(value) => {
+                let id = derive_render_id(namespace, render_root, &path);
+                out.push(RenderItem { id, rel_path: rel, value });
+            }
+            Err(e) => errors.push(e),
+        }
+    }
+    out
+}
+
+fn load_render_value(
+    render_root: &Path,
+    sub: &str,
+    namespace: &str,
+    errors: &mut Vec<ParseError>,
+) -> Vec<RenderItem<ron::Value>> {
+    let dir = render_root.join(sub);
+    let mut paths = Vec::new();
+    collect_files(&dir, "ron", &mut paths, &[]);
+    let mut out = Vec::with_capacity(paths.len());
+    for path in paths {
+        let rel = pack_relative(render_root.parent().unwrap_or(render_root), &path);
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        match parse_value(rel.clone(), &text) {
+            Ok(value) => {
+                let id = derive_render_id(namespace, render_root, &path);
+                out.push(RenderItem { id, rel_path: rel, value });
+            }
+            Err(e) => errors.push(e),
+        }
+    }
+    out
+}
+
+fn collect_files(root: &Path, ext: &str, out: &mut Vec<PathBuf>, skip: &[&str]) {
+    if !root.exists() {
+        return;
+    }
+    walk(root, root, ext, out, skip);
+}
+
+fn walk(base: &Path, dir: &Path, ext: &str, out: &mut Vec<PathBuf>, skip: &[&str]) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            walk_dir(&path, visit)?;
-        } else if path.is_file() {
-            visit(&path)?;
+            let rel = pack_relative(base, &path);
+            if skip.iter().any(|s| rel == *s || rel.starts_with(&format!("{s}/"))) {
+                continue;
+            }
+            walk(base, &path, ext, out, skip);
+        } else if path.extension().and_then(|s| s.to_str()) == Some(ext) {
+            out.push(path);
         }
     }
-    Ok(())
+}
+
+fn collect_textures(textures_root: &Path, pack_root: &Path, out: &mut Vec<TextureFile>) {
+    if !textures_root.exists() {
+        return;
+    }
+    let mut paths = Vec::new();
+    walk(textures_root, textures_root, "png", &mut paths, &[]);
+    paths.sort();
+    for path in paths {
+        let rel = pack_relative(pack_root, &path);
+        out.push(TextureFile { rel_path: rel, abs_path: path });
+    }
+}
+
+fn collect_media(root: &Path, ext: &str, pack_root: &Path, out: &mut Vec<MediaFile>) {
+    if !root.exists() {
+        return;
+    }
+    let mut paths = Vec::new();
+    walk(root, root, ext, &mut paths, &[]);
+    paths.sort();
+    for path in paths {
+        let rel = pack_relative(pack_root, &path);
+        out.push(MediaFile { rel_path: rel, abs_path: path });
+    }
+}
+
+fn derive_namespace(pack_root: &Path) -> String {
+    pack_root
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("core")
+        .to_string()
+}
+
+fn derive_object_id(pack_root: &Path, path: &Path) -> String {
+    let rel = path.strip_prefix(pack_root.join("defs").join("objects")).ok();
+    let Some(rel) = rel else {
+        return pack_relative(pack_root, path);
+    };
+    let mut parts: Vec<String> = rel
+        .iter()
+        .filter_map(|p| p.to_str())
+        .map(str::to_string)
+        .collect();
+    if let Some(last) = parts.pop() {
+        let stem = last
+            .trim_end_matches(".ron")
+            .split('.')
+            .next()
+            .unwrap_or(&last)
+            .to_string();
+        parts.push(stem);
+    }
+    format!("object/{}", parts.join("/"))
+}
+
+fn derive_world_id(pack_root: &Path, path: &Path) -> String {
+    let rel = match path.strip_prefix(pack_root.join("defs").join("world")) {
+        Ok(r) => r,
+        Err(_) => return pack_relative(pack_root, path),
+    };
+    let mut parts: Vec<String> = rel
+        .iter()
+        .filter_map(|p| p.to_str())
+        .map(str::to_string)
+        .collect();
+    if let Some(last) = parts.pop() {
+        let stem = last
+            .trim_end_matches(".ron")
+            .split('.')
+            .next()
+            .unwrap_or(&last)
+            .to_string();
+        parts.push(stem);
+    }
+    format!("world/{}", parts.join("/"))
+}
+
+fn derive_render_id(namespace: &str, render_root: &Path, path: &Path) -> String {
+    let Ok(rel) = path.strip_prefix(render_root) else {
+        return pack_relative(render_root, path);
+    };
+    let mut parts: Vec<String> = rel
+        .iter()
+        .filter_map(|p| p.to_str())
+        .map(str::to_string)
+        .collect();
+    if let Some(last) = parts.pop() {
+        let stem = last
+            .trim_end_matches(".ron")
+            .split('.')
+            .next()
+            .unwrap_or(&last)
+            .to_string();
+        parts.push(stem);
+    }
+    format!("{}:render/{}", namespace, parts.join("/"))
+}
+
+fn classify_world_path(rel: &str) -> WorldCategory {
+    let parts: Vec<&str> = rel.split('/').collect();
+    let sub = parts.get(2).copied().unwrap_or("");
+    let leaf = parts.last().copied().unwrap_or("");
+    if leaf.ends_with(".prop_scatter.ron") {
+        return WorldCategory::PropScatter;
+    }
+    match sub {
+        "biomes" => WorldCategory::Biome,
+        "biome_sets" => WorldCategory::BiomeSet,
+        "caves" => WorldCategory::Caves,
+        "climate" => WorldCategory::Climate,
+        "noise" => WorldCategory::Noise,
+        "ores" => WorldCategory::Ores,
+        "planets" => WorldCategory::Planets,
+        "props" => WorldCategory::Props,
+        "structures" => WorldCategory::Structures,
+        "terrain" => WorldCategory::Terrain,
+        "vegetation" => WorldCategory::Vegetation,
+        _ => WorldCategory::Other,
+    }
 }
