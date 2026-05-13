@@ -4,20 +4,37 @@
 @group(2) @binding(3) var s_material: sampler;
 @group(2) @binding(4) var<storage, read> material_colors: array<vec4<f32>>;
 
-fn vv_sample_voxel_albedo(layer: u32, uv: vec2<f32>, tint: vec3<f32>, color_only: bool) -> vec3<f32> {
+fn vv_sample_voxel_albedo(layer: u32, uv: vec2<f32>, vertex_tint: vec3<f32>, color_only: bool) -> vec3<f32> {
     if layer == VV_VERTEX_COLOR_ONLY {
-        return tint;
+        return vertex_tint;
     }
+
     if color_only {
-        return material_colors[layer].rgb * tint;
+        return material_colors[layer].rgb * vertex_tint;
     }
-    return textureSample(t_albedo, s_material, uv, i32(layer)).rgb * tint;
+
+    return textureSample(t_albedo, s_material, uv, i32(layer)).rgb * vertex_tint;
 }
 
 fn vv_sample_voxel_roughness(layer: u32, uv: vec2<f32>, color_only: bool) -> f32 {
     if layer == VV_VERTEX_COLOR_ONLY || color_only {
-        return 0.72;
+        return 0.74;
     }
-    return textureSample(t_roughness, s_material, uv, i32(layer)).r;
+
+    return clamp(textureSample(t_roughness, s_material, uv, i32(layer)).r, 0.08, 1.0);
 }
 
+fn vv_material_large_scale_variation(albedo: vec3<f32>, world_pos: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
+    let cell = floor(world_pos * 0.33 + normal * 0.77);
+    let v = vv_hash31(cell);
+    let warm = vec3<f32>(1.025, 1.010, 0.985);
+    let cool = vec3<f32>(0.975, 0.990, 1.020);
+    let tint = mix(cool, warm, v);
+    let strength = 0.075;
+    return albedo * mix(vec3<f32>(1.0), tint, strength);
+}
+
+fn vv_material_face_variation(albedo: vec3<f32>, world_pos: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
+    let v = vv_face_variation(world_pos, normal);
+    return albedo * (0.91 + v * 0.18);
+}
