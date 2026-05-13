@@ -45,7 +45,10 @@ pub fn run(scan: &PackScan, report: &mut Report) {
                 "MVP block '{}' is missing - first-hour loop is broken.",
                 name
             ));
-            report.warn(Diagnostic::new(CHECK, format!("MVP block '{}' missing", name)));
+            report.warn(Diagnostic::new(
+                CHECK,
+                format!("MVP block '{}' missing", name),
+            ));
         }
     }
 }

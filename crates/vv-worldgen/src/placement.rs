@@ -25,8 +25,8 @@
 //! (`features::FeatureBakery`) both consume this iterator so their
 //! placements stay byte-for-byte identical.
 
-use vv_pack_compiler::CompiledFeaturePlacement;
 use std::f32::consts::TAU;
+use vv_pack_compiler::CompiledFeaturePlacement;
 
 /// One placement candidate.  All fields are deterministic in
 /// `(face, cell_u, cell_v)` so the same candidate is regenerated identically
@@ -251,5 +251,3 @@ mod tests {
         assert_eq!(collect(), collect());
     }
 }
-
-

@@ -55,9 +55,7 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
                 )
                 .with_path(obj.rel_path.clone())
                 .with_id(obj.id.clone())
-                .with_suggestion(
-                    "rename the file so it ends in `.object.ron`".to_string(),
-                ),
+                .with_suggestion("rename the file so it ends in `.object.ron`".to_string()),
             );
         }
     }

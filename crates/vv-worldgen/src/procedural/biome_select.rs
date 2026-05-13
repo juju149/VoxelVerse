@@ -160,5 +160,3 @@ fn range_distance(value: f32, range: (f32, f32)) -> f32 {
         0.0
     }
 }
-
-

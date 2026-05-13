@@ -120,4 +120,3 @@ impl TextureAtlas {
         })
     }
 }
-

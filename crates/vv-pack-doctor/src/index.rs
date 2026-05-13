@@ -87,12 +87,21 @@ impl<'a> PackIndex<'a> {
             if obj.id == stripped {
                 return Some(obj);
             }
-            if obj.id.strip_prefix("object/").map(|s| s == stripped).unwrap_or(false) {
+            if obj
+                .id
+                .strip_prefix("object/")
+                .map(|s| s == stripped)
+                .unwrap_or(false)
+            {
                 return Some(obj);
             }
         }
         // Short-name match.
-        let short = stripped.split('/').next_back().unwrap_or(stripped).to_string();
+        let short = stripped
+            .split('/')
+            .next_back()
+            .unwrap_or(stripped)
+            .to_string();
         match self.object_by_short.get(&short) {
             Some(v) if v.len() == 1 => Some(v[0]),
             Some(v) if v.len() > 1 => v.first().copied(), // first match; caller can warn
@@ -113,7 +122,11 @@ impl<'a> PackIndex<'a> {
         reference: &str,
     ) -> Option<&ParsedWorldFile> {
         let stripped = reference.split(':').next_back().unwrap_or(reference);
-        let short = stripped.split('/').next_back().unwrap_or(stripped).to_string();
+        let short = stripped
+            .split('/')
+            .next_back()
+            .unwrap_or(stripped)
+            .to_string();
         self.world_by_short
             .get(&(category, short))
             .and_then(|v| v.first().copied())

@@ -27,15 +27,15 @@ mod height;
 mod noise_sampler;
 mod voxel_resolver;
 
-use vv_pack_compiler::{CompiledProceduralPlanet, ProceduralRegistry};
 use crate::diagnostics::WorldgenStats;
 use crate::noise::NoiseGenerator;
-use vv_math::CoordSystem;
-use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use vv_voxel::PlanetProfile;
 use glam::Vec3;
 use std::sync::atomic::{AtomicI16, AtomicU8, Ordering};
 use std::sync::Arc;
+use vv_math::CoordSystem;
+use vv_pack_compiler::{CompiledProceduralPlanet, ProceduralRegistry};
+use vv_voxel::PlanetProfile;
+use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 
 pub(super) const MAX_SURFACE_FIELD_RES: u32 = 1024;
 pub(super) const MAX_BIOME_WEIGHTS: usize = 4;
@@ -628,9 +628,3 @@ pub(super) fn range_pick(range: (u32, u32), roll: u32) -> u32 {
 pub(super) fn hash4(face: u8, u: u32, v: u32, salt: u32) -> u32 {
     crate::features::hash4(face, u, v, salt)
 }
-
-
-
-
-
-

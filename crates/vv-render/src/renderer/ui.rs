@@ -1,7 +1,7 @@
 use super::Renderer;
-use vv_gameplay::{Hotbar, HOTBAR_SLOT_COUNT};
-use crate::Vertex;
 use crate::ui::{ComponentState, UiRect, UiTheme};
+use crate::Vertex;
+use vv_gameplay::{Hotbar, HOTBAR_SLOT_COUNT};
 use vv_world::PlanetData;
 
 struct HotbarLayout {
@@ -85,7 +85,12 @@ impl<'a> Renderer<'a> {
         // Visual separation comes from the slot borders alone.
         for (index, slot) in hotbar.slots().iter().enumerate() {
             let x0 = layout.left + index as f32 * (layout.slot + layout.gap);
-            let slot_rect = UiRect { x: x0, y: layout.top, w: layout.slot, h: layout.slot };
+            let slot_rect = UiRect {
+                x: x0,
+                y: layout.top,
+                w: layout.slot,
+                h: layout.slot,
+            };
 
             let selected = index == hotbar.selected_index();
             let state = if selected {
@@ -97,25 +102,13 @@ impl<'a> Renderer<'a> {
             };
 
             self.draw_inventory_slot(
-                &mut verts,
-                &mut inds,
-                slot_rect,
-                *slot,
-                state,
-                planet,
-                &theme,
-                scale,
+                &mut verts, &mut inds, slot_rect, *slot, state, planet, &theme, scale,
             );
 
             if let Some(s) = slot {
                 if s.quantity > 1 {
                     self.draw_quantity_badge(
-                        &mut verts,
-                        &mut inds,
-                        slot_rect,
-                        s.quantity,
-                        &theme,
-                        scale,
+                        &mut verts, &mut inds, slot_rect, s.quantity, &theme, scale,
                     );
                 }
             }
@@ -210,4 +203,3 @@ impl<'a> Renderer<'a> {
         }
     }
 }
-

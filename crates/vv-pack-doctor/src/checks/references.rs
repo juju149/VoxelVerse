@@ -60,7 +60,12 @@ fn check_object(obj: &ParsedObject, index: &PackIndex<'_>, report: &mut Report) 
                         )),
                     );
                 }
-                check_count(&drop.count, obj, report, &format!("mining.drops[{i}].count"));
+                check_count(
+                    &drop.count,
+                    obj,
+                    report,
+                    &format!("mining.drops[{i}].count"),
+                );
             }
         }
     }
@@ -123,7 +128,10 @@ fn check_recipe_refs(
         report.error(
             Diagnostic::new(
                 CHECK,
-                format!("recipe output references unknown item '{}'", recipe.output.item),
+                format!(
+                    "recipe output references unknown item '{}'",
+                    recipe.output.item
+                ),
             )
             .with_path(obj.rel_path.clone())
             .with_id(obj.id.clone())
@@ -138,10 +146,7 @@ fn check_recipe_refs(
                     report.error(
                         Diagnostic::new(
                             CHECK,
-                            format!(
-                                "recipe legend '{}' references unknown item '{}'",
-                                sym, item
-                            ),
+                            format!("recipe legend '{}' references unknown item '{}'", sym, item),
                         )
                         .with_path(obj.rel_path.clone())
                         .with_id(obj.id.clone())
@@ -183,9 +188,7 @@ fn check_recipe_refs(
                         )
                         .with_path(obj.rel_path.clone())
                         .with_id(obj.id.clone())
-                        .with_field(format!(
-                            "recipes[{ri}].kind.processing.inputs[{i}].item"
-                        )),
+                        .with_field(format!("recipes[{ri}].kind.processing.inputs[{i}].item")),
                     );
                 }
             }
@@ -193,12 +196,7 @@ fn check_recipe_refs(
     }
 }
 
-fn check_count(
-    count: &RawObjectCount,
-    obj: &ParsedObject,
-    report: &mut Report,
-    field: &str,
-) {
+fn check_count(count: &RawObjectCount, obj: &ParsedObject, report: &mut Report, field: &str) {
     if let RawObjectCount::Range(min, max) = count {
         if min > max {
             report.error(
@@ -221,12 +219,25 @@ fn check_world_file(file: &ParsedWorldFile, index: &PackIndex<'_>, report: &mut 
     // whose name suggests an object/block link, to avoid noisy false
     // positives.
     let object_link_fields = [
-        "block", "blocks", "top", "under", "side", "bottom", "item",
-        "trunk", "leaves", "air_block", "use", "replace", "replaces",
+        "block",
+        "blocks",
+        "top",
+        "under",
+        "side",
+        "bottom",
+        "item",
+        "trunk",
+        "leaves",
+        "air_block",
+        "use",
+        "replace",
+        "replaces",
         "surface",
     ];
     walk(&file.value, &mut Vec::new(), &mut |path, value| {
-        let Some(s) = value.as_str_value() else { return };
+        let Some(s) = value.as_str_value() else {
+            return;
+        };
         let Some(last) = path.last() else { return };
         if s.starts_with('#') {
             return; // tag — checked elsewhere
@@ -278,10 +289,7 @@ fn check_world_file(file: &ParsedWorldFile, index: &PackIndex<'_>, report: &mut 
             WorldCategory::Structures,
             WorldCategory::PropScatter,
         ];
-        if cats
-            .iter()
-            .any(|c| index.resolve_world(*c, s).is_some())
-        {
+        if cats.iter().any(|c| index.resolve_world(*c, s).is_some()) {
             return;
         }
         report.error(

@@ -166,7 +166,9 @@ mod tests {
     use crate::item_stack::{ItemId, ItemStack};
 
     const MAX: u32 = 99;
-    fn id(n: u32) -> ItemId { ItemId::from_raw(n) }
+    fn id(n: u32) -> ItemId {
+        ItemId::from_raw(n)
+    }
 
     #[test]
     fn repeated_items_stack_in_first_matching_slot() {
@@ -211,5 +213,3 @@ mod tests {
         let _ = before_second_slot;
     }
 }
-
-

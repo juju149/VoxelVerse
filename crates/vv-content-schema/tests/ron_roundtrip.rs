@@ -9,7 +9,10 @@
 use vv_content_schema::*;
 
 fn parse<T: serde::de::DeserializeOwned>(name: &str, src: &str) -> T {
-    ron::from_str::<T>(src).unwrap_or_else(|e| panic!("{name} sample failed to parse: {e}"))
+    ron::Options::default()
+        .with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME)
+        .from_str::<T>(src)
+        .unwrap_or_else(|e| panic!("{name} sample failed to parse: {e}"))
 }
 
 // ── pack.ron ─────────────────────────────────────────────────────────────────
@@ -41,16 +44,16 @@ fn pack_manifest_parses() {
 
 #[test]
 fn object_block_minimum_parses() {
-    let src = r#"Object(
+    let src = r##"Object(
         format_version: 1,
         name: "Dirt",
         tags: ["terrain", "soil"],
         block: (
-            texture: All("blocks/dirt/all"),
+            texture: all("blocks/dirt/all"),
             hardness: 0.5,
         ),
         item: (stack: 99),
-    )"#;
+    )"##;
     let o: RawObjectDef = parse("object block", strip_wrapper(src));
     assert_eq!(o.format_version, 1);
     assert!(o.block.is_some());
@@ -60,10 +63,10 @@ fn object_block_minimum_parses() {
 
 #[test]
 fn object_uses_default_format_version_when_omitted() {
-    let src = r#"Object(
+    let src = r##"Object(
         name: "Dirt",
-        block: (texture: None),
-    )"#;
+        block: (texture: none),
+    )"##;
     let o: RawObjectDef = parse("object default version", strip_wrapper(src));
     assert_eq!(o.format_version, OBJECT_FORMAT_VERSION);
 }
@@ -72,7 +75,7 @@ fn object_uses_default_format_version_when_omitted() {
 
 #[test]
 fn object_with_two_recipes_parses() {
-    let src = r#"Object(
+    let src = r##"Object(
         name: "Torch",
         item: (stack: 64),
         recipes: [
@@ -90,7 +93,7 @@ fn object_with_two_recipes_parses() {
                 output: (item: "torch", count: 2),
             ),
         ],
-    )"#;
+    )"##;
     let o: RawObjectDef = parse("two recipes", strip_wrapper(src));
     assert_eq!(o.recipes.len(), 2);
     match &o.recipes[0].kind {
@@ -109,18 +112,18 @@ fn object_with_two_recipes_parses() {
 
 #[test]
 fn object_processing_recipe_parses() {
-    let src = r#"Object(
+    let src = r##"Object(
         name: "Iron Ingot",
         item: (stack: 64),
         recipes: [(
             station: Some("#station.smelting"),
             kind: processing((
-                inputs: [(item: "iron_ore_chunk", count: Fixed(1), chance: 1.0)],
+                inputs: [(item: "iron_ore_chunk", count: 1, chance: 1.0)],
                 duration_seconds: 8.0,
             )),
             output: (item: "iron_ingot", count: 1),
         )],
-    )"#;
+    )"##;
     let o: RawObjectDef = parse("processing recipe", strip_wrapper(src));
     match &o.recipes[0].kind {
         RawObjectRecipeKind::Processing(p) => {
@@ -137,7 +140,7 @@ fn object_processing_recipe_parses() {
 fn object_station_with_tags_parses() {
     let src = r#"Object(
         name: "Construction Workbench",
-        block: (texture: All("blocks/workbench/all")),
+        block: (texture: all("blocks/workbench/all")),
         item: (stack: 1),
         station: (
             type: workbench,
@@ -186,43 +189,6 @@ fn world_biome_parses() {
         placement: (vegetation_tags: [], fauna_tags: [], structure_tags: []),
     )"#;
     let _: RawBiomeProceduralDef = parse("biome", strip_wrapper(src));
-}
-
-// ── render — shader module + technique ───────────────────────────────────────
-
-#[test]
-fn render_shader_module_parses() {
-    let src = r#"ShaderModule(
-        language: wgsl,
-        imports: [],
-        feature_class: "surface",
-        contracts: [],
-        allow_override: true,
-    )"#;
-    let m: RawShaderModule = parse("shader module", strip_wrapper(src));
-    assert!(m.allow_override);
-}
-
-#[test]
-fn render_technique_parses() {
-    let src = r#"RenderTechnique(
-        label: "Terrain Opaque",
-        pass: "terrain_opaque",
-        stages: (
-            vertex: "core:render/shader_modules/voxel/terrain_vertex",
-            fragment: Some("core:render/shader_modules/surface/stylized_pbr_lite"),
-        ),
-        vertex_layout: "terrain_chunk_mesh",
-        material_family: "core:render/material_families/voxel_surface",
-        contracts: [],
-        depth: (write: true, compare: less_equal),
-        culling: back,
-        blend: opaque,
-        outputs: ["main_color"],
-        features: [],
-        profile_overrides: [],
-    )"#;
-    let _: RawRenderTechnique = parse("technique", strip_wrapper(src));
 }
 
 // ── skeleton.ron ─────────────────────────────────────────────────────────────

@@ -7,10 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use vv_content_schema::{
-    RawObjectDef, RawPackManifest, RawRenderGraph, RawRenderProfile, RawRenderTechnique,
-    RawShaderModule,
-};
+use vv_content_schema::{RawObjectDef, RawPackManifest};
 
 use crate::parse::{pack_relative, parse_string, parse_value, read_typed, ParseError};
 
@@ -66,19 +63,8 @@ pub enum WorldCategory {
 
 #[derive(Default)]
 pub struct RenderScan {
-    pub shader_modules: Vec<RenderItem<RawShaderModule>>,
-    pub shader_contracts: Vec<RenderItem<ron::Value>>,
-    pub material_families: Vec<RenderItem<ron::Value>>,
-    pub techniques: Vec<RenderItem<RawRenderTechnique>>,
-    pub profiles: Vec<RenderItem<RawRenderProfile>>,
-    pub render_graphs: Vec<RenderItem<RawRenderGraph>>,
-    pub validation: Vec<RenderItem<ron::Value>>,
-}
-
-pub struct RenderItem<T> {
-    pub id: String,
-    pub rel_path: String,
-    pub value: T,
+    pub wgsl_files: Vec<MediaFile>,
+    pub ron_files: Vec<String>,
 }
 
 pub struct TextureFile {
@@ -112,11 +98,25 @@ impl PackScan {
         let render = load_render(&pack_root, &namespace, &mut errors);
 
         let mut texture_files = Vec::new();
-        collect_textures(&pack_root.join("media").join("textures"), &pack_root, &mut texture_files);
+        collect_textures(
+            &pack_root.join("media").join("textures"),
+            &pack_root,
+            &mut texture_files,
+        );
         let mut voxel_files = Vec::new();
-        collect_media(&pack_root.join("media").join("voxel"), "vox", &pack_root, &mut voxel_files);
+        collect_media(
+            &pack_root.join("media").join("voxel"),
+            "vox",
+            &pack_root,
+            &mut voxel_files,
+        );
         let mut wgsl_files = Vec::new();
-        collect_media(&pack_root.join("render"), "wgsl", &pack_root, &mut wgsl_files);
+        collect_media(
+            &pack_root.join("render"),
+            "wgsl",
+            &pack_root,
+            &mut wgsl_files,
+        );
 
         Ok(Self {
             pack_root,
@@ -184,7 +184,11 @@ fn load_objects(pack_root: &Path, errors: &mut Vec<ParseError>) -> Vec<ParsedObj
         match parse_string::<RawObjectDef>(rel.clone(), &text) {
             Ok(def) => {
                 let id = derive_object_id(pack_root, &path);
-                out.push(ParsedObject { id, rel_path: rel, def });
+                out.push(ParsedObject {
+                    id,
+                    rel_path: rel,
+                    def,
+                });
             }
             Err(e) => errors.push(e),
         }
@@ -216,7 +220,12 @@ fn load_world(pack_root: &Path, errors: &mut Vec<ParseError>) -> Vec<ParsedWorld
         match parse_value(rel.clone(), &text) {
             Ok(value) => {
                 let id = derive_world_id(pack_root, &path);
-                out.push(ParsedWorldFile { id, rel_path: rel, category, value });
+                out.push(ParsedWorldFile {
+                    id,
+                    rel_path: rel,
+                    category,
+                    value,
+                });
             }
             Err(e) => errors.push(e),
         }
@@ -230,79 +239,19 @@ fn load_render(pack_root: &Path, namespace: &str, errors: &mut Vec<ParseError>) 
     if !root.exists() {
         return scan;
     }
-    scan.shader_modules =
-        load_render_typed::<RawShaderModule>(&root, "shader_modules", namespace, errors);
-    scan.shader_contracts = load_render_value(&root, "shader_contracts", namespace, errors);
-    scan.material_families = load_render_value(&root, "material_families", namespace, errors);
-    scan.techniques =
-        load_render_typed::<RawRenderTechnique>(&root, "techniques", namespace, errors);
-    scan.profiles = load_render_typed::<RawRenderProfile>(&root, "profiles", namespace, errors);
-    scan.render_graphs = load_render_typed::<RawRenderGraph>(&root, "render_graph", namespace, errors);
-    scan.validation = load_render_value(&root, "validation", namespace, errors);
+    let mut wgsl = Vec::new();
+    collect_media(&root.join("shaders"), "wgsl", pack_root, &mut wgsl);
+    scan.wgsl_files = wgsl;
+
+    let mut ron_paths = Vec::new();
+    collect_files(&root, "ron", &mut ron_paths, &[]);
+    ron_paths.sort();
+    scan.ron_files = ron_paths
+        .iter()
+        .map(|path| pack_relative(pack_root, path))
+        .collect();
+    let _ = (namespace, errors);
     scan
-}
-
-fn load_render_typed<T: serde::de::DeserializeOwned>(
-    render_root: &Path,
-    sub: &str,
-    namespace: &str,
-    errors: &mut Vec<ParseError>,
-) -> Vec<RenderItem<T>> {
-    let dir = render_root.join(sub);
-    let mut paths = Vec::new();
-    collect_files(&dir, "ron", &mut paths, &[]);
-    let mut out = Vec::with_capacity(paths.len());
-    for path in paths {
-        let rel = pack_relative(render_root.parent().unwrap_or(render_root), &path);
-        let text = match std::fs::read_to_string(&path) {
-            Ok(t) => t,
-            Err(e) => {
-                errors.push(ParseError {
-                    rel_path: rel,
-                    line: 0,
-                    column: 0,
-                    message: format!("cannot read file: {e}"),
-                    suggestion: None,
-                });
-                continue;
-            }
-        };
-        match parse_string::<T>(rel.clone(), &text) {
-            Ok(value) => {
-                let id = derive_render_id(namespace, render_root, &path);
-                out.push(RenderItem { id, rel_path: rel, value });
-            }
-            Err(e) => errors.push(e),
-        }
-    }
-    out
-}
-
-fn load_render_value(
-    render_root: &Path,
-    sub: &str,
-    namespace: &str,
-    errors: &mut Vec<ParseError>,
-) -> Vec<RenderItem<ron::Value>> {
-    let dir = render_root.join(sub);
-    let mut paths = Vec::new();
-    collect_files(&dir, "ron", &mut paths, &[]);
-    let mut out = Vec::with_capacity(paths.len());
-    for path in paths {
-        let rel = pack_relative(render_root.parent().unwrap_or(render_root), &path);
-        let text = match std::fs::read_to_string(&path) {
-            Ok(t) => t,
-            Err(_) => continue,
-        };
-        match parse_value(rel.clone(), &text) {
-            Ok(value) => {
-                let id = derive_render_id(namespace, render_root, &path);
-                out.push(RenderItem { id, rel_path: rel, value });
-            }
-            Err(e) => errors.push(e),
-        }
-    }
-    out
 }
 
 fn collect_files(root: &Path, ext: &str, out: &mut Vec<PathBuf>, skip: &[&str]) {
@@ -313,12 +262,17 @@ fn collect_files(root: &Path, ext: &str, out: &mut Vec<PathBuf>, skip: &[&str]) 
 }
 
 fn walk(base: &Path, dir: &Path, ext: &str, out: &mut Vec<PathBuf>, skip: &[&str]) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
             let rel = pack_relative(base, &path);
-            if skip.iter().any(|s| rel == *s || rel.starts_with(&format!("{s}/"))) {
+            if skip
+                .iter()
+                .any(|s| rel == *s || rel.starts_with(&format!("{s}/")))
+            {
                 continue;
             }
             walk(base, &path, ext, out, skip);
@@ -337,7 +291,10 @@ fn collect_textures(textures_root: &Path, pack_root: &Path, out: &mut Vec<Textur
     paths.sort();
     for path in paths {
         let rel = pack_relative(pack_root, &path);
-        out.push(TextureFile { rel_path: rel, abs_path: path });
+        out.push(TextureFile {
+            rel_path: rel,
+            abs_path: path,
+        });
     }
 }
 
@@ -350,7 +307,10 @@ fn collect_media(root: &Path, ext: &str, pack_root: &Path, out: &mut Vec<MediaFi
     paths.sort();
     for path in paths {
         let rel = pack_relative(pack_root, &path);
-        out.push(MediaFile { rel_path: rel, abs_path: path });
+        out.push(MediaFile {
+            rel_path: rel,
+            abs_path: path,
+        });
     }
 }
 
@@ -363,7 +323,9 @@ fn derive_namespace(pack_root: &Path) -> String {
 }
 
 fn derive_object_id(pack_root: &Path, path: &Path) -> String {
-    let rel = path.strip_prefix(pack_root.join("defs").join("objects")).ok();
+    let rel = path
+        .strip_prefix(pack_root.join("defs").join("objects"))
+        .ok();
     let Some(rel) = rel else {
         return pack_relative(pack_root, path);
     };
@@ -404,27 +366,6 @@ fn derive_world_id(pack_root: &Path, path: &Path) -> String {
         parts.push(stem);
     }
     format!("world/{}", parts.join("/"))
-}
-
-fn derive_render_id(namespace: &str, render_root: &Path, path: &Path) -> String {
-    let Ok(rel) = path.strip_prefix(render_root) else {
-        return pack_relative(render_root, path);
-    };
-    let mut parts: Vec<String> = rel
-        .iter()
-        .filter_map(|p| p.to_str())
-        .map(str::to_string)
-        .collect();
-    if let Some(last) = parts.pop() {
-        let stem = last
-            .trim_end_matches(".ron")
-            .split('.')
-            .next()
-            .unwrap_or(&last)
-            .to_string();
-        parts.push(stem);
-    }
-    format!("{}:render/{}", namespace, parts.join("/"))
 }
 
 fn classify_world_path(rel: &str) -> WorldCategory {

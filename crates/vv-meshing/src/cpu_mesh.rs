@@ -156,4 +156,3 @@ mod tests {
         assert_eq!(mesh.indices.len() % 3, 0);
     }
 }
-

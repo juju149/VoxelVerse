@@ -8,4 +8,3 @@ impl PlayerController {
         player.update(dt, planet, input);
     }
 }
-

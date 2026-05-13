@@ -17,11 +17,11 @@
 //! `VERTEX_COLOR_MATERIAL_SENTINEL` material).
 
 use super::{CpuMesh, CpuVertex, MeshGen, VERTEX_COLOR_MATERIAL_SENTINEL};
-use vv_pack_compiler::TerrainPalette;
+use glam::Vec3;
 use vv_math::CoordSystem;
+use vv_pack_compiler::TerrainPalette;
 use vv_voxel::{LodKey, CHUNK_SIZE};
 use vv_world::PlanetData;
-use glam::Vec3;
 
 /// Cells per side per LOD tile.  Equal to `CHUNK_SIZE` so the macro-voxel size
 /// matches one base voxel chunk at the smallest LOD level and doubles cleanly
@@ -70,8 +70,8 @@ impl MeshGen {
         // different resolutions never reveal a gap underneath.
         let radius = data.profile.surface_radius;
         let tile_phys = (key.size as f32 / res as f32) * radius;
-        let skirt_layers = ((tile_phys * 0.10) / data.profile.layer_height.max(1e-3))
-            .clamp(4.0, 800.0) as u32;
+        let skirt_layers =
+            ((tile_phys * 0.10) / data.profile.layer_height.max(1e-3)).clamp(4.0, 800.0) as u32;
 
         let mut verts: Vec<CpuVertex> = Vec::with_capacity(((n * n) * 5 * 4) as usize / 4);
         let mut inds: Vec<u32> = Vec::with_capacity(((n * n) * 5 * 6) as usize / 4);
@@ -101,9 +101,7 @@ impl MeshGen {
                 let cell_center = (p_bl + p_br + p_tr + p_tl) * 0.25;
                 let radial = cell_center.normalize_or_zero();
                 let slope = 1.0_f32; // top face is by construction radial-aligned at LOD scale
-                let top_color = lod_surface_color(
-                    key.face, mid_u, mid_v, h, slope, data,
-                );
+                let top_color = lod_surface_color(key.face, mid_u, mid_v, h, slope, data);
                 let wall_color = lod_wall_color(key.face, mid_u, mid_v, h, data);
 
                 push_quad(
@@ -122,7 +120,13 @@ impl MeshGen {
                     if nrm.dot(outward_hint) < 0.0 {
                         nrm = -nrm;
                     }
-                    push_quad(&mut verts, &mut inds, [bl, br, tr, tl], nrm.to_array(), wall_color);
+                    push_quad(
+                        &mut verts,
+                        &mut inds,
+                        [bl, br, tr, tl],
+                        nrm.to_array(),
+                        wall_color,
+                    );
                 };
 
                 // -U wall (at u = u0)
@@ -328,4 +332,3 @@ fn hash01(face: u8, u: u32, v: u32) -> f32 {
     x ^= x >> 16;
     x as f32 / u32::MAX as f32
 }
-

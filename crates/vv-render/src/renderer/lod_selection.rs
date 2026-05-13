@@ -1,11 +1,11 @@
 use super::{MeshJobResult, QuadContext, QuadNode, Renderer};
-use vv_math::CoordSystem;
-use vv_meshing::MeshGen;
 use crate::lod_animation::AnyKey;
-use vv_voxel::{LodKey, SurfaceChunkKey, CHUNK_SIZE};
-use vv_world::PlanetData;
 use glam::Vec3;
 use std::collections::HashSet;
+use vv_math::CoordSystem;
+use vv_meshing::MeshGen;
+use vv_voxel::{LodKey, SurfaceChunkKey, CHUNK_SIZE};
+use vv_world::PlanetData;
 
 impl<'a> Renderer<'a> {
     pub fn update_view(&mut self, player_pos: Vec3, planet: &PlanetData) {
@@ -323,4 +323,3 @@ fn chunk_center(key: SurfaceChunkKey, planet: &PlanetData) -> Vec3 {
     let h = planet.profile.surface_layer;
     CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile)
 }
-

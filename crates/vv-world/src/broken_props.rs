@@ -39,4 +39,3 @@ impl BrokenPropLayer {
         !self.broken.contains(&PropSupportKey::new(face, u, v))
     }
 }
-

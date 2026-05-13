@@ -89,7 +89,9 @@ pub struct CompiledIngredientData {
 #[derive(Clone, Debug)]
 pub enum CompiledItemGameplay {
     /// When used, places the block with this family key.
-    PlaceBlock { block_key: String },
+    PlaceBlock {
+        block_key: String,
+    },
     CraftingIngredient(CompiledIngredientData),
     Tool(CompiledToolData),
     Weapon(CompiledWeaponData),
@@ -182,4 +184,3 @@ impl ItemRegistry {
         self.items.is_empty()
     }
 }
-

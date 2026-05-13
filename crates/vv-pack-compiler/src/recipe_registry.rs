@@ -82,11 +82,7 @@ pub struct CompiledShapedRecipe {
 impl CompiledShapedRecipe {
     /// Returns `true` if `slots` (9-element, `None` = empty) satisfies this recipe.
     /// `slots` is indexed the same way as `grid`.
-    pub fn matches(
-        &self,
-        slots: &[Option<(ItemId, &str)>; 9],
-        tags: &TagRegistry,
-    ) -> bool {
+    pub fn matches(&self, slots: &[Option<(ItemId, &str)>; 9], tags: &TagRegistry) -> bool {
         self.matches_grid(slots, tags, false)
             || (self.mirrored && self.matches_grid(slots, tags, true))
     }
@@ -183,7 +179,10 @@ impl RecipeRegistry {
         let mut by_output: HashMap<ItemId, Vec<RecipeId>> = HashMap::new();
 
         for recipe in &recipes {
-            by_output.entry(recipe.output_item).or_default().push(recipe.id);
+            by_output
+                .entry(recipe.output_item)
+                .or_default()
+                .push(recipe.id);
             match &recipe.kind {
                 CompiledRecipeKind::Shaped(_) => shaped.push(recipe.id),
                 CompiledRecipeKind::Shapeless(_) => shapeless.push(recipe.id),
@@ -234,7 +233,10 @@ impl RecipeRegistry {
 
     /// Returns all recipe IDs that produce `item_id` as output.
     pub fn recipes_for_output(&self, item_id: ItemId) -> &[RecipeId] {
-        self.by_output.get(&item_id).map(Vec::as_slice).unwrap_or(&[])
+        self.by_output
+            .get(&item_id)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
     }
 
     /// Find the first smelting recipe whose ingredient matches `item_key`.
@@ -247,7 +249,9 @@ impl RecipeRegistry {
         self.smelting.iter().find_map(|id| {
             let recipe = self.get(*id)?;
             match &recipe.kind {
-                CompiledRecipeKind::Smelting(s) if s.ingredient.matches_id(item_id, item_key, tags) => {
+                CompiledRecipeKind::Smelting(s)
+                    if s.ingredient.matches_id(item_id, item_key, tags) =>
+                {
                     Some(recipe)
                 }
                 _ => None,
@@ -263,4 +267,3 @@ impl RecipeRegistry {
         self.recipes.is_empty()
     }
 }
-

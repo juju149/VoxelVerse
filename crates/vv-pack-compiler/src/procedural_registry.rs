@@ -133,9 +133,16 @@ pub enum CompiledHeightCurve {
     #[default]
     Linear,
     Smoothstep,
-    Power { exponent: f32 },
-    Plateau { flatness: f32, threshold: f32 },
-    MountainSpike { sharpness: f32 },
+    Power {
+        exponent: f32,
+    },
+    Plateau {
+        flatness: f32,
+        threshold: f32,
+    },
+    MountainSpike {
+        sharpness: f32,
+    },
 }
 
 impl CompiledHeightCurve {

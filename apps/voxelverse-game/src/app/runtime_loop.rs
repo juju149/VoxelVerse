@@ -1,16 +1,18 @@
 use crate::app::content_bootstrap::load_core_content;
-use vv_pack_compiler::{LootRegistry, TagRegistry};
+use crate::ui::{
+    HeldStack, InventoryButton, InventoryLayout, InventoryUiState, UiTheme, UiViewport,
+};
+use std::sync::Arc;
+use std::time::Instant;
 use vv_diagnostics::SystemDiagnostics;
 use vv_gameplay::{
     BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, Console, Controller,
     Hotbar, HotbarNotice, HotbarSlot, Inventory, ItemId, PlanetResize, PlanetResizeIntent, Player,
     PlayerController, SlotRef,
 };
+use vv_pack_compiler::{LootRegistry, TagRegistry};
 use vv_render::Renderer;
-use crate::ui::{HeldStack, InventoryButton, InventoryLayout, InventoryUiState, UiTheme, UiViewport};
 use vv_world::{PlanetData, VoxModelRegistry};
-use std::sync::Arc;
-use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::EventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -28,7 +30,7 @@ pub fn run() {
         &window,
         &content.textures,
         content.blocks.material_colors(),
-        &content.render,
+        &content.core_pack_dir,
     ));
     renderer.render_loading(0.0, "Initialisation planète");
     let mut controller = Controller::new();
@@ -280,7 +282,9 @@ fn handle_game_window_event(
             state: ElementState::Pressed,
             button,
             ..
-        } => handle_mouse_action(button, renderer, controller, player, planet, hotbar, inventory, loot, tags),
+        } => handle_mouse_action(
+            button, renderer, controller, player, planet, hotbar, inventory, loot, tags,
+        ),
         WindowEvent::MouseWheel { delta, .. } if controller.first_person => {
             handle_hotbar_scroll(delta, hotbar);
         }
@@ -332,10 +336,7 @@ fn handle_inventory_window_event(
         WindowEvent::CursorMoved { position, .. } => {
             inventory_ui.cursor = (position.x as f32, position.y as f32);
             let theme = UiTheme::VOXELVERSE;
-            let vp = UiViewport::new(
-                renderer.config.width as f32,
-                renderer.config.height as f32,
-            );
+            let vp = UiViewport::new(renderer.config.width as f32, renderer.config.height as f32);
             let layout = InventoryLayout::compute(&theme, vp, inventory_ui.user_zoom);
             let (px, py) = (position.x as f32, position.y as f32);
             inventory_ui.hovered_slot = layout.slot_under_cursor(px, py);
@@ -678,7 +679,11 @@ fn quick_move(hotbar: &mut Hotbar, inventory: &mut Inventory, source: SlotRef) {
             // Inventory → hotbar: stack into matching slot, else first empty.
             place_into_optional(hotbar, inventory, source, None);
             let mut slots = *hotbar.slots();
-            if let Some(slot) = slots.iter_mut().flatten().find(|s| s.item_id == stack.item_id) {
+            if let Some(slot) = slots
+                .iter_mut()
+                .flatten()
+                .find(|s| s.item_id == stack.item_id)
+            {
                 slot.quantity = slot.quantity.saturating_add(stack.quantity);
             } else if let Some(slot) = slots.iter_mut().find(|s| s.is_none()) {
                 *slot = Some(stack);

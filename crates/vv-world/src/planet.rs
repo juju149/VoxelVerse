@@ -1,11 +1,9 @@
-use vv_pack_compiler::{BlockRegistry, CompiledPlanet, ItemRegistry, ProceduralRegistry};
-use vv_worldgen::{bake_for_chunk, ChunkFeatureMap, ProceduralPlanetTerrain};
-use vv_math::CoordSystem;
-use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use crate::{
-    BrokenPropLayer, PlanetProfile, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime,
-};
+use crate::{BrokenPropLayer, PlanetProfile, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime};
 use std::sync::Arc;
+use vv_math::CoordSystem;
+use vv_pack_compiler::{BlockRegistry, CompiledPlanet, ItemRegistry, ProceduralRegistry};
+use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
+use vv_worldgen::{bake_for_chunk, ChunkFeatureMap, ProceduralPlanetTerrain};
 
 /// Cached runtime block ID for the planet core (deep underground).
 /// Surface/subsurface blocks come from the biome registry.
@@ -370,4 +368,3 @@ mod tests {
         );
     }
 }
-

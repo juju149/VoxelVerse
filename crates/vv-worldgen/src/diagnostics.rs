@@ -92,5 +92,3 @@ impl WorldgenStatsSnapshot {
         self.cell_hits as f32 / total as f32
     }
 }
-
-

@@ -25,14 +25,11 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
             let candidate = format!("media/textures/{}.png", icon);
             if !index.texture_exists(&candidate) {
                 report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!("item icon '{}' is missing on disk", icon),
-                    )
-                    .with_path(obj.rel_path.clone())
-                    .with_id(obj.id.clone())
-                    .with_field("item.icon")
-                    .with_suggestion(format!("create {} or fix the path", candidate)),
+                    Diagnostic::new(CHECK, format!("item icon '{}' is missing on disk", icon))
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field("item.icon")
+                        .with_suggestion(format!("create {} or fix the path", candidate)),
                 );
             }
         }
@@ -41,17 +38,14 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
             let candidate = format!("media/{}.vox", model);
             if !index.voxel_exists(&candidate) {
                 report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!("item model '{}' is missing on disk", model),
-                    )
-                    .with_path(obj.rel_path.clone())
-                    .with_id(obj.id.clone())
-                    .with_field("item.model")
-                    .with_suggestion(format!(
-                        "place a .vox file at {} (note: the path starts with `voxel/`)",
-                        candidate
-                    )),
+                    Diagnostic::new(CHECK, format!("item model '{}' is missing on disk", model))
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field("item.model")
+                        .with_suggestion(format!(
+                            "place a .vox file at {} (note: the path starts with `voxel/`)",
+                            candidate
+                        )),
                 );
             }
         }

@@ -15,8 +15,8 @@
 
 use super::{CpuMesh, CpuVertex, VERTEX_COLOR_MATERIAL_SENTINEL};
 use vv_math::CoordSystem;
-use vv_worldgen::procedural::PropStamp;
 use vv_world::{PlanetProfile, VoxModel, VoxModelRegistry};
+use vv_worldgen::procedural::PropStamp;
 
 /// Maximum visible faces a single prop may contribute to a chunk mesh.
 /// A grass blade has ~10-20, a mushroom ~50.  Hard-capping prevents a single
@@ -149,4 +149,3 @@ fn bake_stamp(
         *idx += 4;
     }
 }
-

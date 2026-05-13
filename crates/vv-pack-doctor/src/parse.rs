@@ -22,10 +22,7 @@ pub struct ParseError {
 /// Read a file and try to deserialize it. The outer type-name (e.g. `Object(`)
 /// is stripped before retrying so authors can keep the friendly wrapper form
 /// the rest of the engine accepts.
-pub fn read_typed<T: DeserializeOwned>(
-    pack_root: &Path,
-    abs_path: &Path,
-) -> Result<T, ParseError> {
+pub fn read_typed<T: DeserializeOwned>(pack_root: &Path, abs_path: &Path) -> Result<T, ParseError> {
     let rel = pack_relative(pack_root, abs_path);
     let text = std::fs::read_to_string(abs_path).map_err(|e| ParseError {
         rel_path: rel.clone(),
@@ -99,8 +96,7 @@ fn suggest(message: &str) -> Option<String> {
     }
     if lower.contains("missing field") {
         return Some(
-            "the schema requires this field — add it or remove the surrounding section"
-                .to_string(),
+            "the schema requires this field — add it or remove the surrounding section".to_string(),
         );
     }
     if lower.contains("trailing characters") {
@@ -130,7 +126,11 @@ pub fn strip_outer_type_name(text: &str) -> &str {
             }
             continue;
         }
-        if c == 0xEF && start + 2 < bytes.len() && bytes[start + 1] == 0xBB && bytes[start + 2] == 0xBF {
+        if c == 0xEF
+            && start + 2 < bytes.len()
+            && bytes[start + 1] == 0xBB
+            && bytes[start + 2] == 0xBF
+        {
             start += 3;
             continue;
         }

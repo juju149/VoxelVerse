@@ -14,7 +14,9 @@ const CHANNELS: &[&str] = &["albedo", "normal", "roughness"];
 
 pub fn run(index: &PackIndex<'_>, report: &mut Report) {
     for obj in &index.scan.objects {
-        let Some(block) = &obj.def.block else { continue };
+        let Some(block) = &obj.def.block else {
+            continue;
+        };
         validate_texture(obj, &block.texture, block.shape, index, report);
     }
 }
@@ -96,7 +98,11 @@ fn check_pbr_triplet(
             channel
         );
         if !index.texture_exists(&candidate) {
-            let severity = if *channel == "albedo" { Severity::Error } else { Severity::Warn };
+            let severity = if *channel == "albedo" {
+                Severity::Error
+            } else {
+                Severity::Warn
+            };
             let diag = Diagnostic::new(
                 CHECK,
                 format!(

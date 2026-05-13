@@ -8,4 +8,3 @@ pub(crate) mod noise;
 pub use diagnostics::{WorldgenStats, WorldgenStatsSnapshot};
 pub use features::{bake_for_chunk, ChunkFeatureMap};
 pub use procedural::{ProceduralPlanetTerrain, PropStamp};
-

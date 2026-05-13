@@ -342,5 +342,3 @@ fn grad(hash: u8, x: f32, y: f32, z: f32) -> f32 {
     };
     (if (h & 1) == 0 { u } else { -u }) + (if (h & 2) == 0 { v } else { -v })
 }
-
-

@@ -17,11 +17,11 @@
 //! duplicated inside [`ProceduralPlanetTerrain::evaluate_tree_at`].  The slow
 //! path now delegates to these helpers as well.
 
-use vv_pack_compiler::{CompiledProceduralPlanet, CompiledVegetation, ProceduralRegistry};
 use crate::placement::{for_each_candidate, PlacementCandidate};
 use crate::procedural::ProceduralPlanetTerrain;
-use vv_voxel::{VoxelCoord, VoxelId, CHUNK_SIZE};
 use std::collections::HashMap;
+use vv_pack_compiler::{CompiledProceduralPlanet, CompiledVegetation, ProceduralRegistry};
+use vv_voxel::{VoxelCoord, VoxelId, CHUNK_SIZE};
 
 #[path = "tree_shape.rs"]
 mod tree_shape;
@@ -326,5 +326,3 @@ pub fn bake_for_chunk(
     let v_hi = (v_lo + CHUNK_SIZE).min(res);
     FeatureBakery::new(terrain).bake_chunk(face, u_lo, u_hi, v_lo, v_hi, margin)
 }
-
-

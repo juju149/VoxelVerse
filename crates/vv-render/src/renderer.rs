@@ -1,19 +1,19 @@
 // engine renderer
 
-use vv_diagnostics::FrameStats;
-use vv_math::Frustum;
-use vv_meshing::CpuMesh;
 use crate::lod_animation::LodAnimator;
 use crate::quality::QualitySettings;
 use crate::types::ChunkMesh;
-use vv_meshing::{MeshScheduler, SchedulerStats};
-use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord};
-use vv_world::PlanetData;
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
 use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{Receiver, Sender};
+use vv_diagnostics::FrameStats;
+use vv_math::Frustum;
+use vv_meshing::CpuMesh;
+use vv_meshing::{MeshScheduler, SchedulerStats};
+use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord};
+use vv_world::PlanetData;
 use winit::window::Window;
 
 // --- UNIFORMS ---
@@ -21,19 +21,23 @@ use winit::window::Window;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct GlobalUniform {
-    pub view_proj: [f32; 16],       // bytes   0–63
-    pub light_view_proj: [f32; 16], // bytes  64–127
-    pub cam_pos: [f32; 4],          // bytes 128–143  (w = quality_bits)
-    pub sun_dir: [f32; 4],          // bytes 144–159  (w = fog_density)
-    pub sky_horizon: [f32; 4],      // bytes 160–175  (rgb = horizon sky color, w = time_of_day 0-1)
-    pub sky_zenith: [f32; 4], // bytes 176–191  (rgb = zenith sky color, w = sun_intensity 0-1)
+    pub view_proj: [f32; 16],        // bytes   0–63
+    pub light_view_proj: [f32; 16],  // bytes  64–127
+    pub cam_pos: [f32; 4],           // bytes 128–143  (w = quality_bits)
+    pub sun_dir: [f32; 4],           // bytes 144–159  (w = fog_density)
+    pub sky_horizon: [f32; 4], // bytes 160–175  (rgb = horizon sky color, w = time_of_day 0-1)
+    pub sky_zenith: [f32; 4],  // bytes 176–191  (rgb = zenith sky color, w = sun_intensity 0-1)
+    pub render_params: [f32; 4], // bytes 192-207 (x=time, y=quality bits, zw=viewport)
+    pub atmosphere_params: [f32; 4], // bytes 208-223 (x=fog, y=height fog, z=vol fog, w=exposure)
+    pub cloud_params: [f32; 4], // bytes 224-239 (x=steps, y=density, z=speed, w=coverage)
+    pub water_params: [f32; 4], // bytes 240-255 (x=fresnel, y=specular, z=alpha, w=reserved)
 }
 
 /// Compile-time guard: buffer sizes in setup.rs / setup_resources.rs use
 /// `std::mem::size_of::<GlobalUniform>()` so they stay in sync automatically.
 /// If you ever change GlobalUniform, this assertion documents the expected size.
 const _: () = assert!(
-    std::mem::size_of::<GlobalUniform>() == 192,
+    std::mem::size_of::<GlobalUniform>() == 256,
     "GlobalUniform size changed — verify all uniform buffer sizes stay consistent"
 );
 
@@ -79,7 +83,13 @@ pub struct Renderer<'a> {
 
     // --- SKY ---
     pipeline_sky: wgpu::RenderPipeline,
+    pipeline_clouds: wgpu::RenderPipeline,
+    pipeline_volumetric_fog: wgpu::RenderPipeline,
+    pipeline_post: wgpu::RenderPipeline,
     sky_global_bind: wgpu::BindGroup,
+    post_bind_layout: wgpu::BindGroupLayout,
+    post_bind: wgpu::BindGroup,
+    scene: SceneTarget,
 
     // --- CORE ---
     animator: LodAnimator,
@@ -171,6 +181,47 @@ pub struct Renderer<'a> {
     pub start_time: std::time::Instant,
 }
 
+struct SceneTarget {
+    _texture: wgpu::Texture,
+    view: wgpu::TextureView,
+    sampler: wgpu::Sampler,
+}
+
+impl SceneTarget {
+    const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
+    fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Scene HDR Color"),
+            size: wgpu::Extent3d {
+                width: width.max(1),
+                height: height.max(1),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: Self::FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("Scene HDR Sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        Self {
+            _texture: texture,
+            view,
+            sampler,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct QuadNode {
     face: u8,
@@ -191,6 +242,7 @@ struct MeshJobResult<K> {
     elapsed_ms: f32,
 }
 
+mod atmosphere_passes;
 mod debug_draw;
 mod inventory;
 mod lod_selection;
@@ -208,6 +260,13 @@ impl<'a> Renderer<'a> {
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
         self.depth = Self::mk_depth(&self.device, &self.config);
+        self.scene = SceneTarget::new(&self.device, self.config.width, self.config.height);
+        self.post_bind = Self::create_post_bind_group(
+            &self.device,
+            &self.post_bind_layout,
+            &self.scene.view,
+            &self.scene.sampler,
+        );
     }
 
     // QUADTREE LOGIC
@@ -226,4 +285,3 @@ impl<'a> Renderer<'a> {
         self.completed_mesh_count += 1;
     }
 }
-

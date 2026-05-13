@@ -17,16 +17,14 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
             // tables.
             if obj.def.entity.is_some() {
                 report.warn(
-                    Diagnostic::new(
-                        CHECK,
-                        "entity declares an empty loot table on death",
-                    )
-                    .with_path(obj.rel_path.clone())
-                    .with_id(obj.id.clone())
-                    .with_field("loot.when_killed")
-                    .with_suggestion(
-                        "remove the `loot` section if drops are intentionally empty".to_string(),
-                    ),
+                    Diagnostic::new(CHECK, "entity declares an empty loot table on death")
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field("loot.when_killed")
+                        .with_suggestion(
+                            "remove the `loot` section if drops are intentionally empty"
+                                .to_string(),
+                        ),
                 );
             }
         }

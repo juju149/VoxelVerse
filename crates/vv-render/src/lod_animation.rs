@@ -1,7 +1,7 @@
 use crate::types::ChunkMesh;
-use vv_voxel::{LodKey, SurfaceChunkKey};
 use std::collections::HashMap;
 use std::time::Instant;
+use vv_voxel::{LodKey, SurfaceChunkKey};
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub enum AnyKey {
@@ -93,4 +93,3 @@ impl LodAnimator {
         results
     }
 }
-

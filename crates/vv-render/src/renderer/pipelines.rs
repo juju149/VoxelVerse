@@ -1,4 +1,4 @@
-use super::Renderer;
+use super::{Renderer, SceneTarget};
 use crate::Vertex;
 
 /// Shared vertex buffer layout matching `Vertex` (48 bytes).
@@ -40,7 +40,7 @@ pub(super) fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
 impl<'a> Renderer<'a> {
     pub(super) fn create_pipeline(
         device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
+        _config: &wgpu::SurfaceConfiguration,
         layout: &wgpu::PipelineLayout,
         vertex_shader: &wgpu::ShaderModule,
         fragment_shader: &wgpu::ShaderModule,
@@ -58,7 +58,7 @@ impl<'a> Renderer<'a> {
             fragment: Some(wgpu::FragmentState {
                 module: fragment_shader,
                 entry_point: "fs_main",
-                targets: &[Some(config.format.into())],
+                targets: &[Some(SceneTarget::FORMAT.into())],
             }),
             primitive: wgpu::PrimitiveState {
                 topology,
@@ -103,4 +103,3 @@ impl<'a> Renderer<'a> {
         .create_view(&wgpu::TextureViewDescriptor::default())
     }
 }
-

@@ -1,577 +1,208 @@
-//! Render-pack validation.
+//! Render shader-library validation.
 //!
-//! Checks shader metadata/source pairs, render graph wiring, validation
-//! presets, profile classes and feature budgets. WGSL compilation is still
-//! owned by the render compiler; Pack Doctor performs cheap structural checks
-//! so broken or missing shader assets cannot slip through silently.
+//! Render pipelines are Rust-owned. The pack only supplies WGSL source under
+//! `render/shaders`, so Pack Doctor validates paths, includes and conventions
+//! instead of parsing render `.ron` manifests.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
-
-use vv_content_schema::{RawAllowedShaderImports, RawFeatureBudget, RawPerformanceClasses};
+use std::path::{Component, Path, PathBuf};
 
 use crate::index::PackIndex;
-use crate::parse::read_typed;
 use crate::report::{Diagnostic, RenderProfileSummary, Report};
 use crate::scan::PackScan;
 
 const CHECK: &str = "render";
+const MAX_SHADER_LINES: usize = 420;
+
+const EXPECTED_SHADERS: &[&str] = &[
+    "render/shaders/passes/terrain/terrain.vert.wgsl",
+    "render/shaders/passes/terrain/terrain.frag.wgsl",
+    "render/shaders/passes/terrain/terrain_depth.vert.wgsl",
+    "render/shaders/passes/sky/sky.vert.wgsl",
+    "render/shaders/passes/sky/sky.frag.wgsl",
+    "render/shaders/passes/clouds/clouds.vert.wgsl",
+    "render/shaders/passes/clouds/clouds.frag.wgsl",
+    "render/shaders/passes/atmosphere/volumetric_fog.vert.wgsl",
+    "render/shaders/passes/atmosphere/volumetric_fog.frag.wgsl",
+    "render/shaders/passes/water/water.vert.wgsl",
+    "render/shaders/passes/water/water.frag.wgsl",
+    "render/shaders/passes/foliage/foliage.vert.wgsl",
+    "render/shaders/passes/foliage/foliage.frag.wgsl",
+    "render/shaders/passes/post/fullscreen.vert.wgsl",
+    "render/shaders/passes/post/final_composite.frag.wgsl",
+    "render/shaders/passes/post/fxaa.frag.wgsl",
+    "render/shaders/passes/post/bloom_downsample.frag.wgsl",
+    "render/shaders/passes/post/bloom_upsample.frag.wgsl",
+    "render/shaders/passes/ui/ui.vert.wgsl",
+    "render/shaders/passes/ui/ui.frag.wgsl",
+    "render/shaders/passes/debug/normals.frag.wgsl",
+    "render/shaders/passes/debug/depth.frag.wgsl",
+    "render/shaders/passes/debug/lighting.frag.wgsl",
+];
+
+const REQUIRED_INCLUDE_DIRS: &[&str] = &[
+    "render/shaders/include/math",
+    "render/shaders/include/camera",
+    "render/shaders/include/lighting",
+    "render/shaders/include/atmosphere",
+    "render/shaders/include/material",
+    "render/shaders/include/voxel",
+];
 
 pub fn run(_index: &PackIndex<'_>, _report: &mut Report) {}
 
 pub fn validate(scan: &PackScan, report: &mut Report) {
-    let feature_budget = read_validation::<RawFeatureBudget>(scan, report, "feature_budget.ron");
-    let performance =
-        read_validation::<RawPerformanceClasses>(scan, report, "performance_classes.ron");
-    let allowed_imports =
-        read_validation::<RawAllowedShaderImports>(scan, report, "allowed_shader_imports.ron");
-
-    let module_ids: BTreeSet<String> = scan
-        .render
-        .shader_modules
-        .iter()
-        .map(|m| m.id.clone())
-        .collect();
-    let contract_ids: BTreeSet<String> = scan
-        .render
-        .shader_contracts
-        .iter()
-        .map(|c| c.id.clone())
-        .collect();
-    let family_ids: BTreeSet<String> = scan
-        .render
-        .material_families
-        .iter()
-        .map(|m| m.id.clone())
-        .collect();
-    let technique_ids: BTreeSet<String> = scan
-        .render
-        .techniques
-        .iter()
-        .map(|t| t.id.clone())
-        .collect();
-    let profile_ids: BTreeSet<String> = scan.render.profiles.iter().map(|p| p.id.clone()).collect();
-
-    let module_by_id: BTreeMap<&str, &_> = scan
-        .render
-        .shader_modules
-        .iter()
-        .map(|m| (m.id.as_str(), m))
-        .collect();
-
-    for module in &scan.render.shader_modules {
-        let metadata_abs = scan.pack_root.join(&module.rel_path);
-        let wgsl = metadata_abs.with_extension("wgsl");
-        if !wgsl.exists() {
-            report
-                .missing
-                .shaders
-                .push(pack_rel(&scan.pack_root, &wgsl));
-            report.error(
-                Diagnostic::new(
-                    CHECK,
-                    format!("shader module '{}' is missing its WGSL source", module.id),
-                )
-                .with_path(module.rel_path.clone())
-                .with_id(module.id.clone())
-                .with_suggestion(format!(
-                    "create {} alongside the metadata file",
-                    pack_rel(&scan.pack_root, &wgsl)
-                )),
-            );
-        } else {
-            check_wgsl_source(scan, report, &module.id, &wgsl);
-        }
-
-        if let Some(perf) = &performance {
-            if !perf
-                .shader_feature_classes
-                .iter()
-                .any(|class| class == &module.value.feature_class)
-            {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!(
-                            "shader module '{}' uses unknown feature_class '{}'",
-                            module.id, module.value.feature_class
-                        ),
-                    )
-                    .with_path(module.rel_path.clone())
-                    .with_id(module.id.clone())
-                    .with_field("feature_class"),
-                );
-            }
-        }
-    }
-
-    for module in &scan.render.shader_modules {
-        for imp in &module.value.imports {
-            if !module_ids.contains(imp.as_str()) {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!("shader import '{}' does not match any module", imp),
-                    )
-                    .with_path(module.rel_path.clone())
-                    .with_id(module.id.clone())
-                    .with_field("imports"),
-                );
-            }
-            if let Some(rules) = &allowed_imports {
-                if rules
-                    .denied_prefixes
-                    .iter()
-                    .any(|prefix| imp.starts_with(prefix))
-                {
-                    report.error(
-                        Diagnostic::new(
-                            CHECK,
-                            format!("shader import '{}' is explicitly denied", imp),
-                        )
-                        .with_path(module.rel_path.clone())
-                        .with_id(module.id.clone())
-                        .with_field("imports"),
-                    );
-                }
-                if !rules.allowed_prefixes.is_empty()
-                    && !rules
-                        .allowed_prefixes
-                        .iter()
-                        .any(|prefix| imp.starts_with(prefix))
-                {
-                    report.error(
-                        Diagnostic::new(
-                            CHECK,
-                            format!("shader import '{}' is outside allowed prefixes", imp),
-                        )
-                        .with_path(module.rel_path.clone())
-                        .with_id(module.id.clone())
-                        .with_field("imports"),
-                    );
-                }
-            }
-        }
-        for contract in &module.value.contracts {
-            if !contract_ids.contains(contract.as_str()) {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!("shader contract '{}' does not exist", contract),
-                    )
-                    .with_path(module.rel_path.clone())
-                    .with_id(module.id.clone())
-                    .with_field("contracts"),
-                );
-            }
-        }
-    }
-
-    for tech in &scan.render.techniques {
-        check_technique_budget(report, &feature_budget, tech);
-        check_technique_classes(report, &performance, tech);
-        check_ref(
-            report,
-            &tech.value.stages.vertex,
-            &module_ids,
-            &tech.id,
-            &tech.rel_path,
-            "stages.vertex",
+    for ron in &scan.render.ron_files {
+        report.error(
+            Diagnostic::new(
+                CHECK,
+                "render directory must not contain .ron pipeline manifests",
+            )
+            .with_path(ron.clone())
+            .with_suggestion("move pipeline/profile/render-graph ownership to vv-render Rust"),
         );
-        if let Some(fragment) = &tech.value.stages.fragment {
-            check_ref(
-                report,
-                fragment,
-                &module_ids,
-                &tech.id,
-                &tech.rel_path,
-                "stages.fragment",
-            );
-        }
-        if !family_ids.contains(&tech.value.material_family) {
+    }
+
+    let shader_paths: BTreeSet<String> = scan
+        .render
+        .wgsl_files
+        .iter()
+        .map(|file| file.rel_path.clone())
+        .collect();
+
+    for expected in EXPECTED_SHADERS {
+        if !shader_paths.contains(*expected) {
             report.error(
-                Diagnostic::new(
-                    CHECK,
-                    format!(
-                        "technique '{}' references unknown material_family '{}'",
-                        tech.id, tech.value.material_family
-                    ),
-                )
-                .with_path(tech.rel_path.clone())
-                .with_id(tech.id.clone())
-                .with_field("material_family"),
+                Diagnostic::new(CHECK, format!("expected shader is missing: {expected}"))
+                    .with_path((*expected).to_string())
+                    .with_suggestion("create the WGSL file or update vv-render::render_graph"),
+            );
+            report.missing.shaders.push((*expected).to_string());
+        }
+    }
+
+    for dir in REQUIRED_INCLUDE_DIRS {
+        if !scan.pack_root.join(dir).is_dir() {
+            report.error(
+                Diagnostic::new(CHECK, format!("shader include directory is missing: {dir}"))
+                    .with_path((*dir).to_string()),
             );
         }
-        for contract in &tech.value.contracts {
-            if !contract_ids.contains(contract.as_str()) {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!(
-                            "technique '{}' references unknown contract '{}'",
-                            tech.id, contract
-                        ),
-                    )
-                    .with_path(tech.rel_path.clone())
-                    .with_id(tech.id.clone())
-                    .with_field("contracts"),
-                );
-            }
+    }
+
+    check_duplicate_names(scan, report);
+
+    let mut include_references = BTreeSet::new();
+    for file in &scan.render.wgsl_files {
+        if !file.rel_path.starts_with("render/shaders/") {
+            report.error(
+                Diagnostic::new(CHECK, "WGSL render shader is outside render/shaders")
+                    .with_path(file.rel_path.clone()),
+            );
         }
-        for (i, override_) in tech.value.profile_overrides.iter().enumerate() {
-            if !profile_ids.contains(&override_.profile) {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!(
-                            "technique '{}' profile_override #{} points at unknown profile '{}'",
-                            tech.id,
-                            i + 1,
-                            override_.profile
-                        ),
-                    )
-                    .with_path(tech.rel_path.clone())
-                    .with_id(tech.id.clone())
-                    .with_field(format!("profile_overrides[{i}].profile")),
-                );
-            }
-            if let Some(budget) = &feature_budget {
-                for (j, feature) in override_.enable_features.iter().enumerate() {
-                    check_known_feature(
-                        report,
-                        budget,
-                        &tech.id,
-                        &tech.rel_path,
-                        &format!("profile_overrides[{i}].enable_features"),
-                        j,
-                        feature,
-                    );
-                }
-                for (j, feature) in override_.disable_features.iter().enumerate() {
-                    check_known_feature(
-                        report,
-                        budget,
-                        &tech.id,
-                        &tech.rel_path,
-                        &format!("profile_overrides[{i}].disable_features"),
-                        j,
-                        feature,
-                    );
-                }
-            }
+        check_wgsl_source(
+            scan,
+            report,
+            &file.rel_path,
+            &file.abs_path,
+            &mut include_references,
+        );
+    }
+
+    for file in &scan.render.wgsl_files {
+        let is_include = file.rel_path.starts_with("render/shaders/include/");
+        if is_include && !include_references.contains(&file.rel_path) {
+            report.warn(
+                Diagnostic::new(CHECK, "shader include is not referenced by any pass")
+                    .with_path(file.rel_path.clone())
+                    .with_suggestion("remove it or include it from a pass shader"),
+            );
         }
     }
 
-    for graph in &scan.render.render_graphs {
-        let mut produced: BTreeSet<String> = BTreeSet::new();
-        for (i, pass) in graph.value.passes.iter().enumerate() {
-            if let Some(technique) = &pass.technique {
-                if !technique_ids.contains(technique.as_str()) {
-                    report.error(
-                        Diagnostic::new(
-                            CHECK,
-                            format!(
-                                "render graph '{}' pass '{}' references unknown technique '{}'",
-                                graph.id, pass.name, technique
-                            ),
-                        )
-                        .with_path(graph.rel_path.clone())
-                        .with_id(graph.id.clone())
-                        .with_field(format!("passes[{i}].technique")),
-                    );
-                }
-            }
-            if let Some(perf) = &performance {
-                for input in &pass.inputs {
-                    let external = perf
-                        .graph_external_inputs
-                        .iter()
-                        .any(|known| known == input);
-                    if !external && !produced.contains(input) {
-                        report.error(
-                            Diagnostic::new(
-                                CHECK,
-                                format!(
-                                    "render graph '{}' pass '{}' reads unknown input '{}'",
-                                    graph.id, pass.name, input
-                                ),
-                            )
-                            .with_path(graph.rel_path.clone())
-                            .with_id(graph.id.clone())
-                            .with_field(format!("passes[{i}].inputs")),
-                        );
-                    }
-                }
-                for output in &pass.outputs {
-                    if !perf.graph_outputs.iter().any(|known| known == output) {
-                        report.error(
-                            Diagnostic::new(
-                                CHECK,
-                                format!(
-                                    "render graph '{}' pass '{}' writes unknown output '{}'",
-                                    graph.id, pass.name, output
-                                ),
-                            )
-                            .with_path(graph.rel_path.clone())
-                            .with_id(graph.id.clone())
-                            .with_field(format!("passes[{i}].outputs")),
-                        );
-                    }
-                }
-            }
-            produced.extend(pass.outputs.iter().cloned());
+    for expected in EXPECTED_SHADERS {
+        if !shader_paths.contains(*expected) {
+            continue;
         }
+        report.unused.shaders.retain(|path| path != expected);
     }
 
-    for profile in &scan.render.profiles {
-        if let Some(perf) = &performance {
-            if !perf
-                .quality_classes
-                .iter()
-                .any(|class| class == &profile.value.quality_class)
-            {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!(
-                            "render profile '{}' uses unknown quality_class '{}'",
-                            profile.id, profile.value.quality_class
-                        ),
-                    )
-                    .with_path(profile.rel_path.clone())
-                    .with_id(profile.id.clone())
-                    .with_field("quality_class"),
-                );
-            }
-        }
-        if let Some(budget) = &feature_budget {
-            for feature in profile.value.feature_overrides.keys() {
-                if !budget.known_features.iter().any(|known| known == feature) {
-                    report.error(
-                        Diagnostic::new(
-                            CHECK,
-                            format!(
-                                "render profile '{}' overrides unknown feature '{}'",
-                                profile.id, feature
-                            ),
-                        )
-                        .with_path(profile.rel_path.clone())
-                        .with_id(profile.id.clone())
-                        .with_field("feature_overrides"),
-                    );
-                }
-            }
-        }
-        report.planet.render_profiles.push(RenderProfileSummary {
-            id: profile.id.clone(),
-            label: profile.value.label.clone(),
-            quality_class: profile.value.quality_class.clone(),
-            fog: profile.value.fog,
-            water: profile.value.water.clone(),
-            enabled_features: profile
-                .value
-                .feature_overrides
-                .values()
-                .filter(|enabled| **enabled)
-                .count(),
-        });
-    }
+    report.planet.render_profiles = vec![
+        profile_summary("potato", "Potato", false, "cheap", 0),
+        profile_summary("balanced", "Balanced", true, "clean", 3),
+        profile_summary("high", "High", true, "cinematic", 6),
+        profile_summary("ultra", "Ultra", true, "cinematic+", 8),
+    ];
     report.planet.counts.render_profiles = report.planet.render_profiles.len();
-
-    let _ = module_by_id;
 }
 
-fn check_technique_budget(
-    report: &mut Report,
-    feature_budget: &Option<RawFeatureBudget>,
-    tech: &crate::scan::RenderItem<vv_content_schema::RawRenderTechnique>,
-) {
-    let Some(budget) = feature_budget else { return };
-    if tech.value.features.len() > budget.max_features_per_technique {
-        report.error(
-            Diagnostic::new(
-                CHECK,
-                format!(
-                    "technique '{}' enables {} features but budget allows {}",
-                    tech.id,
-                    tech.value.features.len(),
-                    budget.max_features_per_technique
-                ),
-            )
-            .with_path(tech.rel_path.clone())
-            .with_id(tech.id.clone())
-            .with_field("features"),
-        );
-    }
-    for (i, feature) in tech.value.features.iter().enumerate() {
-        check_known_feature(
-            report,
-            budget,
-            &tech.id,
-            &tech.rel_path,
-            "features",
-            i,
-            feature,
-        );
+fn profile_summary(
+    id: &str,
+    label: &str,
+    fog: bool,
+    water: &str,
+    enabled_features: usize,
+) -> RenderProfileSummary {
+    RenderProfileSummary {
+        id: format!("vv-render:{id}"),
+        label: label.to_string(),
+        quality_class: id.to_string(),
+        fog,
+        water: water.to_string(),
+        enabled_features,
     }
 }
 
-fn check_technique_classes(
-    report: &mut Report,
-    performance: &Option<RawPerformanceClasses>,
-    tech: &crate::scan::RenderItem<vv_content_schema::RawRenderTechnique>,
-) {
-    let Some(perf) = performance else { return };
-    if !perf
-        .render_passes
-        .iter()
-        .any(|pass| pass == &tech.value.pass)
-    {
-        report.error(
-            Diagnostic::new(
-                CHECK,
-                format!(
-                    "technique '{}' uses unknown render pass '{}'",
-                    tech.id, tech.value.pass
-                ),
-            )
-            .with_path(tech.rel_path.clone())
-            .with_id(tech.id.clone())
-            .with_field("pass"),
-        );
+fn check_duplicate_names(scan: &PackScan, report: &mut Report) {
+    let mut by_name: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for file in &scan.render.wgsl_files {
+        let Some(name) = Path::new(&file.rel_path)
+            .file_name()
+            .and_then(|name| name.to_str())
+        else {
+            continue;
+        };
+        by_name
+            .entry(name.to_string())
+            .or_default()
+            .push(file.rel_path.clone());
     }
-    if !perf
-        .vertex_layouts
-        .iter()
-        .any(|layout| layout == &tech.value.vertex_layout)
-    {
-        report.error(
-            Diagnostic::new(
-                CHECK,
-                format!(
-                    "technique '{}' uses unknown vertex_layout '{}'",
-                    tech.id, tech.value.vertex_layout
-                ),
-            )
-            .with_path(tech.rel_path.clone())
-            .with_id(tech.id.clone())
-            .with_field("vertex_layout"),
-        );
-    }
-    for (i, output) in tech.value.outputs.iter().enumerate() {
-        if !perf.technique_outputs.iter().any(|known| known == output) {
-            report.error(
-                Diagnostic::new(
-                    CHECK,
-                    format!("technique '{}' writes unknown output '{}'", tech.id, output),
-                )
-                .with_path(tech.rel_path.clone())
-                .with_id(tech.id.clone())
-                .with_field(format!("outputs[{i}]")),
+    for (name, paths) in by_name {
+        if paths.len() > 1 {
+            report.warn(
+                Diagnostic::new(CHECK, format!("duplicate WGSL file name '{name}'"))
+                    .with_path(paths.join(", "))
+                    .with_suggestion("prefer unique pass/include names for clear diagnostics"),
             );
         }
     }
 }
 
-fn read_validation<T: serde::de::DeserializeOwned>(
+fn check_wgsl_source(
     scan: &PackScan,
     report: &mut Report,
-    file_name: &str,
-) -> Option<T> {
-    let path = scan
-        .pack_root
-        .join("render")
-        .join("validation")
-        .join(file_name);
-    if !path.exists() {
-        report.error(
-            Diagnostic::new(
-                CHECK,
-                format!("render validation preset '{}' is missing", file_name),
-            )
-            .with_path(format!("render/validation/{file_name}"))
-            .with_suggestion(
-                "render packs must declare validation presets, not rely on compiler defaults",
-            ),
-        );
-        return None;
-    }
-    match read_typed::<T>(&scan.pack_root, &path) {
-        Ok(value) => Some(value),
-        Err(error) => {
-            report.add_parse_error(&error);
-            None
-        }
-    }
-}
-
-fn check_ref(
-    report: &mut Report,
-    reference: &str,
-    valid: &BTreeSet<String>,
-    parent_id: &str,
-    parent_path: &str,
-    field: &str,
+    rel_path: &str,
+    abs_path: &Path,
+    include_references: &mut BTreeSet<String>,
 ) {
-    if !valid.contains(reference) {
+    let Ok(source) = std::fs::read_to_string(abs_path) else {
         report.error(
-            Diagnostic::new(
-                CHECK,
-                format!(
-                    "technique '{}' {} references unknown module '{}'",
-                    parent_id, field, reference
-                ),
-            )
-            .with_path(parent_path.to_string())
-            .with_id(parent_id.to_string())
-            .with_field(field.to_string()),
-        );
-    }
-}
-
-fn check_known_feature(
-    report: &mut Report,
-    budget: &RawFeatureBudget,
-    parent_id: &str,
-    parent_path: &str,
-    field: &str,
-    index: usize,
-    feature: &str,
-) {
-    if !budget.known_features.iter().any(|known| known == feature) {
-        report.error(
-            Diagnostic::new(
-                CHECK,
-                format!(
-                    "technique '{}' references unknown feature '{}'",
-                    parent_id, feature
-                ),
-            )
-            .with_path(parent_path.to_string())
-            .with_id(parent_id.to_string())
-            .with_field(format!("{field}[{index}]")),
-        );
-    }
-}
-
-fn check_wgsl_source(scan: &PackScan, report: &mut Report, module_id: &str, path: &Path) {
-    let rel = pack_rel(&scan.pack_root, path);
-    let Ok(source) = std::fs::read_to_string(path) else {
-        report.error(
-            Diagnostic::new(
-                CHECK,
-                format!("cannot read WGSL source for '{}'", module_id),
-            )
-            .with_path(rel)
-            .with_id(module_id.to_string()),
+            Diagnostic::new(CHECK, "cannot read WGSL source").with_path(rel_path.to_string()),
         );
         return;
     };
     if source.trim().is_empty() {
-        report.error(
-            Diagnostic::new(CHECK, format!("WGSL source for '{}' is empty", module_id))
-                .with_path(rel.clone())
-                .with_id(module_id.to_string()),
+        report
+            .error(Diagnostic::new(CHECK, "WGSL source is empty").with_path(rel_path.to_string()));
+    }
+    let line_count = source.lines().count();
+    if line_count > MAX_SHADER_LINES {
+        report.warn(
+            Diagnostic::new(
+                CHECK,
+                format!("WGSL source has {line_count} lines; split shared code into includes"),
+            )
+            .with_path(rel_path.to_string()),
         );
     }
     for (open, close, name) in [
@@ -581,15 +212,91 @@ fn check_wgsl_source(scan: &PackScan, report: &mut Report, module_id: &str, path
     ] {
         if !balanced_delimiters(&source, open, close) {
             report.error(
-                Diagnostic::new(
-                    CHECK,
-                    format!("WGSL source for '{}' has unbalanced {}", module_id, name),
-                )
-                .with_path(rel.clone())
-                .with_id(module_id.to_string()),
+                Diagnostic::new(CHECK, format!("WGSL source has unbalanced {name}"))
+                    .with_path(rel_path.to_string()),
             );
         }
     }
+
+    let base_dir = Path::new(rel_path)
+        .parent()
+        .unwrap_or_else(|| Path::new("render/shaders"));
+    for (line_index, line) in source.lines().enumerate() {
+        let Some(include) = parse_include(line) else {
+            continue;
+        };
+        let include_rel = match resolve_include(base_dir, include) {
+            Ok(path) => path,
+            Err(error) => {
+                report.error(
+                    Diagnostic::new(CHECK, error)
+                        .with_path(rel_path.to_string())
+                        .with_field(format!("line {}", line_index + 1)),
+                );
+                continue;
+            }
+        };
+        let include_rel = include_rel.to_string_lossy().replace('\\', "/");
+        if !include_rel.starts_with("render/shaders/include/")
+            && !include_rel.starts_with("render/shaders/passes/")
+        {
+            report.error(
+                Diagnostic::new(
+                    CHECK,
+                    format!("include points outside allowed include tree: {include}"),
+                )
+                .with_path(rel_path.to_string())
+                .with_field(format!("line {}", line_index + 1)),
+            );
+        }
+        if !scan.pack_root.join(&include_rel).is_file() {
+            report.error(
+                Diagnostic::new(CHECK, format!("include target is missing: {include_rel}"))
+                    .with_path(rel_path.to_string())
+                    .with_field(format!("line {}", line_index + 1)),
+            );
+        }
+        include_references.insert(include_rel);
+    }
+}
+
+fn parse_include(line: &str) -> Option<&str> {
+    let rest = line.trim().strip_prefix("#include")?.trim();
+    rest.strip_prefix('"')?
+        .split_once('"')
+        .map(|(path, _)| path)
+}
+
+fn resolve_include(base_dir: &Path, include: &str) -> Result<PathBuf, String> {
+    let include_path = Path::new(include);
+    if include_path.is_absolute() {
+        return Err(format!("absolute include path is forbidden: {include}"));
+    }
+    let mut joined = if include.starts_with("include/") || include.starts_with("passes/") {
+        PathBuf::from("render/shaders").join(include)
+    } else if include.starts_with("render/") {
+        PathBuf::from(include)
+    } else {
+        base_dir.join(include)
+    };
+    let mut normalized = PathBuf::new();
+    for component in joined.components() {
+        match component {
+            Component::Normal(part) => normalized.push(part),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !normalized.pop() {
+                    return Err(format!("include escapes shader root: {include}"));
+                }
+            }
+            other => return Err(format!("unsupported include path component {other:?}")),
+        }
+    }
+    joined = normalized;
+    if !joined.starts_with("render/shaders/") {
+        return Err(format!("include escapes render/shaders: {include}"));
+    }
+    Ok(joined)
 }
 
 fn balanced_delimiters(source: &str, open: char, close: char) -> bool {
@@ -605,10 +312,4 @@ fn balanced_delimiters(source: &str, open: char, close: char) -> bool {
         }
     }
     depth == 0
-}
-
-fn pack_rel(pack_root: &Path, abs: &Path) -> String {
-    abs.strip_prefix(pack_root)
-        .map(|p| p.to_string_lossy().replace('\\', "/"))
-        .unwrap_or_else(|_| abs.display().to_string())
 }

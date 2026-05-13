@@ -64,7 +64,10 @@ impl TagRegistry {
         let mut content_to_tags: HashMap<String, Vec<TagId>> = HashMap::new();
         for tag in &tags {
             for value in &tag.values {
-                content_to_tags.entry(value.clone()).or_default().push(tag.id);
+                content_to_tags
+                    .entry(value.clone())
+                    .or_default()
+                    .push(tag.id);
             }
         }
 
@@ -115,4 +118,3 @@ impl TagRegistry {
         self.tags.is_empty()
     }
 }
-

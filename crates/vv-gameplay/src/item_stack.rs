@@ -24,7 +24,10 @@ impl ItemStack {
     }
 
     pub fn single(item_id: ItemId) -> Self {
-        Self { item_id, quantity: 1 }
+        Self {
+            item_id,
+            quantity: 1,
+        }
     }
 
     /// Returns `true` if this stack can absorb `other` (same item, quantity fits).
@@ -41,4 +44,3 @@ impl ItemStack {
         added
     }
 }
-

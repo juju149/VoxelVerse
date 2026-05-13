@@ -25,11 +25,8 @@ pub fn run(index: &PackIndex<'_>, allowed: &AllowedUnused, report: &mut Report) 
         // Validate PNG decodes — empty/corrupt files break the runtime.
         if let Err(e) = probe_png(&tex.abs_path) {
             report.error(
-                Diagnostic::new(
-                    CHECK,
-                    format!("invalid PNG '{}': {}", tex.rel_path, e),
-                )
-                .with_path(tex.rel_path.clone()),
+                Diagnostic::new(CHECK, format!("invalid PNG '{}': {}", tex.rel_path, e))
+                    .with_path(tex.rel_path.clone()),
             );
         }
 
@@ -107,10 +104,7 @@ fn check_pbr_groups(index: &PackIndex<'_>, report: &mut Report) {
         for ch in CHANNELS {
             let suffix = format!("_{ch}");
             if let Some(base) = stem.strip_suffix(&suffix) {
-                groups
-                    .entry(base.to_string())
-                    .or_default()
-                    .insert(ch);
+                groups.entry(base.to_string()).or_default().insert(ch);
             }
         }
     }

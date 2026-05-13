@@ -12,9 +12,9 @@
 //! `warp * [1, 0.73, 1.37]`) creates banding because all three axes share
 //! the same underlying warp pattern.
 
-use vv_pack_compiler::{CompiledCurve, CompiledNoiseField, CompiledNoiseKind, ProceduralRegistry};
 use crate::noise::{NoiseGenerator, NoiseSettings, NoiseType};
 use glam::Vec3;
+use vv_pack_compiler::{CompiledCurve, CompiledNoiseField, CompiledNoiseKind, ProceduralRegistry};
 
 pub(super) fn sample_noise_field(
     registry: &ProceduralRegistry,
@@ -90,5 +90,3 @@ pub(super) fn sample_noise_field(
     }
     value.clamp(0.0, 1.0)
 }
-
-

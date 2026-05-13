@@ -1,9 +1,9 @@
 use super::{CpuMesh, CpuVertex, MeshGen};
-use vv_pack_compiler::TerrainPalette;
+use glam::Vec3;
 use vv_math::CoordSystem;
+use vv_pack_compiler::TerrainPalette;
 use vv_voxel::VoxelCoord;
 use vv_world::PlanetData;
-use glam::Vec3;
 
 impl MeshGen {
     pub fn generate_collision_debug(player_pos: Vec3, planet: &PlanetData) -> CpuMesh {
@@ -125,4 +125,3 @@ impl MeshGen {
         CpuMesh::new(verts, inds)
     }
 }
-

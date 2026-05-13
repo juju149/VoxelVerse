@@ -65,4 +65,3 @@ fn first_surface_layer(top: u32, front: u32, right: u32) -> u32 {
         .find(|layer| *layer != 0)
         .unwrap_or(0)
 }
-

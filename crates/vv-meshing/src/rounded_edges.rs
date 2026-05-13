@@ -48,4 +48,3 @@ mod tests {
         assert_eq!(packed >> 16, 0b0101);
     }
 }
-

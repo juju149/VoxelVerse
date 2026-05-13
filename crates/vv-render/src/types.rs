@@ -1,5 +1,5 @@
-use vv_meshing::CpuVertex;
 use bytemuck::{Pod, Zeroable};
+use vv_meshing::CpuVertex;
 
 /// GPU vertex layout — 48 bytes.
 /// Attribute locations match the `terrain_chunk_mesh` render vertex contract.
@@ -43,4 +43,3 @@ pub struct ChunkMesh {
     pub center: glam::Vec3,
     pub radius: f32,
 }
-

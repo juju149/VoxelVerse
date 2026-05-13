@@ -2,12 +2,12 @@ use super::{
     ambient_occlusion, pack_material_edges, prop_baker::bake_props, CpuMesh, CpuVertex,
     FaceEdgeMask, MeshGen,
 };
-use vv_pack_compiler::CompiledMesh;
+use glam::Vec3;
 use vv_math::CoordSystem;
-use vv_worldgen::ChunkFeatureMap;
+use vv_pack_compiler::CompiledMesh;
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use vv_world::PlanetData;
-use glam::Vec3;
+use vv_worldgen::ChunkFeatureMap;
 
 /// Read-only voxel accessor used during meshing.
 ///
@@ -570,8 +570,8 @@ impl MeshGen {
 #[cfg(test)]
 mod tests {
     use super::{CandidateBuffer, MeshGen, QuadFace};
-    use vv_voxel::VoxelCoord;
     use glam::Vec3;
+    use vv_voxel::VoxelCoord;
 
     fn coord(layer: u32, u: u32, v: u32) -> VoxelCoord {
         VoxelCoord {
@@ -641,4 +641,3 @@ mod tests {
         assert_eq!(idx, 4);
     }
 }
-

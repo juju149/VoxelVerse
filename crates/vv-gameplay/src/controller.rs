@@ -1,10 +1,10 @@
 //engine controller
 
 use crate::{Player, PlayerInput};
+use glam::{Mat4, Vec2, Vec3};
 use vv_math::Ray;
 use vv_physics::Physics;
 use vv_voxel::VoxelCoord;
-use glam::{Mat4, Vec2, Vec3};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
@@ -232,4 +232,3 @@ impl Controller {
         }
     }
 }
-

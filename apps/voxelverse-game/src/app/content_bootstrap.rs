@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use vv_pack_compiler::{
     compile_objects, BlockRegistry, CompiledPlanet, ContentCompiler, ItemRegistry, LootRegistry,
-    ProceduralRegistry, RecipeRegistry, RenderRegistry, TagRegistry, TextureRegistry,
+    ProceduralRegistry, RecipeRegistry, TagRegistry, TextureRegistry,
 };
 use vv_pack_loader::PackLoader;
 
@@ -19,7 +19,6 @@ pub struct LoadedCoreContent {
     pub procedural_planet_index: usize,
     pub textures: Arc<TextureRegistry>,
     pub terrain_visuals: Arc<TerrainVisualPalette>,
-    pub render: Arc<RenderRegistry>,
     pub planet: CompiledPlanet,
     /// Maps content ref strings to file paths relative to the core pack directory.
     pub vox_asset_paths: HashMap<String, String>,
@@ -43,13 +42,6 @@ pub fn load_core_content() -> LoadedCoreContent {
     let core_pack_dir = pack_root.join("core");
     let pack = PackLoader::load_from_dir(&core_pack_dir).unwrap_or_else(|e| {
         panic!("Failed to load {}: {}", core_pack_dir.display(), e);
-    });
-
-    let compiled_render = ContentCompiler::compile_render_content(&pack).unwrap_or_else(|errors| {
-        for e in &errors {
-            eprintln!("[render content error] {}", e);
-        }
-        panic!("Render content compilation failed; see errors above.");
     });
 
     // ── Unified object compilation (.object.ron format) ─────────────────────
@@ -134,7 +126,6 @@ pub fn load_core_content() -> LoadedCoreContent {
         procedural_planet_index,
         textures: Arc::new(texture_registry),
         terrain_visuals: Arc::new(terrain_visuals),
-        render: Arc::new(compiled_render.registry),
         planet,
         vox_asset_paths,
         needed_vox_keys,

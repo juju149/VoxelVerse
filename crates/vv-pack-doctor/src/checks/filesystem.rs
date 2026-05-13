@@ -7,13 +7,7 @@ use crate::scan::PackScan;
 
 const CHECK: &str = "filesystem";
 
-const REQUIRED_DIRS: &[&str] = &[
-    "defs",
-    "media",
-    "media/textures",
-    "media/voxel",
-    "render",
-];
+const REQUIRED_DIRS: &[&str] = &["defs", "media", "media/textures", "media/voxel", "render"];
 
 const REQUIRED_FILES: &[&str] = &["pack.ron", "README.md"];
 
@@ -74,7 +68,9 @@ fn check_empty_dirs(pack_root: &Path, dir: &Path, report: &mut Report) {
         return;
     }
 
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
     let mut had_child = false;
     let mut children = Vec::new();
     for entry in entries.flatten() {

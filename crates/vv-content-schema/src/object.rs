@@ -160,13 +160,28 @@ pub struct RawBlockStates {
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RawBlockStateProperty {
-    Axis { default: String },
-    FacingHorizontal { default: String },
-    Facing { default: String },
-    Half { default: String },
-    StairShape { default: String },
-    Bool { default: bool },
-    Enum { values: Vec<String>, default: String },
+    Axis {
+        default: String,
+    },
+    FacingHorizontal {
+        default: String,
+    },
+    Facing {
+        default: String,
+    },
+    Half {
+        default: String,
+    },
+    StairShape {
+        default: String,
+    },
+    Bool {
+        default: bool,
+    },
+    Enum {
+        values: Vec<String>,
+        default: String,
+    },
 }
 
 impl RawBlockStateProperty {

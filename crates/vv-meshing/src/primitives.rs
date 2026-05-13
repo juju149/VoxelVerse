@@ -1,6 +1,6 @@
 use super::{CpuMesh, CpuVertex, MeshGen};
-use vv_pack_compiler::TerrainPalette;
 use glam::Vec3;
+use vv_pack_compiler::TerrainPalette;
 
 impl MeshGen {
     pub fn generate_cylinder(radius: f32, height: f32, segments: u32) -> CpuMesh {
@@ -114,4 +114,3 @@ impl MeshGen {
         CpuMesh::new(verts, inds)
     }
 }
-

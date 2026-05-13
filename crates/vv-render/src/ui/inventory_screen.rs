@@ -1,7 +1,7 @@
+use super::theme::{UiAnchor, UiTheme, UiViewport, UserZoom};
 use vv_gameplay::{
     HotbarSlot, SlotRef, HOTBAR_SLOT_COUNT, INVENTORY_COLS, INVENTORY_ROWS, INVENTORY_SIZE,
 };
-use super::theme::{UiAnchor, UiTheme, UiViewport, UserZoom};
 
 /// A stack the player has picked up. Follows the cursor and is deposited on
 /// the next click — Minecraft-style. The source is remembered so we can put
@@ -125,18 +125,26 @@ impl InventoryUiState {
         match self.active_filter {
             InventoryFilter::All => true,
             InventoryFilter::Resources => {
-                matches!(category, "resource" | "ore" | "terrain" | "natural/log" | "natural/leaves" | "flora")
+                matches!(
+                    category,
+                    "resource" | "ore" | "terrain" | "natural/log" | "natural/leaves" | "flora"
+                )
             }
             InventoryFilter::Tools => matches!(category, "tool" | "weapon"),
             InventoryFilter::Food => matches!(category, "food" | "consumable"),
-            InventoryFilter::Misc => {
-                !matches!(
-                    category,
-                    "resource" | "ore" | "terrain" | "natural/log"
-                        | "natural/leaves" | "flora" | "tool" | "weapon"
-                        | "food" | "consumable"
-                )
-            }
+            InventoryFilter::Misc => !matches!(
+                category,
+                "resource"
+                    | "ore"
+                    | "terrain"
+                    | "natural/log"
+                    | "natural/leaves"
+                    | "flora"
+                    | "tool"
+                    | "weapon"
+                    | "food"
+                    | "consumable"
+            ),
         }
     }
 }
@@ -369,7 +377,7 @@ impl InventoryLayout {
             let label = filter.label();
             let chip_w = (label.chars().count() as f32 * s(theme.text.control_size) * 0.62
                 + s(theme.filter_chip.padding_x * 2.0))
-                .max(s(72.0));
+            .max(s(72.0));
             filter_chips.push((
                 filter,
                 UiRect {
@@ -536,5 +544,3 @@ impl InventoryLayout {
         None
     }
 }
-
-

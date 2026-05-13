@@ -1,13 +1,13 @@
 mod block_interaction;
 mod block_selection;
 mod console;
+mod controller;
 mod hotbar;
 mod inventory;
 pub mod item_stack;
 mod planet_resize;
 mod player;
 mod player_controller;
-mod controller;
 
 pub use block_interaction::{BlockActionIntent, BlockInteraction};
 pub use block_selection::{BlockSelection, BlockSelectionMode};

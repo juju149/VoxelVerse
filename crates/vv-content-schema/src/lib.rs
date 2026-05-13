@@ -14,7 +14,6 @@
 //! ├── pack.rs       — pack.ron manifest
 //! ├── object.rs     — defs/objects/*.object.ron
 //! ├── world.rs      — defs/world/**.*
-//! ├── render.rs     — render/**
 //! ├── media.rs      — texture / material descriptors
 //! ├── skeleton.rs   — defs/skeletons/**
 //! ├── sound.rs      — defs/sounds/**
@@ -26,7 +25,6 @@ mod generated;
 mod media;
 pub mod object;
 mod pack;
-mod render;
 mod skeleton;
 mod sound;
 mod version;
@@ -39,10 +37,7 @@ pub use media::{
     RawRenderMode, RawTextureSampling, TextureRef,
 };
 pub use object::*;
-pub use pack::{
-    RawIdentityMode, RawPackContentRoots, RawPackKind, RawPackManifest, RawPackRules,
-};
-pub use render::*;
+pub use pack::{RawIdentityMode, RawPackContentRoots, RawPackKind, RawPackManifest, RawPackRules};
 pub use skeleton::*;
 pub use sound::*;
 pub use version::*;

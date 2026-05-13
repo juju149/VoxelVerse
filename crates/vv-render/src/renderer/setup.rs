@@ -1,15 +1,18 @@
+use super::SceneTarget;
 use super::{GlobalUniform, LocalUniform, Renderer};
-use vv_pack_compiler::TextureRegistry;
-use vv_diagnostics::{FrameStats, SystemDiagnostics};
-use vv_meshing::MeshGen;
 use crate::lod_animation::LodAnimator;
 use crate::perf_profile::{PerfProfile, PerfTier};
+use crate::render_graph::ShaderPath;
+use crate::shader_library::ShaderLibrary;
 use crate::texture_atlas::TextureAtlas;
 use crate::types::Vertex;
-use vv_meshing::{MeshScheduler, SchedulerStats};
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::sync::mpsc::channel;
-use vv_pack_compiler::RenderRegistry;
+use vv_diagnostics::{FrameStats, SystemDiagnostics};
+use vv_meshing::MeshGen;
+use vv_meshing::{MeshScheduler, SchedulerStats};
+use vv_pack_compiler::TextureRegistry;
 use wgpu::util::DeviceExt;
 use wgpu::PresentMode;
 use winit::window::Window;
@@ -19,7 +22,7 @@ impl<'a> Renderer<'a> {
         window: &'a Window,
         textures: &TextureRegistry,
         material_colors: &[[f32; 4]],
-        render_registry: &RenderRegistry,
+        core_pack_dir: &Path,
     ) -> Self {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window).unwrap();
@@ -72,6 +75,12 @@ impl<'a> Renderer<'a> {
         let mut config = surface
             .get_default_config(&adapter, size.width, size.height)
             .unwrap();
+        // Force swapchain to a widely-supported LDR format to avoid validation
+        // errors when third-party pipelines (glyphon) expect an sRGB target.
+        // This sacrifices HDR swapchain, but ensures runtime compatibility
+        // across diverse GPUs. If HDR is required later, adapt glyphon
+        // pipeline creation to match the surface format.
+        config.format = wgpu::TextureFormat::Bgra8UnormSrgb;
 
         let available_present_modes = surface.get_capabilities(&adapter).present_modes;
 
@@ -87,6 +96,13 @@ impl<'a> Renderer<'a> {
         surface.configure(&device, &config);
 
         let text_resources = Self::create_text_resources(&device, &queue, config.format);
+        let shader_library = ShaderLibrary::load(core_pack_dir).unwrap_or_else(|e| {
+            panic!(
+                "Failed to load render shader library from {}: {}",
+                core_pack_dir.display(),
+                e
+            )
+        });
 
         let shadow_map = Self::create_shadow_map(&device, perf.shadow_map_size);
 
@@ -346,13 +362,15 @@ impl<'a> Renderer<'a> {
         // --- PIPELINES ---
         let terrain_shaders = Self::create_shader_pair(
             &device,
-            render_registry,
-            "core:render/techniques/terrain/terrain_opaque",
+            &shader_library,
+            ShaderPath::TerrainVertex,
+            ShaderPath::TerrainFragment,
         );
         let ui_shaders = Self::create_shader_pair(
             &device,
-            render_registry,
-            "core:render/techniques/ui/ui_flat",
+            &shader_library,
+            ShaderPath::UiVertex,
+            ShaderPath::UiFragment,
         );
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
@@ -431,7 +449,7 @@ impl<'a> Renderer<'a> {
                 module: &ui_shaders.fragment,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
+                    format: SceneTarget::FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -485,8 +503,9 @@ impl<'a> Renderer<'a> {
 
         let sky_shaders = Self::create_shader_pair(
             &device,
-            render_registry,
-            "core:render/techniques/sky/sky_gradient",
+            &shader_library,
+            ShaderPath::SkyVertex,
+            ShaderPath::SkyFragment,
         );
 
         let pipeline_sky = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -500,7 +519,7 @@ impl<'a> Renderer<'a> {
             fragment: Some(wgpu::FragmentState {
                 module: &sky_shaders.fragment,
                 entry_point: "fs_main",
-                targets: &[Some(config.format.into())],
+                targets: &[Some(SceneTarget::FORMAT.into())],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -511,6 +530,63 @@ impl<'a> Renderer<'a> {
             multisample: Default::default(),
             multiview: None,
         });
+
+        let clouds_shaders = Self::create_shader_pair(
+            &device,
+            &shader_library,
+            ShaderPath::CloudsVertex,
+            ShaderPath::CloudsFragment,
+        );
+        let pipeline_clouds = Self::create_fullscreen_pipeline(
+            &device,
+            &sky_layout,
+            &clouds_shaders.vertex,
+            &clouds_shaders.fragment,
+            SceneTarget::FORMAT,
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            "Clouds Pipeline",
+        );
+
+        let fog_shaders = Self::create_shader_pair(
+            &device,
+            &shader_library,
+            ShaderPath::VolumetricFogVertex,
+            ShaderPath::VolumetricFogFragment,
+        );
+        let pipeline_volumetric_fog = Self::create_fullscreen_pipeline(
+            &device,
+            &sky_layout,
+            &fog_shaders.vertex,
+            &fog_shaders.fragment,
+            SceneTarget::FORMAT,
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            "Volumetric Fog Pipeline",
+        );
+
+        let scene = SceneTarget::new(&device, config.width, config.height);
+        let post_bind_layout = Self::create_post_bind_layout(&device);
+        let post_bind =
+            Self::create_post_bind_group(&device, &post_bind_layout, &scene.view, &scene.sampler);
+        let post_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Post Pipeline Layout"),
+            bind_group_layouts: &[&sky_global_layout, &post_bind_layout],
+            push_constant_ranges: &[],
+        });
+        let post_shaders = Self::create_shader_pair(
+            &device,
+            &shader_library,
+            ShaderPath::FullscreenVertex,
+            ShaderPath::FinalCompositeFragment,
+        );
+        let pipeline_post = Self::create_fullscreen_pipeline(
+            &device,
+            &post_layout,
+            &post_shaders.vertex,
+            &post_shaders.fragment,
+            config.format,
+            None,
+            "Final Composite Pipeline",
+        );
 
         // --- MESHES ---
         let player_mesh = MeshGen::generate_cylinder(0.4, 1.8, 16);
@@ -585,6 +661,10 @@ impl<'a> Renderer<'a> {
             sun_dir: [0.0, 1.0, 0.0, 0.0],
             sky_horizon: [0.72, 0.84, 1.00, 0.5],
             sky_zenith: [0.12, 0.28, 0.76, 1.0],
+            render_params: [0.0, 0.0, config.width as f32, config.height as f32],
+            atmosphere_params: [0.0, 0.0, 0.0, 1.0],
+            cloud_params: [0.0, 0.0, 0.0, 0.0],
+            water_params: [0.55, 0.90, 0.72, 0.0],
         };
 
         let global_buf_identity = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -625,7 +705,13 @@ impl<'a> Renderer<'a> {
             pipeline_wire,
             pipeline_line,
             pipeline_sky,
+            pipeline_clouds,
+            pipeline_volumetric_fog,
+            pipeline_post,
             sky_global_bind,
+            post_bind_layout,
+            post_bind,
+            scene,
             chunks: HashMap::new(),
             lod_chunks: HashMap::new(),
             global_buf,
@@ -703,55 +789,109 @@ impl<'a> Renderer<'a> {
 
     fn create_shader_pair(
         device: &wgpu::Device,
-        render_registry: &RenderRegistry,
-        technique_key: &str,
+        shader_library: &ShaderLibrary,
+        vertex: ShaderPath,
+        fragment: ShaderPath,
     ) -> RenderShaderPair {
-        let technique = render_registry
-            .technique_by_key(technique_key)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Render technique '{}' is missing from RenderRegistry",
-                    technique_key
-                )
-            });
-        let vertex_module = render_registry
-            .shader_module(technique.vertex_stage)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Render technique '{}' references a missing vertex shader",
-                    technique_key
-                )
-            });
-        let fragment_id = technique.fragment_stage.unwrap_or_else(|| {
-            panic!(
-                "Render technique '{}' must declare a fragment shader for this pipeline",
-                technique_key
-            )
-        });
-        let fragment_module = render_registry
-            .shader_module(fragment_id)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Render technique '{}' references a missing fragment shader",
-                    technique_key
-                )
-            });
-
-        let vertex_label = format!("{} vertex {}", technique.label, vertex_module.source_path);
-        let fragment_label = format!(
-            "{} fragment {}",
-            technique.label, fragment_module.source_path
-        );
+        let vertex_source = shader_library
+            .source(vertex)
+            .unwrap_or_else(|e| panic!("missing vertex shader {}: {}", vertex.relative(), e));
+        let fragment_source = shader_library
+            .source(fragment)
+            .unwrap_or_else(|e| panic!("missing fragment shader {}: {}", fragment.relative(), e));
         RenderShaderPair {
             vertex: device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(&vertex_label),
-                source: wgpu::ShaderSource::Wgsl(vertex_module.source.as_str().into()),
+                label: Some(vertex.relative()),
+                source: wgpu::ShaderSource::Wgsl(vertex_source.into()),
             }),
             fragment: device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(&fragment_label),
-                source: wgpu::ShaderSource::Wgsl(fragment_module.source.as_str().into()),
+                label: Some(fragment.relative()),
+                source: wgpu::ShaderSource::Wgsl(fragment_source.into()),
             }),
         }
+    }
+
+    fn create_fullscreen_pipeline(
+        device: &wgpu::Device,
+        layout: &wgpu::PipelineLayout,
+        vertex: &wgpu::ShaderModule,
+        fragment: &wgpu::ShaderModule,
+        format: wgpu::TextureFormat,
+        blend: Option<wgpu::BlendState>,
+        label: &'static str,
+    ) -> wgpu::RenderPipeline {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module: vertex,
+                entry_point: "vs_main",
+                buffers: &[],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: fragment,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                cull_mode: None,
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: Default::default(),
+            multiview: None,
+        })
+    }
+
+    fn create_post_bind_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Post Bind Layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    pub(super) fn create_post_bind_group(
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+        view: &wgpu::TextureView,
+        sampler: &wgpu::Sampler,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Post Bind Group"),
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(sampler),
+                },
+            ],
+        })
     }
 }
 
@@ -759,4 +899,3 @@ struct RenderShaderPair {
     vertex: wgpu::ShaderModule,
     fragment: wgpu::ShaderModule,
 }
-

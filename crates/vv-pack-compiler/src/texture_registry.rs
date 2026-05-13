@@ -98,7 +98,10 @@ impl TextureRegistry {
             materials.push(mat);
         }
 
-        Ok(Self { tile_size, materials })
+        Ok(Self {
+            tile_size,
+            materials,
+        })
     }
 
     pub fn tile_size(&self) -> u32 {

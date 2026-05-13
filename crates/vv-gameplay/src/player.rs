@@ -1,6 +1,6 @@
+use glam::{Mat4, Quat, Vec3};
 use vv_physics::Physics;
 use vv_world::PlanetData;
-use glam::{Mat4, Quat, Vec3};
 
 pub struct Player {
     // State
@@ -152,4 +152,3 @@ impl Player {
         Mat4::look_at_rh(cam_pos, cam_pos + forward, up)
     }
 }
-

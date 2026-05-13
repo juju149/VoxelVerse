@@ -5,30 +5,6 @@ pub struct LoadedPack {
     pub manifest: RawPackManifest,
     pub objects: Vec<(String, RawObjectDef)>,
     pub voxel_assets: Option<RawVoxelAssetRegistry>,
-    pub render: RawRenderPack,
-}
-
-/// Raw render content after pack discovery. IDs are still path-derived keys,
-/// while WGSL bytes are loaded only for the compiler to validate and normalize.
-#[derive(Default)]
-pub struct RawRenderPack {
-    pub shader_modules: Vec<LoadedShaderModule>,
-    pub shader_contracts: Vec<(String, RawShaderContract)>,
-    pub techniques: Vec<(String, RawRenderTechnique)>,
-    pub material_families: Vec<(String, RawMaterialFamily)>,
-    pub profiles: Vec<(String, RawRenderProfile)>,
-    pub render_graphs: Vec<(String, RawRenderGraph)>,
-    pub allowed_shader_imports: Option<RawAllowedShaderImports>,
-    pub feature_budget: Option<RawFeatureBudget>,
-    pub performance_classes: Option<RawPerformanceClasses>,
-}
-
-pub struct LoadedShaderModule {
-    pub key: String,
-    pub metadata_path: String,
-    pub source_path: String,
-    pub metadata: RawShaderModule,
-    pub source: String,
 }
 
 #[derive(Default)]
@@ -82,7 +58,6 @@ impl PackLoader {
             manifest,
             objects: load_typed_tree(&defs.join("objects"), &defs, &namespace)?,
             voxel_assets: load_optional_file(&voxel_assets_path)?,
-            render: load_render_pack(pack_dir, &namespace)?,
         })
     }
 
@@ -113,18 +88,10 @@ impl PackLoader {
         Ok(RawProceduralPack {
             planets: load_typed_tree(&pick("planet_profiles", "planets"), &defs, &namespace)?,
             fields: load_typed_tree(&pick("noise_fields", "noise"), &defs, &namespace)?,
-            climates: load_typed_tree(
-                &pick("climate_profiles", "climate"),
-                &defs,
-                &namespace,
-            )?,
+            climates: load_typed_tree(&pick("climate_profiles", "climate"), &defs, &namespace)?,
             biome_sets: load_typed_tree(&pick("biome_sets", "biome_sets"), &defs, &namespace)?,
             biomes: load_typed_tree(&pick("biomes", "biomes"), &defs, &namespace)?,
-            terrain_layers: load_typed_tree(
-                &pick("terrain_layers", "terrain"),
-                &defs,
-                &namespace,
-            )?,
+            terrain_layers: load_typed_tree(&pick("terrain_layers", "terrain"), &defs, &namespace)?,
             ores: load_typed_tree(&pick("ores", "ores"), &defs, &namespace)?,
             caves: load_typed_tree(&pick("caves", "caves"), &defs, &namespace)?,
             vegetation: load_typed_tree_filtered(
@@ -133,11 +100,7 @@ impl PackLoader {
                 &namespace,
                 Some(".vegetation."),
             )?,
-            structures: load_typed_tree(
-                &pick("structures", "structures"),
-                &defs,
-                &namespace,
-            )?,
+            structures: load_typed_tree(&pick("structures", "structures"), &defs, &namespace)?,
             fauna: load_typed_tree(&pick("spawns", "spawns"), &defs, &namespace)?,
             vox_prop_scatters: load_typed_tree_filtered(
                 &pick("prop_scatters", "vegetation"),
@@ -147,117 +110,6 @@ impl PackLoader {
             )?,
         })
     }
-}
-
-fn load_render_pack(pack_dir: &Path, namespace: &str) -> Result<RawRenderPack, String> {
-    let root = pack_dir.join("render");
-    if !root.exists() {
-        return Ok(RawRenderPack::default());
-    }
-
-    Ok(RawRenderPack {
-        shader_modules: load_shader_modules(&root.join("shader_modules"), &root, namespace)?,
-        shader_contracts: load_render_typed_tree(&root.join("shader_contracts"), &root, namespace)?,
-        techniques: load_render_typed_tree(&root.join("techniques"), &root, namespace)?,
-        material_families: load_render_typed_tree(
-            &root.join("material_families"),
-            &root,
-            namespace,
-        )?,
-        profiles: load_render_typed_tree(&root.join("profiles"), &root, namespace)?,
-        render_graphs: load_render_typed_tree(&root.join("render_graph"), &root, namespace)?,
-        allowed_shader_imports: load_optional_file(
-            &root.join("validation").join("allowed_shader_imports.ron"),
-        )?,
-        feature_budget: load_optional_file(&root.join("validation").join("feature_budget.ron"))?,
-        performance_classes: load_optional_file(
-            &root.join("validation").join("performance_classes.ron"),
-        )?,
-    })
-}
-
-fn load_shader_modules(
-    dir: &Path,
-    render_root: &Path,
-    namespace: &str,
-) -> Result<Vec<LoadedShaderModule>, String> {
-    let mut paths = Vec::new();
-    collect_ron_files(dir, &mut paths, None)?;
-    paths.sort();
-
-    let mut modules = Vec::with_capacity(paths.len());
-    for metadata_path in paths {
-        let key = derive_render_key(namespace, render_root, &metadata_path)?;
-        let metadata = load_file::<RawShaderModule>(&metadata_path)?;
-        let source_path = metadata_path.with_extension("wgsl");
-        if !source_path.exists() {
-            return Err(format!(
-                "Shader module '{}' is missing WGSL source next to {}",
-                key,
-                metadata_path.display()
-            ));
-        }
-        let source = std::fs::read_to_string(&source_path)
-            .map_err(|e| format!("Cannot read {}: {}", source_path.display(), e))?;
-        modules.push(LoadedShaderModule {
-            key,
-            metadata_path: relative_path_string(render_root, &metadata_path)?,
-            source_path: relative_path_string(render_root, &source_path)?,
-            metadata,
-            source,
-        });
-    }
-
-    Ok(modules)
-}
-
-fn load_render_typed_tree<T: serde::de::DeserializeOwned>(
-    dir: &Path,
-    render_root: &Path,
-    namespace: &str,
-) -> Result<Vec<(String, T)>, String> {
-    let mut paths = Vec::new();
-    collect_ron_files(dir, &mut paths, None)?;
-    paths.sort();
-
-    paths
-        .into_iter()
-        .map(|path| {
-            let key = derive_render_key(namespace, render_root, &path)?;
-            let def = load_file::<T>(&path)?;
-            Ok((key, def))
-        })
-        .collect()
-}
-
-fn derive_render_key(namespace: &str, render_root: &Path, path: &Path) -> Result<String, String> {
-    let rel = path
-        .strip_prefix(render_root)
-        .map_err(|_| format!("{} is outside {}", path.display(), render_root.display()))?;
-    let mut parts: Vec<String> = rel
-        .iter()
-        .filter_map(|p| p.to_str())
-        .map(str::to_string)
-        .collect();
-    if parts.len() < 2 {
-        return Err(format!(
-            "Render definition path is too shallow: {}",
-            path.display()
-        ));
-    }
-    let last = parts
-        .pop()
-        .expect("len checked")
-        .trim_end_matches(".ron")
-        .to_string();
-    parts.push(strip_def_suffix(&last));
-    Ok(format!("{}:render/{}", namespace, parts.join("/")))
-}
-
-fn relative_path_string(root: &Path, path: &Path) -> Result<String, String> {
-    path.strip_prefix(root)
-        .map_err(|_| format!("{} is outside {}", path.display(), root.display()))
-        .map(|p| p.to_string_lossy().replace('\\', "/"))
 }
 
 fn namespace_from_dir(pack_dir: &Path) -> Result<String, String> {
@@ -271,8 +123,8 @@ fn namespace_from_dir(pack_dir: &Path) -> Result<String, String> {
 fn load_file<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
     let text = std::fs::read_to_string(path)
         .map_err(|e| format!("Cannot read {}: {}", path.display(), e))?;
-    let opts = ron::Options::default()
-        .with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME);
+    let opts =
+        ron::Options::default().with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME);
     opts.from_str(&text)
         .or_else(|_| opts.from_str(strip_outer_type_name(&text)))
         .map_err(|e| format!("Parse error in {}:\n  {}", path.display(), e))
@@ -363,9 +215,7 @@ fn collect_ron_files(
         } else {
             let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
             let is_ron = name.ends_with(".ron");
-            let passes_filter = suffix_filter
-                .map(|s| name.contains(s))
-                .unwrap_or(true);
+            let passes_filter = suffix_filter.map(|s| name.contains(s)).unwrap_or(true);
             if is_ron && passes_filter {
                 out.push(path);
             }
@@ -418,15 +268,19 @@ fn derive_world_key(dirs: &[String], stem: &str, new_layout: bool) -> Result<Str
         "biomes" => "biome",
         "biome_sets" => "biome_set",
         "caves" => "cave",
-        "climate_profiles" => "climate",   // old name
-        "noise_fields" => "field",         // old name
+        "climate_profiles" => "climate", // old name
+        "noise_fields" => "field",       // old name
         "ores" => "ore",
         "planet_profiles" => "planet_profile", // old name
         "spawns" => "spawn",
         "structures" => "structure",
-        "terrain_layers" => "terrain_layers",  // old name
+        "terrain_layers" => "terrain_layers", // old name
         "vegetation" => "vegetation",
-        "visual_details" => return Err("'visual_details' directory is obsolete; rename to 'prop_scatters'".to_string()),
+        "visual_details" => {
+            return Err(
+                "'visual_details' directory is obsolete; rename to 'prop_scatters'".to_string(),
+            )
+        }
         "prop_scatters" => "prop_scatter",
         // New layout sub-dirs (defs/world/)
         "climate" => "climate",
@@ -471,7 +325,11 @@ mod tests {
             PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
 
         assert!(!pack.objects.is_empty(), "core pack must load objects");
-        assert!(pack.objects.len() >= 20, "expected >= 20 objects, got {}", pack.objects.len());
+        assert!(
+            pack.objects.len() >= 20,
+            "expected >= 20 objects, got {}",
+            pack.objects.len()
+        );
 
         if let Some(voxel_assets) = &pack.voxel_assets {
             assert_eq!(voxel_assets.asset_count as usize, voxel_assets.assets.len());
@@ -480,7 +338,10 @@ mod tests {
             }
         }
 
-        assert!(!procedural.planets.is_empty(), "must have at least one planet");
+        assert!(
+            !procedural.planets.is_empty(),
+            "must have at least one planet"
+        );
         assert!(!procedural.fields.is_empty(), "must have noise fields");
         assert!(!procedural.biomes.is_empty(), "must have biomes");
     }

@@ -1,11 +1,14 @@
 mod lod_animation;
 pub mod perf_profile;
 pub mod quality;
+mod render_graph;
 mod renderer;
+mod shader_library;
 pub(crate) mod texture_atlas;
 mod types;
 pub mod ui;
 
 pub use quality::PcfQuality;
+pub use render_graph::{RenderPassId, ShaderPath};
 pub use renderer::Renderer;
 pub use types::Vertex;

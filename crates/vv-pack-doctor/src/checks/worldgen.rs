@@ -22,7 +22,7 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
         prop_scatters: count(index, WorldCategory::PropScatter),
         ore_rules: count(index, WorldCategory::Ores),
         cave_rules: count(index, WorldCategory::Caves),
-        render_profiles: index.scan.render.profiles.len(),
+        render_profiles: report.planet.render_profiles.len(),
     };
 
     check_planets(index, report);

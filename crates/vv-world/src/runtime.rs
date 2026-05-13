@@ -1,5 +1,5 @@
-use vv_voxel::{VoxelChunk, VoxelChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use std::collections::HashMap;
+use vv_voxel::{VoxelChunk, VoxelChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 
 #[derive(Clone)]
 pub struct VoxelRuntime {
@@ -176,4 +176,3 @@ mod tests {
         assert_eq!(rt.chunk_count(), 0);
     }
 }
-

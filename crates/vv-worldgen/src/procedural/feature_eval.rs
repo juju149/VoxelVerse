@@ -11,8 +11,8 @@
 //! so they're guaranteed to agree on the tree's exact silhouette.
 
 use super::{GeneratedVoxelContext, ProceduralPlanetTerrain};
-use vv_pack_compiler::CompiledVegetation;
 use crate::placement::{candidate_for_cell, placement_cell_size, PlacementCandidate};
+use vv_pack_compiler::CompiledVegetation;
 use vv_voxel::VoxelId;
 
 impl ProceduralPlanetTerrain {
@@ -32,10 +32,8 @@ impl ProceduralPlanetTerrain {
         let max_thickness = crate::features::scale_range(veg.trunk_thickness, scale)
             .1
             .max(1) as i32;
-        let max_canopy =
-            crate::features::scale_range(veg.canopy_radius, scale).1 as i32;
-        let max_branch =
-            crate::features::scale_range(veg.branch_length, scale).1 as i32;
+        let max_canopy = crate::features::scale_range(veg.canopy_radius, scale).1 as i32;
+        let max_branch = crate::features::scale_range(veg.branch_length, scale).1 as i32;
         let scan_radius = max_thickness + max_canopy.max(max_branch) + 2;
 
         let cell = placement_cell_size(&veg.placement, scale).max(1);
@@ -136,16 +134,7 @@ impl ProceduralPlanetTerrain {
     ) -> Option<VoxelId> {
         let plant_height = self.get_height(ctx.face, pu, pv);
         let scale = self.voxel_scale();
-        let shape = crate::features::TreeShape::compute(
-            veg,
-            ctx.face,
-            pu,
-            pv,
-            plant_height,
-            scale,
-        );
+        let shape = crate::features::TreeShape::compute(veg, ctx.face, pu, pv, plant_height, scale);
         shape.voxel_at(ctx.u as i32, ctx.layer as i32, ctx.v as i32)
     }
 }
-
-

@@ -1,8 +1,8 @@
 use super::{hash4, range_pick, scale_range};
-use vv_pack_compiler::{CompiledTreeShapeKind, CompiledVegetation};
-use vv_voxel::VoxelId;
 use glam::Vec3;
 use std::f32::consts::TAU;
+use vv_pack_compiler::{CompiledTreeShapeKind, CompiledVegetation};
+use vv_voxel::VoxelId;
 // ---------------------------------------------------------------------------
 // Tree shape — natural-looking generation with full per-tree randomness.
 // ---------------------------------------------------------------------------
@@ -711,5 +711,3 @@ fn hash01_u32(base: u32, salt: u32) -> f32 {
     x ^= x >> 16;
     x as f32 / u32::MAX as f32
 }
-
-

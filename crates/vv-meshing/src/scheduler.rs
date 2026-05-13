@@ -137,4 +137,3 @@ mod tests {
         assert!(!s.can_dispatch_voxel(1, 0));
     }
 }
-

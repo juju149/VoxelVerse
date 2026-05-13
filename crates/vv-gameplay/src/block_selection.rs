@@ -53,16 +53,16 @@ impl BlockSelection {
 mod tests {
     use super::{BlockSelection, BlockSelectionMode};
     use crate::app::content_bootstrap::asset_pack_root;
-    use vv_math::Ray;
-    use vv_world::PlanetData;
     use glam::Vec3;
     use std::sync::Arc;
+    use vv_math::Ray;
+    use vv_world::PlanetData;
 
     #[test]
     fn empty_ray_returns_no_hit() {
         use vv_pack_compiler::compile::ContentCompiler;
-        use vv_pack_compiler::pack::PackLoader;
         use vv_pack_compiler::compile_objects;
+        use vv_pack_compiler::pack::PackLoader;
         let core_pack_dir = asset_pack_root().join("core");
         let pack = PackLoader::load_from_dir(&core_pack_dir)
             .expect("assets/packs/core must exist for tests");
@@ -90,4 +90,3 @@ mod tests {
         );
     }
 }
-

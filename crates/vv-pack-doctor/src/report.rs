@@ -262,8 +262,13 @@ impl Report {
         self.summary.recipes = obj_recipes;
         self.summary.loot_tables = scan.objects.iter().filter(|o| o.def.loot.is_some()).count();
         self.summary.voxels = scan.voxel_files.len();
-        self.summary.shader_modules = scan.render.shader_modules.len();
-        self.summary.techniques = scan.render.techniques.len();
+        self.summary.shader_modules = scan.render.wgsl_files.len();
+        self.summary.techniques = scan
+            .render
+            .wgsl_files
+            .iter()
+            .filter(|f| f.rel_path.contains("/passes/"))
+            .count();
         self.summary.world_files = scan.world_files.len();
         self.summary.errors = self.errors.len();
         self.summary.warnings = self.warnings.len();

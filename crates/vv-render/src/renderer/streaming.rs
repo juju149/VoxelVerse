@@ -1,10 +1,10 @@
 use super::{LocalUniform, MeshJobResult, Renderer};
-use vv_meshing::{CpuMesh, MeshGen};
 use crate::lod_animation::AnyKey;
 use crate::types::{ChunkMesh, Vertex};
+use glam::Vec3;
+use vv_meshing::{CpuMesh, MeshGen};
 use vv_voxel::{LodKey, SurfaceChunkKey};
 use vv_world::PlanetData;
-use glam::Vec3;
 use wgpu::util::DeviceExt;
 
 /// Convert a `CpuMesh` vertex slice to GPU-ready `Vertex` bytes.
@@ -275,4 +275,3 @@ impl<'a> Renderer<'a> {
         println!("------------------------------------------");
     }
 }
-

@@ -10,21 +10,33 @@ use crate::scan::PackScan;
 const CHECK: &str = "naming";
 
 const BANNED_STEMS: &[&str] = &[
-    "test", "new", "final", "temp", "tmp", "stuff", "placeholder",
+    "test",
+    "new",
+    "final",
+    "temp",
+    "tmp",
+    "stuff",
+    "placeholder",
 ];
 
 pub fn run(scan: &PackScan, report: &mut Report) {
     for path in &scan.all_ron_files {
-        let Some(name) = path.file_name().and_then(|s| s.to_str()) else { continue };
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
         let rel = scan.relative(path);
         check_name(name, &rel, report);
     }
     for tex in &scan.texture_files {
-        let Some(name) = tex.abs_path.file_name().and_then(|s| s.to_str()) else { continue };
+        let Some(name) = tex.abs_path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
         check_name(name, &tex.rel_path, report);
     }
     for v in &scan.voxel_files {
-        let Some(name) = v.abs_path.file_name().and_then(|s| s.to_str()) else { continue };
+        let Some(name) = v.abs_path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
         check_name(name, &v.rel_path, report);
     }
 }

@@ -12,9 +12,8 @@
 use std::collections::{HashMap, HashSet};
 
 use vv_content_schema::{
-    RawObjectCount, RawObjectDef, RawObjectRecipeKind, RawObjectRecipeSection,
-    RawObjectRenderMode, RawObjectShape, RawObjectTexture, RawObjectTint, RawObjectToolKind,
-    RawObjectWeaponKind,
+    RawObjectCount, RawObjectDef, RawObjectRecipeKind, RawObjectRecipeSection, RawObjectRenderMode,
+    RawObjectShape, RawObjectTexture, RawObjectTint, RawObjectToolKind, RawObjectWeaponKind,
 };
 use vv_voxel::VoxelId;
 
@@ -103,9 +102,7 @@ fn compile_tags_from_objects(raw: &[(String, RawObjectDef)]) -> TagRegistry {
         .iter()
         .enumerate()
         .map(|(idx, tag_name)| {
-            let values = tag_members
-                .remove(tag_name)
-                .unwrap_or_default();
+            let values = tag_members.remove(tag_name).unwrap_or_default();
             CompiledTag {
                 id: TagId::from_raw(idx as u32),
                 key: format!("core:tag/{}", tag_name),
@@ -187,7 +184,11 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
             model_id,
         };
 
-        let category = def.tags.first().cloned().unwrap_or_else(|| "terrain".into());
+        let category = def
+            .tags
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "terrain".into());
         let color = category_color(&category);
         let max_stack = def.item.as_ref().map(|i| i.stack).unwrap_or(99);
 
@@ -278,8 +279,12 @@ fn build_stub_model_registry() -> BlockModelRegistry {
         },
         collision: CompiledCollision::FullCube,
         face_layers: vec![
-            "py".into(), "ny".into(), "pz".into(),
-            "nz".into(), "px".into(), "nx".into(),
+            "py".into(),
+            "ny".into(),
+            "pz".into(),
+            "nz".into(),
+            "px".into(),
+            "nx".into(),
         ],
     };
     let column = CompiledBlockModel {
@@ -298,10 +303,7 @@ fn build_stub_model_registry() -> BlockModelRegistry {
 // Loot compilation (needs ItemRegistry to resolve item_id)
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn compile_loot_from_objects(
-    raw: &[(String, RawObjectDef)],
-    items: &ItemRegistry,
-) -> LootRegistry {
+fn compile_loot_from_objects(raw: &[(String, RawObjectDef)], items: &ItemRegistry) -> LootRegistry {
     let mut tables: Vec<CompiledLootTable> = Vec::new();
     let mut idx = 0u32;
 
@@ -416,8 +418,8 @@ fn intern_texture(
     mat_dedup: &mut HashMap<MaterialTextureSet, u32>,
 ) -> u32 {
     let mat = MaterialTextureSet {
-        albedo:    format!("{}:{}.albedo.png",    namespace, path),
-        normal:    format!("{}:{}.normal.png",    namespace, path),
+        albedo: format!("{}:{}.albedo.png", namespace, path),
+        normal: format!("{}:{}.normal.png", namespace, path),
         roughness: format!("{}:{}.roughness.png", namespace, path),
     };
     if let Some(&idx) = mat_dedup.get(&mat) {
@@ -441,25 +443,37 @@ fn texture_to_layers(
         RawObjectTexture::All(path) => {
             let idx = intern_texture(path, namespace, material_sets, mat_dedup);
             BlockMaterialLayers {
-                top: idx, bottom: idx,
-                front: idx, back: idx, left: idx, right: idx,
+                top: idx,
+                bottom: idx,
+                front: idx,
+                back: idx,
+                left: idx,
+                right: idx,
             }
         }
         RawObjectTexture::Cube { top, side, bottom } => {
-            let top_idx  = intern_texture(top,    namespace, material_sets, mat_dedup);
-            let side_idx = intern_texture(side,   namespace, material_sets, mat_dedup);
-            let bot_idx  = intern_texture(bottom, namespace, material_sets, mat_dedup);
+            let top_idx = intern_texture(top, namespace, material_sets, mat_dedup);
+            let side_idx = intern_texture(side, namespace, material_sets, mat_dedup);
+            let bot_idx = intern_texture(bottom, namespace, material_sets, mat_dedup);
             BlockMaterialLayers {
-                top: top_idx, bottom: bot_idx,
-                front: side_idx, back: side_idx, left: side_idx, right: side_idx,
+                top: top_idx,
+                bottom: bot_idx,
+                front: side_idx,
+                back: side_idx,
+                left: side_idx,
+                right: side_idx,
             }
         }
         RawObjectTexture::Column { top, side } => {
-            let top_idx  = intern_texture(top,  namespace, material_sets, mat_dedup);
+            let top_idx = intern_texture(top, namespace, material_sets, mat_dedup);
             let side_idx = intern_texture(side, namespace, material_sets, mat_dedup);
             BlockMaterialLayers {
-                top: top_idx, bottom: top_idx,
-                front: side_idx, back: side_idx, left: side_idx, right: side_idx,
+                top: top_idx,
+                bottom: top_idx,
+                front: side_idx,
+                back: side_idx,
+                left: side_idx,
+                right: side_idx,
             }
         }
     }
@@ -469,9 +483,7 @@ fn texture_to_layers(
 // Item compilation
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn compile_items_from_objects(
-    raw: &[(String, RawObjectDef)],
-) -> Result<ItemRegistry, Vec<String>> {
+fn compile_items_from_objects(raw: &[(String, RawObjectDef)]) -> Result<ItemRegistry, Vec<String>> {
     let mut items: Vec<CompiledItem> = Vec::new();
     let mut idx = 0u32;
 
@@ -489,11 +501,11 @@ fn compile_items_from_objects(
         // Determine gameplay category.
         let category = infer_item_category(def);
 
-        let stack_size = def
-            .item
-            .as_ref()
-            .map(|i| i.stack)
-            .unwrap_or(if has_block { 99 } else { 1 });
+        let stack_size =
+            def.item
+                .as_ref()
+                .map(|i| i.stack)
+                .unwrap_or(if has_block { 99 } else { 1 });
 
         let icon_key = def
             .item
@@ -519,11 +531,7 @@ fn compile_items_from_objects(
         };
 
         let gameplay = compile_item_gameplay(def, key);
-        let tag_keys = def
-            .tags
-            .iter()
-            .map(|t| format!("core:tag/{}", t))
-            .collect();
+        let tag_keys = def.tags.iter().map(|t| format!("core:tag/{}", t)).collect();
 
         items.push(CompiledItem {
             id: ItemId::from_raw(idx),

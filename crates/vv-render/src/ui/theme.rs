@@ -628,9 +628,10 @@ impl UiTheme {
     pub fn auto_scale(&self, viewport: UiViewport) -> f32 {
         let w_ratio = viewport.width / self.responsive.reference_width;
         let h_ratio = viewport.height / self.responsive.reference_height;
-        w_ratio
-            .min(h_ratio)
-            .clamp(self.responsive.limits.min_auto_scale, self.responsive.limits.max_auto_scale)
+        w_ratio.min(h_ratio).clamp(
+            self.responsive.limits.min_auto_scale,
+            self.responsive.limits.max_auto_scale,
+        )
     }
 
     /// Effective scale = auto scale × user zoom, clamped by the global
@@ -638,7 +639,10 @@ impl UiTheme {
     /// component must apply to convert UI units into physical pixels.
     pub fn effective_scale(&self, viewport: UiViewport, user_zoom: UserZoom) -> f32 {
         let combined = self.auto_scale(viewport) * user_zoom.factor();
-        combined.clamp(self.responsive.limits.min_scale, self.responsive.limits.max_scale)
+        combined.clamp(
+            self.responsive.limits.min_scale,
+            self.responsive.limits.max_scale,
+        )
     }
 
     /// Convert a value in UI units into physical pixels for the given
@@ -1054,8 +1058,14 @@ mod tests {
     #[test]
     fn hotbar_slot_size_obeys_clamps() {
         let theme = UiTheme::VOXELVERSE;
-        let tiny = theme.hotbar_slot_size(super::UiViewport::new(1280.0, 720.0), super::UserZoom::Small);
-        let huge = theme.hotbar_slot_size(super::UiViewport::new(3840.0, 2160.0), super::UserZoom::XXLarge);
+        let tiny = theme.hotbar_slot_size(
+            super::UiViewport::new(1280.0, 720.0),
+            super::UserZoom::Small,
+        );
+        let huge = theme.hotbar_slot_size(
+            super::UiViewport::new(3840.0, 2160.0),
+            super::UserZoom::XXLarge,
+        );
         assert!(tiny > 0.0);
         // Even when zoomed all the way up on 4K, the slot must still be square
         // (it's the same value used for width AND height) and not so big that
@@ -1068,10 +1078,12 @@ mod tests {
         let theme = UiTheme::VOXELVERSE;
         // Tiny window, want a big panel — must shrink to fit.
         let vp = super::UiViewport::new(1024.0, 600.0);
-        let (w, h) = theme
-            .responsive
-            .inventory_panel
-            .resolve(vp, theme.effective_scale(vp, super::UserZoom::Normal), 2000.0, 2000.0);
+        let (w, h) = theme.responsive.inventory_panel.resolve(
+            vp,
+            theme.effective_scale(vp, super::UserZoom::Normal),
+            2000.0,
+            2000.0,
+        );
         assert!(w <= vp.width * theme.responsive.inventory_panel.max_width_ratio + 1.0);
         assert!(h <= vp.height * theme.responsive.inventory_panel.max_height_ratio + 1.0);
     }
@@ -1133,5 +1145,3 @@ mod tests {
         assert!(m.tooltip_delay_ms >= 150.0);
     }
 }
-
-

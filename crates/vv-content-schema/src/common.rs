@@ -50,7 +50,10 @@ fn validate_path_safety(value: &str) -> Result<(), String> {
     }
     // Block path traversal regardless of format.
     if value.contains("..") || value.starts_with('/') || value.starts_with('\\') {
-        return Err(format!("content ref '{}' contains unsafe path component", value));
+        return Err(format!(
+            "content ref '{}' contains unsafe path component",
+            value
+        ));
     }
     Ok(())
 }

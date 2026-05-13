@@ -24,10 +24,10 @@ use super::biome_select::resolve_biome_weights_into;
 use super::climate::SurfaceFields;
 use super::noise_sampler::sample_noise_field;
 use super::{BiomeWeight, MAX_BIOME_WEIGHTS};
-use vv_pack_compiler::{CompiledProceduralPlanet, ProceduralRegistry};
 use crate::noise::NoiseGenerator;
-use vv_voxel::PlanetProfile;
 use glam::Vec3;
+use vv_pack_compiler::{CompiledProceduralPlanet, ProceduralRegistry};
+use vv_voxel::PlanetProfile;
 
 pub(super) fn resolve_height(
     registry: &ProceduralRegistry,
@@ -139,5 +139,3 @@ pub(super) fn resolve_height(
     let max_layer = profile.resolution.saturating_sub(3) as i32;
     (layer.clamp(min_layer, max_layer) as u32, primary)
 }
-
-

@@ -8,9 +8,9 @@
 //! get the values the biome selector expects.
 
 use super::noise_sampler::sample_noise_field;
-use vv_pack_compiler::{CompiledClimateAxis, CompiledProceduralPlanet, ProceduralRegistry};
 use crate::noise::NoiseGenerator;
 use glam::Vec3;
+use vv_pack_compiler::{CompiledClimateAxis, CompiledProceduralPlanet, ProceduralRegistry};
 
 #[derive(Clone, Copy)]
 pub(super) struct SurfaceFields {
@@ -59,5 +59,3 @@ fn sample_axis(
     }
     value.clamp(0.0, 1.0)
 }
-
-

@@ -62,7 +62,9 @@ impl CompiledLootTable {
                     };
                     if count > 0 {
                         // Merge identical items from multiple entries.
-                        if let Some(existing) = drops.iter_mut().find(|(id, _)| *id == entry.item_id) {
+                        if let Some(existing) =
+                            drops.iter_mut().find(|(id, _)| *id == entry.item_id)
+                        {
                             existing.1 = existing.1.saturating_add(count);
                         } else {
                             drops.push((entry.item_id, count));
@@ -117,4 +119,3 @@ impl LootRegistry {
         self.tables.is_empty()
     }
 }
-

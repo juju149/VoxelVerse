@@ -1,7 +1,7 @@
 use crate::Player;
+use glam::Vec3;
 use vv_math::CoordSystem;
 use vv_world::PlanetData;
-use glam::Vec3;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlanetResizeIntent {
@@ -32,4 +32,3 @@ impl PlanetResize {
         player.velocity = Vec3::ZERO;
     }
 }
-

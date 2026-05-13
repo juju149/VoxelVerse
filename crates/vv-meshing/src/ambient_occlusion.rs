@@ -17,4 +17,3 @@ pub(super) fn calculate(side1: bool, side2: bool, corner: bool) -> f32 {
         _ => 0.4,
     }
 }
-

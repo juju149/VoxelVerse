@@ -1,10 +1,10 @@
 use super::Renderer;
-use vv_pack_compiler::TerrainPalette;
-use vv_math::CoordSystem;
 use crate::Vertex;
+use glam::Vec3;
+use vv_math::CoordSystem;
+use vv_pack_compiler::TerrainPalette;
 use vv_voxel::VoxelCoord;
 use vv_world::PlanetData;
-use glam::Vec3;
 
 impl<'a> Renderer<'a> {
     pub fn update_cursor(&mut self, planet: &PlanetData, id: Option<VoxelCoord>) {
@@ -103,4 +103,3 @@ impl<'a> Renderer<'a> {
         }
     }
 }
-

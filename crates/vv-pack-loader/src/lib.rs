@@ -1,3 +1,3 @@
 mod loader;
 
-pub use loader::{LoadedPack, LoadedShaderModule, PackLoader, RawProceduralPack, RawRenderPack};
+pub use loader::{LoadedPack, PackLoader, RawProceduralPack};

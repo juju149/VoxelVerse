@@ -35,12 +35,7 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
     }
 }
 
-fn check_shaped(
-    obj: &ParsedObject,
-    prefix: &str,
-    shaped: &RawShapedRecipe,
-    report: &mut Report,
-) {
+fn check_shaped(obj: &ParsedObject, prefix: &str, shaped: &RawShapedRecipe, report: &mut Report) {
     if shaped.pattern.is_empty() || shaped.pattern.len() > MAX_GRID {
         report.error(
             Diagnostic::new(

@@ -387,7 +387,11 @@ fn compile_vegetation(
         Some((lo, hi)) => {
             let lo = finite_positive(lo, 1.0);
             let hi = finite_positive(hi, lo);
-            if lo <= hi { (lo, hi) } else { (hi, lo) }
+            if lo <= hi {
+                (lo, hi)
+            } else {
+                (hi, lo)
+            }
         }
         None => (1.0, 1.0),
     };
@@ -665,7 +669,10 @@ fn resolve(
     // Short-name stem fallback: "rolling_hills" matches "core:field/rolling_hills".
     if !key.0.contains(':') {
         let suffix = format!("/{}", &key.0);
-        if let Some(idx) = map.iter().find_map(|(k, &v)| k.ends_with(&suffix).then_some(v)) {
+        if let Some(idx) = map
+            .iter()
+            .find_map(|(k, &v)| k.ends_with(&suffix).then_some(v))
+        {
             return Some(idx);
         }
     }
@@ -779,8 +786,8 @@ mod tests {
     fn core_pack_procedural_compiles_from_current_schema() {
         let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
         let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");
-        let objects = crate::object_compiler::compile_objects(pack.objects)
-            .expect("unified objects compile");
+        let objects =
+            crate::object_compiler::compile_objects(pack.objects).expect("unified objects compile");
         let procedural_pack =
             PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
         let procedural = ContentCompiler::compile_procedural(procedural_pack, &objects.blocks)

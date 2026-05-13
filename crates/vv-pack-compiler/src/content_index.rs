@@ -6,7 +6,6 @@
 //! Domains indexed:
 //!  - `core:object/...`      (unified object defs)
 //!  - `core:voxel/...`       (generated voxel asset registry)
-//!  - `core:render/...`      (render profiles, shader modules, techniques)
 
 use std::collections::HashSet;
 use vv_content_schema::ContentRef;
@@ -31,25 +30,6 @@ impl ContentIndex {
                 keys.insert(asset.id.0.clone());
             }
         }
-        for module in &pack.render.shader_modules {
-            keys.insert(module.key.clone());
-        }
-        for (k, _) in &pack.render.shader_contracts {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.render.techniques {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.render.material_families {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.render.profiles {
-            keys.insert(k.clone());
-        }
-        for (k, _) in &pack.render.render_graphs {
-            keys.insert(k.clone());
-        }
-
         Self { keys }
     }
 

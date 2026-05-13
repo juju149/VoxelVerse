@@ -11,13 +11,13 @@
 //! glyphon draws them after the mesh pass.
 
 use super::Renderer;
-use vv_pack_compiler::BlockMaterialLayers;
-use vv_gameplay::{Hotbar, Inventory, SlotRef};
-use crate::Vertex;
 use crate::ui::{
-    ComponentState, InventoryButton, InventoryLayout, InventoryUiState, UiColor,
-    UiRect, UiTheme, UiViewport,
+    ComponentState, InventoryButton, InventoryLayout, InventoryUiState, UiColor, UiRect, UiTheme,
+    UiViewport,
 };
+use crate::Vertex;
+use vv_gameplay::{Hotbar, Inventory, SlotRef};
+use vv_pack_compiler::BlockMaterialLayers;
 use vv_world::PlanetData;
 
 pub(super) struct InventoryTextSpec {
@@ -63,7 +63,8 @@ impl<'a> Renderer<'a> {
             &mut verts, &mut inds, &theme, &layout, ui, inventory, planet,
         );
         self.draw_hotbar_mirror(&mut verts, &mut inds, &theme, &layout, hotbar, planet);
-        self.draw_hotbar_hover_ring(&mut verts, &mut inds, &theme, &layout, ui);        self.draw_footer(&mut verts, &mut inds, &theme, &layout, ui, inventory);
+        self.draw_hotbar_hover_ring(&mut verts, &mut inds, &theme, &layout, ui);
+        self.draw_footer(&mut verts, &mut inds, &theme, &layout, ui, inventory);
         self.draw_held_stack(&mut verts, &mut inds, &theme, &layout, ui, planet);
 
         self.queue
@@ -161,11 +162,26 @@ impl<'a> Renderer<'a> {
 
         // Close button.
         let close_state = self.inventory_button_state(ui, InventoryButton::Close);
-        self.draw_round_button(verts, inds, layout.close_button, close_state, theme, layout.scale);
+        self.draw_round_button(
+            verts,
+            inds,
+            layout.close_button,
+            close_state,
+            theme,
+            layout.scale,
+        );
         let stroke = (3.0 * layout.scale).max(2.0);
         let inset = layout.close_button.w * 0.30;
         let color = theme.button.text_for(close_state);
-        self.draw_diagonal(verts, inds, layout.close_button, inset, stroke, color, false);
+        self.draw_diagonal(
+            verts,
+            inds,
+            layout.close_button,
+            inset,
+            stroke,
+            color,
+            false,
+        );
         self.draw_diagonal(verts, inds, layout.close_button, inset, stroke, color, true);
     }
 
@@ -242,8 +258,7 @@ impl<'a> Renderer<'a> {
         // Compact 2×2 crafting grid placeholder so the panel reads
         // as "craft" at a glance, without wasting vertical space.
         let grid = craft_grid_rect(layout.right_panel, layout.scale);
-        let mini_slot =
-            (layout.right_panel.w * 0.22).min(36.0 * layout.scale);
+        let mini_slot = (layout.right_panel.w * 0.22).min(36.0 * layout.scale);
         let mini_gap = mini_slot * 0.20;
         let mini_r = 5.0 * layout.scale;
         for row in 0..2_u32 {
@@ -327,7 +342,13 @@ impl<'a> Renderer<'a> {
         );
 
         // Magnifier icon: circle + handle stroke.
-        self.draw_magnifier(verts, inds, layout.search_icon, theme.search_bar.icon, layout.scale);
+        self.draw_magnifier(
+            verts,
+            inds,
+            layout.search_icon,
+            theme.search_bar.icon,
+            layout.scale,
+        );
 
         // Clear button when there is text.
         if !ui.search_query.is_empty() {
@@ -363,8 +384,14 @@ impl<'a> Renderer<'a> {
             let selected = *filter == ui.active_filter;
             let hovered = ui.hovered_filter == Some(*filter);
             let (fill, border) = match (selected, hovered) {
-                (true, _) => (theme.filter_chip.fill_selected, theme.filter_chip.border_selected),
-                (false, true) => (theme.filter_chip.fill_hovered, theme.filter_chip.border_hovered),
+                (true, _) => (
+                    theme.filter_chip.fill_selected,
+                    theme.filter_chip.border_selected,
+                ),
+                (false, true) => (
+                    theme.filter_chip.fill_hovered,
+                    theme.filter_chip.border_hovered,
+                ),
                 (false, false) => (theme.filter_chip.fill, theme.filter_chip.border),
             };
             let radius = rect.h * 0.5;
@@ -374,7 +401,12 @@ impl<'a> Renderer<'a> {
                 inds,
                 *rect,
                 border,
-                if selected { 1.5 * layout.scale } else { 1.0 * layout.scale }.max(1.0),
+                if selected {
+                    1.5 * layout.scale
+                } else {
+                    1.0 * layout.scale
+                }
+                .max(1.0),
                 radius,
             );
         }
@@ -519,7 +551,14 @@ impl<'a> Renderer<'a> {
 
         // Sort button.
         let sort_state = self.inventory_button_state(ui, InventoryButton::Sort);
-        self.draw_action_button(verts, inds, layout.sort_button, sort_state, theme, layout.scale);
+        self.draw_action_button(
+            verts,
+            inds,
+            layout.sort_button,
+            sort_state,
+            theme,
+            layout.scale,
+        );
     }
 
     fn draw_held_stack(
@@ -952,11 +991,7 @@ fn push_weight_text(
     });
 }
 
-fn push_sort_text(
-    specs: &mut Vec<InventoryTextSpec>,
-    theme: &UiTheme,
-    layout: &InventoryLayout,
-) {
+fn push_sort_text(specs: &mut Vec<InventoryTextSpec>, theme: &UiTheme, layout: &InventoryLayout) {
     let size = theme.text.control_size * layout.scale;
     let label = "Trier";
     let est_w = label.chars().count() as f32 * size * 0.6;
@@ -1055,11 +1090,7 @@ fn push_held_quantity(
     });
 }
 
-fn push_footer_keys(
-    specs: &mut Vec<InventoryTextSpec>,
-    theme: &UiTheme,
-    layout: &InventoryLayout,
-) {
+fn push_footer_keys(specs: &mut Vec<InventoryTextSpec>, theme: &UiTheme, layout: &InventoryLayout) {
     let size = theme.text.muted_size * layout.scale;
     specs.push(InventoryTextSpec {
         text: "E/ECHAP fermer  -  Clic: prendre/poser  -  Clic droit: 1/2  -  Maj+clic: deplacer  -  1-9: hotbar  -  Q: jeter".to_string(),
@@ -1072,10 +1103,7 @@ fn push_footer_keys(
 
 fn total_weight_kg(inventory: &Inventory, ui: &InventoryUiState) -> f32 {
     let count = inventory.total_count() as f32;
-    let held = ui
-        .held
-        .map(|h| h.stack.quantity as f32)
-        .unwrap_or(0.0);
+    let held = ui.held.map(|h| h.stack.quantity as f32).unwrap_or(0.0);
     (count + held) * InventoryUiState::UNIT_WEIGHT_KG
 }
 
@@ -1188,7 +1216,17 @@ impl<'a> Renderer<'a> {
         // 4 corner arcs (screen Y points down).
         let pi = std::f32::consts::PI;
         let segs = corner_segments(r);
-        self.fan_arc(verts, inds, rect.x + r, rect.y + r, r, pi, 1.5 * pi, segs, color);
+        self.fan_arc(
+            verts,
+            inds,
+            rect.x + r,
+            rect.y + r,
+            r,
+            pi,
+            1.5 * pi,
+            segs,
+            color,
+        );
         self.fan_arc(
             verts,
             inds,
@@ -1312,7 +1350,17 @@ impl<'a> Renderer<'a> {
                 2.0 * pi,
                 color,
             );
-            self.ring_arc(verts, inds, x1 - r, y1 - r, r, inner_r, 0.0, 0.5 * pi, color);
+            self.ring_arc(
+                verts,
+                inds,
+                x1 - r,
+                y1 - r,
+                r,
+                inner_r,
+                0.0,
+                0.5 * pi,
+                color,
+            );
             self.ring_arc(verts, inds, x0 + r, y1 - r, r, inner_r, 0.5 * pi, pi, color);
         }
     }
@@ -1453,7 +1501,15 @@ impl<'a> Renderer<'a> {
         let (bx, by) = (x1 + nx * half, y1 + ny * half);
         let (cx, cy) = (x1 - nx * half, y1 - ny * half);
         let (dx2, dy2) = (x0 - nx * half, y0 - ny * half);
-        self.add_ui_quad(verts, inds, (ax, ay), (bx, by), (cx, cy), (dx2, dy2), color.rgb);
+        self.add_ui_quad(
+            verts,
+            inds,
+            (ax, ay),
+            (bx, by),
+            (cx, cy),
+            (dx2, dy2),
+            color.rgb,
+        );
     }
 
     pub(super) fn draw_diagonal(
@@ -1522,48 +1578,58 @@ impl<'a> Renderer<'a> {
 
         // UI shader is 1-based; world atlas index 0 → tex_index 1.
         let face_tex = |layer: u32| -> u32 {
-            if textured { layer + 1 } else { 0 }
+            if textured {
+                layer + 1
+            } else {
+                0
+            }
         };
 
         let layers = texture.unwrap_or_default();
-        let top_color   = face_color(1.18);
-        let left_color  = face_color(0.70);
+        let top_color = face_color(1.18);
+        let left_color = face_color(0.70);
         let right_color = face_color(0.95);
 
-        let p_top   = (cx, cy - 2.0 * u);
+        let p_top = (cx, cy - 2.0 * u);
         let p_right = (cx + 2.0 * u, cy - u);
         let p_front = (cx, cy);
-        let p_left  = (cx - 2.0 * u, cy - u);
+        let p_left = (cx - 2.0 * u, cy - u);
 
         // Top face: p_top(TL) → p_right(TR) → p_front(BR) → p_left(BL)
         self.add_ui_quad_tex(
-            verts, inds,
+            verts,
+            inds,
             [p_top, p_right, p_front, p_left],
             [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-            top_color, face_tex(layers.top),
+            top_color,
+            face_tex(layers.top),
         );
 
-        let p_bottom      = (cx, cy + 2.0 * u);
+        let p_bottom = (cx, cy + 2.0 * u);
         let p_left_bottom = (cx - 2.0 * u, cy + u);
 
         // Left face uses the block's "left" (nx) material — the iso cube's
         // visible left side. UV is mapped so the texture's top edge sits at
         // the cube's top edge.
         self.add_ui_quad_tex(
-            verts, inds,
+            verts,
+            inds,
             [p_left, p_front, p_bottom, p_left_bottom],
             [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-            left_color, face_tex(layers.left),
+            left_color,
+            face_tex(layers.left),
         );
 
         let p_right_bottom = (cx + 2.0 * u, cy + u);
 
         // Right face uses the block's "right" (px) material.
         self.add_ui_quad_tex(
-            verts, inds,
+            verts,
+            inds,
             [p_right, p_right_bottom, p_bottom, p_front],
             [[1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]],
-            right_color, face_tex(layers.right),
+            right_color,
+            face_tex(layers.right),
         );
 
         // Top-front rim highlight (always flat, no texture).
@@ -1574,10 +1640,12 @@ impl<'a> Renderer<'a> {
         ];
         let highlight_w = (u * 0.18).max(1.5);
         self.add_ui_quad(
-            verts, inds,
-            p_top, p_right,
+            verts,
+            inds,
+            p_top,
+            p_right,
             (p_right.0 - u * 0.08, p_right.1 + highlight_w * 0.6),
-            (p_top.0 + u * 0.08,   p_top.1  + highlight_w * 0.6),
+            (p_top.0 + u * 0.08, p_top.1 + highlight_w * 0.6),
             glint_color,
         );
     }
@@ -1610,11 +1678,17 @@ impl<'a> Renderer<'a> {
         uv: [f32; 2],
         tex_index: u32,
     ) -> u32 {
-        let width  = self.config.width.max(1) as f32;
+        let width = self.config.width.max(1) as f32;
         let height = self.config.height.max(1) as f32;
         let pos = [(x / width) * 2.0 - 1.0, 1.0 - (y / height) * 2.0, 0.0];
         let idx = verts.len() as u32;
-        verts.push(Vertex { pos, uv, color: rgb, normal: [0.0, 0.0, 1.0], tex_index });
+        verts.push(Vertex {
+            pos,
+            uv,
+            color: rgb,
+            normal: [0.0, 0.0, 1.0],
+            tex_index,
+        });
         idx
     }
 
@@ -1694,10 +1768,31 @@ fn equip_slot_rects(left_panel: UiRect, scale: f32) -> [(UiRect, &'static str); 
     let top = left_panel.y + (left_panel.h - total_h) * 0.5;
     let left = left_panel.x + left_panel.w * 0.12;
     [
-        (UiRect { x: left, y: top, w: slot_size, h: slot_size }, "Casque"),
-        (UiRect { x: left, y: top + slot_size + gap, w: slot_size, h: slot_size }, "Plastron"),
         (
-            UiRect { x: left, y: top + (slot_size + gap) * 2.0, w: slot_size, h: slot_size },
+            UiRect {
+                x: left,
+                y: top,
+                w: slot_size,
+                h: slot_size,
+            },
+            "Casque",
+        ),
+        (
+            UiRect {
+                x: left,
+                y: top + slot_size + gap,
+                w: slot_size,
+                h: slot_size,
+            },
+            "Plastron",
+        ),
+        (
+            UiRect {
+                x: left,
+                y: top + (slot_size + gap) * 2.0,
+                w: slot_size,
+                h: slot_size,
+            },
             "Bottes",
         ),
     ]
@@ -1719,5 +1814,3 @@ fn craft_grid_rect(right_panel: UiRect, scale: f32) -> UiRect {
         h: grid_size,
     }
 }
-
-

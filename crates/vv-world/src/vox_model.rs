@@ -254,4 +254,3 @@ impl VoxModelRegistry {
         self.models.get(key)
     }
 }
-

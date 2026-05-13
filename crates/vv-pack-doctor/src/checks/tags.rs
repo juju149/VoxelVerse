@@ -54,7 +54,10 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
             report.warn(
                 Diagnostic::new(
                     CHECK,
-                    format!("tag '{}' is declared but never referenced via #{}", tag, tag),
+                    format!(
+                        "tag '{}' is declared but never referenced via #{}",
+                        tag, tag
+                    ),
                 )
                 .with_suggestion(
                     "remove the tag from `tags:` or reference it from a file that needs it"
@@ -106,13 +109,10 @@ fn scan_value_for_tag_refs(
     }
 }
 
-fn record_tag_ref(
-    s: &str,
-    path: String,
-    id: String,
-    out: &mut BTreeMap<String, Vec<TagUsage>>,
-) {
-    let Some((kind, name)) = parse_tag_ref(s) else { return };
+fn record_tag_ref(s: &str, path: String, id: String, out: &mut BTreeMap<String, Vec<TagUsage>>) {
+    let Some((kind, name)) = parse_tag_ref(s) else {
+        return;
+    };
     let full = format!("{kind}.{name}");
     out.entry(full).or_default().push(TagUsage { path, id });
 }

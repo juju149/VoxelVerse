@@ -43,8 +43,11 @@ impl PlanetProfile {
         } else {
             Self::DEFAULT_VOXEL_SIZE_METERS
         };
-        let (inner_radius, surface_radius, layer_height) =
-            radii_from_layers(surface_layer, voxel_size_meters, Self::DEFAULT_INNER_RADIUS_FRACTION);
+        let (inner_radius, surface_radius, layer_height) = radii_from_layers(
+            surface_layer,
+            voxel_size_meters,
+            Self::DEFAULT_INNER_RADIUS_FRACTION,
+        );
 
         let max_terrain_offset = ((resolution as f32 * 0.005).round() as i32).clamp(6, 800);
 
@@ -139,7 +142,10 @@ mod tests {
             let res = PlanetProfile::procedural_resolution(seed);
             let radius = res / 2;
             assert!(radius >= 5_000, "seed {seed}: radius {radius} < 5000");
-            assert!(radius <= 1_000_000, "seed {seed}: radius {radius} > 1_000_000");
+            assert!(
+                radius <= 1_000_000,
+                "seed {seed}: radius {radius} > 1_000_000"
+            );
         }
     }
 

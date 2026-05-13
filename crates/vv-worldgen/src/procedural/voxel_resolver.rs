@@ -12,9 +12,9 @@
 //! * If we're above the surface, is it a tree, a flower, or just air?
 
 use super::{GeneratedVoxelContext, ProceduralPlanetTerrain};
-use vv_voxel::VoxelId;
-use vv_voxel::PlanetProfile;
 use glam::Vec3;
+use vv_voxel::PlanetProfile;
+use vv_voxel::VoxelId;
 
 impl ProceduralPlanetTerrain {
     pub(super) fn resolve_voxel(
@@ -137,5 +137,3 @@ impl ProceduralPlanetTerrain {
         false
     }
 }
-
-

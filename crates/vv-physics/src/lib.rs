@@ -1,7 +1,7 @@
+use glam::{Quat, Vec3};
 use vv_math::CoordSystem;
 use vv_voxel::VoxelCoord;
 use vv_world::PlanetData;
-use glam::{Quat, Vec3};
 
 pub struct Physics;
 impl Physics {

@@ -10,8 +10,6 @@ mod planet_registry;
 mod procedural;
 mod procedural_registry;
 mod recipe_registry;
-mod render_compiler;
-mod render_registry;
 mod tag_registry;
 mod texture_registry;
 
@@ -35,12 +33,6 @@ pub use procedural_registry::*;
 pub use recipe_registry::{
     CompiledIngredient, CompiledRecipe, CompiledRecipeKind, CompiledShapedRecipe,
     CompiledShapelessRecipe, CompiledSmeltingRecipe, RecipeId, RecipeRegistry,
-};
-pub use render_registry::{
-    CompiledRenderContent, CompiledRenderGraph, CompiledRenderGraphPass, CompiledRenderProfile,
-    CompiledRenderTechnique, CompiledShaderModule, MaterialFamilyId, RenderFeatureMask,
-    RenderGraphId, RenderProfileId, RenderRegistry, RenderTechniqueId, ShaderContractId,
-    ShaderModuleId, ShaderVariantId, ShaderVariantKey,
 };
 pub use tag_registry::{CompiledTag, TagId, TagRegistry};
 pub use texture_registry::{DecodedMaterialTextureSet, TextureRegistry};

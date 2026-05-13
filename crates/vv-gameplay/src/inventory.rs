@@ -88,11 +88,7 @@ impl Inventory {
 
     /// Total mass-style weight indicator: sum of all quantities.
     pub fn total_count(&self) -> u32 {
-        self.slots
-            .iter()
-            .flatten()
-            .map(|slot| slot.quantity)
-            .sum()
+        self.slots.iter().flatten().map(|slot| slot.quantity).sum()
     }
 }
 
@@ -115,7 +111,9 @@ mod tests {
     use crate::item_stack::ItemId;
 
     const MAX: u32 = 99;
-    fn id(n: u32) -> ItemId { ItemId::from_raw(n) }
+    fn id(n: u32) -> ItemId {
+        ItemId::from_raw(n)
+    }
 
     #[test]
     fn add_stacks_same_item_into_one_slot() {
@@ -149,4 +147,3 @@ mod tests {
         assert!(inv.slot(3).is_none());
     }
 }
-

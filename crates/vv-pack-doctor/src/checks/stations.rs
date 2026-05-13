@@ -45,9 +45,7 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
                         ids.join(", ")
                     ),
                 )
-                .with_suggestion(
-                    "exactly one block must own a given station tag".to_string(),
-                ),
+                .with_suggestion("exactly one block must own a given station tag".to_string()),
             );
         }
         for obj in objs {

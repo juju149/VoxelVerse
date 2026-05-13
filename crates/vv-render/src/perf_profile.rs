@@ -6,7 +6,7 @@
 //! The user can force a tier with the `VV_PERF=low|medium|high|ultra` env
 //! variable; otherwise we fall back to [`PerfTier::detect`].
 
-use crate::quality::{PcfQuality, QualitySettings};
+use crate::quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 use vv_meshing::SchedulerBudget;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -111,9 +111,15 @@ impl PerfProfile {
                 shadow_map_size: 1024,
                 lod_distance_scale: 0.55,
                 quality: QualitySettings {
+                    profile: RenderQualityProfile::Potato,
                     triplanar_grain: false,
                     pcf: PcfQuality::Low,
                     color_only_mode: false,
+                    volumetric_fog: false,
+                    volumetric_clouds: false,
+                    fxaa: false,
+                    bloom: false,
+                    cloud_steps: 0,
                 },
                 scheduler: SchedulerBudget {
                     upload_voxel: 2,
@@ -129,9 +135,15 @@ impl PerfProfile {
                 shadow_map_size: 2048,
                 lod_distance_scale: 0.8,
                 quality: QualitySettings {
+                    profile: RenderQualityProfile::Balanced,
                     triplanar_grain: false,
                     pcf: PcfQuality::Low,
                     color_only_mode: false,
+                    volumetric_fog: true,
+                    volumetric_clouds: false,
+                    fxaa: true,
+                    bloom: false,
+                    cloud_steps: 6,
                 },
                 scheduler: SchedulerBudget::default(),
             },
@@ -140,9 +152,15 @@ impl PerfProfile {
                 shadow_map_size: 4096,
                 lod_distance_scale: 1.0,
                 quality: QualitySettings {
+                    profile: RenderQualityProfile::High,
                     triplanar_grain: true,
                     pcf: PcfQuality::Medium,
                     color_only_mode: false,
+                    volumetric_fog: true,
+                    volumetric_clouds: true,
+                    fxaa: true,
+                    bloom: true,
+                    cloud_steps: 10,
                 },
                 scheduler: SchedulerBudget {
                     upload_voxel: 6,
@@ -158,9 +176,15 @@ impl PerfProfile {
                 shadow_map_size: 4096,
                 lod_distance_scale: 1.25,
                 quality: QualitySettings {
+                    profile: RenderQualityProfile::Ultra,
                     triplanar_grain: true,
                     pcf: PcfQuality::High,
                     color_only_mode: false,
+                    volumetric_fog: true,
+                    volumetric_clouds: true,
+                    fxaa: true,
+                    bloom: true,
+                    cloud_steps: 14,
                 },
                 scheduler: SchedulerBudget {
                     upload_voxel: 8,
@@ -176,13 +200,18 @@ impl PerfProfile {
 
     pub fn print(&self) {
         println!(
-            "[perf] tier={} shadow={}px lod_scale={:.2} pcf={:?} triplanar={} \
+            "[perf] tier={} profile={:?} shadow={}px lod_scale={:.2} pcf={:?} triplanar={} fog={} clouds={} fxaa={} bloom={} \
              voxel(disp/up/pend)={}/{}/{} lod(disp/up/pend)={}/{}/{}",
             self.tier.label(),
+            self.quality.profile,
             self.shadow_map_size,
             self.lod_distance_scale,
             self.quality.pcf,
             self.quality.triplanar_grain,
+            self.quality.volumetric_fog,
+            self.quality.volumetric_clouds,
+            self.quality.fxaa,
+            self.quality.bloom,
             self.scheduler.dispatch_voxel,
             self.scheduler.upload_voxel,
             self.scheduler.max_pending_voxel,
@@ -192,4 +221,3 @@ impl PerfProfile {
         );
     }
 }
-
