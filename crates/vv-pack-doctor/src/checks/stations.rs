@@ -16,6 +16,15 @@ const CHECK: &str = "stations";
 pub fn run(index: &PackIndex<'_>, report: &mut Report) {
     let mut owners: BTreeMap<String, Vec<&crate::scan::ParsedObject>> = BTreeMap::new();
     for obj in &index.scan.objects {
+        // Prefer the explicit `station.station_tags` list; fall back to any
+        // `station.*` entries on the object-level `tags:` for compatibility.
+        if let Some(station) = &obj.def.station {
+            for tag in &station.station_tags {
+                if let Some(rest) = tag.strip_prefix("station.") {
+                    owners.entry(rest.to_string()).or_default().push(obj);
+                }
+            }
+        }
         for tag in &obj.def.tags {
             if let Some(rest) = tag.strip_prefix("station.") {
                 owners.entry(rest.to_string()).or_default().push(obj);

@@ -7,7 +7,9 @@
 //! `block: dirty_stone` produces an actionable diagnostic even if its
 //! enclosing schema has drifted.
 
-use vv_content_schema::{RawObjectCount, RawObjectDef, RawObjectRecipeSection};
+use vv_content_schema::{
+    RawObjectCount, RawObjectDef, RawObjectRecipeKind, RawObjectRecipeSection,
+};
 
 use crate::index::PackIndex;
 use crate::report::{Diagnostic, Report};
@@ -28,7 +30,7 @@ fn check_object(obj: &ParsedObject, index: &PackIndex<'_>, report: &mut Report) 
     let RawObjectDef {
         mining,
         loot,
-        recipe,
+        recipes,
         weapon,
         ..
     } = &obj.def;
@@ -105,13 +107,14 @@ fn check_object(obj: &ParsedObject, index: &PackIndex<'_>, report: &mut Report) 
         }
     }
 
-    if let Some(recipe) = recipe {
-        check_recipe_refs(obj, recipe, index, report);
+    for (ri, recipe) in recipes.iter().enumerate() {
+        check_recipe_refs(obj, ri, recipe, index, report);
     }
 }
 
 fn check_recipe_refs(
     obj: &ParsedObject,
+    ri: usize,
     recipe: &RawObjectRecipeSection,
     index: &PackIndex<'_>,
     report: &mut Report,
@@ -124,65 +127,67 @@ fn check_recipe_refs(
             )
             .with_path(obj.rel_path.clone())
             .with_id(obj.id.clone())
-            .with_field("recipe.output.item"),
+            .with_field(format!("recipes[{ri}].output.item")),
         );
     }
 
-    if let Some(legend) = &recipe.legend {
-        for (sym, item) in legend {
-            if index.resolve_object(item).is_none() {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!(
-                            "recipe legend '{}' references unknown item '{}'",
-                            sym, item
-                        ),
-                    )
-                    .with_path(obj.rel_path.clone())
-                    .with_id(obj.id.clone())
-                    .with_field(format!("recipe.legend.{sym}")),
-                );
+    match &recipe.kind {
+        RawObjectRecipeKind::Shaped(shaped) => {
+            for (sym, item) in &shaped.legend {
+                if index.resolve_object(item).is_none() {
+                    report.error(
+                        Diagnostic::new(
+                            CHECK,
+                            format!(
+                                "recipe legend '{}' references unknown item '{}'",
+                                sym, item
+                            ),
+                        )
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field(format!("recipes[{ri}].kind.shaped.legend.{sym}")),
+                    );
+                }
             }
         }
-    }
-
-    if let Some(shapeless) = &recipe.shapeless {
-        for (i, ingredient) in shapeless.iter().enumerate() {
-            if index.resolve_object(ingredient).is_none() {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!(
-                            "shapeless ingredient #{} references unknown item '{}'",
-                            i + 1,
-                            ingredient
-                        ),
-                    )
-                    .with_path(obj.rel_path.clone())
-                    .with_id(obj.id.clone())
-                    .with_field(format!("recipe.shapeless[{i}]")),
-                );
+        RawObjectRecipeKind::Shapeless(shapeless) => {
+            for (i, ingredient) in shapeless.ingredients.iter().enumerate() {
+                if index.resolve_object(ingredient).is_none() {
+                    report.error(
+                        Diagnostic::new(
+                            CHECK,
+                            format!(
+                                "shapeless ingredient #{} references unknown item '{}'",
+                                i + 1,
+                                ingredient
+                            ),
+                        )
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field(format!("recipes[{ri}].kind.shapeless.ingredients[{i}]")),
+                    );
+                }
             }
         }
-    }
-
-    if let Some(inputs) = &recipe.inputs {
-        for (i, input) in inputs.iter().enumerate() {
-            if index.resolve_object(&input.item).is_none() {
-                report.error(
-                    Diagnostic::new(
-                        CHECK,
-                        format!(
-                            "recipe input #{} references unknown item '{}'",
-                            i + 1,
-                            input.item
-                        ),
-                    )
-                    .with_path(obj.rel_path.clone())
-                    .with_id(obj.id.clone())
-                    .with_field(format!("recipe.inputs[{i}].item")),
-                );
+        RawObjectRecipeKind::Processing(processing) => {
+            for (i, input) in processing.inputs.iter().enumerate() {
+                if index.resolve_object(&input.item).is_none() {
+                    report.error(
+                        Diagnostic::new(
+                            CHECK,
+                            format!(
+                                "processing input #{} references unknown item '{}'",
+                                i + 1,
+                                input.item
+                            ),
+                        )
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field(format!(
+                            "recipes[{ri}].kind.processing.inputs[{i}].item"
+                        )),
+                    );
+                }
             }
         }
     }

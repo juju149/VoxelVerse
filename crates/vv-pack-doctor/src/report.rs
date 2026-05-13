@@ -152,8 +152,8 @@ impl Report {
         let obj_recipes = scan
             .objects
             .iter()
-            .filter(|o| o.def.recipe.is_some())
-            .count();
+            .map(|o| o.def.recipes.len())
+            .sum::<usize>();
         self.summary.blocks = obj_blocks;
         self.summary.items = obj_items;
         self.summary.materials = 0;

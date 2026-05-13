@@ -74,12 +74,9 @@ fn scan_object_for_tag_refs(
     obj: &crate::scan::ParsedObject,
     out: &mut BTreeMap<String, Vec<TagUsage>>,
 ) {
-    if let Some(recipe) = &obj.def.recipe {
-        record_tag_ref(&recipe.station, obj.rel_path.clone(), obj.id.clone(), out);
-    }
-    if let Some(spawn) = &obj.def.spawn {
-        if let Some(surface) = &spawn.surface {
-            record_tag_ref(surface, obj.rel_path.clone(), obj.id.clone(), out);
+    for recipe in &obj.def.recipes {
+        if let Some(station) = &recipe.station {
+            record_tag_ref(station, obj.rel_path.clone(), obj.id.clone(), out);
         }
     }
 }

@@ -34,6 +34,14 @@ impl<'a> PackIndex<'a> {
                     stations_declared.insert(rest.to_string());
                 }
             }
+            if let Some(station) = &obj.def.station {
+                for tag in &station.station_tags {
+                    tags_declared.insert(tag.clone());
+                    if let Some(rest) = tag.strip_prefix("station.") {
+                        stations_declared.insert(rest.to_string());
+                    }
+                }
+            }
         }
 
         let mut world_by_short: BTreeMap<(WorldCategory, String), Vec<&ParsedWorldFile>> =

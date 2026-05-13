@@ -12,8 +12,9 @@
 use std::collections::{HashMap, HashSet};
 
 use vv_content_schema::{
-    RawObjectCount, RawObjectDef, RawObjectRenderMode, RawObjectShape,
-    RawObjectTint, RawObjectToolKind, RawObjectWeaponKind,
+    RawObjectCount, RawObjectDef, RawObjectRecipeKind, RawObjectRecipeSection,
+    RawObjectRenderMode, RawObjectShape, RawObjectTint, RawObjectToolKind,
+    RawObjectWeaponKind,
 };
 use vv_voxel::VoxelId;
 
@@ -565,22 +566,49 @@ fn compile_recipes_from_objects(
     let mut idx = 0u32;
 
     for (key, def) in raw {
-        let Some(recipe) = &def.recipe else {
-            continue;
-        };
+        for (recipe_idx, recipe) in def.recipes.iter().enumerate() {
+            let Some((compiled, next_idx)) =
+                compile_one_recipe(key, recipe_idx, recipe, items, idx, &mut errors)
+            else {
+                continue;
+            };
+            recipes.push(compiled);
+            idx = next_idx;
+        }
+    }
 
-        // Resolve output item ID.
-        let Some(output_id) = resolve_item_id(&recipe.output.item, items) else {
-            // Unknown output — skip silently (content may reference future items).
-            continue;
-        };
-        let recipe_key = format!("core:recipe/{}", key.trim_start_matches("core:"));
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+    Ok(RecipeRegistry::new(recipes))
+}
 
-        let kind = if let Some(shaped) = &recipe.shaped {
-            let legend = recipe.legend.as_ref().cloned().unwrap_or_default();
+fn compile_one_recipe(
+    object_key: &str,
+    recipe_idx: usize,
+    recipe: &RawObjectRecipeSection,
+    items: &ItemRegistry,
+    next_id: u32,
+    errors: &mut Vec<String>,
+) -> Option<(CompiledRecipe, u32)> {
+    let Some(output_id) = resolve_item_id(&recipe.output.item, items) else {
+        return None;
+    };
+    let recipe_key = if recipe_idx == 0 {
+        format!("core:recipe/{}", object_key.trim_start_matches("core:"))
+    } else {
+        format!(
+            "core:recipe/{}#{}",
+            object_key.trim_start_matches("core:"),
+            recipe_idx
+        )
+    };
+
+    let kind = match &recipe.kind {
+        RawObjectRecipeKind::Shaped(shaped) => {
             let mut grid: [Option<CompiledIngredient>; 9] = Default::default();
             let mut slot = 0usize;
-            'outer: for row in shaped {
+            'outer: for row in &shaped.pattern {
                 for ch in row.chars() {
                     if slot >= 9 {
                         break 'outer;
@@ -589,13 +617,14 @@ fn compile_recipes_from_objects(
                         None
                     } else {
                         let sym = ch.to_string();
-                        match legend.get(&sym) {
-                            Some(item_name) => resolve_item_id(item_name, items)
-                                .map(CompiledIngredient::Item),
+                        match shaped.legend.get(&sym) {
+                            Some(item_name) => {
+                                resolve_item_id(item_name, items).map(CompiledIngredient::Item)
+                            }
                             None => {
                                 errors.push(format!(
-                                    "recipe '{}': legend symbol '{}' has no mapping",
-                                    key, sym
+                                    "recipe '{}'#{}: legend symbol '{}' has no mapping",
+                                    object_key, recipe_idx, sym
                                 ));
                                 None
                             }
@@ -608,47 +637,44 @@ fn compile_recipes_from_objects(
                 grid,
                 mirrored: true,
             })
-        } else if let Some(shapeless) = &recipe.shapeless {
+        }
+        RawObjectRecipeKind::Shapeless(shapeless) => {
             let ingredients = shapeless
+                .ingredients
                 .iter()
                 .filter_map(|name| resolve_item_id(name, items).map(CompiledIngredient::Item))
                 .collect();
             CompiledRecipeKind::Shapeless(CompiledShapelessRecipe { ingredients })
-        } else if let Some(inputs) = &recipe.inputs {
-            if inputs.is_empty() {
-                errors.push(format!("recipe '{}': smelting inputs list is empty", key));
-                continue;
+        }
+        RawObjectRecipeKind::Processing(processing) => {
+            if processing.inputs.is_empty() {
+                errors.push(format!(
+                    "recipe '{}'#{}: processing inputs list is empty",
+                    object_key, recipe_idx
+                ));
+                return None;
             }
-            let Some(ing_id) = resolve_item_id(&inputs[0].item, items) else {
-                continue;
+            let Some(ing_id) = resolve_item_id(&processing.inputs[0].item, items) else {
+                return None;
             };
             CompiledRecipeKind::Smelting(CompiledSmeltingRecipe {
                 ingredient: CompiledIngredient::Item(ing_id),
                 fuel: 1,
-                smelt_seconds: 10.0,
+                smelt_seconds: processing.duration_seconds,
             })
-        } else {
-            errors.push(format!(
-                "recipe '{}': must have shaped, shapeless, or inputs",
-                key
-            ));
-            continue;
-        };
+        }
+    };
 
-        recipes.push(CompiledRecipe {
-            id: RecipeId::from_raw(idx),
+    Some((
+        CompiledRecipe {
+            id: RecipeId::from_raw(next_id),
             key: recipe_key,
             output_item: output_id,
             output_count: recipe.output.count,
-            station_tag: Some(recipe.station.clone()),
-            group: None,
+            station_tag: recipe.station.clone(),
+            group: recipe.group.clone(),
             kind,
-        });
-        idx += 1;
-    }
-
-    if !errors.is_empty() {
-        return Err(errors);
-    }
-    Ok(RecipeRegistry::new(recipes))
+        },
+        next_id + 1,
+    ))
 }

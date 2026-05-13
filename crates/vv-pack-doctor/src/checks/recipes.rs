@@ -2,11 +2,11 @@
 //!
 //! Ingredient resolution lives in `references.rs`. Here we check the shape of
 //! the recipe itself: grid dimensions, symbol coverage, station kind, and
-//! that exactly one of (shaped/shapeless/inputs) is provided.
+//! that the recipe kind enum is well-formed.
 
 use std::collections::HashSet;
 
-use vv_content_schema::RawObjectRecipeSection;
+use vv_content_schema::{RawObjectRecipeKind, RawObjectRecipeSection, RawShapedRecipe};
 
 use crate::index::{parse_tag_ref, PackIndex};
 use crate::report::{Diagnostic, Report};
@@ -17,98 +17,60 @@ const MAX_GRID: usize = 3;
 
 pub fn run(index: &PackIndex<'_>, report: &mut Report) {
     for obj in &index.scan.objects {
-        let Some(recipe) = &obj.def.recipe else { continue };
-        check_form(obj, recipe, report);
-        check_station(obj, recipe, index, report);
-
-        if let Some(shaped) = &recipe.shaped {
-            check_shaped(obj, recipe, shaped, report);
+        for (i, recipe) in obj.def.recipes.iter().enumerate() {
+            let prefix = format!("recipes[{i}]");
+            check_station(obj, &prefix, recipe, index, report);
+            if let RawObjectRecipeKind::Shaped(shaped) = &recipe.kind {
+                check_shaped(obj, &prefix, shaped, report);
+            }
+            if recipe.output.count == 0 {
+                report.error(
+                    Diagnostic::new(CHECK, "recipe output.count must be >= 1")
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field(format!("{prefix}.output.count")),
+                );
+            }
         }
-        if recipe.output.count == 0 {
-            report.error(
-                Diagnostic::new(CHECK, "recipe output.count must be >= 1")
-                    .with_path(obj.rel_path.clone())
-                    .with_id(obj.id.clone())
-                    .with_field("recipe.output.count"),
-            );
-        }
-    }
-}
-
-fn check_form(obj: &ParsedObject, recipe: &RawObjectRecipeSection, report: &mut Report) {
-    let forms: Vec<&str> = [
-        ("shaped", recipe.shaped.is_some()),
-        ("shapeless", recipe.shapeless.is_some()),
-        ("inputs", recipe.inputs.is_some()),
-    ]
-    .into_iter()
-    .filter_map(|(name, present)| if present { Some(name) } else { None })
-    .collect();
-
-    if forms.is_empty() {
-        report.error(
-            Diagnostic::new(
-                CHECK,
-                "recipe has no ingredient list — provide one of shaped / shapeless / inputs",
-            )
-            .with_path(obj.rel_path.clone())
-            .with_id(obj.id.clone())
-            .with_field("recipe"),
-        );
-    } else if forms.len() > 1 {
-        report.error(
-            Diagnostic::new(
-                CHECK,
-                format!(
-                    "recipe declares multiple ingredient forms ({}). Pick exactly one.",
-                    forms.join(", ")
-                ),
-            )
-            .with_path(obj.rel_path.clone())
-            .with_id(obj.id.clone())
-            .with_field("recipe"),
-        );
     }
 }
 
 fn check_shaped(
     obj: &ParsedObject,
-    recipe: &RawObjectRecipeSection,
-    shaped: &[String],
+    prefix: &str,
+    shaped: &RawShapedRecipe,
     report: &mut Report,
 ) {
-    if shaped.is_empty() || shaped.len() > MAX_GRID {
+    if shaped.pattern.is_empty() || shaped.pattern.len() > MAX_GRID {
         report.error(
             Diagnostic::new(
                 CHECK,
                 format!(
                     "shaped recipe must have 1..={MAX_GRID} rows; got {}",
-                    shaped.len()
+                    shaped.pattern.len()
                 ),
             )
             .with_path(obj.rel_path.clone())
             .with_id(obj.id.clone())
-            .with_field("recipe.shaped"),
+            .with_field(format!("{prefix}.kind.shaped.pattern")),
         );
         return;
     }
-    let width = shaped[0].chars().count();
+    let width = shaped.pattern[0].chars().count();
     if width == 0 || width > MAX_GRID {
         report.error(
             Diagnostic::new(
                 CHECK,
-                format!(
-                    "shaped recipe row width must be 1..={MAX_GRID}; got {width}"
-                ),
+                format!("shaped recipe row width must be 1..={MAX_GRID}; got {width}"),
             )
             .with_path(obj.rel_path.clone())
             .with_id(obj.id.clone())
-            .with_field("recipe.shaped[0]"),
+            .with_field(format!("{prefix}.kind.shaped.pattern[0]")),
         );
         return;
     }
     let mut symbols: HashSet<char> = HashSet::new();
-    for (i, row) in shaped.iter().enumerate() {
+    for (i, row) in shaped.pattern.iter().enumerate() {
         if row.chars().count() != width {
             report.error(
                 Diagnostic::new(
@@ -121,7 +83,7 @@ fn check_shaped(
                 )
                 .with_path(obj.rel_path.clone())
                 .with_id(obj.id.clone())
-                .with_field(format!("recipe.shaped[{i}]"))
+                .with_field(format!("{prefix}.kind.shaped.pattern[{i}]"))
                 .with_suggestion("pad shorter rows with spaces so all rows match".to_string()),
             );
         }
@@ -131,11 +93,9 @@ fn check_shaped(
             }
         }
     }
-    let legend = recipe.legend.as_ref();
     for c in &symbols {
         let key = c.to_string();
-        let present = legend.map(|m| m.contains_key(&key)).unwrap_or(false);
-        if !present {
+        if !shaped.legend.contains_key(&key) {
             report.error(
                 Diagnostic::new(
                     CHECK,
@@ -143,27 +103,23 @@ fn check_shaped(
                 )
                 .with_path(obj.rel_path.clone())
                 .with_id(obj.id.clone())
-                .with_field("recipe.legend")
-                .with_suggestion(format!(
-                    "add `{c}: <item>,` to the legend entry"
-                )),
+                .with_field(format!("{prefix}.kind.shaped.legend"))
+                .with_suggestion(format!("add `\"{c}\": <item>,` to the legend")),
             );
         }
     }
-    if let Some(legend) = legend {
-        for sym in legend.keys() {
-            if let Some(c) = sym.chars().next() {
-                if !symbols.contains(&c) {
-                    report.warn(
-                        Diagnostic::new(
-                            CHECK,
-                            format!("legend defines '{sym}' but pattern never uses it"),
-                        )
-                        .with_path(obj.rel_path.clone())
-                        .with_id(obj.id.clone())
-                        .with_field("recipe.legend"),
-                    );
-                }
+    for sym in shaped.legend.keys() {
+        if let Some(c) = sym.chars().next() {
+            if !symbols.contains(&c) {
+                report.warn(
+                    Diagnostic::new(
+                        CHECK,
+                        format!("legend defines '{sym}' but pattern never uses it"),
+                    )
+                    .with_path(obj.rel_path.clone())
+                    .with_id(obj.id.clone())
+                    .with_field(format!("{prefix}.kind.shaped.legend")),
+                );
             }
         }
     }
@@ -171,13 +127,16 @@ fn check_shaped(
 
 fn check_station(
     obj: &ParsedObject,
+    prefix: &str,
     recipe: &RawObjectRecipeSection,
     index: &PackIndex<'_>,
     report: &mut Report,
 ) {
-    let s = &recipe.station;
+    let Some(s) = recipe.station.as_deref() else {
+        return; // None = personal 2x2 grid
+    };
     if s.is_empty() {
-        return; // inventory crafting grid
+        return;
     }
     match parse_tag_ref(s) {
         Some(("station", name)) => {
@@ -185,13 +144,16 @@ fn check_station(
                 report.error(
                     Diagnostic::new(
                         CHECK,
-                        format!("recipe requires station '{}' but no object carries that station tag", s),
+                        format!(
+                            "recipe requires station '{}' but no object carries that station tag",
+                            s
+                        ),
                     )
                     .with_path(obj.rel_path.clone())
                     .with_id(obj.id.clone())
-                    .with_field("recipe.station")
+                    .with_field(format!("{prefix}.station"))
                     .with_suggestion(format!(
-                        "add `station.{name}` to the relevant station object's `tags:` list"
+                        "add `station.{name}` to the station's `station_tags`"
                     )),
                 );
             }
@@ -204,7 +166,7 @@ fn check_station(
                 )
                 .with_path(obj.rel_path.clone())
                 .with_id(obj.id.clone())
-                .with_field("recipe.station")
+                .with_field(format!("{prefix}.station"))
                 .with_suggestion("station references must use `#station.<name>`".to_string()),
             );
         }
@@ -219,7 +181,7 @@ fn check_station(
                 )
                 .with_path(obj.rel_path.clone())
                 .with_id(obj.id.clone())
-                .with_field("recipe.station"),
+                .with_field(format!("{prefix}.station")),
             );
         }
     }
