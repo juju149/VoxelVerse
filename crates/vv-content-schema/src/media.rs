@@ -1,22 +1,17 @@
-use serde::{de, Deserialize, Deserializer};
+//! Media types — texture sets, material descriptors, sampling modes.
+//!
+//! These are the "shape" of authored media references shared by the block,
+//! item, and render layers. Concrete file existence lives in the doctor; this
+//! module only defines what authors write in RON.
 
-/// Logical pack reference in `namespace:domain/path` form.
-#[derive(Debug, Clone, Eq, Hash, PartialEq)]
-pub struct ContentRef(pub String);
+use serde::Deserialize;
 
-impl<'de> Deserialize<'de> for ContentRef {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = String::deserialize(deserializer)?;
-        validate_content_ref(&value).map_err(de::Error::custom)?;
-        Ok(Self(value))
-    }
-}
+use crate::ContentRef;
 
+/// Alias kept for legacy compatibility — a texture is just another content ref.
 pub type TextureRef = ContentRef;
 
+/// PBR-lite material slot triplet.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawMaterialTextureSet {
     pub albedo: TextureRef,
@@ -77,17 +72,4 @@ pub struct RawMaterialDef {
     pub sampling: RawTextureSampling,
     pub atlas: ContentRef,
     pub authoring: RawAuthoringDef,
-}
-
-fn validate_content_ref(value: &str) -> Result<(), String> {
-    let Some((namespace, path)) = value.split_once(':') else {
-        return Err(format!("ref '{}' must use namespace:path form", value));
-    };
-    if namespace.is_empty() || path.is_empty() {
-        return Err(format!("ref '{}' has empty namespace or path", value));
-    }
-    if path.contains("..") || path.starts_with('/') || path.starts_with('\\') {
-        return Err(format!("ref '{}' must stay inside its pack", value));
-    }
-    Ok(())
 }

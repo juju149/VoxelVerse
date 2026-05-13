@@ -1,17 +1,21 @@
-/// Raw schema for the unified `.object.ron` format.
-///
-/// One file = one gameplay concept.  Each section is optional; the compiler
-/// decides which registries to populate based on what sections are present.
-///
-/// All content references are plain `String` — the compiler resolves short
-/// names (`"stone"`, `"oak_log"`) to their namespaced runtime keys.
+//! Raw schema for the unified `.object.ron` format.
+//!
+//! One file = one gameplay concept. Each section is optional; the compiler
+//! decides which registries to populate based on what sections are present.
+//!
+//! Block-state property declarations live here too — they belong to a block
+//! and have no other home. When `object.rs` grows past ~800 lines we'll split
+//! it into `object/{block,item,recipe,station,entity}.rs`.
+
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 // ── Top-level ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectDef {
+    #[serde(default = "default_format_version")]
+    pub format_version: u32,
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
@@ -46,10 +50,16 @@ pub struct RawObjectDef {
     pub entity: Option<RawObjectEntitySection>,
     #[serde(default)]
     pub loot: Option<RawObjectLootSection>,
+
+    /// Zero or more recipes that yield this object. Multiple entries make
+    /// alternate-ingredient recipes representable (e.g. torch from coal *or*
+    /// resin *or* animal fat) without forcing authors to invent fake objects.
     #[serde(default)]
-    pub spawn: Option<RawObjectSpawnSection>,
-    #[serde(default)]
-    pub recipe: Option<RawObjectRecipeSection>,
+    pub recipes: Vec<RawObjectRecipeSection>,
+}
+
+fn default_format_version() -> u32 {
+    crate::OBJECT_FORMAT_VERSION
 }
 
 // ── Block section ─────────────────────────────────────────────────────────────
@@ -72,6 +82,8 @@ pub struct RawObjectBlock {
     pub tint: Option<RawObjectTint>,
     #[serde(default)]
     pub shape: RawObjectShape,
+    #[serde(default)]
+    pub states: Option<RawBlockStates>,
 }
 
 fn default_true() -> bool {
@@ -83,18 +95,17 @@ fn default_true() -> bool {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RawObjectTexture {
-    /// No texture (air-like blocks).
     None,
-    /// Same texture on all six faces.
     All(String),
-    /// Independent top, four sides, bottom.
     Cube {
         top: String,
         side: String,
         bottom: String,
     },
-    /// Axial column: distinct end-caps and lateral band.
-    Column { top: String, side: String },
+    Column {
+        top: String,
+        side: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Default, PartialEq, Eq)]
@@ -134,10 +145,117 @@ pub enum RawObjectTint {
 pub enum RawObjectShape {
     #[default]
     Cube,
-    /// Vertical column (like logs). Distinct end-cap and side textures.
     Column,
-    /// Cross-shaped (grass tuft, flowers).
     Cross,
+}
+
+// ── Block-state declarations ─────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Deserialize, Default, PartialEq, Eq)]
+pub struct RawBlockStates {
+    #[serde(default)]
+    pub properties: BTreeMap<String, RawBlockStateProperty>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RawBlockStateProperty {
+    Axis { default: String },
+    FacingHorizontal { default: String },
+    Facing { default: String },
+    Half { default: String },
+    StairShape { default: String },
+    Bool { default: bool },
+    Enum { values: Vec<String>, default: String },
+}
+
+impl RawBlockStateProperty {
+    pub fn allowed_values(&self) -> Vec<&str> {
+        match self {
+            Self::Axis { .. } => vec!["x", "y", "z"],
+            Self::FacingHorizontal { .. } => vec!["north", "south", "east", "west"],
+            Self::Facing { .. } => vec!["north", "south", "east", "west", "up", "down"],
+            Self::Half { .. } => vec!["top", "bottom"],
+            Self::StairShape { .. } => vec![
+                "straight",
+                "inner_left",
+                "inner_right",
+                "outer_left",
+                "outer_right",
+            ],
+            Self::Bool { .. } => vec!["false", "true"],
+            Self::Enum { values, .. } => values.iter().map(String::as_str).collect(),
+        }
+    }
+
+    pub fn kind_tag(&self) -> &'static str {
+        match self {
+            Self::Axis { .. } => "axis",
+            Self::FacingHorizontal { .. } => "facing_horizontal",
+            Self::Facing { .. } => "facing",
+            Self::Half { .. } => "half",
+            Self::StairShape { .. } => "stair_shape",
+            Self::Bool { .. } => "bool",
+            Self::Enum { .. } => "enum",
+        }
+    }
+
+    pub fn validate_into(&self, name: &str, ctx: &str, errors: &mut Vec<String>) {
+        match self {
+            Self::Axis { default }
+            | Self::FacingHorizontal { default }
+            | Self::Facing { default }
+            | Self::Half { default }
+            | Self::StairShape { default } => {
+                let allowed = self.allowed_values();
+                if !allowed.contains(&default.as_str()) {
+                    errors.push(format!(
+                        "{ctx}: state '{name}' ({}) default '{}' not in [{}]",
+                        self.kind_tag(),
+                        default,
+                        allowed.join(", ")
+                    ));
+                }
+            }
+            Self::Bool { .. } => {}
+            Self::Enum { values, default } => {
+                if values.is_empty() {
+                    errors.push(format!("{ctx}: state '{name}' (enum) has empty `values`"));
+                    return;
+                }
+                let mut seen = std::collections::HashSet::new();
+                for v in values {
+                    if !seen.insert(v.as_str()) {
+                        errors.push(format!(
+                            "{ctx}: state '{name}' (enum) duplicate value '{}'",
+                            v
+                        ));
+                    }
+                }
+                if !values.iter().any(|v| v == default) {
+                    errors.push(format!(
+                        "{ctx}: state '{name}' (enum) default '{}' not in declared values [{}]",
+                        default,
+                        values.join(", ")
+                    ));
+                }
+            }
+        }
+    }
+}
+
+impl RawBlockStates {
+    pub fn validate_into(&self, ctx: &str, errors: &mut Vec<String>) {
+        for (name, prop) in &self.properties {
+            prop.validate_into(name, ctx, errors);
+        }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.properties.is_empty()
+    }
+    pub fn len(&self) -> usize {
+        self.properties.len()
+    }
 }
 
 // ── Item section ──────────────────────────────────────────────────────────────
@@ -146,10 +264,8 @@ pub enum RawObjectShape {
 pub struct RawObjectItem {
     #[serde(default = "default_stack_99")]
     pub stack: u32,
-    /// Pack-relative path to the inventory icon (no namespace prefix).
     #[serde(default)]
     pub icon: Option<String>,
-    /// Pack-relative path to the world / hand model.
     #[serde(default)]
     pub model: Option<String>,
 }
@@ -165,9 +281,6 @@ pub struct RawObjectMining {
     pub tool: RawObjectToolKind,
     #[serde(default)]
     pub tier: u32,
-    /// `None`  → drops the item form of this block (implicit self-drop).
-    /// `Some([])` → drops nothing.
-    /// `Some([...])` → explicit drop entries.
     #[serde(default)]
     pub drops: Option<Vec<RawObjectDropEntry>>,
 }
@@ -186,7 +299,6 @@ pub enum RawObjectToolKind {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectDropEntry {
-    /// Short item name resolved by the compiler.
     pub item: String,
     #[serde(default = "default_count_one")]
     pub count: RawObjectCount,
@@ -194,7 +306,6 @@ pub struct RawObjectDropEntry {
     pub chance: f32,
 }
 
-/// Item count: either a fixed number or a `(min, max)` range.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum RawObjectCount {
@@ -216,7 +327,7 @@ fn default_f_one() -> f32 {
     1.0
 }
 
-// ── Tool section ──────────────────────────────────────────────────────────────
+// ── Tool / Weapon / Food / Effect sections ────────────────────────────────────
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectToolSection {
@@ -226,8 +337,6 @@ pub struct RawObjectToolSection {
     pub speed: f32,
     pub durability: u32,
 }
-
-// ── Weapon section ────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectWeaponSection {
@@ -249,8 +358,6 @@ pub enum RawObjectWeaponKind {
     Axe,
 }
 
-// ── Food section ──────────────────────────────────────────────────────────────
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectFoodSection {
     pub hunger: u32,
@@ -262,8 +369,6 @@ pub struct RawObjectFoodSection {
 fn default_eat_time() -> f32 {
     1.6
 }
-
-// ── Effect section ────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectEffectSection {
@@ -284,11 +389,21 @@ pub enum RawObjectEffectKind {
 }
 
 // ── Station section ───────────────────────────────────────────────────────────
+//
+// VoxelVerse stations are broader than a Minecraft-style enum: a station is
+// either a *workbench* (you craft on it), a *processor* (it transforms inputs
+// over time, like a furnace), or a *storage* (chest-likes). The actual recipe
+// routing is data-driven via `station_tags` — recipes name the tags they
+// require so authors can introduce new station kinds without growing the enum.
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectStationSection {
     #[serde(rename = "type")]
     pub station_type: RawObjectStationType,
+    /// Tags that recipes can target via `#station.<name>`. At least one entry
+    /// expected if the station hosts any recipe.
+    #[serde(default)]
+    pub station_tags: Vec<String>,
     /// Number of processing / storage slots in the UI.
     #[serde(default)]
     pub slots: Option<u32>,
@@ -297,15 +412,18 @@ pub struct RawObjectStationSection {
     pub fuel_slot: bool,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RawObjectStationType {
-    Crafting,
-    Smelting,
-    CampfireCooking,
+    /// Player-driven crafting surface (construction bench, weapon bench, …).
+    Workbench,
+    /// Time-driven transformation (furnace, campfire, anvil, …).
+    Processor,
+    /// Chest-likes — no recipe, only inventory.
+    Storage,
 }
 
-// ── Storage section ───────────────────────────────────────────────────────────
+// ── Storage / Light / Fuel sections ───────────────────────────────────────────
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectStorageSection {
@@ -314,23 +432,17 @@ pub struct RawObjectStorageSection {
     pub persistent: bool,
 }
 
-// ── Light section ─────────────────────────────────────────────────────────────
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectLightSection {
     pub level: u32,
     #[serde(default)]
     pub flicker: bool,
-    /// RGB colour components, each 0.0–1.0.
     #[serde(default)]
     pub colour: Option<(f32, f32, f32)>,
 }
 
-// ── Fuel section ──────────────────────────────────────────────────────────────
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectFuelSection {
-    /// Fuel ticks provided when burned (800 ≈ one coal in Minecraft).
     pub duration: u32,
 }
 
@@ -340,13 +452,16 @@ pub struct RawObjectFuelSection {
 pub struct RawObjectEntitySection {
     #[serde(default)]
     pub model: Option<String>,
+    /// Skeleton reference (path-as-id under `defs/skeletons/`). Optional so
+    /// static props can keep using a single model with no rig.
+    #[serde(default)]
+    pub skeleton: Option<String>,
     pub ai: RawObjectAiKind,
     pub health: u32,
     #[serde(default)]
     pub move_speed: f32,
     #[serde(default)]
     pub jump: f32,
-    /// Attack / interaction reach in voxels (player only).
     #[serde(default)]
     pub reach: f32,
     #[serde(default)]
@@ -379,56 +494,59 @@ pub struct RawObjectLootSection {
     pub when_killed: Vec<RawObjectDropEntry>,
 }
 
-// ── Spawn section ─────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawObjectSpawnSection {
-    pub density: f32,
-    pub group: RawObjectSpawnGroup,
-    #[serde(default)]
-    pub biomes: Vec<String>,
-    #[serde(default)]
-    pub surface: Option<String>,
-    #[serde(default)]
-    pub light: RawObjectSpawnLight,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawObjectSpawnGroup {
-    pub min: u32,
-    pub max: u32,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum RawObjectSpawnLight {
-    #[default]
-    Any,
-    Daylight,
-    Night,
-}
-
 // ── Recipe section ────────────────────────────────────────────────────────────
 
+/// One recipe that yields the enclosing object.
+///
+/// A recipe is exactly one of (shaped, shapeless, processing) — never a mix.
+/// The `kind` enum enforces that at parse time so an invalid `.ron` cannot
+/// silently produce ambiguous content.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawObjectRecipeSection {
     /// Station tag required (e.g. `"#station.construction"`).
     /// `None` = available in the personal 2×2 grid.
-    pub station: String,
-    /// Grid pattern rows for shaped recipes.
     #[serde(default)]
-    pub shaped: Option<Vec<String>>,
-    /// Symbol → item-name mapping for shaped recipes.
-    #[serde(default)]
-    pub legend: Option<HashMap<String, String>>,
-    /// Unordered ingredient list for shapeless recipes.
-    #[serde(default)]
-    pub shapeless: Option<Vec<String>>,
-    /// Single-ingredient smelting recipes.
-    #[serde(default)]
-    pub inputs: Option<Vec<RawObjectDropEntry>>,
+    pub station: Option<String>,
+    /// Ingredients and how they're laid out.
+    pub kind: RawObjectRecipeKind,
     /// Output of this recipe. Short item name resolved by the compiler.
     pub output: RawObjectRecipeOutput,
+    /// Optional grouping tag for the recipe book UI.
+    #[serde(default)]
+    pub group: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RawObjectRecipeKind {
+    Shaped(RawShapedRecipe),
+    Shapeless(RawShapelessRecipe),
+    /// Time-driven transformations (smelting, cooking, …).
+    Processing(RawProcessingRecipe),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawShapedRecipe {
+    /// Grid pattern rows, e.g. `["SSS", " F ", " F "]`.
+    pub pattern: Vec<String>,
+    /// Symbol → item-name mapping.
+    pub legend: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawShapelessRecipe {
+    pub ingredients: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawProcessingRecipe {
+    pub inputs: Vec<RawObjectDropEntry>,
+    #[serde(default = "default_processing_time")]
+    pub duration_seconds: f32,
+}
+
+fn default_processing_time() -> f32 {
+    10.0
 }
 
 #[derive(Debug, Clone, Deserialize)]

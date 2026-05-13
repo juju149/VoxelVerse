@@ -5,6 +5,7 @@
 //! migration layer yet — content must match the current version exactly.
 
 pub const PACK_FORMAT_VERSION: u32 = 1;
+pub const OBJECT_FORMAT_VERSION: u32 = 1;
 pub const BLOCK_FORMAT_VERSION: u32 = 1;
 pub const BLOCK_MODEL_FORMAT_VERSION: u32 = 1;
 pub const MATERIAL_FORMAT_VERSION: u32 = 1;
@@ -32,53 +33,4 @@ pub fn check_format_version(
             "{kind} '{key}': format_version {actual} unsupported (expected {expected})"
         ))
     }
-}
-
-use serde::Deserialize;
-use crate::ContentRef;
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawPackManifest {
-    pub format_version: u32,
-    pub namespace: String,
-    pub display_name: String,
-    pub version: String,
-    pub kind: RawPackKind,
-    pub description: String,
-    pub authors: Vec<String>,
-    pub license: String,
-    pub load_priority: i32,
-    #[serde(default)]
-    pub dependencies: Vec<ContentRef>,
-    #[serde(default)]
-    pub features: Vec<String>,
-    pub content_roots: RawPackContentRoots,
-    pub rules: RawPackRules,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum RawPackKind {
-    Builtin,
-    Mod,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawPackContentRoots {
-    pub definitions: String,
-    pub media: String,
-    pub generated: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawPackRules {
-    pub identity: RawIdentityMode,
-    pub id_style: String,
-    pub runtime_loads_raw_files: bool,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum RawIdentityMode {
-    PathDerived,
 }
