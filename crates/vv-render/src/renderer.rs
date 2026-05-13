@@ -164,6 +164,11 @@ pub struct Renderer<'a> {
 
     // --- ATLAS ---
     atlas_bind: wgpu::BindGroup,
+
+    // --- TIME ---
+    /// Monotonic clock started when the renderer is created. Used to drive
+    /// the day/night sun orbit without any gameplay dependency.
+    pub start_time: std::time::Instant,
 }
 
 #[derive(Clone, Copy)]

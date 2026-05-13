@@ -1,12 +1,8 @@
 // VoxelVerse — Stylized PBR-Lite terrain fragment shader
 //
-// Features (all inline — each WGSL module is a standalone file):
-//   • ACES tonemapping + sRGB encode
-//   • Shadow sampling with quality-scaled PCF (1 / 5-tap cross / 13-tap Poisson)
-//   • Ambient sky lighting derived from sky_horizon / sky_zenith uniforms
-//   • Atmospheric fog with directional sun-glow scattering
-//   • Face variation: per-face random albedo micro-tint
-//   • Triplanar grain: optional surface micro-detail (quality bit 0)
+// Cinematic HDR look: AgX tonemapping, hemisphere ambient, Blinn-Phong
+// specular, height-based aerial perspective fog, face variation and
+// optional triplanar grain. All features are self-contained (no includes).
 //
 // GlobalUniform layout (must match renderer.rs / GlobalUniform):
 //   view_proj        mat4   (bytes   0–63)
@@ -35,12 +31,12 @@ struct Global {
 @group(2) @binding(3) var s_material:  sampler;
 @group(2) @binding(4) var<storage, read> material_colors: array<vec4<f32>>;
 
-const MATERIAL_INDEX_MASK:   u32 = 0x0000FFFFu;
-const VERTEX_COLOR_ONLY: u32 = 0xFFFFu;
+const MATERIAL_INDEX_MASK: u32 = 0x0000FFFFu;
+const VERTEX_COLOR_ONLY:   u32 = 0xFFFFu;
 
 // Quality bit layout (packed into camera_pos.w as f32):
 //   bit 0      : triplanar grain enabled
-//   bits 1–2   : PCF level  0=Low(1 tap)  1=Medium(5-tap)  2=High(13-tap Poisson)
+//   bits 1–2   : PCF level  0=Low(1 tap)  1=Medium(5-tap cross)  2=High(13-tap Poisson)
 //   bit 3      : color-only debug mode
 
 struct VertexOut {
@@ -54,28 +50,51 @@ struct VertexOut {
     @location(6) @interpolate(flat) packed_tex_index: u32,
 }
 
-// ── ACES filmic tonemapping ───────────────────────────────────────────────────
-fn vv_tonemap_aces(c: vec3<f32>) -> vec3<f32> {
-    // Fitted ACES (Narkowicz 2015)
-    let a = 2.51; let b = 0.03; let c2 = 2.43; let d = 0.59; let e = 0.14;
-    return clamp((c * (a * c + b)) / (c * (c2 * c + d) + e), vec3<f32>(0.0), vec3<f32>(1.0));
+// ── AgX Tonemapping ───────────────────────────────────────────────────────────
+// Based on Troy Sobotka's AgX. Better hue stability than ACES, especially
+// for greens and saturated colors. Does not include gamma encoding.
+fn agx_contrast(x: vec3<f32>) -> vec3<f32> {
+    let x2 = x * x;
+    let x4 = x2 * x2;
+    return  15.5      * x4 * x2
+          - 40.14     * x4 * x
+          + 31.96     * x4
+          -  6.868    * x2 * x
+          +  0.4298   * x2
+          +  0.1191   * x
+          -  0.00232;
 }
 
-// ── sRGB gamma encode ─────────────────────────────────────────────────────────
+fn vv_tonemap_agx(c: vec3<f32>, exposure: f32) -> vec3<f32> {
+    // Input transform: rotate into AgX log space
+    let mat = mat3x3<f32>(
+        vec3<f32>(0.842479, 0.042328, 0.042376),
+        vec3<f32>(0.078434, 0.878469, 0.079166),
+        vec3<f32>(0.079224, 0.079116, 0.879143),
+    );
+    let min_ev = -12.47393;
+    let max_ev =   4.026069;
+    var v = mat * max(c * exposure, vec3<f32>(1e-10));
+    v = clamp((log2(v) - min_ev) / (max_ev - min_ev), vec3<f32>(0.0), vec3<f32>(1.0));
+    return agx_contrast(v);
+}
+
+// ── Proper sRGB gamma encode (IEC 61966-2-1) ─────────────────────────────────
 fn vv_srgb(c: vec3<f32>) -> vec3<f32> {
-    return pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+    let lo = c * 12.92;
+    let hi = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.4)) * 1.055 - vec3<f32>(0.055);
+    return select(lo, hi, c > vec3<f32>(0.0031308));
 }
 
 // ── Shadow PCF ────────────────────────────────────────────────────────────────
 // Level 0 = single sample, level 1 = 5-tap cross, level 2 = 13-tap Poisson disc.
 fn vv_shadow(shadow_pos: vec3<f32>, ndotl: f32, pcf_level: u32) -> f32 {
-    // Fragments outside the shadow map frustum are unshadowed.
     if shadow_pos.z > 1.0 ||
        shadow_pos.x < 0.0 || shadow_pos.x > 1.0 ||
        shadow_pos.y < 0.0 || shadow_pos.y > 1.0 {
         return 1.0;
     }
-    let bias = max(0.0004 * (1.0 - ndotl), 0.00008);
+    let bias = max(0.00035 * (1.0 - ndotl), 0.00006);
     let uv   = shadow_pos.xy;
     let z    = shadow_pos.z - bias;
 
@@ -83,10 +102,9 @@ fn vv_shadow(shadow_pos: vec3<f32>, ndotl: f32, pcf_level: u32) -> f32 {
         return textureSampleCompare(t_shadow, s_shadow, uv, z);
     }
 
-    let ts = 1.5 / vec2<f32>(textureDimensions(t_shadow)); // 1.5-texel kernel step
+    let ts = 1.5 / vec2<f32>(textureDimensions(t_shadow));
 
     if pcf_level == 1u {
-        // 5-tap cross (+centre)
         var s  = textureSampleCompare(t_shadow, s_shadow, uv,                     z);
         s     += textureSampleCompare(t_shadow, s_shadow, uv + vec2<f32>( ts.x,  0.0), z);
         s     += textureSampleCompare(t_shadow, s_shadow, uv + vec2<f32>(-ts.x,  0.0), z);
@@ -113,54 +131,61 @@ fn vv_shadow(shadow_pos: vec3<f32>, ndotl: f32, pcf_level: u32) -> f32 {
 }
 
 // ── Triplanar grain noise ─────────────────────────────────────────────────────
-// Cheap organic micro-surface detail: three sin() evaluations blended by normal.
 fn vv_triplanar_grain(world_pos: vec3<f32>, normal: vec3<f32>) -> f32 {
-    let f   = 5.0;
-    let gx  = sin(world_pos.y * f + 0.30) * sin(world_pos.z * f + 0.70);
-    let gy  = sin(world_pos.x * f + 1.10) * sin(world_pos.z * f + 0.20);
-    let gz  = sin(world_pos.x * f + 0.80) * sin(world_pos.y * f + 0.50);
-    let w   = abs(normal);
-    return (gx * w.x + gy * w.y + gz * w.z) * 0.032;
+    let f  = 5.0;
+    let gx = sin(world_pos.y * f + 0.30) * sin(world_pos.z * f + 0.70);
+    let gy = sin(world_pos.x * f + 1.10) * sin(world_pos.z * f + 0.20);
+    let gz = sin(world_pos.x * f + 0.80) * sin(world_pos.y * f + 0.50);
+    let w  = abs(normal);
+    return (gx * w.x + gy * w.y + gz * w.z) * 0.028;
 }
 
-// ── Per-face random tint ──────────────────────────────────────────────────────
-// Breaks the monotony of tiled textures with a subtle per-block variation.
+// ── Per-face micro-tint ───────────────────────────────────────────────────────
 fn vv_face_variation(world_pos: vec3<f32>, normal: vec3<f32>) -> f32 {
     let seed = dot(floor(world_pos + normal * 0.5), vec3<f32>(12.9898, 78.233, 37.719));
     return fract(sin(seed) * 43758.5453);
 }
 
-// ── Atmospheric fog with sun-glow ─────────────────────────────────────────────
-// Fog transitions to sky horizon color; when looking toward the sun the fog
-// picks up warm scattered light, giving cinematic depth to distant vistas.
-fn vv_atmospheric_fog(color: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
-    let dist        = distance(global.camera_pos.xyz, world_pos);
+// ── Aerial perspective fog ────────────────────────────────────────────────────
+// Exponential-squared base fog with height fade, sun forward-scatter glow,
+// and sky-color tinting for realistic atmospheric depth.
+fn vv_aerial_fog(color: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
+    let cam_pos     = global.camera_pos.xyz;
+    let dist        = distance(cam_pos, world_pos);
     let fog_density = global.sun_dir.w;
-    let fog_factor  = 1.0 - exp(-(dist * fog_density) * (dist * fog_density * 0.5));
 
-    // View direction from camera toward the fragment
-    let view_dir  = normalize(world_pos - global.camera_pos.xyz);
+    // Height-based density: denser near the planet surface.
+    // Approximate height above surface using planet-center assumption (origin = center).
+    let frag_r  = length(world_pos);
+    let cam_r   = length(cam_pos);
+    let avg_r   = mix(frag_r, cam_r, 0.5);
+    let surface = max(avg_r - 1.0, 0.0) * 0.008;   // soften with altitude
+    let dens    = fog_density * (1.0 + exp(-surface) * 0.6);
+
+    let fog_sq  = dist * dens;
+    let fog_f   = clamp(1.0 - exp(-fog_sq * fog_sq * 0.5), 0.0, 1.0);
+
+    // Forward-scatter: fog warms near the sun (Mie lobe)
+    let view_dir  = normalize(world_pos - cam_pos);
     let sun_dir   = normalize(global.sun_dir.xyz);
-
-    // Sun glow: forward scattering makes the fog warmer near the sun
     let sun_align = max(dot(view_dir, sun_dir), 0.0);
-    let sun_glow  = pow(sun_align, 5.0) * 0.40;
+    let mie_fwd   = pow(sun_align, 7.0) * 0.55 * global.sky_zenith.w;
 
-    let fog_base  = global.sky_horizon.rgb;
-    let fog_warm  = vec3<f32>(1.12, 0.82, 0.48); // warm sun-scatter color
-    let fog_color = mix(fog_base, fog_warm, sun_glow);
+    let fog_sky   = global.sky_horizon.rgb;
+    let fog_sun   = vec3<f32>(1.05, 0.72, 0.32) * global.sky_zenith.w;
+    let fog_col   = mix(fog_sky, fog_sun, mie_fwd);
 
-    return mix(color, fog_color, clamp(fog_factor, 0.0, 1.0));
+    return mix(color, fog_col, fog_f);
 }
 
-// ── Fragment entry point ──────────────────────────────────────────────────────
+// ── Fragment entry ────────────────────────────────────────────────────────────
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    let layer       = in.packed_tex_index & MATERIAL_INDEX_MASK;
-    let qbits       = u32(global.camera_pos.w);
-    let color_only  = (qbits & 8u) != 0u;
-    let triplanar   = (qbits & 1u) != 0u;
-    let pcf_level   = (qbits >> 1u) & 3u;
+    let layer      = in.packed_tex_index & MATERIAL_INDEX_MASK;
+    let qbits      = u32(global.camera_pos.w);
+    let color_only = (qbits & 8u) != 0u;
+    let triplanar  = (qbits & 1u) != 0u;
+    let pcf_level  = (qbits >> 1u) & 3u;
 
     // ── Albedo & roughness ────────────────────────────────────────────────
     var albedo:    vec3<f32>;
@@ -168,56 +193,77 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 
     if layer == VERTEX_COLOR_ONLY {
         albedo    = in.color;
-        roughness = 0.78;
+        roughness = 0.75;
     } else if color_only {
         albedo    = material_colors[layer].rgb * in.color;
-        roughness = 0.72;
+        roughness = 0.70;
     } else {
         albedo    = textureSample(t_albedo,    s_material, in.uv, i32(layer)).rgb * in.color;
         roughness = textureSample(t_roughness, s_material, in.uv, i32(layer)).r;
 
-        // Per-face micro-tint breaks texture monotony (cheap: one sin + fract)
-        let variation = vv_face_variation(in.world_pos, in.world_normal);
-        albedo *= (0.91 + variation * 0.18);
+        // Per-face micro-tint: subtle variation breaks texture repetition
+        let var_v  = vv_face_variation(in.world_pos, in.world_normal);
+        albedo    *= (0.88 + var_v * 0.24);
 
-        // Optional triplanar grain (toggled by quality tier)
+        // Optional triplanar grain (medium+ quality)
         if triplanar {
-            let grain = vv_triplanar_grain(in.world_pos, in.world_normal);
-            albedo    = albedo * (1.0 + grain);
+            albedo *= 1.0 + vv_triplanar_grain(in.world_pos, in.world_normal);
         }
     }
 
-    let normal      = normalize(in.world_normal);
-    let sun_dir     = normalize(global.sun_dir.xyz);
+    let normal        = normalize(in.world_normal);
+    let sun_dir       = normalize(global.sun_dir.xyz);
     let sun_intensity = global.sky_zenith.w;
 
-    // ── Sun direct lighting ───────────────────────────────────────────────
-    // Wrap factor 0.82 + 0.18 gives gentle wrap-around light on shadowed faces.
-    let ndotl       = max(dot(normal, sun_dir) * 0.82 + 0.18, 0.0);
-    let shadow      = mix(0.28, 1.0, vv_shadow(in.shadow_pos, ndotl, pcf_level));
+    // ── Direct sun lighting ───────────────────────────────────────────────
+    // Wrap factor 0.85+0.15: gentle wrap-around on back-lit faces
+    let ndotl    = max(dot(normal, sun_dir) * 0.85 + 0.15, 0.0);
+    let shadow   = mix(0.22, 1.0, vv_shadow(in.shadow_pos, ndotl, pcf_level));
 
-    // Warm gold sun color, slightly desaturated on rough surfaces.
-    let sun_color   = vec3<f32>(1.30, 1.18, 0.90) * sun_intensity;
-    let sun         = sun_color * ndotl * shadow * mix(1.12, 0.60, roughness);
+    // Warm gold sun: color driven by sun elevation (orange at horizon)
+    let sun_elev = sun_dir.y;
+    let sun_col  = mix(
+        vec3<f32>(1.10, 0.60, 0.22),    // horizon: warm orange
+        vec3<f32>(1.28, 1.18, 0.92),    // zenith:  bright warm white
+        clamp(sun_elev * 2.5 + 0.3, 0.0, 1.0)
+    ) * sun_intensity;
 
-    // ── Ambient sky lighting ──────────────────────────────────────────────
-    // Top-facing surfaces receive zenith sky color; side faces receive horizon.
-    // Using the planet's radial "up" (world_pos normalized) for realism on a
-    // curved planet surface.
-    let planet_up   = normalize(in.world_pos);
-    let sky_up      = max(dot(normal, planet_up), 0.0);      // 0–1, top faces
-    let sky_side    = clamp(1.0 - sky_up * 1.4, 0.0, 1.0);  // side/bottom faces
+    let direct = sun_col * ndotl * shadow;
 
-    let amb_zenith  = global.sky_zenith.rgb  * 0.38 * mix(0.90, 1.35, 1.0 - roughness);
-    let amb_horizon = global.sky_horizon.rgb * 0.16;
-    let amb_bounce  = vec3<f32>(0.10, 0.08, 0.05); // warm ground-reflected light
+    // ── Specular highlight (Blinn-Phong, medium+ quality) ─────────────────
+    var specular = vec3<f32>(0.0);
+    if pcf_level > 0u {
+        let view_dir = normalize(global.camera_pos.xyz - in.world_pos);
+        let half_v   = normalize(sun_dir + view_dir);
+        let ndoth    = max(dot(normal, half_v), 0.0);
+        let gloss    = max(32.0 * (1.0 - roughness * roughness), 1.0);
+        let spec_val = pow(ndoth, gloss) * (1.0 - roughness) * 0.35;
+        specular = sun_col * spec_val * shadow;
+    }
 
-    let ambient     = amb_zenith * sky_up + amb_horizon * sky_side + amb_bounce * (1.0 - sky_up);
+    // ── Hemisphere ambient sky lighting ──────────────────────────────────
+    // Uses the planet's radial "up" so curved surfaces catch sky correctly.
+    let planet_up = normalize(in.world_pos);
+    let sky_up    = max(dot(normal, planet_up), 0.0);          // top faces
+    let sky_side  = clamp(1.0 - sky_up * 1.4, 0.0, 1.0);      // side faces
+    let sky_bot   = max(dot(normal, -planet_up), 0.0);         // bottom faces
 
-    // ── Compose & post-process ────────────────────────────────────────────
-    var color = albedo * (sun + ambient);
-    color     = vv_atmospheric_fog(color, in.world_pos);
-    color     = vv_srgb(vv_tonemap_aces(color));
+    let amb_sky   = global.sky_zenith.rgb  * 0.44 * mix(0.80, 1.40, sky_up);
+    let amb_horiz = global.sky_horizon.rgb * 0.18;
+    let amb_fill  = vec3<f32>(0.12, 0.09, 0.05);               // warm ground bounce
+
+    let ambient = amb_sky * sky_up + amb_horiz * sky_side + amb_fill * sky_bot;
+
+    // ── Compose linear HDR color ──────────────────────────────────────────
+    var color = albedo * (direct + ambient + specular);
+
+    // ── Aerial perspective fog ────────────────────────────────────────────
+    color = vv_aerial_fog(color, in.world_pos);
+
+    // ── AgX tonemap + exposure + sRGB encode ─────────────────────────────
+    // Exposure: slightly brighter than 1.0 gives a clean, sunlit look.
+    let exposure = 1.15;
+    color = vv_srgb(vv_tonemap_agx(color, exposure));
 
     return vec4<f32>(color, 1.0);
 }

@@ -697,6 +697,7 @@ impl<'a> Renderer<'a> {
             shadow_map_size: perf.shadow_map_size,
             lod_distance_scale: perf.lod_distance_scale,
             atlas_bind,
+            start_time: std::time::Instant::now(),
         }
     }
 

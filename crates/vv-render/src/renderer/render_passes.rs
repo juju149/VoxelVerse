@@ -165,10 +165,23 @@ impl<'a> Renderer<'a> {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        // -- sun direction: low angle for long dramatic shadows --
-        let sun_dir = glam::Vec3::new(0.38, 0.62, 0.28).normalize();
+        // -- Dynamic sun direction --
+        // Full day/night cycle in ~4 minutes. Sun orbits in the XY plane with a
+        // slight Z tilt so shadows always have a visible angle.
+        // Start at golden-hour (0.15 * TAU) so the game opens looking beautiful.
+        let elapsed_secs = self.start_time.elapsed().as_secs_f32();
+        let day_secs     = 240.0_f32;   // 4-minute day cycle
+        let day_phase    = (elapsed_secs / day_secs + 0.15).fract();
+        let sun_angle    = day_phase * std::f32::consts::TAU;
+        // y = cos → noon at 0, midnight at π.  x/z give direction in sky.
+        let sun_dir      = glam::Vec3::new(
+            sun_angle.sin() * 0.55,
+            sun_angle.cos(),
+            0.30,
+        ).normalize();
+
         let shadow_dist = 200.0;
-        let proj_size = 60.0;
+        let proj_size   = 60.0;
 
         // Fog density scales with planet surface radius so that all planet sizes
         // have visually appropriate atmospheric depth.
@@ -275,42 +288,56 @@ impl<'a> Renderer<'a> {
         //    sun_dir.y is the sine of the sun's elevation angle.
         let sun_elevation = sun_dir.y.clamp(-1.0_f32, 1.0);
         let above_horizon = sun_elevation.max(0.0_f32);
-        // dawn_factor peaks near the horizon (sunrise/sunset) and falls off at noon/night
-        let dawn_factor =
-            (1.0 - (sun_elevation.abs() * 3.5).min(1.0)).powi(2) * (above_horizon * 2.0).min(1.0);
 
-        let h_noon = glam::Vec3::new(0.72, 0.84, 1.00);
-        let h_dawn = glam::Vec3::new(0.96, 0.58, 0.26);
-        let h_night = glam::Vec3::new(0.02, 0.03, 0.08);
+        // dawn_factor: peaks near the horizon (sunrise/sunset), 0 at noon and night
+        let dawn_factor = {
+            let abs_elev = sun_elevation.abs();
+            let ramp_up  = (sun_elevation * 6.0 + 0.8_f32).clamp(0.0, 1.0);
+            (1.0 - (abs_elev * 5.0_f32).min(1.0)).powi(2) * ramp_up
+        };
+
+        // Horizon color palette
+        let h_noon  = glam::Vec3::new(0.68, 0.82, 1.00);  // clear blue-white
+        let h_dawn  = glam::Vec3::new(1.00, 0.52, 0.18);  // rich warm orange
+        let h_dusk  = glam::Vec3::new(0.88, 0.36, 0.28);  // deep rose-red
+        let h_night = glam::Vec3::new(0.02, 0.03, 0.10);  // deep blue-black
+
         let sky_horizon_rgb = if sun_elevation >= 0.0 {
-            // Blend toward dawn/dusk colors when sun is near horizon
+            // Blend from noon toward dawn/dusk colors near horizon
             let t = dawn_factor;
+            let dawn_col = if day_phase < 0.5 { h_dawn } else { h_dusk };  // morning vs evening
             glam::Vec3::new(
-                h_noon.x * (1.0 - t) + h_dawn.x * t,
-                h_noon.y * (1.0 - t) + h_dawn.y * t,
-                h_noon.z * (1.0 - t) + h_dawn.z * t,
+                h_noon.x * (1.0 - t) + dawn_col.x * t,
+                h_noon.y * (1.0 - t) + dawn_col.y * t,
+                h_noon.z * (1.0 - t) + dawn_col.z * t,
             )
         } else {
-            let night_t = (-sun_elevation * 4.0).min(1.0);
+            // Night: fade from dusk/dawn to deep space
+            let night_t = ((-sun_elevation - 0.05) * 5.0).clamp(0.0, 1.0);
+            let dawn_col = if day_phase < 0.5 { h_dawn } else { h_dusk };
             glam::Vec3::new(
-                h_dawn.x * (1.0 - night_t) + h_night.x * night_t,
-                h_dawn.y * (1.0 - night_t) + h_night.y * night_t,
-                h_dawn.z * (1.0 - night_t) + h_night.z * night_t,
+                dawn_col.x * (1.0 - night_t) + h_night.x * night_t,
+                dawn_col.y * (1.0 - night_t) + h_night.y * night_t,
+                dawn_col.z * (1.0 - night_t) + h_night.z * night_t,
             )
         };
 
-        let day_t = above_horizon.powf(0.5);
-        let z_day = glam::Vec3::new(0.12, 0.28, 0.76);
-        let z_night = glam::Vec3::new(0.01, 0.01, 0.05);
+        // Zenith color palette
+        let z_day   = glam::Vec3::new(0.10, 0.22, 0.72);  // rich cobalt blue
+        let z_dawn  = glam::Vec3::new(0.22, 0.18, 0.52);  // purple twilight
+        let z_night = glam::Vec3::new(0.01, 0.01, 0.06);  // near-black space
+
+        let day_t  = above_horizon.powf(0.4);
+        let dawn_z = dawn_factor * 0.55;
         let sky_zenith_rgb = glam::Vec3::new(
-            z_day.x * day_t + z_night.x * (1.0 - day_t),
-            z_day.y * day_t + z_night.y * (1.0 - day_t),
-            z_day.z * day_t + z_night.z * (1.0 - day_t),
+            (z_day.x * day_t + z_night.x * (1.0 - day_t)) * (1.0 - dawn_z) + z_dawn.x * dawn_z,
+            (z_day.y * day_t + z_night.y * (1.0 - day_t)) * (1.0 - dawn_z) + z_dawn.y * dawn_z,
+            (z_day.z * day_t + z_night.z * (1.0 - day_t)) * (1.0 - dawn_z) + z_dawn.z * dawn_z,
         );
 
-        let sun_intensity = above_horizon.powf(0.3).min(1.0);
-        // time_of_day: placeholder (0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset)
-        let time_of_day = 0.5_f32;
+        let sun_intensity = above_horizon.powf(0.25).min(1.0);
+        // time_of_day: 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
+        let time_of_day = day_phase;
 
         // 2. Build and upload the main global uniform.
         let global_data = GlobalUniform {
