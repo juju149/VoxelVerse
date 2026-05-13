@@ -19,6 +19,9 @@ fn json_output_contains_expected_top_level_keys() {
         "\"warnings\":",
         "\"unused\":",
         "\"missing\":",
+        "\"planet\":",
+        "\"planet_profiles\":",
+        "\"render_profiles\":",
         "\"progression\":",
         "\"basic_loop_reachable\":",
     ] {

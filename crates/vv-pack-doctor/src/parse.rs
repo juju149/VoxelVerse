@@ -40,11 +40,13 @@ pub fn read_typed<T: DeserializeOwned>(
 /// Parse pre-loaded text. Used by the scanner when it already had to read the
 /// file (for example to compute its classification).
 pub fn parse_string<T: DeserializeOwned>(rel_path: String, text: &str) -> Result<T, ParseError> {
-    match ron::from_str::<T>(text) {
+    let opts =
+        ron::Options::default().with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME);
+    match opts.from_str::<T>(text) {
         Ok(v) => Ok(v),
         Err(first) => {
             let stripped = strip_outer_type_name(text);
-            match ron::from_str::<T>(stripped) {
+            match opts.from_str::<T>(stripped) {
                 Ok(v) => Ok(v),
                 Err(second) if stripped.len() != text.len() => {
                     // The wrapper was stripped but a deeper error remains.

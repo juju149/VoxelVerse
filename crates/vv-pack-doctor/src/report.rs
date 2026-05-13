@@ -17,6 +17,7 @@ pub struct Report {
     pub unused: Unused,
     pub missing: Missing,
     pub progression: Progression,
+    pub planet: PlanetReport,
     pub summary: Summary,
     pub health_score: u32,
 }
@@ -88,6 +89,101 @@ pub struct Progression {
 }
 
 #[derive(Debug, Clone, Default)]
+pub struct PlanetReport {
+    pub counts: PlanetCounts,
+    pub planet_profiles: Vec<PlanetProfileSummary>,
+    pub biome_sets: Vec<BiomeSetSummary>,
+    pub biomes: Vec<BiomeSummary>,
+    pub features: Vec<FeatureSummary>,
+    pub ores: Vec<OreSummary>,
+    pub caves: Vec<CaveSummary>,
+    pub render_profiles: Vec<RenderProfileSummary>,
+    pub budget_notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct PlanetCounts {
+    pub planet_profiles: usize,
+    pub biome_sets: usize,
+    pub biomes: usize,
+    pub vegetation_rules: usize,
+    pub prop_scatters: usize,
+    pub ore_rules: usize,
+    pub cave_rules: usize,
+    pub render_profiles: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct PlanetProfileSummary {
+    pub id: String,
+    pub display_name: String,
+    pub near_voxel_lod_radius: u32,
+    pub far_surface_lod_radius: u32,
+    pub upload_budget_chunks_per_frame: u32,
+    pub region_cell_voxels: u32,
+    pub feature_budget_per_chunk: u32,
+    pub vegetation_refs: usize,
+    pub prop_scatter_refs: usize,
+    pub ore_refs: usize,
+    pub cave_refs: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct BiomeSetSummary {
+    pub id: String,
+    pub display_name: String,
+    pub selectors: usize,
+    pub blend_radius: f32,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct BiomeSummary {
+    pub id: String,
+    pub display_name: String,
+    pub surface_top: String,
+    pub surface_under: String,
+    pub amplitude: f32,
+    pub flatness: f32,
+    pub tags: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct FeatureSummary {
+    pub id: String,
+    pub kind: String,
+    pub density: f32,
+    pub min_spacing_voxels: f32,
+    pub variant_count: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct OreSummary {
+    pub id: String,
+    pub block: String,
+    pub density: f32,
+    pub depth_voxels: (u32, u32),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct CaveSummary {
+    pub id: String,
+    pub fields: usize,
+    pub depth_voxels: (u32, u32),
+    pub tunnel_radius: (f32, f32),
+    pub chamber_radius: (f32, f32),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RenderProfileSummary {
+    pub id: String,
+    pub label: String,
+    pub quality_class: String,
+    pub fog: bool,
+    pub water: String,
+    pub enabled_features: usize,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct Summary {
     pub blocks: usize,
     pub items: usize,
@@ -112,6 +208,7 @@ impl Report {
             unused: Unused::default(),
             missing: Missing::default(),
             progression: Progression::default(),
+            planet: PlanetReport::default(),
             summary: Summary::default(),
             health_score: 0,
         }
@@ -147,7 +244,11 @@ impl Report {
     }
 
     pub fn finalize(&mut self, scan: &PackScan) {
-        let obj_blocks = scan.objects.iter().filter(|o| o.def.block.is_some()).count();
+        let obj_blocks = scan
+            .objects
+            .iter()
+            .filter(|o| o.def.block.is_some())
+            .count();
         let obj_items = scan.objects.len();
         let obj_recipes = scan
             .objects
@@ -159,11 +260,7 @@ impl Report {
         self.summary.materials = 0;
         self.summary.textures = scan.texture_files.len();
         self.summary.recipes = obj_recipes;
-        self.summary.loot_tables = scan
-            .objects
-            .iter()
-            .filter(|o| o.def.loot.is_some())
-            .count();
+        self.summary.loot_tables = scan.objects.iter().filter(|o| o.def.loot.is_some()).count();
         self.summary.voxels = scan.voxel_files.len();
         self.summary.shader_modules = scan.render.shader_modules.len();
         self.summary.techniques = scan.render.techniques.len();

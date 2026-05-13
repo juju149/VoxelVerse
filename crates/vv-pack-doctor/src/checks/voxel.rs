@@ -42,10 +42,57 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
             }
         }
     }
+    for world in &index.scan.world_files {
+        collect_world_models(&world.value, &mut Vec::new(), &mut referenced);
+    }
 
     for file in &index.scan.voxel_files {
         if !referenced.contains(&file.rel_path) {
             report.unused.voxels.push(file.rel_path.clone());
         }
+    }
+}
+
+fn collect_world_models(
+    value: &ron::Value,
+    path: &mut Vec<String>,
+    referenced: &mut BTreeSet<String>,
+) {
+    if path.last().map(String::as_str) == Some("model") {
+        if let ron::Value::String(model) = value {
+            referenced.insert(voxel_candidate(model));
+        }
+    }
+    match value {
+        ron::Value::Map(map) => {
+            for (key, child) in map.iter() {
+                let key = match key {
+                    ron::Value::String(s) => s.clone(),
+                    ron::Value::Char(c) => c.to_string(),
+                    other => format!("{other:?}"),
+                };
+                path.push(key);
+                collect_world_models(child, path, referenced);
+                path.pop();
+            }
+        }
+        ron::Value::Seq(seq) => {
+            for (i, child) in seq.iter().enumerate() {
+                path.push(format!("[{i}]"));
+                collect_world_models(child, path, referenced);
+                path.pop();
+            }
+        }
+        ron::Value::Option(Some(child)) => collect_world_models(child, path, referenced),
+        _ => {}
+    }
+}
+
+fn voxel_candidate(model: &str) -> String {
+    let stripped = model.strip_prefix("core:").unwrap_or(model);
+    if stripped.starts_with("voxel/") {
+        format!("media/{stripped}.vox")
+    } else {
+        format!("media/voxel/{stripped}.vox")
     }
 }

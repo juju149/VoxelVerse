@@ -35,6 +35,39 @@ pub fn render(report: &Report) -> String {
     push_diagnostics(&mut out, "Errors", &report.errors, "error");
     push_diagnostics(&mut out, "Warnings", &report.warnings, "warning");
 
+    out.push_str("<section><h2>Planet</h2>\n<table>\n");
+    push_row(
+        &mut out,
+        "Planet profiles",
+        report.planet.counts.planet_profiles,
+    );
+    push_row(&mut out, "Biome sets", report.planet.counts.biome_sets);
+    push_row(&mut out, "Biomes", report.planet.counts.biomes);
+    push_row(
+        &mut out,
+        "Vegetation rules",
+        report.planet.counts.vegetation_rules,
+    );
+    push_row(
+        &mut out,
+        "Prop scatters",
+        report.planet.counts.prop_scatters,
+    );
+    push_row(&mut out, "Ore rules", report.planet.counts.ore_rules);
+    push_row(&mut out, "Cave rules", report.planet.counts.cave_rules);
+    push_row(
+        &mut out,
+        "Render profiles",
+        report.planet.counts.render_profiles,
+    );
+    out.push_str("</table>\n");
+    push_planet_profiles(&mut out, report);
+    push_biomes(&mut out, report);
+    push_features(&mut out, report);
+    push_render_profiles(&mut out, report);
+    push_list(&mut out, "Budget notes", &report.planet.budget_notes);
+    out.push_str("</section>\n");
+
     out.push_str("<section><h2>Unused</h2>\n");
     push_list(&mut out, "Textures", &report.unused.textures);
     push_list(&mut out, "Materials", &report.unused.materials);
@@ -76,6 +109,102 @@ pub fn render(report: &Report) -> String {
 
     out.push_str("</body></html>\n");
     out
+}
+
+fn push_planet_profiles(out: &mut String, report: &Report) {
+    out.push_str("<details open><summary>Planet profiles");
+    out.push_str(&format!(" ({})", report.planet.planet_profiles.len()));
+    out.push_str("</summary><table><thead><tr><th>ID</th><th>LOD near/far</th><th>Upload</th><th>Feature budget</th><th>Refs</th></tr></thead><tbody>\n");
+    for p in &report.planet.planet_profiles {
+        out.push_str("<tr><td><code>");
+        escape(out, &p.id);
+        out.push_str("</code><br><small>");
+        escape(out, &p.display_name);
+        out.push_str("</small></td><td>");
+        escape(
+            out,
+            &format!("{}/{}", p.near_voxel_lod_radius, p.far_surface_lod_radius),
+        );
+        out.push_str("</td><td>");
+        escape(out, &p.upload_budget_chunks_per_frame.to_string());
+        out.push_str("</td><td>");
+        escape(out, &p.feature_budget_per_chunk.to_string());
+        out.push_str("</td><td>");
+        escape(
+            out,
+            &format!(
+                "{} veg / {} props / {} ores / {} caves",
+                p.vegetation_refs, p.prop_scatter_refs, p.ore_refs, p.cave_refs
+            ),
+        );
+        out.push_str("</td></tr>\n");
+    }
+    out.push_str("</tbody></table></details>\n");
+}
+
+fn push_biomes(out: &mut String, report: &Report) {
+    out.push_str("<details><summary>Biomes");
+    out.push_str(&format!(" ({})", report.planet.biomes.len()));
+    out.push_str("</summary><table><thead><tr><th>ID</th><th>Surface</th><th>Terrain</th><th>Tags</th></tr></thead><tbody>\n");
+    for b in &report.planet.biomes {
+        out.push_str("<tr><td><code>");
+        escape(out, &b.id);
+        out.push_str("</code><br><small>");
+        escape(out, &b.display_name);
+        out.push_str("</small></td><td>");
+        escape(out, &format!("{} / {}", b.surface_top, b.surface_under));
+        out.push_str("</td><td>");
+        escape(
+            out,
+            &format!("amp {:.2}, flat {:.2}", b.amplitude, b.flatness),
+        );
+        out.push_str("</td><td>");
+        escape(out, &b.tags.join(", "));
+        out.push_str("</td></tr>\n");
+    }
+    out.push_str("</tbody></table></details>\n");
+}
+
+fn push_features(out: &mut String, report: &Report) {
+    out.push_str("<details><summary>Vegetation and props");
+    out.push_str(&format!(" ({})", report.planet.features.len()));
+    out.push_str("</summary><table><thead><tr><th>ID</th><th>Kind</th><th>Density</th><th>Spacing</th><th>Variants</th></tr></thead><tbody>\n");
+    for f in &report.planet.features {
+        out.push_str("<tr><td><code>");
+        escape(out, &f.id);
+        out.push_str("</code></td><td>");
+        escape(out, &f.kind);
+        out.push_str("</td><td>");
+        escape(out, &format!("{:.3}", f.density));
+        out.push_str("</td><td>");
+        escape(out, &format!("{:.1}", f.min_spacing_voxels));
+        out.push_str("</td><td>");
+        escape(out, &f.variant_count.to_string());
+        out.push_str("</td></tr>\n");
+    }
+    out.push_str("</tbody></table></details>\n");
+}
+
+fn push_render_profiles(out: &mut String, report: &Report) {
+    out.push_str("<details><summary>Render profiles");
+    out.push_str(&format!(" ({})", report.planet.render_profiles.len()));
+    out.push_str("</summary><table><thead><tr><th>ID</th><th>Class</th><th>Fog</th><th>Water</th><th>Features</th></tr></thead><tbody>\n");
+    for p in &report.planet.render_profiles {
+        out.push_str("<tr><td><code>");
+        escape(out, &p.id);
+        out.push_str("</code><br><small>");
+        escape(out, &p.label);
+        out.push_str("</small></td><td>");
+        escape(out, &p.quality_class);
+        out.push_str("</td><td>");
+        escape(out, if p.fog { "yes" } else { "no" });
+        out.push_str("</td><td>");
+        escape(out, &p.water);
+        out.push_str("</td><td>");
+        escape(out, &p.enabled_features.to_string());
+        out.push_str("</td></tr>\n");
+    }
+    out.push_str("</tbody></table></details>\n");
 }
 
 fn push_kv(out: &mut String, key: &str, value: &str) {

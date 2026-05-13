@@ -47,6 +47,6 @@ PlanetProfile(
         far_surface_lod_radius: 192,
         upload_budget_chunks_per_frame: 8,
         region_cell_voxels: 64,
-        feature_budget_per_chunk: 448,
+        feature_budget_per_chunk: 384,
     ),
 )

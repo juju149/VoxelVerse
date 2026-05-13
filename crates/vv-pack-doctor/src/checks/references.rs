@@ -221,7 +221,7 @@ fn check_world_file(file: &ParsedWorldFile, index: &PackIndex<'_>, report: &mut 
     // whose name suggests an object/block link, to avoid noisy false
     // positives.
     let object_link_fields = [
-        "block", "blocks", "top", "under", "side", "bottom",
+        "block", "blocks", "top", "under", "side", "bottom", "item",
         "trunk", "leaves", "air_block", "use", "replace", "replaces",
         "surface",
     ];
@@ -244,6 +244,7 @@ fn check_world_file(file: &ParsedWorldFile, index: &PackIndex<'_>, report: &mut 
                 format!("media/voxel/{}.vox", stripped)
             };
             if !index.voxel_exists(&candidate) {
+                report.missing.voxels.push(candidate.clone());
                 report.error(
                     Diagnostic::new(
                         "references",
