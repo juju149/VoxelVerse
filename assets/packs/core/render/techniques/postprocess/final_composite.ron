@@ -6,7 +6,7 @@ RenderTechnique(
         fragment: Some("core:render/shader_modules/post/final_composite"),
     ),
     vertex_layout: "fullscreen_triangle",
-    material_family: "core:render/material_families/sky",
+    material_family: "core:render/material_families/postprocess",
     contracts: [],
     depth: (write: false, compare: always),
     culling: none,

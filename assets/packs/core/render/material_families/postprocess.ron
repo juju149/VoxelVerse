@@ -1,0 +1,7 @@
+MaterialFamily(
+    label: "Postprocess",
+    surface_model: "postprocess_unlit",
+    texture_slots: [],
+    scalar_parameters: [],
+    color_parameters: [],
+)

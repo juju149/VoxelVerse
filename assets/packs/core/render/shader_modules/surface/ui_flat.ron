@@ -1,10 +1,9 @@
 ShaderModule(
     language: wgsl,
     imports: [],
-    feature_class: "atmosphere",
+    feature_class: "surface",
     contracts: [
-        "core:render/shader_contracts/frame_globals",
+        "core:render/shader_contracts/material_surface",
     ],
     allow_override: true,
 )
-

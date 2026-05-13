@@ -1,4 +1,3 @@
-// Rabbit — small passive herbivore; common in plains and forest biomes.
 Object(
     name: "Rabbit",
     tags: [animal, passive, small_herbivore],

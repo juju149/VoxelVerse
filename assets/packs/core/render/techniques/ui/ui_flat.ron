@@ -3,13 +3,14 @@ RenderTechnique(
     pass: "ui",
     stages: (
         vertex: "core:render/shader_modules/voxel/terrain_vertex",
-        fragment: Some("core:render/shader_modules/debug/ui_flat"),
+        fragment: Some("core:render/shader_modules/surface/ui_flat"),
     ),
     vertex_layout: "ui_flat",
-    material_family: "core:render/material_families/sky",
+    material_family: "core:render/material_families/ui",
     contracts: [
         "core:render/shader_contracts/frame_globals",
         "core:render/shader_contracts/planet_globals",
+        "core:render/shader_contracts/material_surface",
     ],
     depth: (write: false, compare: always),
     culling: none,

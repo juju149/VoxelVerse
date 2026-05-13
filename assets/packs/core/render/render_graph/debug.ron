@@ -2,8 +2,8 @@ RenderGraph(
     label: "Debug",
     passes: [
         (
-            name: "terrain_debug",
-            technique: Some("core:render/techniques/terrain/terrain_opaque"),
+            name: "normals",
+            technique: Some("core:render/techniques/debug/normals"),
             inputs: ["frame_globals"],
             outputs: ["debug_color", "depth"],
         ),

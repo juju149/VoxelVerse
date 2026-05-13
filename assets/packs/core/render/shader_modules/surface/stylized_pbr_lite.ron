@@ -1,12 +1,13 @@
+// NOTE: This shader inlines helper functions from the listed modules for
+// standalone WGSL validity. Module imports document logical dependencies;
+// the functions are defined locally because there is no WGSL preprocessor yet.
 ShaderModule(
     language: wgsl,
     imports: [
         "core:render/shader_modules/math/constants",
-        "core:render/shader_modules/color/srgb",
         "core:render/shader_modules/color/tonemap",
         "core:render/shader_modules/lighting/sun_light",
         "core:render/shader_modules/atmosphere/fog",
-        "core:render/shader_modules/voxel/ambient_occlusion",
         "core:render/shader_modules/voxel/face_variation",
     ],
     feature_class: "surface",
