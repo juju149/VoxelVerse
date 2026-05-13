@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 
 use vv_content_schema::{
     RawObjectCount, RawObjectDef, RawObjectRecipeKind, RawObjectRecipeSection,
-    RawObjectRenderMode, RawObjectShape, RawObjectTint, RawObjectToolKind,
+    RawObjectRenderMode, RawObjectShape, RawObjectTexture, RawObjectTint, RawObjectToolKind,
     RawObjectWeaponKind,
 };
 use vv_voxel::VoxelId;
@@ -21,7 +21,7 @@ use vv_voxel::VoxelId;
 use crate::block_family::{BlockStateValue, CompiledBlockFamily};
 use crate::block_registry::{
     BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, CompiledBlock,
-    CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh,
+    CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, MaterialTextureSet,
 };
 use crate::item_registry::{
     CompiledConsumableData, CompiledFoodData, CompiledIngredientData, CompiledItem,
@@ -143,7 +143,8 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
 
     let mut blocks: Vec<CompiledBlock> = Vec::new();
     let mut families: Vec<CompiledBlockFamily> = Vec::new();
-    let material_colors: Vec<[f32; 4]> = vec![[1.0, 1.0, 1.0, 1.0]];
+    let mut material_sets: Vec<MaterialTextureSet> = Vec::new();
+    let mut mat_dedup: HashMap<MaterialTextureSet, u32> = HashMap::new();
     let mut next_voxel_id: u16 = 0;
     let mut default_place = VoxelId::AIR;
     let mut planet_core_opt: Option<VoxelId> = None;
@@ -173,8 +174,15 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
         };
 
         let tint = block_sec.tint.map(tint_color).unwrap_or([1.0, 1.0, 1.0]);
+        let namespace = key.split_once(':').map(|(ns, _)| ns).unwrap_or("core");
+        let layers = texture_to_layers(
+            &block_sec.texture,
+            namespace,
+            &mut material_sets,
+            &mut mat_dedup,
+        );
         let visual = CompiledBlockVisual {
-            layers: BlockMaterialLayers::default(),
+            layers,
             tint,
             model_id,
         };
@@ -245,10 +253,15 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
         .or_else(|| blocks.iter().find(|b| b.hardness < 0.0).map(|b| b.id))
         .unwrap_or(VoxelId::AIR);
 
+    // One white entry for the fallback (index 0) plus one per actual material set.
+    let material_colors: Vec<[f32; 4]> = std::iter::once([1.0_f32, 1.0, 1.0, 1.0])
+        .chain(material_sets.iter().map(|_| [1.0_f32, 1.0, 1.0, 1.0]))
+        .collect();
+
     Ok(BlockRegistry::new(
         blocks,
         families,
-        Vec::new(),
+        material_sets,
         material_colors,
         default_place,
         planet_core,
@@ -390,6 +403,65 @@ fn category_color(cat: &str) -> [f32; 3] {
         "ore" => [0.5, 0.5, 0.8],
         "log" | "wood" | "leaves" => [0.5, 0.7, 0.4],
         _ => [0.8, 0.8, 0.8],
+    }
+}
+
+/// Intern a texture path into the material set list, returning its 1-based
+/// atlas index. Index 0 is reserved for the fallback white material added by
+/// `TextureRegistry::load`.
+fn intern_texture(
+    path: &str,
+    namespace: &str,
+    material_sets: &mut Vec<MaterialTextureSet>,
+    mat_dedup: &mut HashMap<MaterialTextureSet, u32>,
+) -> u32 {
+    let mat = MaterialTextureSet {
+        albedo:    format!("{}:{}.albedo.png",    namespace, path),
+        normal:    format!("{}:{}.normal.png",    namespace, path),
+        roughness: format!("{}:{}.roughness.png", namespace, path),
+    };
+    if let Some(&idx) = mat_dedup.get(&mat) {
+        return idx;
+    }
+    let idx = material_sets.len() as u32 + 1; // 0 = fallback
+    mat_dedup.insert(mat.clone(), idx);
+    material_sets.push(mat);
+    idx
+}
+
+/// Map a `RawObjectTexture` to per-face atlas indices.
+fn texture_to_layers(
+    tex: &RawObjectTexture,
+    namespace: &str,
+    material_sets: &mut Vec<MaterialTextureSet>,
+    mat_dedup: &mut HashMap<MaterialTextureSet, u32>,
+) -> BlockMaterialLayers {
+    match tex {
+        RawObjectTexture::None => BlockMaterialLayers::default(),
+        RawObjectTexture::All(path) => {
+            let idx = intern_texture(path, namespace, material_sets, mat_dedup);
+            BlockMaterialLayers {
+                top: idx, bottom: idx,
+                front: idx, back: idx, left: idx, right: idx,
+            }
+        }
+        RawObjectTexture::Cube { top, side, bottom } => {
+            let top_idx  = intern_texture(top,    namespace, material_sets, mat_dedup);
+            let side_idx = intern_texture(side,   namespace, material_sets, mat_dedup);
+            let bot_idx  = intern_texture(bottom, namespace, material_sets, mat_dedup);
+            BlockMaterialLayers {
+                top: top_idx, bottom: bot_idx,
+                front: side_idx, back: side_idx, left: side_idx, right: side_idx,
+            }
+        }
+        RawObjectTexture::Column { top, side } => {
+            let top_idx  = intern_texture(top,  namespace, material_sets, mat_dedup);
+            let side_idx = intern_texture(side, namespace, material_sets, mat_dedup);
+            BlockMaterialLayers {
+                top: top_idx, bottom: top_idx,
+                front: side_idx, back: side_idx, left: side_idx, right: side_idx,
+            }
+        }
     }
 }
 
