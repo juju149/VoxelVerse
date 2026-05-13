@@ -52,6 +52,7 @@ pub struct RawNoiseFieldDef {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawClimateDef {
+    #[serde(alias = "name")]
     pub display_name: String,
     pub fields: RawClimateFieldsDef,
     pub atmosphere: RawAtmosphereDef,
@@ -156,6 +157,7 @@ pub struct RawBiomeClimateMapDef {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBiomeSetDef {
+    #[serde(alias = "name")]
     pub display_name: String,
     pub selection: RawBiomeSelectionDef,
     #[serde(default = "default_blend_radius")]
@@ -170,38 +172,35 @@ fn default_blend_radius() -> f32 {
 pub struct RawBiomeSurfaceDef {
     pub top: ContentRef,
     pub under: ContentRef,
+    #[serde(alias = "depth")]
     pub depth_voxels: (u32, u32),
-    #[serde(default)]
-    pub slope_override: Option<RawBiomeSlopeOverrideDef>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBiomeSlopeOverrideDef {
+    #[serde(alias = "above")]
     pub above_degrees: u32,
+    #[serde(alias = "use")]
     pub top: ContentRef,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawBiomeTerrainDef {
+    #[serde(alias = "height")]
     pub base_height: f32,
     pub amplitude: f32,
     pub flatness: f32,
+    #[serde(alias = "noise")]
     pub hill_field: ContentRef,
-    #[serde(default)]
+    #[serde(default, alias = "ridges")]
     pub ridge_field: Option<ContentRef>,
+    #[serde(default, alias = "terraces")]
     pub terrace_strength: f32,
-    /// Optional non-linear curve applied to the biome height contribution.
-    /// Drives "plains rolling smoothly" vs "alpine sharp peaks" without
-    /// hand-tuning amplitudes.
-    #[serde(default)]
+    #[serde(default, alias = "curve")]
     pub height_curve: Option<RawHeightCurveDef>,
-    /// 0..2 — how strongly this biome contributes to the mountain boost layer.
-    /// 0 = pure flat biome (ocean, desert), 1 = standard, >1 = exaggerated.
-    #[serde(default = "default_mountain_intensity")]
+    #[serde(default = "default_mountain_intensity", alias = "mountain")]
     pub mountain_intensity: f32,
-    /// 0..1 — region post-pass slope smoothing weight.  0 disables.  Driven
-    /// per biome so coastal plains can stay smoother than rocky peaks.
-    #[serde(default)]
+    #[serde(default, alias = "slope_smooth")]
     pub slope_smoothing: f32,
 }
 
@@ -236,26 +235,27 @@ pub enum RawHeightCurveDef {
 pub struct RawBiomePaletteDef {
     pub grass: (f32, f32, f32),
     pub foliage: (f32, f32, f32),
+    #[serde(default)]
     pub fog_bias: (f32, f32, f32),
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct RawBiomePlacementDef {
-    #[serde(default)]
-    pub vegetation_tags: Vec<ContentRef>,
-    #[serde(default)]
-    pub fauna_tags: Vec<ContentRef>,
-    #[serde(default)]
-    pub structure_tags: Vec<ContentRef>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct RawBiomeProceduralDef {
+    #[serde(alias = "name")]
     pub display_name: String,
     pub surface: RawBiomeSurfaceDef,
+    /// Slope override block — written at biome top-level as
+    /// `slope: (above: 30, use: stone)` in compact files.
+    #[serde(default)]
+    pub slope_override: Option<RawBiomeSlopeOverrideDef>,
     pub terrain: RawBiomeTerrainDef,
     pub palette: RawBiomePaletteDef,
-    pub placement: RawBiomePlacementDef,
+    #[serde(default, alias = "vegetation")]
+    pub vegetation_tags: Vec<ContentRef>,
+    #[serde(default, alias = "fauna")]
+    pub fauna_tags: Vec<ContentRef>,
+    #[serde(default, alias = "structures")]
+    pub structure_tags: Vec<ContentRef>,
     #[serde(default)]
     pub tags: Vec<ContentRef>,
     #[serde(default)]
@@ -284,6 +284,7 @@ pub struct RawTerrainLayerDef {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawTerrainLayerSetDef {
+    #[serde(alias = "name")]
     pub display_name: String,
     pub layers: Vec<RawTerrainLayerDef>,
 }
@@ -291,9 +292,12 @@ pub struct RawTerrainLayerSetDef {
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawOreDef {
     pub block: ContentRef,
+    #[serde(alias = "replaces")]
     pub replace: Vec<ContentRef>,
+    #[serde(alias = "depth")]
     pub depth_voxels: (u32, u32),
     pub density: f32,
+    #[serde(alias = "vein")]
     pub vein_size: (u32, u32),
     pub field: ContentRef,
     #[serde(default)]
@@ -302,6 +306,7 @@ pub struct RawOreDef {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawCaveDef {
+    #[serde(alias = "name")]
     pub display_name: String,
     pub fields: Vec<ContentRef>,
     pub carve: RawCaveCarveDef,
@@ -391,14 +396,25 @@ pub enum RawTreeShapeKind {
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RawVegetationPlacementKind {
+    #[serde(alias = "tree")]
     ProceduralTree,
 }
 
+/// A vegetation entry — describes a procedurally-generated tree or plant.
+/// Fields from the old `stamp` and `placement` sub-structs are now flat for
+/// compact authoring.  Nested forms (`stamp: (...)`, `placement: (...)`) are
+/// still accepted for backwards compatibility via an ignored outer wrapper.
 #[derive(Debug, Clone, Deserialize)]
-pub struct RawVegetationStampDef {
+pub struct RawVegetationDef {
+    #[serde(alias = "name")]
+    pub display_name: String,
+    #[serde(alias = "type")]
+    pub kind: RawVegetationPlacementKind,
+    // --- stamp fields ---
     pub trunk: ContentRef,
     pub leaves: ContentRef,
     pub height: (u32, u32),
+    #[serde(default = "default_canopy_radius")]
     pub canopy_radius: (u32, u32),
     #[serde(default)]
     pub shape_kind: RawTreeShapeKind,
@@ -418,14 +434,38 @@ pub struct RawVegetationStampDef {
     pub canopy_lobe_count: (u32, u32),
     #[serde(default = "default_trunk_lean_max")]
     pub trunk_lean_max: f32,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct RawVegetationDef {
-    pub display_name: String,
-    pub kind: RawVegetationPlacementKind,
-    pub placement: RawFeaturePlacementDef,
-    pub stamp: RawVegetationStampDef,
+    // --- placement fields ---
+    pub density: f32,
+    #[serde(default = "default_veg_slope_max")]
+    pub slope_max_degrees: u32,
+    #[serde(alias = "noise")]
+    pub scatter_field: ContentRef,
+    #[serde(default, alias = "biomes")]
+    pub biome_tags: Vec<ContentRef>,
+    #[serde(default)]
+    pub allowed_surface_tags: Vec<ContentRef>,
+    #[serde(default)]
+    pub allowed_surface_blocks: Vec<ContentRef>,
+    #[serde(default)]
+    pub min_spacing_voxels: f32,
+    #[serde(default = "default_jitter_strength")]
+    pub jitter_strength: f32,
+    #[serde(default)]
+    pub clump_field: Option<ContentRef>,
+    #[serde(default)]
+    pub clump_strength: f32,
+    #[serde(default)]
+    pub altitude_range: Option<(f32, f32)>,
+    #[serde(default)]
+    pub humidity_range: Option<(f32, f32)>,
+    #[serde(default)]
+    pub temperature_range: Option<(f32, f32)>,
+    #[serde(default)]
+    pub slope_min_degrees: Option<u32>,
+    #[serde(default)]
+    pub scale_variance: Option<(f32, f32)>,
+    #[serde(default = "default_rotation_variance")]
+    pub rotation_variance: f32,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -494,6 +534,7 @@ pub struct RawVoxPropVariantDef {
 /// Files live in `defs/worldgen/prop_scatters/*.prop_scatter.ron`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawVoxPropScatterDef {
+    #[serde(alias = "name")]
     pub display_name: String,
     pub placement: RawFeaturePlacementDef,
     pub variants: Vec<RawVoxPropVariantDef>,
@@ -535,6 +576,14 @@ fn default_trunk_lean_max() -> f32 {
 
 fn default_canopy_density() -> f32 {
     1.0
+}
+
+fn default_canopy_radius() -> (u32, u32) {
+    (3, 5)
+}
+
+fn default_veg_slope_max() -> u32 {
+    35
 }
 
 fn default_jitter_strength() -> f32 {

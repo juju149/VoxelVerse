@@ -1,7 +1,7 @@
 // Plant Fiber — harvested from tall grass; used as cord in recipes.
 Object(
     name: "Plant Fiber",
-    tags: [resource, natural],
+    tags: ["resource", "natural"],
 
     item: (
         stack: 64,

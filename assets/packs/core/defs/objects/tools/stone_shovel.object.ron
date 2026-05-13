@@ -1,6 +1,6 @@
 Object(
     name: "Stone Shovel",
-    tags: [tool, shovel, tier_1],
+    tags: ["tool", "shovel", "tier_1"],
 
     item: (
         stack: 1,
@@ -23,6 +23,6 @@ Object(
             " F ",
         ],
         legend: { S: stone, F: plant_fiber },
-        output: (item: stone_shovel, count: 1),
+        output: (item: "stone_shovel", count: 1),
     ),
 )

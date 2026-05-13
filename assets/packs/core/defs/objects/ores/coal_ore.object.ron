@@ -1,10 +1,10 @@
 // Coal Ore — most common ore; drops coal lumps directly.
 Object(
     name: "Coal Ore",
-    tags: [ore, stone],
+    tags: ["ore", "stone"],
 
     block: (
-        texture: "blocks/coal_ore/all",
+        texture: all("blocks/coal_ore/all"),
         render: opaque,
         hardness: 3.0,
         sound: stone,
@@ -15,6 +15,6 @@ Object(
     mining: (
         tool: pickaxe,
         tier: 0,
-        drops: [(item: coal, count: (1, 3))],
+        drops: [(item: "coal", count: (1, 3))],
     ),
 )

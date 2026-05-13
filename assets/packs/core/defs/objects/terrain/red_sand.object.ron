@@ -1,9 +1,9 @@
 Object(
     name: "Red Sand",
-    tags: [terrain, sand],
+    tags: ["terrain", "sand"],
 
     block: (
-        texture: "blocks/red_sand/all",
+        texture: all("blocks/red_sand/all"),
         render: opaque,
         hardness: 0.5,
         sound: sand,
@@ -13,6 +13,6 @@ Object(
 
     mining: (
         tool: shovel,
-        drops: [self],
+        drops: [],
     ),
 )

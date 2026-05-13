@@ -1,14 +1,14 @@
 Biome(
     name: "Savanna",
 
-    surface: (top: grass, under: coarse_dirt, depth: (1, 4)),
-    slope: (above: 40, use: coarse_dirt),
+    surface: (top: "grass", under: "coarse_dirt", depth: (1, 4)),
+    slope: (above: 40, use: "coarse_dirt"),
 
     terrain: (
         height:    0.01,
         amplitude: 0.14,
         flatness:  0.74,
-        noise:     soft_hills,
+        noise:     "soft_hills",
         mountain:  0.4,
         slope_smooth: 0.35,
     ),
@@ -18,9 +18,9 @@ Biome(
         foliage: (0.56, 0.50, 0.22),
     ),
 
-    vegetation: [savanna, dry],
-    fauna: [small_herbivore],
-    structures: [small],
+    vegetation: ["savanna", "dry"],
+    fauna: ["small_herbivore"],
+    structures: ["small"],
 
-    tags: [savanna, dry, warm],
+    tags: ["savanna", "dry", "warm"],
 )

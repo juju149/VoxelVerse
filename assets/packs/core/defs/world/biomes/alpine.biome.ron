@@ -1,15 +1,15 @@
 Biome(
     name: "Alpine Heights",
 
-    surface: (top: snow, under: stone, depth: (1, 4)),
-    slope: (above: 30, use: stone),
+    surface: (top: "snow", under: "stone", depth: (1, 4)),
+    slope: (above: 30, use: "stone"),
 
     terrain: (
         height:    0.26,
         amplitude: 0.72,
         flatness:  0.06,
-        noise:     rolling_hills,
-        ridges:    mountain_sharp,
+        noise:     "rolling_hills",
+        ridges:    "mountain_sharp",
         terraces:  0.22,
         curve:     mountain_spike(sharpness: 0.7),
         mountain:  1.6,
@@ -21,9 +21,9 @@ Biome(
         foliage: (0.32, 0.44, 0.34),
     ),
 
-    vegetation: [cold, mountain],
-    fauna: [small_herbivore],
-    structures: [small],
+    vegetation: ["cold", "mountain"],
+    fauna: ["small_herbivore"],
+    structures: ["small"],
 
-    tags: [cold, mountain],
+    tags: ["cold", "mountain"],
 )

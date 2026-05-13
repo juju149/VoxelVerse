@@ -7,7 +7,7 @@ use vv_pack_compiler::{
 };
 use vv_pack_loader::PackLoader;
 
-use crate::world::TerrainVisualPalette;
+use vv_world::TerrainVisualPalette;
 
 pub struct LoadedCoreContent {
     pub blocks: Arc<BlockRegistry>,

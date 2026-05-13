@@ -290,19 +290,19 @@ fn compile_shader_modules(
                 .metadata
                 .imports
                 .iter()
-                .filter_map(|r| shader_key_to_id.get(&r.0).copied())
+                .filter_map(|r| shader_key_to_id.get(r.as_str()).copied())
                 .collect();
             let contracts = module
                 .metadata
                 .contracts
                 .iter()
                 .filter_map(|r| {
-                    let id = contract_key_to_id.get(&r.0).copied();
+                    let id = contract_key_to_id.get(r.as_str()).copied();
                     if id.is_none() {
                         errors.push(render_error(
                             &module.key,
                             "contracts",
-                            &format!("unknown shader contract '{}'", r.0),
+                            &format!("unknown shader contract '{}'", r),
                             "reference an existing render/shader_contracts file",
                         ));
                     }
@@ -376,37 +376,37 @@ fn compile_techniques(
                 ));
             }
 
-            let vertex_stage = match shader_key_to_id.get(&def.stages.vertex.0).copied() {
+            let vertex_stage = match shader_key_to_id.get(&def.stages.vertex).copied() {
                 Some(id) => id,
                 None => {
                     errors.push(render_error(
                         key,
                         "stages.vertex",
-                        &format!("unknown shader module '{}'", def.stages.vertex.0),
+                        &format!("unknown shader module '{}'", def.stages.vertex),
                         "reference an existing render/shader_modules WGSL module",
                     ));
                     ShaderModuleId::from_index(0)
                 }
             };
             let fragment_stage = def.stages.fragment.as_ref().and_then(|stage| {
-                let id = shader_key_to_id.get(&stage.0).copied();
+                let id = shader_key_to_id.get(stage.as_str()).copied();
                 if id.is_none() {
                     errors.push(render_error(
                         key,
                         "stages.fragment",
-                        &format!("unknown shader module '{}'", stage.0),
+                        &format!("unknown shader module '{}'", stage),
                         "reference an existing render/shader_modules WGSL module",
                     ));
                 }
                 id
             });
-            let material_family = match material_key_to_id.get(&def.material_family.0).copied() {
+            let material_family = match material_key_to_id.get(def.material_family.as_str()).copied() {
                 Some(id) => id,
                 None => {
                     errors.push(render_error(
                         key,
                         "material_family",
-                        &format!("unknown material family '{}'", def.material_family.0),
+                        &format!("unknown material family '{}'", def.material_family),
                         "reference an existing render/material_families file",
                     ));
                     MaterialFamilyId::from_index(0)
@@ -416,12 +416,12 @@ fn compile_techniques(
                 .contracts
                 .iter()
                 .filter_map(|contract| {
-                    let id = contract_key_to_id.get(&contract.0).copied();
+                    let id = contract_key_to_id.get(contract.as_str()).copied();
                     if id.is_none() {
                         errors.push(render_error(
                             key,
                             "contracts",
-                            &format!("unknown shader contract '{}'", contract.0),
+                            &format!("unknown shader contract '{}'", contract),
                             "reference an existing render/shader_contracts file",
                         ));
                     }
@@ -439,11 +439,11 @@ fn compile_techniques(
                 }
             }
             for override_def in &def.profile_overrides {
-                if !profile_key_to_id.contains_key(&override_def.profile.0) {
+                if !profile_key_to_id.contains_key(override_def.profile.as_str()) {
                     errors.push(render_error(
                         key,
                         "profile_overrides.profile",
-                        &format!("unknown render profile '{}'", override_def.profile.0),
+                        &format!("unknown render profile '{}'", override_def.profile),
                         "reference an existing render/profiles file",
                     ));
                 }
@@ -509,12 +509,12 @@ fn compile_graphs(
                     produced.insert(output.clone());
                 }
                 let technique = pass.technique.as_ref().and_then(|technique| {
-                    let id = technique_key_to_id.get(&technique.0).copied();
+                    let id = technique_key_to_id.get(technique.as_str()).copied();
                     if id.is_none() {
                         errors.push(render_error(
                             key,
                             "passes.technique",
-                            &format!("unknown render technique '{}'", technique.0),
+                            &format!("unknown render technique '{}'", technique),
                             "reference an existing render/techniques file",
                         ));
                     }
@@ -548,33 +548,33 @@ fn validate_shader_imports(
 ) {
     for module in modules {
         for import in &module.metadata.imports {
-            if !shader_key_to_id.contains_key(&import.0) {
+            if !shader_key_to_id.contains_key(import.as_str()) {
                 errors.push(render_error(
                     &module.key,
                     "imports",
-                    &format!("unknown shader module '{}'", import.0),
+                    &format!("unknown shader module '{}'", import),
                     "reference an existing render/shader_modules WGSL module",
                 ));
             }
             if !allowed_prefixes
                 .iter()
-                .any(|prefix| import.0.starts_with(prefix))
+                .any(|prefix| import.starts_with(prefix))
             {
                 errors.push(render_error(
                     &module.key,
                     "imports",
-                    &format!("shader import '{}' is not in an allowed prefix", import.0),
+                    &format!("shader import '{}' is not in an allowed prefix", import),
                     "use allowed_shader_imports.ron to explicitly permit the import root",
                 ));
             }
             if denied_prefixes
                 .iter()
-                .any(|prefix| import.0.starts_with(prefix))
+                .any(|prefix| import.starts_with(prefix))
             {
                 errors.push(render_error(
                     &module.key,
                     "imports",
-                    &format!("shader import '{}' is denied", import.0),
+                    &format!("shader import '{}' is denied", import),
                     "remove the import or change the validation policy",
                 ));
             }
@@ -610,8 +610,8 @@ fn validate_import_cycles(
                     .metadata
                     .imports
                     .iter()
-                    .filter(|r| shader_key_to_id.contains_key(&r.0))
-                    .map(|r| r.0.as_str())
+                    .filter(|r| shader_key_to_id.contains_key(r.as_str()))
+                    .map(|r| r.as_str())
                     .collect(),
             )
         })
@@ -781,3 +781,4 @@ fn render_error(resource: &str, field: &str, reason: &str, correction: &str) -> 
 #[cfg(test)]
 #[path = "render_compiler_tests.rs"]
 mod tests;
+

@@ -1,7 +1,7 @@
 // Coal — raw fuel, dropped by coal ore.
 Object(
     name: "Coal",
-    tags: [resource, fuel],
+    tags: ["resource", "fuel"],
 
     item: (
         stack: 64,

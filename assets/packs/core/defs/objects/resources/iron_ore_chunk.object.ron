@@ -1,7 +1,7 @@
 // Iron Ore Chunk — raw ore dropped by mining; smelt to get ingots.
 Object(
     name: "Iron Ore Chunk",
-    tags: [resource, raw_ore],
+    tags: ["resource", "raw_ore"],
 
     item: (
         stack: 64,

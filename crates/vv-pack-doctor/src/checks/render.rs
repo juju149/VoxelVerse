@@ -12,8 +12,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use vv_content_schema::ContentRef;
-
 use crate::index::PackIndex;
 use crate::report::{Diagnostic, Report};
 use crate::scan::PackScan;
@@ -70,11 +68,11 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
     // 2) Import resolution.
     for module in &scan.render.shader_modules {
         for imp in &module.value.imports {
-            if !module_ids.contains(&imp.0) {
+            if !module_ids.contains(imp.as_str()) {
                 report.error(
                     Diagnostic::new(
                         CHECK,
-                        format!("shader import '{}' does not match any module", imp.0),
+                        format!("shader import '{}' does not match any module", imp),
                     )
                     .with_path(module.rel_path.clone())
                     .with_id(module.id.clone())
@@ -83,11 +81,11 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
             }
         }
         for c in &module.value.contracts {
-            if !contract_ids.contains(&c.0) {
+            if !contract_ids.contains(c.as_str()) {
                 report.error(
                     Diagnostic::new(
                         CHECK,
-                        format!("shader contract '{}' does not exist", c.0),
+                        format!("shader contract '{}' does not exist", c),
                     )
                     .with_path(module.rel_path.clone())
                     .with_id(module.id.clone())
@@ -110,13 +108,13 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
         if let Some(f) = &tech.value.stages.fragment {
             check_ref(report, f, &module_ids, &tech.id, &tech.rel_path, "stages.fragment");
         }
-        if !family_ids.contains(&tech.value.material_family.0) {
+        if !family_ids.contains(&tech.value.material_family) {
             report.error(
                 Diagnostic::new(
                     CHECK,
                     format!(
                         "technique '{}' references unknown material_family '{}'",
-                        tech.id, tech.value.material_family.0
+                        tech.id, tech.value.material_family
                     ),
                 )
                 .with_path(tech.rel_path.clone())
@@ -125,13 +123,13 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
             );
         }
         for c in &tech.value.contracts {
-            if !contract_ids.contains(&c.0) {
+            if !contract_ids.contains(c.as_str()) {
                 report.error(
                     Diagnostic::new(
                         CHECK,
                         format!(
                             "technique '{}' references unknown contract '{}'",
-                            tech.id, c.0
+                            tech.id, c
                         ),
                     )
                     .with_path(tech.rel_path.clone())
@@ -141,7 +139,7 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
             }
         }
         for (i, ov) in tech.value.profile_overrides.iter().enumerate() {
-            if !profile_ids.contains(&ov.profile.0) {
+            if !profile_ids.contains(&ov.profile) {
                 report.error(
                     Diagnostic::new(
                         CHECK,
@@ -149,7 +147,7 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
                             "technique '{}' profile_override #{} points at unknown profile '{}'",
                             tech.id,
                             i + 1,
-                            ov.profile.0
+                            ov.profile
                         ),
                     )
                     .with_path(tech.rel_path.clone())
@@ -164,13 +162,13 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
     for graph in &scan.render.render_graphs {
         for (i, pass) in graph.value.passes.iter().enumerate() {
             if let Some(t) = &pass.technique {
-                if !technique_ids.contains(&t.0) {
+                if !technique_ids.contains(t.as_str()) {
                     report.error(
                         Diagnostic::new(
                             CHECK,
                             format!(
                                 "render graph '{}' pass '{}' references unknown technique '{}'",
-                                graph.id, pass.name, t.0
+                                graph.id, pass.name, t
                             ),
                         )
                         .with_path(graph.rel_path.clone())
@@ -188,19 +186,19 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
 
 fn check_ref(
     report: &mut Report,
-    r: &ContentRef,
+    r: &str,
     valid: &BTreeSet<String>,
     parent_id: &str,
     parent_path: &str,
     field: &str,
 ) {
-    if !valid.contains(&r.0) {
+    if !valid.contains(r) {
         report.error(
             Diagnostic::new(
                 CHECK,
                 format!(
                     "technique '{}' {} references unknown module '{}'",
-                    parent_id, field, r.0
+                    parent_id, field, r
                 ),
             )
             .with_path(parent_path.to_string())

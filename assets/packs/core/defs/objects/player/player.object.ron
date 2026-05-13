@@ -1,7 +1,7 @@
 // Player — the controlled entity. Health, reach and movement defined here.
 Object(
     name: "Player",
-    tags: [player],
+    tags: ["player"],
 
     entity: (
         model:     "voxel/characters/player/default",

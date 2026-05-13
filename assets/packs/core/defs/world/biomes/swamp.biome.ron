@@ -1,13 +1,13 @@
 Biome(
     name: "Swamp",
 
-    surface: (top: podzol, under: dirt, depth: (2, 5)),
+    surface: (top: "podzol", under: "dirt", depth: (2, 5)),
 
     terrain: (
         height:    -0.11,
         amplitude:  0.07,
         flatness:   0.88,
-        noise:      soft_hills,
+        noise:      "soft_hills",
         curve:      power(exponent: 0.7),
         mountain:   0.0,
         slope_smooth: 0.7,
@@ -18,8 +18,8 @@ Biome(
         foliage: (0.20, 0.40, 0.20),
     ),
 
-    vegetation: [swamp, wet],
-    fauna: [small_herbivore],
+    vegetation: ["swamp", "wet"],
+    fauna: ["small_herbivore"],
 
-    tags: [swamp, wet, temperate],
+    tags: ["swamp", "wet", "temperate"],
 )

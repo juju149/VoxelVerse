@@ -1,0 +1,12 @@
+[package]
+name = "vv-worldgen"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vv-voxel = { path = "../vv-voxel" }
+vv-math = { path = "../vv-math" }
+vv-pack-compiler = { path = "../vv-pack-compiler" }
+
+glam.workspace = true
+rayon.workspace = true

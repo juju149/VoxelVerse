@@ -9,6 +9,12 @@ vv-math = { path = "../../crates/vv-math" }
 vv-pack-compiler = { path = "../../crates/vv-pack-compiler" }
 vv-pack-loader = { path = "../../crates/vv-pack-loader" }
 vv-voxel = { path = "../../crates/vv-voxel" }
+vv-world = { path = "../../crates/vv-world" }
+vv-worldgen = { path = "../../crates/vv-worldgen" }
+vv-physics = { path = "../../crates/vv-physics" }
+vv-meshing = { path = "../../crates/vv-meshing" }
+vv-render = { path = "../../crates/vv-render" }
+vv-gameplay = { path = "../../crates/vv-gameplay" }
 
 bytemuck.workspace = true
 dot_vox.workspace = true

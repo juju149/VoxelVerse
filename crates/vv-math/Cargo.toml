@@ -4,4 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+vv-voxel = { path = "../vv-voxel" }
+
 glam.workspace = true

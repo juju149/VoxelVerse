@@ -1,7 +1,7 @@
 // Iron Ingot — smelted from iron ore chunks; used in metal recipes.
 Object(
     name: "Iron Ingot",
-    tags: [resource, metal],
+    tags: ["resource", "metal"],
 
     item: (
         stack: 64,
@@ -11,8 +11,8 @@ Object(
 
     recipe: (
         station: "#station.furnace",
-        inputs: [(item: iron_ore_chunk, count: 1)],
-        output: (item: iron_ingot, count: 1),
+        inputs: [(item: "iron_ore_chunk", count: 1)],
+        output: (item: "iron_ingot", count: 1),
         duration: 10.0,
     ),
 )

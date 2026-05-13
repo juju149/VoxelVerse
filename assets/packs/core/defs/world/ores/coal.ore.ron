@@ -1,9 +1,8 @@
 Ore(
-    block: coal_ore,
-    replaces: [stone, deepslate, andesite],
+    block: "coal_ore",
+    replaces: ["stone", "deepslate", "andesite"],
     depth: (12, 180),
     density: 0.065,
     vein: (4, 18),
-    field: coal_veins,
-    biomes: any,
+    field: "coal_veins",
 )

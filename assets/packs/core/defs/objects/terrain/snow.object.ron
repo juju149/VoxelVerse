@@ -1,9 +1,9 @@
 Object(
     name: "Snow",
-    tags: [terrain, snow],
+    tags: ["terrain", "snow"],
 
     block: (
-        texture: "blocks/powder_snow/all",
+        texture: all("blocks/powder_snow/all"),
         render: opaque,
         hardness: 0.2,
         sound: snow,
@@ -13,6 +13,6 @@ Object(
 
     mining: (
         tool: shovel,
-        drops: [self],
+        drops: [],
     ),
 )

@@ -1,15 +1,15 @@
 Biome(
     name: "Red Sand Desert",
 
-    surface: (top: red_sand, under: red_sand, depth: (3, 8)),
-    slope: (above: 50, use: stone),
+    surface: (top: "red_sand", under: "red_sand", depth: (3, 8)),
+    slope: (above: 50, use: "stone"),
 
     terrain: (
         height:    0.01,
         amplitude: 0.24,
         flatness:  0.56,
-        noise:     rolling_hills,
-        ridges:    dune_ridges,
+        noise:     "rolling_hills",
+        ridges:    "dune_ridges",
         mountain:  0.3,
         slope_smooth: 0.2,
     ),
@@ -19,9 +19,9 @@ Biome(
         foliage: (0.60, 0.46, 0.20),
     ),
 
-    vegetation: [desert, dry],
-    fauna: [small_herbivore],
-    structures: [small],
+    vegetation: ["desert", "dry"],
+    fauna: ["small_herbivore"],
+    structures: ["small"],
 
-    tags: [desert, dry],
+    tags: ["desert", "dry"],
 )

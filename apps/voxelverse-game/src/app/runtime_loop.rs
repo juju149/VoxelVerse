@@ -1,15 +1,14 @@
 use crate::app::content_bootstrap::load_core_content;
-use crate::content::{LootRegistry, TagRegistry};
-use crate::diagnostics::{Console, SystemDiagnostics};
-use crate::gameplay::{
-    BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, Hotbar, HotbarNotice,
-    HotbarSlot, Inventory, ItemId, PlanetResize, PlanetResizeIntent, Player,
+use vv_pack_compiler::{LootRegistry, TagRegistry};
+use vv_diagnostics::SystemDiagnostics;
+use vv_gameplay::{
+    BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, Console, Controller,
+    Hotbar, HotbarNotice, HotbarSlot, Inventory, ItemId, PlanetResize, PlanetResizeIntent, Player,
     PlayerController, SlotRef,
 };
-use crate::input::Controller;
-use crate::rendering::Renderer;
+use vv_render::Renderer;
 use crate::ui::{HeldStack, InventoryButton, InventoryLayout, InventoryUiState, UiTheme, UiViewport};
-use crate::world::{PlanetData, VoxModelRegistry};
+use vv_world::{PlanetData, VoxModelRegistry};
 use std::sync::Arc;
 use std::time::Instant;
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
@@ -985,7 +984,7 @@ fn handle_pressed_key(
             );
         }
         PhysicalKey::Code(KeyCode::F6) => {
-            use crate::rendering::PcfQuality;
+            use vv_render::PcfQuality;
             renderer.quality.pcf = match renderer.quality.pcf {
                 PcfQuality::Low => PcfQuality::Medium,
                 PcfQuality::Medium => PcfQuality::High,

@@ -1,11 +1,11 @@
 Vegetation(
     name: "Spruce Tree",
     type: tree,
-    trunk:  spruce_log,
-    leaves: spruce_leaves,
+    trunk:  "spruce_log",
+    leaves: "spruce_leaves",
     height: (5, 8),
-    biomes: [snowy_taiga, alpine],
+    biomes: ["snowy_taiga", "alpine"],
     density: 0.07,
-    noise:   spruce_scatter,
+    noise:   "spruce_scatter",
     soil:    "#tag.soil",
 )

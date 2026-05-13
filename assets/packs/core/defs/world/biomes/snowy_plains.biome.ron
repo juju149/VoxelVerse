@@ -1,14 +1,14 @@
 Biome(
     name: "Snowy Plains",
 
-    surface: (top: snow, under: powder_snow, depth: (1, 3)),
-    slope: (above: 40, use: stone),
+    surface: (top: "snow", under: "powder_snow", depth: (1, 3)),
+    slope: (above: 40, use: "stone"),
 
     terrain: (
         height:    -0.01,
         amplitude:  0.12,
         flatness:   0.76,
-        noise:      soft_hills,
+        noise:      "soft_hills",
         mountain:   0.1,
         slope_smooth: 0.55,
     ),
@@ -18,8 +18,8 @@ Biome(
         foliage: (0.58, 0.68, 0.76),
     ),
 
-    vegetation: [cold],
-    fauna: [small_herbivore],
+    vegetation: ["cold"],
+    fauna: ["small_herbivore"],
 
-    tags: [cold, snowy, plains],
+    tags: ["cold", "snowy", "plains"],
 )

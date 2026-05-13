@@ -1,0 +1,11 @@
+[package]
+name = "vv-physics"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vv-voxel = { path = "../vv-voxel" }
+vv-math = { path = "../vv-math" }
+vv-world = { path = "../vv-world" }
+
+glam.workspace = true

@@ -1,9 +1,9 @@
 Object(
     name: "Dirt",
-    tags: [terrain, soil],
+    tags: ["terrain", "soil"],
 
     block: (
-        texture: "blocks/dirt/all",
+        texture: all("blocks/dirt/all"),
         render: opaque,
         hardness: 0.5,
         sound: dirt,
@@ -13,6 +13,6 @@ Object(
 
     mining: (
         tool: shovel,
-        drops: [self],
+        drops: [],
     ),
 )

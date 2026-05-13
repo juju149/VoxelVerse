@@ -127,10 +127,11 @@ impl PackLoader {
             )?,
             ores: load_typed_tree(&pick("ores", "ores"), &defs, &namespace)?,
             caves: load_typed_tree(&pick("caves", "caves"), &defs, &namespace)?,
-            vegetation: load_typed_tree(
+            vegetation: load_typed_tree_filtered(
                 &pick("vegetation", "vegetation"),
                 &defs,
                 &namespace,
+                Some(".vegetation."),
             )?,
             structures: load_typed_tree(
                 &pick("structures", "structures"),
@@ -138,10 +139,11 @@ impl PackLoader {
                 &namespace,
             )?,
             fauna: load_typed_tree(&pick("spawns", "spawns"), &defs, &namespace)?,
-            vox_prop_scatters: load_typed_tree(
+            vox_prop_scatters: load_typed_tree_filtered(
                 &pick("prop_scatters", "vegetation"),
                 &defs,
                 &namespace,
+                Some(".prop_scatter."),
             )?,
         })
     }
@@ -180,7 +182,7 @@ fn load_shader_modules(
     namespace: &str,
 ) -> Result<Vec<LoadedShaderModule>, String> {
     let mut paths = Vec::new();
-    collect_ron_files(dir, &mut paths)?;
+    collect_ron_files(dir, &mut paths, None)?;
     paths.sort();
 
     let mut modules = Vec::with_capacity(paths.len());
@@ -215,7 +217,7 @@ fn load_render_typed_tree<T: serde::de::DeserializeOwned>(
     namespace: &str,
 ) -> Result<Vec<(String, T)>, String> {
     let mut paths = Vec::new();
-    collect_ron_files(dir, &mut paths)?;
+    collect_ron_files(dir, &mut paths, None)?;
     paths.sort();
 
     paths
@@ -269,8 +271,10 @@ fn namespace_from_dir(pack_dir: &Path) -> Result<String, String> {
 fn load_file<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T, String> {
     let text = std::fs::read_to_string(path)
         .map_err(|e| format!("Cannot read {}: {}", path.display(), e))?;
-    ron::from_str(&text)
-        .or_else(|_| ron::from_str(strip_outer_type_name(&text)))
+    let opts = ron::Options::default()
+        .with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME);
+    opts.from_str(&text)
+        .or_else(|_| opts.from_str(strip_outer_type_name(&text)))
         .map_err(|e| format!("Parse error in {}:\n  {}", path.display(), e))
 }
 
@@ -283,15 +287,28 @@ fn load_optional_file<T: serde::de::DeserializeOwned>(path: &Path) -> Result<Opt
 }
 
 fn strip_outer_type_name(text: &str) -> &str {
-    let trimmed = text.trim_start_matches('\u{feff}').trim_start();
-    let Some(open) = trimmed.find('(') else {
+    // Skip BOM then skip leading line comments and whitespace to find the type name.
+    let mut cursor = text.trim_start_matches('\u{feff}');
+    loop {
+        cursor = cursor.trim_start_matches(|c: char| c.is_whitespace());
+        if cursor.starts_with("//") {
+            cursor = match cursor.find('\n') {
+                Some(nl) => &cursor[nl + 1..],
+                None => return text,
+            };
+        } else {
+            break;
+        }
+    }
+    let Some(open) = cursor.find('(') else {
         return text;
     };
-    if trimmed[..open]
+    if cursor[..open]
         .chars()
         .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && open > 0
     {
-        &trimmed[open..]
+        &cursor[open..]
     } else {
         text
     }
@@ -302,8 +319,19 @@ fn load_typed_tree<T: serde::de::DeserializeOwned>(
     defs_root: &Path,
     namespace: &str,
 ) -> Result<Vec<(String, T)>, String> {
+    load_typed_tree_filtered(dir, defs_root, namespace, None)
+}
+
+/// Like `load_typed_tree` but only processes files whose name contains
+/// `required_suffix` (e.g. `".vegetation.ron"`, `".prop_scatter.ron"`).
+fn load_typed_tree_filtered<T: serde::de::DeserializeOwned>(
+    dir: &Path,
+    defs_root: &Path,
+    namespace: &str,
+    required_suffix: Option<&str>,
+) -> Result<Vec<(String, T)>, String> {
     let mut paths = Vec::new();
-    collect_ron_files(dir, &mut paths)?;
+    collect_ron_files(dir, &mut paths, required_suffix)?;
     paths.sort();
 
     paths
@@ -316,7 +344,11 @@ fn load_typed_tree<T: serde::de::DeserializeOwned>(
         .collect()
 }
 
-fn collect_ron_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+fn collect_ron_files(
+    dir: &Path,
+    out: &mut Vec<PathBuf>,
+    suffix_filter: Option<&str>,
+) -> Result<(), String> {
     if !dir.exists() {
         return Ok(());
     }
@@ -327,9 +359,16 @@ fn collect_ron_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
         let entry = entry.map_err(|e| format!("Dir entry error in {}: {}", dir.display(), e))?;
         let path = entry.path();
         if path.is_dir() {
-            collect_ron_files(&path, out)?;
-        } else if path.extension().and_then(|s| s.to_str()) == Some("ron") {
-            out.push(path);
+            collect_ron_files(&path, out, suffix_filter)?;
+        } else {
+            let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+            let is_ron = name.ends_with(".ron");
+            let passes_filter = suffix_filter
+                .map(|s| name.contains(s))
+                .unwrap_or(true);
+            if is_ron && passes_filter {
+                out.push(path);
+            }
         }
     }
     Ok(())

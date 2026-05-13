@@ -1,10 +1,10 @@
 TerrainLayers(
     name: "Earth Crust",
     layers: [
-        (range: surface,    block: grass),
-        (range: subsurface, block: dirt,      thickness: (2, 6)),
-        (range: crust,      block: stone),
-        (range: deep_crust, block: deepslate),
-        (range: core,       block: core),
+        (range: surface,    block: "grass"),
+        (range: subsurface, block: "dirt",      thickness: (2, 6)),
+        (range: crust,      block: "stone"),
+        (range: deep_crust, block: "deepslate"),
+        (range: core,       block: "core_block"),
     ],
 )

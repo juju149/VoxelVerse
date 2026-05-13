@@ -1,14 +1,14 @@
 Biome(
     name: "Jungle",
 
-    surface: (top: grass, under: dirt, depth: (2, 6)),
-    slope: (above: 45, use: stone),
+    surface: (top: "grass", under: "dirt", depth: (2, 6)),
+    slope: (above: 45, use: "stone"),
 
     terrain: (
         height:    0.06,
         amplitude: 0.50,
         flatness:  0.20,
-        noise:     rolling_hills,
+        noise:     "rolling_hills",
         curve:     power(exponent: 1.1),
         mountain:  0.8,
         slope_smooth: 0.1,
@@ -19,9 +19,9 @@ Biome(
         foliage: (0.16, 0.54, 0.14),
     ),
 
-    vegetation: [jungle, tropical],
-    fauna: [small_herbivore],
-    structures: [small],
+    vegetation: ["jungle", "tropical"],
+    fauna: ["small_herbivore"],
+    structures: ["small"],
 
-    tags: [jungle, tropical, wet],
+    tags: ["jungle", "tropical", "wet"],
 )

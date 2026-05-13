@@ -1,9 +1,9 @@
 Object(
     name: "Acacia Leaves",
-    tags: [leaves, flammable],
+    tags: ["leaves", "flammable"],
 
     block: (
-        texture: "blocks/acacia_leaves/all",
+        texture: all("blocks/acacia_leaves/all"),
         render: cutout,
         tint: foliage,
         hardness: 0.2,

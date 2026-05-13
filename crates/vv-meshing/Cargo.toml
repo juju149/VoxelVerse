@@ -1,0 +1,17 @@
+[package]
+name = "vv-meshing"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vv-voxel = { path = "../vv-voxel" }
+vv-math = { path = "../vv-math" }
+vv-world = { path = "../vv-world" }
+vv-worldgen = { path = "../vv-worldgen" }
+vv-pack-compiler = { path = "../vv-pack-compiler" }
+vv-physics = { path = "../vv-physics" }
+
+bytemuck.workspace = true
+dot_vox.workspace = true
+glam.workspace = true
+rayon.workspace = true

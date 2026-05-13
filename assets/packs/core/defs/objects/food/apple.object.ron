@@ -1,7 +1,7 @@
 // Apple — dropped by oak leaves; restores a small amount of hunger.
 Object(
     name: "Apple",
-    tags: [food, fruit],
+    tags: ["food", "fruit"],
 
     item: (
         stack: 64,

@@ -1,10 +1,10 @@
 // Grass Block — biome-tinted top, dirt bottom.
 Object(
     name: "Grass Block",
-    tags: [terrain, soil, supports_vegetation],
+    tags: ["terrain", "soil", "supports_vegetation"],
 
     block: (
-        texture: Cube(
+        texture: cube(
             top:    "blocks/grass_block/top",
             side:   "blocks/grass_block/side",
             bottom: "blocks/grass_block/bottom",
@@ -19,6 +19,6 @@ Object(
 
     mining: (
         tool: shovel,
-        drops: [(item: dirt, count: 1)],
+        drops: [(item: "dirt", count: 1)],
     ),
 )

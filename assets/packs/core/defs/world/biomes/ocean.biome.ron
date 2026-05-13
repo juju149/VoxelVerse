@@ -1,13 +1,13 @@
 Biome(
     name: "Deep Ocean",
 
-    surface: (top: stone, under: deepslate, depth: (1, 3)),
+    surface: (top: "stone", under: "deepslate", depth: (1, 3)),
 
     terrain: (
         height:    -0.38,
         amplitude:  0.12,
         flatness:   0.82,
-        noise:      soft_hills,
+        noise:      "soft_hills",
         curve:      power(exponent: 0.6),
         mountain:   0.0,
         slope_smooth: 0.0,
@@ -18,5 +18,5 @@ Biome(
         foliage: (0.14, 0.26, 0.44),
     ),
 
-    tags: [ocean, aquatic],
+    tags: ["ocean", "aquatic"],
 )

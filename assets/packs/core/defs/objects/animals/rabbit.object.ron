@@ -1,6 +1,6 @@
 Object(
     name: "Rabbit",
-    tags: [animal, passive, small_herbivore],
+    tags: ["animal", "passive", "small_herbivore"],
 
     entity: (
         model:     "voxel/creatures/rabbit/male",
@@ -12,7 +12,7 @@ Object(
 
     loot: (
         when_killed: [
-            (item: plant_fiber, count: (1, 2), chance: 0.8),
+            (item: "plant_fiber", count: (1, 2), chance: 0.8),
         ],
     ),
 

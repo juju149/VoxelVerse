@@ -1,13 +1,13 @@
 Biome(
     name: "Sandy Beach",
 
-    surface: (top: red_sand, under: red_sand, depth: (2, 5)),
+    surface: (top: "red_sand", under: "red_sand", depth: (2, 5)),
 
     terrain: (
         height:    -0.04,
         amplitude:  0.05,
         flatness:   0.90,
-        noise:      soft_hills,
+        noise:      "soft_hills",
         curve:      linear,
         mountain:   0.0,
         slope_smooth: 0.8,
@@ -18,7 +18,7 @@ Biome(
         foliage: (0.60, 0.52, 0.28),
     ),
 
-    fauna: [small_herbivore],
+    fauna: ["small_herbivore"],
 
-    tags: [beach, coastal],
+    tags: ["beach", "coastal"],
 )

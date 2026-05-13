@@ -1,10 +1,10 @@
 // Weapon Workbench — unlocks weapon and ammunition crafting.
 Object(
     name: "Weapon Workbench",
-    tags: [station.weapon, furniture],
+    tags: ["station.weapon", "furniture"],
 
     block: (
-        texture: Cube(
+        texture: cube(
             top:    "blocks/weapon_bench/top",
             side:   "blocks/weapon_bench/side",
             bottom: "blocks/weapon_bench/bottom",
@@ -17,18 +17,16 @@ Object(
     item: ( stack: 1 ),
 
     station: (
-        type: crafting,
-        grid: 3x3,
-    ),
+        type: workbench,),
 
     mining: (
         tool: pickaxe,
-        drops: [self],
+        drops: [],
     ),
 
     recipe: (
         station: "#station.construction",
         shapeless: [stone, stone, stone, oak_log, oak_log],
-        output: (item: weapon_workbench, count: 1),
+        output: (item: "weapon_workbench", count: 1),
     ),
 )

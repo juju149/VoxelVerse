@@ -1873,10 +1873,16 @@ dependencies = [
  "rayon",
  "sysinfo",
  "vv-diagnostics",
+ "vv-gameplay",
  "vv-math",
+ "vv-meshing",
  "vv-pack-compiler",
  "vv-pack-loader",
+ "vv-physics",
+ "vv-render",
  "vv-voxel",
+ "vv-world",
+ "vv-worldgen",
  "wgpu",
  "winit",
 ]
@@ -1898,10 +1904,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "vv-gameplay"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "vv-math",
+ "vv-pack-compiler",
+ "vv-physics",
+ "vv-voxel",
+ "vv-world",
+ "vv-worldgen",
+ "winit",
+]
+
+[[package]]
 name = "vv-math"
 version = "0.1.0"
 dependencies = [
  "glam",
+ "vv-voxel",
+]
+
+[[package]]
+name = "vv-meshing"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "dot_vox",
+ "glam",
+ "rayon",
+ "vv-math",
+ "vv-pack-compiler",
+ "vv-physics",
+ "vv-voxel",
+ "vv-world",
+ "vv-worldgen",
 ]
 
 [[package]]
@@ -1935,8 +1972,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "vv-physics"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "vv-math",
+ "vv-voxel",
+ "vv-world",
+]
+
+[[package]]
+name = "vv-render"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "glam",
+ "glyphon",
+ "png",
+ "rayon",
+ "sysinfo",
+ "vv-diagnostics",
+ "vv-gameplay",
+ "vv-math",
+ "vv-meshing",
+ "vv-pack-compiler",
+ "vv-voxel",
+ "vv-world",
+ "vv-worldgen",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "vv-voxel"
 version = "0.1.0"
+
+[[package]]
+name = "vv-world"
+version = "0.1.0"
+dependencies = [
+ "dot_vox",
+ "glam",
+ "vv-math",
+ "vv-pack-compiler",
+ "vv-voxel",
+ "vv-worldgen",
+]
+
+[[package]]
+name = "vv-worldgen"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "rayon",
+ "vv-math",
+ "vv-pack-compiler",
+ "vv-voxel",
+]
 
 [[package]]
 name = "walkdir"

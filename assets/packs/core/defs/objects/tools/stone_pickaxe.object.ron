@@ -1,7 +1,7 @@
 // Stone Pickaxe — tier-1 pickaxe; crafted at the construction workbench.
 Object(
     name: "Stone Pickaxe",
-    tags: [tool, pickaxe, tier_1],
+    tags: ["tool", "pickaxe", "tier_1"],
 
     item: (
         stack: 1,
@@ -24,6 +24,6 @@ Object(
             " F ",
         ],
         legend: { S: stone, F: plant_fiber },
-        output: (item: stone_pickaxe, count: 1),
+        output: (item: "stone_pickaxe", count: 1),
     ),
 )

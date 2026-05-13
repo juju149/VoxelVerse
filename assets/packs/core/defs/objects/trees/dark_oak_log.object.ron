@@ -1,10 +1,10 @@
 Object(
     name: "Dark Oak Log",
-    tags: [log, wood, flammable],
+    tags: ["log", "wood", "flammable"],
 
     block: (
         shape: column,
-        texture: Column(
+        texture: column(
             top:  "blocks/dark_oak_log/top",
             side: "blocks/dark_oak_log/side",
         ),
@@ -19,6 +19,6 @@ Object(
 
     mining: (
         tool: axe,
-        drops: [self],
+        drops: [],
     ),
 )

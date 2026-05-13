@@ -1,0 +1,23 @@
+[package]
+name = "vv-render"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vv-voxel = { path = "../vv-voxel" }
+vv-math = { path = "../vv-math" }
+vv-world = { path = "../vv-world" }
+vv-worldgen = { path = "../vv-worldgen" }
+vv-meshing = { path = "../vv-meshing" }
+vv-pack-compiler = { path = "../vv-pack-compiler" }
+vv-diagnostics = { path = "../vv-diagnostics" }
+vv-gameplay = { path = "../vv-gameplay" }
+
+bytemuck.workspace = true
+glam.workspace = true
+glyphon.workspace = true
+png.workspace = true
+rayon.workspace = true
+sysinfo.workspace = true
+wgpu.workspace = true
+winit.workspace = true

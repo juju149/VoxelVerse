@@ -1,7 +1,7 @@
 // Wood Bow — first ranged weapon; fires arrow items.
 Object(
     name: "Wood Bow",
-    tags: [weapon, bow, ranged, tier_0],
+    tags: ["weapon", "bow", "ranged", "tier_0"],
 
     item: (
         stack: 1,
@@ -25,6 +25,6 @@ Object(
             " SF",
         ],
         legend: { S: plant_fiber, F: oak_log },
-        output: (item: wood_bow, count: 1),
+        output: (item: "wood_bow", count: 1),
     ),
 )

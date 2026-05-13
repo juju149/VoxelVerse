@@ -1,7 +1,7 @@
 // Health Potion — restores 10 HP instantly on drink.
 Object(
     name: "Health Potion",
-    tags: [potion, consumable, healing],
+    tags: ["potion", "consumable", "healing"],
 
     item: (
         stack: 16,

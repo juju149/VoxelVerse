@@ -1,9 +1,9 @@
 Object(
     name: "Andesite",
-    tags: [terrain, stone],
+    tags: ["terrain", "stone"],
 
     block: (
-        texture: "blocks/andesite/all",
+        texture: all("blocks/andesite/all"),
         render: opaque,
         hardness: 1.5,
         sound: stone,
@@ -13,6 +13,6 @@ Object(
 
     mining: (
         tool: pickaxe,
-        drops: [self],
+        drops: [],
     ),
 )

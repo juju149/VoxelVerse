@@ -1,10 +1,10 @@
 // Iron Ore — drops ore chunks; smelt in a furnace for ingots.
 Object(
     name: "Iron Ore",
-    tags: [ore, stone],
+    tags: ["ore", "stone"],
 
     block: (
-        texture: "blocks/iron_ore/all",
+        texture: all("blocks/iron_ore/all"),
         render: opaque,
         hardness: 3.0,
         sound: stone,
@@ -15,6 +15,6 @@ Object(
     mining: (
         tool: pickaxe,
         tier: 1,
-        drops: [(item: iron_ore_chunk, count: 1)],
+        drops: [(item: "iron_ore_chunk", count: 1)],
     ),
 )

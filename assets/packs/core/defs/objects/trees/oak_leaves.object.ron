@@ -1,10 +1,10 @@
 // Oak Leaves — tinted by biome foliage colour.
 Object(
     name: "Oak Leaves",
-    tags: [leaves, flammable],
+    tags: ["leaves", "flammable"],
 
     block: (
-        texture: "blocks/oak_leaves/all",
+        texture: all("blocks/oak_leaves/all"),
         render: cutout,
         tint: foliage,
         hardness: 0.2,
@@ -15,6 +15,6 @@ Object(
 
     mining: (
         tool: any,
-        drops: [(item: apple, count: 1, chance: 0.05)],
+        drops: [(item: "apple", count: 1, chance: 0.05)],
     ),
 )

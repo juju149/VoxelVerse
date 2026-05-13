@@ -1,10 +1,10 @@
 // Furnace — smelts ores into ingots and cooks food.
 Object(
     name: "Furnace",
-    tags: [station.furnace, furniture, stone],
+    tags: ["station.furnace", "furniture", "stone"],
 
     block: (
-        texture: Cube(
+        texture: cube(
             top:    "blocks/furnace/top",
             front:  "blocks/furnace/front_off",
             side:   "blocks/furnace/side",
@@ -18,14 +18,14 @@ Object(
     item: ( stack: 1 ),
 
     station: (
-        type: smelting,
+        type: processor,
         fuel_slot: true,
     ),
 
     mining: (
         tool: pickaxe,
         tier: 0,
-        drops: [self],
+        drops: [],
     ),
 
     recipe: (
@@ -36,6 +36,6 @@ Object(
             "SSS",
         ],
         legend: { S: stone },
-        output: (item: furnace, count: 1),
+        output: (item: "furnace", count: 1),
     ),
 )

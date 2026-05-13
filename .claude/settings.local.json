@@ -45,7 +45,8 @@
       "Bash(python -c \"import json; d=json.load\\(open\\('/tmp/pd.json'\\)\\); print\\('valid JSON, top keys:', sorted\\(d.keys\\(\\)\\)\\)\")",
       "Bash(python -c \"import json,sys; d=json.load\\(open\\(r'C:/Users/julie/AppData/Local/Temp/pd.json'\\)\\); print\\('OK', sorted\\(d.keys\\(\\)\\), 'errors:', len\\(d['errors']\\)\\)\")",
       "PowerShell(cd c:/DEV/projects/Voxel/VoxelVerse; pwsh -NoProfile -File tools/pack_doctor.ps1 -Debug 2>&1 | Select-Object -First 5 -Last 3)",
-      "Bash(rm -f /tmp/test_ron.rs /tmp/pd.json /tmp/pd.html /tmp/pd.out 2>&1; echo done)"
+      "Bash(rm -f /tmp/test_ron.rs /tmp/pd.json /tmp/pd.html /tmp/pd.out 2>&1; echo done)",
+      "Bash(cargo metadata *)"
     ],
     "additionalDirectories": [
       "\\tmp"

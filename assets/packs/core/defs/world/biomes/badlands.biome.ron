@@ -1,14 +1,14 @@
 Biome(
     name: "Badlands",
 
-    surface: (top: red_sand, under: coarse_dirt, depth: (2, 5)),
-    slope: (above: 35, use: andesite),
+    surface: (top: "red_sand", under: "coarse_dirt", depth: (2, 5)),
+    slope: (above: 35, use: "andesite"),
 
     terrain: (
         height:    0.12,
         amplitude: 0.44,
         flatness:  0.26,
-        noise:     plateau_ridges,
+        noise:     "plateau_ridges",
         terraces:  0.78,
         curve:     plateau(flatness: 0.35, threshold: 0.4),
         mountain:  1.0,
@@ -20,7 +20,7 @@ Biome(
         foliage: (0.56, 0.34, 0.16),
     ),
 
-    vegetation: [desert, dry],
+    vegetation: ["desert", "dry"],
 
-    tags: [desert, dry, badlands],
+    tags: ["desert", "dry", "badlands"],
 )

@@ -12,10 +12,10 @@ pub enum RawShaderLanguage {
 pub struct RawShaderModule {
     pub language: RawShaderLanguage,
     #[serde(default)]
-    pub imports: Vec<ContentRef>,
+    pub imports: Vec<String>,
     pub feature_class: String,
     #[serde(default)]
-    pub contracts: Vec<ContentRef>,
+    pub contracts: Vec<String>,
     pub allow_override: bool,
 }
 
@@ -135,14 +135,14 @@ pub enum RawBlendMode {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawRenderTechniqueStages {
-    pub vertex: ContentRef,
+    pub vertex: String,
     #[serde(default)]
-    pub fragment: Option<ContentRef>,
+    pub fragment: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawTechniqueProfileOverride {
-    pub profile: ContentRef,
+    pub profile: String,
     #[serde(default)]
     pub enable_features: Vec<String>,
     #[serde(default)]
@@ -155,9 +155,9 @@ pub struct RawRenderTechnique {
     pub pass: String,
     pub stages: RawRenderTechniqueStages,
     pub vertex_layout: String,
-    pub material_family: ContentRef,
+    pub material_family: String,
     #[serde(default)]
-    pub contracts: Vec<ContentRef>,
+    pub contracts: Vec<String>,
     pub depth: RawRenderDepthState,
     pub culling: RawCullMode,
     pub blend: RawBlendMode,
@@ -190,7 +190,7 @@ pub struct RawRenderProfile {
 pub struct RawRenderGraphPass {
     pub name: String,
     #[serde(default)]
-    pub technique: Option<ContentRef>,
+    pub technique: Option<String>,
     #[serde(default)]
     pub inputs: Vec<String>,
     #[serde(default)]

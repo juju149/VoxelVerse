@@ -1,9 +1,9 @@
 Object(
     name: "Dark Oak Leaves",
-    tags: [leaves, flammable],
+    tags: ["leaves", "flammable"],
 
     block: (
-        texture: "blocks/dark_oak_leaves/all",
+        texture: all("blocks/dark_oak_leaves/all"),
         render: cutout,
         tint: foliage,
         hardness: 0.2,

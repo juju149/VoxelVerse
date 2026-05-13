@@ -1,11 +1,11 @@
 Vegetation(
     name: "Birch Tree",
     type: tree,
-    trunk:  birch_log,
-    leaves: birch_leaves,
+    trunk:  "birch_log",
+    leaves: "birch_leaves",
     height: (6, 11),
-    biomes: [birch_forest, meadow],
+    biomes: ["birch_forest", "meadow"],
     density: 0.06,
-    noise:   birch_scatter,
+    noise:   "birch_scatter",
     soil:    "#tag.soil",
 )
