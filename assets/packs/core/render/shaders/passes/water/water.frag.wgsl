@@ -23,17 +23,17 @@ fn fs_main(in: WaterFragmentIn) -> @location(0) vec4<f32> {
     let view_dir = normalize(global.camera_pos.xyz - in.world_pos);
     let sun_dir = normalize(global.sun_dir.xyz);
 
-    let fresnel = vv_schlick_fresnel(max(dot(view_dir, normal), 0.0), 0.04) * global.water_params.x;
+    let fresnel = vv_schlick_fresnel(max(dot(view_dir, normal), 0.0), 0.035) * global.water_params.x;
 
     let half_dir = normalize(view_dir + sun_dir);
-    let spec = pow(max(dot(normal, half_dir), 0.0), 88.0) * global.water_params.y * global.sky_zenith.w;
+    let spec = pow(max(dot(normal, half_dir), 0.0), 52.0) * global.water_params.y * 0.44 * global.sky_zenith.w;
 
     let deep = vec3<f32>(0.025, 0.12, 0.22);
     let shallow = vec3<f32>(0.12, 0.45, 0.66);
     let body = mix(deep, shallow, 0.35);
 
     var color = mix(body, global.sky_horizon.rgb, fresnel);
-    color += vec3<f32>(1.05, 1.00, 0.92) * spec;
+    color += vec3<f32>(0.86, 0.88, 0.82) * spec;
 
     color = vv_apply_aerial_perspective(color, in.world_pos);
 

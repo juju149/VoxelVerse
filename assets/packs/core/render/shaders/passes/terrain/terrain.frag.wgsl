@@ -75,13 +75,14 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let color_only = (qbits & VV_Q_COLOR_ONLY) != 0u;
     let triplanar = (qbits & VV_Q_TRIPLANAR) != 0u;
 
-    let normal = vv_safe_normalize(in.world_normal);
+    let geometry_normal = vv_safe_normalize(in.world_normal);
     let view_dir = vv_safe_normalize(vv_camera_position() - in.world_pos);
 
     let roughness = vv_sample_voxel_roughness(layer, in.uv, color_only);
-    let albedo = vv_prepare_albedo(layer, in.uv, in.color, in.world_pos, normal, color_only, triplanar);
+    let albedo = vv_prepare_albedo(layer, in.uv, in.color, in.world_pos, geometry_normal, color_only, triplanar);
+    let normal = vv_sample_voxel_normal(layer, in.uv, geometry_normal, color_only);
 
-    let ao = vv_vertex_ao(in.color) * vv_soft_contact_occlusion(normal, in.world_pos);
+    let ao = vv_vertex_ao(in.color) * vv_soft_contact_occlusion(geometry_normal, in.world_pos);
 
     let direct = vv_direct_light(normal, in.world_pos, in.shadow_pos, roughness);
     let ambient = vv_hemisphere_ambient(normal, in.world_pos) * ao;
@@ -93,7 +94,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let specular = vv_sun_color() * specular_strength * shadow_for_spec;
 
     var color = albedo * (direct + ambient + bounce) + specular;
-    color = vv_apply_cinematic_depth(color, normal, in.world_pos);
+    color = vv_apply_cinematic_depth(color, geometry_normal, in.world_pos);
     color = vv_apply_aerial_perspective(color, in.world_pos);
 
     return vec4<f32>(max(color, vec3<f32>(0.0)), 1.0);

@@ -153,7 +153,7 @@ impl PerfProfile {
                 lod_distance_scale: 1.0,
                 quality: QualitySettings {
                     profile: RenderQualityProfile::High,
-                    triplanar_grain: true,
+                    triplanar_grain: false,
                     pcf: PcfQuality::Medium,
                     color_only_mode: false,
                     volumetric_fog: true,
@@ -177,7 +177,7 @@ impl PerfProfile {
                 lod_distance_scale: 1.25,
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Ultra,
-                    triplanar_grain: true,
+                    triplanar_grain: false,
                     pcf: PcfQuality::High,
                     color_only_mode: false,
                     volumetric_fog: true,

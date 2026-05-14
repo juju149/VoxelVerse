@@ -1,4 +1,5 @@
 #include "include/math/constants.wgsl"
+#include "include/math/color_space.wgsl"
 
 @group(2) @binding(0) var t_albedo: texture_2d_array<f32>;
 @group(2) @binding(3) var s_material: sampler;
@@ -18,7 +19,7 @@ struct UiVertexOut {
 fn fs_main(in: UiVertexOut) -> @location(0) vec4<f32> {
     let mat_idx = in.packed_tex_index & VV_MATERIAL_INDEX_MASK;
     if mat_idx == 0u || mat_idx == VV_VERTEX_COLOR_ONLY {
-        return vec4<f32>(in.color, 1.0);
+        return vec4<f32>(vv_srgb_decode(in.color), 1.0);
     }
     let tex = textureSample(t_albedo, s_material, in.uv, i32(mat_idx) - 1).rgb;
     return vec4<f32>(tex * in.color, 1.0);

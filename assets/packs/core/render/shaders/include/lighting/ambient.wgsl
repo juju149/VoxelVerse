@@ -9,17 +9,17 @@ fn vv_hemisphere_ambient(normal: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
     let sky_side = vv_saturate(1.0 - sky_up * 1.35);
     let ground_up = max(dot(normal, -up), 0.0);
 
-    let sky_top = global.sky_zenith.rgb * 0.44 * mix(0.82, 1.42, sky_up);
-    let horizon = global.sky_horizon.rgb * 0.20;
-    let ground = vec3<f32>(0.13, 0.10, 0.065);
+    let sky_top = global.sky_zenith.rgb * 0.28 * mix(0.76, 1.20, sky_up);
+    let horizon = global.sky_horizon.rgb * 0.13;
+    let ground = vec3<f32>(0.090, 0.070, 0.045);
 
     let day = vv_day_factor();
     let night = vv_night_factor();
 
     let day_ambient = sky_top * sky_up + horizon * sky_side + ground * ground_up;
-    let night_ambient = vec3<f32>(0.025, 0.032, 0.060) * (0.55 + sky_up * 0.45);
+    let night_ambient = vec3<f32>(0.035, 0.042, 0.066) * (0.60 + sky_up * 0.40);
 
-    return mix(day_ambient, night_ambient, night * 0.92) * mix(0.55, 1.0, day);
+    return mix(day_ambient, night_ambient, night * 0.88) * mix(0.58, 0.86, day);
 }
 
 fn vv_micro_bounce(normal: vec3<f32>, world_pos: vec3<f32>, albedo: vec3<f32>) -> vec3<f32> {

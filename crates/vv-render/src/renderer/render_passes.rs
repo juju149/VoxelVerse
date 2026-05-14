@@ -169,11 +169,11 @@ impl<'a> Renderer<'a> {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         // -- Dynamic sun direction --
-        // Full day/night cycle in ~4 minutes. Sun orbits in the XY plane with a
+        // Full day/night cycle in ~20 minutes. Sun orbits in the XY plane with a
         // slight Z tilt so shadows always have a visible angle.
         // Start at golden-hour (0.15 * TAU) so the game opens looking beautiful.
         let elapsed_secs = self.start_time.elapsed().as_secs_f32();
-        let day_secs = 240.0_f32; // 4-minute day cycle
+        let day_secs = 1200.0_f32;
         let day_phase = (elapsed_secs / day_secs + 0.15).fract();
         let sun_angle = day_phase * std::f32::consts::TAU;
         // y = cos → noon at 0, midnight at π.  x/z give direction in sky.
@@ -296,10 +296,10 @@ impl<'a> Renderer<'a> {
         };
 
         // Horizon color palette
-        let h_noon = glam::Vec3::new(0.68, 0.82, 1.00); // clear blue-white
+        let h_noon = glam::Vec3::new(0.50, 0.70, 1.00); // clear saturated blue
         let h_dawn = glam::Vec3::new(1.00, 0.52, 0.18); // rich warm orange
         let h_dusk = glam::Vec3::new(0.88, 0.36, 0.28); // deep rose-red
-        let h_night = glam::Vec3::new(0.02, 0.03, 0.10); // deep blue-black
+        let h_night = glam::Vec3::new(0.055, 0.064, 0.105); // readable blue night
 
         let sky_horizon_rgb = if sun_elevation >= 0.0 {
             // Blend from noon toward dawn/dusk colors near horizon
@@ -322,9 +322,9 @@ impl<'a> Renderer<'a> {
         };
 
         // Zenith color palette
-        let z_day = glam::Vec3::new(0.10, 0.22, 0.72); // rich cobalt blue
-        let z_dawn = glam::Vec3::new(0.22, 0.18, 0.52); // purple twilight
-        let z_night = glam::Vec3::new(0.01, 0.01, 0.06); // near-black space
+        let z_day = glam::Vec3::new(0.08, 0.28, 0.86); // vivid clean blue
+        let z_dawn = glam::Vec3::new(0.22, 0.20, 0.48); // calmer twilight
+        let z_night = glam::Vec3::new(0.028, 0.034, 0.072); // soft readable night
 
         let day_t = above_horizon.powf(0.4);
         let dawn_z = dawn_factor * 0.55;
@@ -334,7 +334,7 @@ impl<'a> Renderer<'a> {
             (z_day.z * day_t + z_night.z * (1.0 - day_t)) * (1.0 - dawn_z) + z_dawn.z * dawn_z,
         );
 
-        let sun_intensity = above_horizon.powf(0.25).min(1.0);
+        let sun_intensity = above_horizon.powf(0.42).min(1.0);
         // time_of_day: 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
         let time_of_day = day_phase;
         let quality_bits = self.quality.pack();
@@ -375,9 +375,9 @@ impl<'a> Renderer<'a> {
                 self.config.width as f32,
                 self.config.height as f32,
             ],
-            atmosphere_params: [fog_density, 0.75, atmosphere_strength, 1.15],
+            atmosphere_params: [fog_density, 0.75, atmosphere_strength, 0.82],
             cloud_params: [cloud_steps, cloud_density, 0.018, 0.58],
-            water_params: [0.62, 0.95, 0.72, 0.0],
+            water_params: [0.48, 0.72, 0.72, 0.0],
         };
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
@@ -406,9 +406,9 @@ impl<'a> Renderer<'a> {
                 self.config.width as f32,
                 self.config.height as f32,
             ],
-            atmosphere_params: [fog_density, 0.75, atmosphere_strength, 1.15],
+            atmosphere_params: [fog_density, 0.75, atmosphere_strength, 0.82],
             cloud_params: [cloud_steps, cloud_density, 0.018, 0.58],
-            water_params: [0.62, 0.95, 0.72, 0.0],
+            water_params: [0.48, 0.72, 0.72, 0.0],
         };
         self.queue.write_buffer(
             &self.shadow_global_buf,
@@ -663,38 +663,6 @@ impl<'a> Renderer<'a> {
                 pass.draw_indexed(0..self.cross_inds, 0, 0..1);
                 main_draw_calls += 1;
             }
-
-            if self.hotbar_inds > 0 {
-                pass.set_pipeline(&self.pipeline_ui);
-                pass.set_bind_group(0, &self.global_bind_identity, &[]);
-                pass.set_bind_group(1, &self.local_bind_identity, &[]);
-                pass.set_bind_group(2, &self.atlas_bind, &[]);
-                pass.set_vertex_buffer(0, self.hotbar_v_buf.slice(..));
-                pass.set_index_buffer(self.hotbar_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..self.hotbar_inds, 0, 0..1);
-                main_draw_calls += 1;
-            }
-
-            if self.inventory_inds > 0 {
-                pass.set_pipeline(&self.pipeline_ui);
-                pass.set_bind_group(0, &self.global_bind_identity, &[]);
-                pass.set_bind_group(1, &self.local_bind_identity, &[]);
-                pass.set_bind_group(2, &self.atlas_bind, &[]);
-                pass.set_vertex_buffer(0, self.inventory_v_buf.slice(..));
-                pass.set_index_buffer(self.inventory_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..self.inventory_inds, 0, 0..1);
-                main_draw_calls += 1;
-            }
-
-            if self.console_inds > 0 {
-                pass.set_pipeline(&self.pipeline_ui);
-                pass.set_bind_group(0, &self.global_bind_identity, &[]);
-                pass.set_bind_group(1, &self.local_bind_identity, &[]);
-                pass.set_vertex_buffer(0, self.console_v_buf.slice(..));
-                pass.set_index_buffer(self.console_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..self.console_inds, 0, 0..1);
-                main_draw_calls += 1;
-            }
         }
 
         // --- PASS 5: VOLUMETRIC FOG VEIL ---
@@ -702,6 +670,51 @@ impl<'a> Renderer<'a> {
 
         // --- PASS 6: FINAL COMPOSITE ---
         self.render_final_composite(&mut enc, &view);
+
+        // --- PASS 7: UI MESHES ---
+        // Gameplay UI is authored in final display colors. Keep it out of the
+        // HDR scene tonemap so hotbar/inventory colors stay exactly theme-owned.
+        {
+            let mut ui_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("UI Mesh Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            ui_pass.set_pipeline(&self.pipeline_ui);
+            ui_pass.set_bind_group(0, &self.global_bind_identity, &[]);
+            ui_pass.set_bind_group(1, &self.local_bind_identity, &[]);
+            ui_pass.set_bind_group(2, &self.atlas_bind, &[]);
+
+            if self.hotbar_inds > 0 {
+                ui_pass.set_vertex_buffer(0, self.hotbar_v_buf.slice(..));
+                ui_pass.set_index_buffer(self.hotbar_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                ui_pass.draw_indexed(0..self.hotbar_inds, 0, 0..1);
+                main_draw_calls += 1;
+            }
+
+            if self.inventory_inds > 0 {
+                ui_pass.set_vertex_buffer(0, self.inventory_v_buf.slice(..));
+                ui_pass.set_index_buffer(self.inventory_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                ui_pass.draw_indexed(0..self.inventory_inds, 0, 0..1);
+                main_draw_calls += 1;
+            }
+
+            if self.console_inds > 0 {
+                ui_pass.set_vertex_buffer(0, self.console_v_buf.slice(..));
+                ui_pass.set_index_buffer(self.console_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                ui_pass.draw_indexed(0..self.console_inds, 0, 0..1);
+                main_draw_calls += 1;
+            }
+        }
 
         self.last_draw_calls = main_draw_calls;
         self.last_shadow_draw_calls = shadow_draw_calls;

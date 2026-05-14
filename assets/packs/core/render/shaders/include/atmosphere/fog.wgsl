@@ -14,15 +14,15 @@ fn vv_aerial_fog(color: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
     // Raw density comes from the runtime profile.
     // We intentionally calm it down here because the old value reached full fog too early.
     let raw_density = max(global.atmosphere_params.x, 0.0);
-    let density = raw_density * 0.34;
+    let density = raw_density * 0.16;
 
     let fog_distance = dist * density;
 
     // Slower exponential curve: keeps distant mountains visible.
-    let distance_fog = 1.0 - exp(-(fog_distance * fog_distance) * 0.22);
+    let distance_fog = 1.0 - exp(-(fog_distance * fog_distance) * 0.16);
 
     // Never let distance fog fully erase the world.
-    let fog_f = clamp(distance_fog, 0.0, 0.58);
+    let fog_f = clamp(distance_fog, 0.0, 0.30);
 
     let view_dir = normalize(world_pos - cam_pos);
     let sun_dir = normalize(global.sun_dir.xyz);
@@ -35,20 +35,20 @@ fn vv_aerial_fog(color: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
     let scatter = clamp(vv_forward_scatter(view_dir) * 0.28, 0.0, 0.22);
 
     // Blue-grey atmospheric haze, deliberately not white.
-    let night_haze = vec3<f32>(0.035, 0.045, 0.070);
-    let day_haze = global.sky_horizon.rgb * vec3<f32>(0.58, 0.64, 0.74);
+    let night_haze = vec3<f32>(0.038, 0.046, 0.070);
+    let day_haze = global.sky_horizon.rgb * vec3<f32>(0.30, 0.38, 0.48);
     let dawn_haze = vec3<f32>(0.78, 0.48, 0.28);
 
     var fog_col = mix(night_haze, day_haze, day);
     fog_col = mix(fog_col, dawn_haze, dawn * 0.22 + scatter);
 
     // Hard safety against the white-band effect.
-    fog_col = min(fog_col, vec3<f32>(0.54, 0.60, 0.70));
+    fog_col = min(fog_col, vec3<f32>(0.36, 0.46, 0.58));
 
     // Preserve terrain contrast: fog can soften, but not brighten the scene into a stripe.
     let source_luma = max(vv_luma(color), 0.025);
     let fog_luma = max(vv_luma(fog_col), 0.025);
-    let luma_cap = min(1.0, (source_luma + 0.20) / fog_luma);
+    let luma_cap = min(1.0, (source_luma + 0.08) / fog_luma);
     fog_col *= luma_cap;
 
     return mix(color, fog_col, fog_f);

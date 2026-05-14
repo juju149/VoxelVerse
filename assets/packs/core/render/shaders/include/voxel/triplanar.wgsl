@@ -9,5 +9,5 @@ fn vv_triplanar_grain(world_pos: vec3<f32>, normal: vec3<f32>) -> f32 {
     let sum_w = max(w.x + w.y + w.z, VV_EPSILON);
     let n = (gx * w.x + gy * w.y + gz * w.z) / sum_w;
 
-    return n * 0.022;
+    return n * 0.008;
 }

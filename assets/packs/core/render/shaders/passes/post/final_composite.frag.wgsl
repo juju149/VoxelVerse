@@ -13,6 +13,22 @@ fn vv_sample_scene(uv: vec2<f32>) -> vec3<f32> {
     return textureSample(t_scene, s_scene, uv).rgb;
 }
 
+fn vv_grade_scene(color: vec3<f32>) -> vec3<f32> {
+    let sun_elev = normalize(global.sun_dir.xyz).y;
+    let day = clamp(sun_elev * 3.0 + 0.18, 0.0, 1.0);
+    let night = clamp((-sun_elev - 0.06) * 4.0, 0.0, 1.0);
+
+    let contrast = mix(0.94, 1.08, day) * mix(1.0, 0.92, night);
+    var graded = (color - vec3<f32>(0.5)) * contrast + vec3<f32>(0.5);
+    graded = max(graded, vec3<f32>(0.0));
+
+    let saturation = mix(0.96, 1.24, day) * mix(1.0, 0.82, night);
+    graded = vv_preserve_natural_saturation(graded, saturation);
+
+    let night_lift = vec3<f32>(0.012, 0.014, 0.020) * night;
+    return clamp(graded + night_lift, vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
 @fragment
 fn fs_main(in: FullscreenVertexOut) -> @location(0) vec4<f32> {
     let qbits = vv_quality_bits();
@@ -32,7 +48,8 @@ fn fs_main(in: FullscreenVertexOut) -> @location(0) vec4<f32> {
     }
     let vignette = smoothstep(0.94, 0.18, distance(in.uv, vec2<f32>(0.5)));
     color *= mix(0.94, 1.0, vignette);
-    color = vv_srgb_encode(vv_tonemap_agx(color, global.atmosphere_params.w));
+    color = vv_grade_scene(vv_tonemap_agx(color, global.atmosphere_params.w));
+    color = vv_srgb_encode(color);
     return vec4<f32>(color, 1.0);
 }
 
