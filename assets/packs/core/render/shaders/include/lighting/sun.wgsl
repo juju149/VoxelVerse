@@ -16,18 +16,18 @@ fn vv_night_factor() -> f32 {
 }
 
 fn vv_sun_color() -> vec3<f32> {
-    let horizon_sun = vec3<f32>(1.02, 0.48, 0.16);
-    let noon_sun = vec3<f32>(0.92, 0.88, 0.72);
+    let horizon_sun = vec3<f32>(0.95, 0.42, 0.16);
+    let noon_sun = vec3<f32>(0.86, 0.84, 0.76);
     let t = vv_saturate(vv_sun_elevation() * 2.6 + 0.32);
-    return mix(horizon_sun, noon_sun, t) * vv_sun_intensity();
+    return mix(horizon_sun, noon_sun, t) * min(vv_sun_intensity(), 1.0) * 0.88;
 }
 
 fn vv_sun_wrap_diffuse(normal: vec3<f32>, sun_dir: vec3<f32>) -> f32 {
-    return max(dot(normal, sun_dir) * 0.82 + 0.10, 0.0);
+    return max(dot(normal, sun_dir) * 0.92 + 0.02, 0.0);
 }
 
 fn vv_soft_backlight(normal: vec3<f32>, sun_dir: vec3<f32>) -> f32 {
-    return pow(vv_saturate(dot(normal, -sun_dir) * 0.5 + 0.5), 3.0) * 0.08;
+    return pow(vv_saturate(dot(normal, -sun_dir) * 0.5 + 0.5), 3.0) * 0.035;
 }
 
 fn vv_moon_direction() -> vec3<f32> {

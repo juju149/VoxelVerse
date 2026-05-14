@@ -49,11 +49,11 @@ fn vv_material_large_scale_variation(albedo: vec3<f32>, world_pos: vec3<f32>, no
     let warm = vec3<f32>(1.025, 1.010, 0.985);
     let cool = vec3<f32>(0.975, 0.990, 1.020);
     let tint = mix(cool, warm, v);
-    let strength = 0.032;
+    let strength = 0.012;
     return albedo * mix(vec3<f32>(1.0), tint, strength);
 }
 
 fn vv_material_face_variation(albedo: vec3<f32>, world_pos: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
     let v = vv_face_variation(world_pos, normal);
-    return albedo * (0.965 + v * 0.07);
+    return albedo * (0.985 + v * 0.03);
 }

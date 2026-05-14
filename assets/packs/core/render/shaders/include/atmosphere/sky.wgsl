@@ -48,10 +48,10 @@ fn vv_sky_color(uv: vec2<f32>) -> vec3<f32> {
 
     sky = mix(sky, vec3<f32>(0.50, 0.22, 0.55), band * dawn_t * 0.50);
 
-    let haze = pow(clamp((uv.y - 0.72) * 5.2, 0.0, 1.0), 2.2) * 0.22;
+    let haze = pow(clamp((uv.y - 0.72) * 5.2, 0.0, 1.0), 2.2) * 0.10;
     sky = mix(
         sky,
-        mix(global.sky_horizon.rgb * 1.2, vec3<f32>(1.05, 0.78, 0.42), dawn_t),
+        mix(global.sky_horizon.rgb * 0.95, vec3<f32>(0.85, 0.58, 0.32), dawn_t),
         haze
     );
 

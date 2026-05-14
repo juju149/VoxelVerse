@@ -18,11 +18,11 @@ fn vv_grade_scene(color: vec3<f32>) -> vec3<f32> {
     let day = clamp(sun_elev * 3.0 + 0.18, 0.0, 1.0);
     let night = clamp((-sun_elev - 0.06) * 4.0, 0.0, 1.0);
 
-    let contrast = mix(0.94, 1.08, day) * mix(1.0, 0.92, night);
+    let contrast = mix(0.92, 1.02, day) * mix(1.0, 0.92, night);
     var graded = (color - vec3<f32>(0.5)) * contrast + vec3<f32>(0.5);
     graded = max(graded, vec3<f32>(0.0));
 
-    let saturation = mix(0.96, 1.24, day) * mix(1.0, 0.82, night);
+    let saturation = mix(0.90, 1.04, day) * mix(1.0, 0.82, night);
     graded = vv_preserve_natural_saturation(graded, saturation);
 
     let night_lift = vec3<f32>(0.012, 0.014, 0.020) * night;
@@ -48,8 +48,8 @@ fn fs_main(in: FullscreenVertexOut) -> @location(0) vec4<f32> {
     }
     let vignette = smoothstep(0.94, 0.18, distance(in.uv, vec2<f32>(0.5)));
     color *= mix(0.94, 1.0, vignette);
-    color = vv_grade_scene(vv_tonemap_agx(color, global.atmosphere_params.w));
-    color = vv_srgb_encode(color);
+    color = vv_grade_scene(vv_tonemap_agx(color, global.atmosphere_params.w * 0.78));
+    // Output target is expected to be sRGB. Do not encode twice.
     return vec4<f32>(color, 1.0);
 }
 

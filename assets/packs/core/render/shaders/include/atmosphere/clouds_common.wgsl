@@ -47,9 +47,9 @@ fn vv_cloud_light(density: f32) -> vec3<f32> {
     let dawn = clamp(1.0 - abs(sun_elev) * 5.5, 0.0, 1.0)
         * clamp(sun_elev * 6.0 + 0.8, 0.0, 1.0);
 
-    let shade = mix(0.62, 1.0, 1.0 - density);
+    let shade = mix(0.52, 0.82, 1.0 - density);
 
-    let day_col = vec3<f32>(0.94, 0.96, 1.0);
+    let day_col = vec3<f32>(0.72, 0.78, 0.86);
     let dawn_col = vec3<f32>(1.0, 0.60, 0.36);
     let night_col = vec3<f32>(0.055, 0.065, 0.13);
 

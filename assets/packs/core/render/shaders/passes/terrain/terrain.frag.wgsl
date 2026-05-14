@@ -44,7 +44,7 @@ fn vv_prepare_albedo(layer: u32, uv: vec2<f32>, vertex_color: vec3<f32>, world_p
 fn vv_direct_light(normal: vec3<f32>, world_pos: vec3<f32>, shadow_pos: vec3<f32>, roughness: f32) -> vec3<f32> {
     let sun_dir = vv_sun_direction();
     let ndotl = vv_sun_wrap_diffuse(normal, sun_dir);
-    let shadow = mix(0.22, 1.0, vv_shadow(shadow_pos, ndotl, vv_shadow_pcf_level()));
+    let shadow = mix(0.08, 1.0, vv_shadow(shadow_pos, ndotl, vv_shadow_pcf_level()));
     let sun = vv_sun_color();
 
     let wrap = sun * ndotl * shadow;
@@ -58,13 +58,13 @@ fn vv_apply_cinematic_depth(color: vec3<f32>, normal: vec3<f32>, world_pos: vec3
     let sky_facing = max(dot(normal, up), 0.0);
 
     // Tiny lift for upward faces so plains read cleanly under atmospheric fog.
-    let sky_lift = global.sky_zenith.rgb * sky_facing * 0.025 * vv_day_factor();
+    let sky_lift = global.sky_zenith.rgb * sky_facing * 0.006 * vv_day_factor();
 
     // Gentle coolness on far side faces gives sculpted voxel relief.
     let side = vv_saturate(1.0 - abs(dot(normal, up)));
-    let cool_side = vec3<f32>(0.965, 0.982, 1.015);
+    let cool_side = vec3<f32>(0.985, 0.992, 1.006);
 
-    return (color + sky_lift) * mix(vec3<f32>(1.0), cool_side, side * 0.045);
+    return (color + sky_lift) * mix(vec3<f32>(1.0), cool_side, side * 0.020);
 }
 
 @fragment
