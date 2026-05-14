@@ -18,6 +18,10 @@ pub enum InventoryButton {
     Close,
     Sort,
     ClearSearch,
+    Craft,
+    CraftQuantityDown,
+    CraftQuantityUp,
+    CraftMax,
 }
 
 /// Filter chips above the inventory grid. Only `All` actually returns
@@ -62,7 +66,10 @@ pub struct InventoryUiState {
     pub hovered_button: Option<InventoryButton>,
     pub hovered_search: bool,
     pub hovered_filter: Option<InventoryFilter>,
+    pub hovered_recipe: Option<usize>,
     pub active_filter: InventoryFilter,
+    pub selected_recipe: Option<usize>,
+    pub craft_quantity: u32,
     pub search_focused: bool,
     pub user_zoom: UserZoom,
     /// Carrying capacity in arbitrary "kg" units. Each stack contributes
@@ -85,7 +92,10 @@ impl InventoryUiState {
             hovered_button: None,
             hovered_search: false,
             hovered_filter: None,
+            hovered_recipe: None,
             active_filter: InventoryFilter::All,
+            selected_recipe: None,
+            craft_quantity: 1,
             search_focused: false,
             user_zoom: UserZoom::Normal,
             capacity_kg: Self::DEFAULT_CAPACITY_KG,
@@ -99,6 +109,7 @@ impl InventoryUiState {
             self.hovered_slot = None;
             self.hovered_button = None;
             self.hovered_filter = None;
+            self.hovered_recipe = None;
         }
     }
 
@@ -108,6 +119,7 @@ impl InventoryUiState {
         self.hovered_slot = None;
         self.hovered_button = None;
         self.hovered_filter = None;
+        self.hovered_recipe = None;
     }
 
     pub fn matches_search(&self, name: &str) -> bool {
@@ -211,12 +223,22 @@ pub struct InventoryLayout {
     pub subtitle_origin: (f32, f32),
     pub left_title_origin: (f32, f32),
     pub right_title_origin: (f32, f32),
+    pub right_subtitle_origin: (f32, f32),
     pub center_title_origin: (f32, f32),
     pub search_text_origin: (f32, f32),
     pub sort_text_origin: (f32, f32),
     pub equipment_placeholder_origin: (f32, f32),
     pub craft_placeholder_origin: (f32, f32),
     pub craft_subtitle_origin: (f32, f32),
+    pub craft_recipe_rows: Vec<UiRect>,
+    pub craft_detail_panel: UiRect,
+    pub craft_output_slot: UiRect,
+    pub craft_ingredient_rows: Vec<UiRect>,
+    pub craft_quantity_down: UiRect,
+    pub craft_quantity_value: UiRect,
+    pub craft_quantity_up: UiRect,
+    pub craft_max_button: UiRect,
+    pub craft_button: UiRect,
 
     // Useful derived sizes
     pub inventory_slot_size: f32,
@@ -447,6 +469,10 @@ impl InventoryLayout {
         // ---------------- Side columns ----------------
         let left_title_origin = (left_panel.x + section_pad, left_panel.y + section_pad);
         let right_title_origin = (right_panel.x + section_pad, right_panel.y + section_pad);
+        let right_subtitle_origin = (
+            right_title_origin.0,
+            right_title_origin.1 + s(theme.text.section_size) + s(4.0),
+        );
 
         let equipment_placeholder_origin = (
             left_panel.x + left_panel.w * 0.5,
@@ -460,6 +486,86 @@ impl InventoryLayout {
             craft_placeholder_origin.0,
             craft_placeholder_origin.1 + s(theme.text.section_size) + s(6.0),
         );
+
+        let right_inner_x = right_panel.x + section_pad;
+        let right_inner_w = right_panel.w - section_pad * 2.0;
+        let craft_list_top = right_panel.y + section_pad + s(58.0);
+        let craft_row_h = s(56.0);
+        let craft_row_gap = s(8.0);
+        let mut craft_recipe_rows = Vec::with_capacity(7);
+        for i in 0..7 {
+            craft_recipe_rows.push(UiRect {
+                x: right_inner_x,
+                y: craft_list_top + i as f32 * (craft_row_h + craft_row_gap),
+                w: right_inner_w,
+                h: craft_row_h,
+            });
+        }
+
+        let craft_button_h = s(theme.button.height + 8.0);
+        let craft_button = UiRect {
+            x: right_inner_x,
+            y: right_panel.y + right_panel.h - section_pad - craft_button_h,
+            w: right_inner_w,
+            h: craft_button_h,
+        };
+        let qty_h = s(42.0);
+        let qty_gap = s(8.0);
+        let qty_top = craft_button.y - qty_h - s(theme.spacing.medium);
+        let small_qty_w = s(44.0);
+        let max_w = s(76.0);
+        let value_w = (right_inner_w - small_qty_w * 2.0 - max_w - qty_gap * 3.0).max(s(64.0));
+        let craft_quantity_down = UiRect {
+            x: right_inner_x,
+            y: qty_top,
+            w: small_qty_w,
+            h: qty_h,
+        };
+        let craft_quantity_value = UiRect {
+            x: craft_quantity_down.x + craft_quantity_down.w + qty_gap,
+            y: qty_top,
+            w: value_w,
+            h: qty_h,
+        };
+        let craft_quantity_up = UiRect {
+            x: craft_quantity_value.x + craft_quantity_value.w + qty_gap,
+            y: qty_top,
+            w: small_qty_w,
+            h: qty_h,
+        };
+        let craft_max_button = UiRect {
+            x: craft_quantity_up.x + craft_quantity_up.w + qty_gap,
+            y: qty_top,
+            w: max_w,
+            h: qty_h,
+        };
+
+        let detail_top = craft_list_top + 7.0 * (craft_row_h + craft_row_gap) + s(12.0);
+        let detail_bottom = qty_top - s(theme.spacing.medium);
+        let craft_detail_panel = UiRect {
+            x: right_inner_x,
+            y: detail_top,
+            w: right_inner_w,
+            h: (detail_bottom - detail_top).max(s(118.0)),
+        };
+        let craft_output_slot = UiRect {
+            x: craft_detail_panel.x + s(theme.spacing.medium),
+            y: craft_detail_panel.y + s(theme.spacing.medium),
+            w: s(58.0),
+            h: s(58.0),
+        };
+        let ing_top = craft_output_slot.y + craft_output_slot.h + s(theme.spacing.medium);
+        let ing_h = s(34.0);
+        let ing_gap = s(6.0);
+        let mut craft_ingredient_rows = Vec::with_capacity(3);
+        for i in 0..3 {
+            craft_ingredient_rows.push(UiRect {
+                x: craft_detail_panel.x + s(theme.spacing.medium),
+                y: ing_top + i as f32 * (ing_h + ing_gap),
+                w: craft_detail_panel.w - s(theme.spacing.medium * 2.0),
+                h: ing_h,
+            });
+        }
 
         // ---------------- Hotbar mirror ----------------
         let hotbar_left = (viewport.width - real_hotbar_total_w) * 0.5;
@@ -497,12 +603,22 @@ impl InventoryLayout {
             subtitle_origin,
             left_title_origin,
             right_title_origin,
+            right_subtitle_origin,
             center_title_origin,
             search_text_origin,
             sort_text_origin,
             equipment_placeholder_origin,
             craft_placeholder_origin,
             craft_subtitle_origin,
+            craft_recipe_rows,
+            craft_detail_panel,
+            craft_output_slot,
+            craft_ingredient_rows,
+            craft_quantity_down,
+            craft_quantity_value,
+            craft_quantity_up,
+            craft_max_button,
+            craft_button,
             inventory_slot_size: inv_slot,
             hotbar_slot_size: real_hotbar_slot,
         }
@@ -532,6 +648,18 @@ impl InventoryLayout {
         if self.clear_search_button.contains(px, py) {
             return Some(InventoryButton::ClearSearch);
         }
+        if self.craft_button.contains(px, py) {
+            return Some(InventoryButton::Craft);
+        }
+        if self.craft_quantity_down.contains(px, py) {
+            return Some(InventoryButton::CraftQuantityDown);
+        }
+        if self.craft_quantity_up.contains(px, py) {
+            return Some(InventoryButton::CraftQuantityUp);
+        }
+        if self.craft_max_button.contains(px, py) {
+            return Some(InventoryButton::CraftMax);
+        }
         None
     }
 
@@ -542,5 +670,11 @@ impl InventoryLayout {
             }
         }
         None
+    }
+
+    pub fn recipe_under_cursor(&self, px: f32, py: f32) -> Option<usize> {
+        self.craft_recipe_rows
+            .iter()
+            .position(|rect| rect.contains(px, py))
     }
 }

@@ -6,11 +6,11 @@ use std::sync::Arc;
 use std::time::Instant;
 use vv_diagnostics::SystemDiagnostics;
 use vv_gameplay::{
-    BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, Console, Controller,
-    Hotbar, HotbarNotice, HotbarSlot, Inventory, ItemId, PlanetResize, PlanetResizeIntent, Player,
-    PlayerController, SlotRef,
+    craft_recipe, quick_craft_recipe_indices, BlockActionIntent, BlockInteraction, BlockSelection,
+    BlockSelectionMode, Console, Controller, Hotbar, HotbarNotice, HotbarSlot, Inventory, ItemId,
+    PlanetResize, PlanetResizeIntent, Player, PlayerController, SlotRef,
 };
-use vv_pack_compiler::{LootRegistry, TagRegistry};
+use vv_pack_compiler::{CompiledRecipe, LootRegistry, RecipeRegistry, TagRegistry};
 use vv_render::Renderer;
 use vv_world::{PlanetData, VoxModelRegistry};
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
@@ -53,6 +53,7 @@ pub fn run() {
     // Keep loot + tag registries accessible after content is moved into planet.
     let loot = Arc::clone(&content.loot);
     let tags = Arc::clone(&content.tags);
+    let recipes = Arc::clone(&content.recipes);
 
     let mut planet = PlanetData::new_with_progress(
         content.planet,
@@ -96,6 +97,7 @@ pub fn run() {
                         &hotbar,
                         &inventory,
                         &inventory_ui,
+                        &recipes,
                         &console,
                     );
                     return;
@@ -112,6 +114,8 @@ pub fn run() {
                         &mut hotbar,
                         &mut inventory,
                         &mut inventory_ui,
+                        &recipes,
+                        &tags,
                         &mut shift_held,
                         &console,
                     );
@@ -130,6 +134,7 @@ pub fn run() {
                     &mut inventory,
                     &mut inventory_ui,
                     &console,
+                    &recipes,
                     &loot,
                     &tags,
                 );
@@ -238,6 +243,7 @@ fn handle_console_window_event(
     hotbar: &Hotbar,
     inventory: &Inventory,
     inventory_ui: &InventoryUiState,
+    recipes: &RecipeRegistry,
     console: &Console,
 ) {
     match event {
@@ -250,6 +256,7 @@ fn handle_console_window_event(
             hotbar,
             inventory,
             inventory_ui,
+            recipes,
             console,
         ),
         _ => {}
@@ -267,6 +274,7 @@ fn handle_game_window_event(
     inventory: &mut Inventory,
     inventory_ui: &mut InventoryUiState,
     console: &Console,
+    recipes: &RecipeRegistry,
     loot: &LootRegistry,
     tags: &TagRegistry,
 ) {
@@ -306,6 +314,7 @@ fn handle_game_window_event(
             hotbar,
             inventory,
             inventory_ui,
+            recipes,
             console,
         ),
         _ => {}
@@ -323,6 +332,8 @@ fn handle_inventory_window_event(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
     inventory_ui: &mut InventoryUiState,
+    recipes: &RecipeRegistry,
+    tags: &TagRegistry,
     shift_held: &mut bool,
     console: &Console,
 ) {
@@ -342,6 +353,10 @@ fn handle_inventory_window_event(
             inventory_ui.hovered_slot = layout.slot_under_cursor(px, py);
             inventory_ui.hovered_button = layout.button_under_cursor(px, py);
             inventory_ui.hovered_search = layout.search_bar.contains(px, py);
+            inventory_ui.hovered_filter = layout.filter_under_cursor(px, py);
+            inventory_ui.hovered_recipe = layout
+                .recipe_under_cursor(px, py)
+                .and_then(|row| quick_craft_recipe_indices(recipes).get(row).copied());
             renderer.window.request_redraw();
         }
         WindowEvent::MouseInput {
@@ -349,7 +364,15 @@ fn handle_inventory_window_event(
             button: MouseButton::Left,
             ..
         } => {
-            handle_inventory_left_click(hotbar, inventory, inventory_ui, *shift_held);
+            handle_inventory_left_click(
+                hotbar,
+                inventory,
+                inventory_ui,
+                planet,
+                recipes,
+                tags,
+                *shift_held,
+            );
             renderer.window.request_redraw();
         }
         WindowEvent::MouseInput {
@@ -378,6 +401,7 @@ fn handle_inventory_window_event(
             hotbar,
             inventory,
             inventory_ui,
+            recipes,
             console,
         ),
         _ => {}
@@ -508,6 +532,9 @@ fn handle_inventory_left_click(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
     ui: &mut InventoryUiState,
+    planet: &PlanetData,
+    recipes: &RecipeRegistry,
+    tags: &TagRegistry,
     shift: bool,
 ) {
     // Search bar focus: clicking the bar focuses, clicking elsewhere
@@ -526,6 +553,34 @@ fn handle_inventory_left_click(
                 }
                 InventoryButton::Sort => inventory.sort(),
                 InventoryButton::ClearSearch => ui.search_query.clear(),
+                InventoryButton::CraftQuantityDown => {
+                    ui.craft_quantity = ui.craft_quantity.saturating_sub(1).max(1);
+                }
+                InventoryButton::CraftQuantityUp => {
+                    ui.craft_quantity = ui.craft_quantity.saturating_add(1).min(99);
+                }
+                InventoryButton::CraftMax => {
+                    ui.craft_quantity = selected_recipe_index(ui, recipes)
+                        .and_then(|idx| recipes.recipes().get(idx))
+                        .map(|recipe| {
+                            max_craft_quantity(recipe, planet, tags, hotbar, inventory).max(1)
+                        })
+                        .unwrap_or(1);
+                }
+                InventoryButton::Craft => {
+                    if let Some(recipe) = selected_recipe_index(ui, recipes)
+                        .and_then(|idx| recipes.recipes().get(idx))
+                    {
+                        let _ = craft_recipe(
+                            recipe,
+                            &planet.items,
+                            tags,
+                            hotbar,
+                            inventory,
+                            ui.craft_quantity,
+                        );
+                    }
+                }
             }
             return;
         }
@@ -537,7 +592,14 @@ fn handle_inventory_left_click(
     }
     // Any other click defocuses the search.
     ui.search_focused = false;
-
+    if let Some(filter) = ui.hovered_filter {
+        ui.active_filter = filter;
+        return;
+    }
+    if let Some(recipe_index) = ui.hovered_recipe {
+        ui.selected_recipe = Some(recipe_index);
+        return;
+    }
     // Slot logic.
     let Some(target) = ui.hovered_slot else {
         return;
@@ -668,6 +730,42 @@ fn handle_inventory_right_click(
             }
         }
     }
+}
+
+fn selected_recipe_index(ui: &InventoryUiState, recipes: &RecipeRegistry) -> Option<usize> {
+    let indices = quick_craft_recipe_indices(recipes);
+    ui.selected_recipe
+        .filter(|selected| indices.contains(selected))
+        .or_else(|| indices.first().copied())
+}
+
+fn max_craft_quantity(
+    recipe: &CompiledRecipe,
+    planet: &PlanetData,
+    tags: &TagRegistry,
+    hotbar: &Hotbar,
+    inventory: &Inventory,
+) -> u32 {
+    let mut max = 0;
+    for quantity in 1..=99 {
+        let mut trial_hotbar = hotbar.clone();
+        let mut trial_inventory = inventory.clone();
+        if craft_recipe(
+            recipe,
+            &planet.items,
+            tags,
+            &mut trial_hotbar,
+            &mut trial_inventory,
+            quantity,
+        )
+        .is_ok()
+        {
+            max = quantity;
+        } else {
+            break;
+        }
+    }
+    max
 }
 
 fn quick_move(hotbar: &mut Hotbar, inventory: &mut Inventory, source: SlotRef) {
@@ -816,7 +914,7 @@ fn handle_mouse_action(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
     loot: &LootRegistry,
-    tags: &TagRegistry,
+    _tags: &TagRegistry,
 ) {
     let intent = match button {
         MouseButton::Right => Some(BlockActionIntent::Place),

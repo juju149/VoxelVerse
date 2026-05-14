@@ -7,7 +7,7 @@
 //!   - Shapeless recipes (unordered bag of ingredients).
 //!   - Smelting recipes (one ingredient → one output with fuel cost).
 
-use crate::{ItemId, ItemRegistry, TagRegistry};
+use crate::{ItemId, TagRegistry};
 use std::collections::HashMap;
 
 // ─── RecipeId ────────────────────────────────────────────────────────────────

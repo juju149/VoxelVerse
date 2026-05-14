@@ -245,6 +245,9 @@ struct MeshJobResult<K> {
 mod atmosphere_passes;
 mod debug_draw;
 mod inventory;
+mod inventory_components;
+mod inventory_geometry;
+mod inventory_text;
 mod lod_selection;
 mod metrics;
 mod pipelines;

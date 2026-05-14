@@ -8,6 +8,7 @@ use vv_gameplay::Controller;
 use vv_gameplay::{Hotbar, Inventory, Player};
 use vv_math::Frustum;
 use vv_meshing::MeshGen;
+use vv_pack_compiler::RecipeRegistry;
 use vv_world::PlanetData;
 
 impl<'a> Renderer<'a> {
@@ -134,6 +135,7 @@ impl<'a> Renderer<'a> {
         hotbar: &Hotbar,
         inventory: &Inventory,
         inventory_ui: &InventoryUiState,
+        recipes: &RecipeRegistry,
         console: &Console,
     ) {
         let render_started = std::time::Instant::now();
@@ -143,7 +145,7 @@ impl<'a> Renderer<'a> {
         } else {
             self.update_hotbar_mesh(hotbar, planet);
         }
-        self.update_inventory_mesh(inventory, hotbar, inventory_ui, planet);
+        self.update_inventory_mesh(inventory, hotbar, inventory_ui, planet, recipes);
 
         if controller.show_collisions {
             let mesh = MeshGen::generate_collision_debug(player.position, planet);
@@ -810,7 +812,8 @@ impl<'a> Renderer<'a> {
             }
 
             // Inventory text overlay (titles, labels, search content, badges).
-            for spec in self.inventory_text_specs(inventory, hotbar, inventory_ui, planet) {
+            for spec in self.inventory_text_specs(inventory, hotbar, inventory_ui, planet, recipes)
+            {
                 let size = spec.size.max(8.0);
                 let line = (size * 1.25).max(size + 2.0);
                 let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(size, line));
