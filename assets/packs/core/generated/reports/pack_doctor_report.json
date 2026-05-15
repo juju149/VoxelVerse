@@ -1,1250 +1,34 @@
 {
   "pack": "assets/packs/core",
-  "health_score": 0,
+  "health_score": 99,
   "summary": {
-    "errors": 137,
-    "warnings": 10,
-    "blocks": 0,
-    "items": 0,
+    "errors": 0,
+    "warnings": 1,
+    "blocks": 34,
+    "items": 49,
     "materials": 0,
-    "textures": 48,
+    "textures": 159,
     "recipes": 0,
-    "loot_tables": 0,
-    "voxels": 523,
-    "shader_modules": 15,
-    "techniques": 7,
+    "loot_tables": 1,
+    "voxels": 542,
+    "shader_modules": 45,
+    "techniques": 23,
     "world_files": 94
   },
-  "errors": [
-    {
-      "check": "parse",
-      "message": "defs/objects/animals/rabbit.object.ron:5:13: Expected option",
-      "path": "defs/objects/animals/rabbit.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/food/apple.object.ron:5:11: Expected option",
-      "path": "defs/objects/food/apple.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/ores/coal_ore.object.ron:5:12: Expected option",
-      "path": "defs/objects/ores/coal_ore.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/ores/iron_ore.object.ron:5:12: Expected option",
-      "path": "defs/objects/ores/iron_ore.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/player/player.object.ron:5:13: Expected option",
-      "path": "defs/objects/player/player.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/potions/health_potion.object.ron:5:11: Expected option",
-      "path": "defs/objects/potions/health_potion.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/resources/coal.object.ron:5:11: Expected option",
-      "path": "defs/objects/resources/coal.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/resources/flower.object.ron:5:11: Expected option",
-      "path": "defs/objects/resources/flower.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/resources/iron_ingot.object.ron:5:11: Expected option",
-      "path": "defs/objects/resources/iron_ingot.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/resources/iron_ore_chunk.object.ron:5:11: Expected option",
-      "path": "defs/objects/resources/iron_ore_chunk.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/resources/mushroom.object.ron:5:11: Expected option",
-      "path": "defs/objects/resources/mushroom.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/resources/plant_fiber.object.ron:5:11: Expected option",
-      "path": "defs/objects/resources/plant_fiber.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/stations/armor_workbench.object.ron:5:12: Expected option",
-      "path": "defs/objects/stations/armor_workbench.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/stations/campfire.object.ron:5:12: Expected option",
-      "path": "defs/objects/stations/campfire.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/stations/chest.object.ron:5:12: Expected option",
-      "path": "defs/objects/stations/chest.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/stations/construction_workbench.object.ron:5:12: Expected option",
-      "path": "defs/objects/stations/construction_workbench.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/stations/furnace.object.ron:5:12: Expected option",
-      "path": "defs/objects/stations/furnace.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/stations/weapon_workbench.object.ron:5:12: Expected option",
-      "path": "defs/objects/stations/weapon_workbench.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/air.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/air.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/andesite.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/andesite.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/bedrock.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/bedrock.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/coarse_dirt.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/coarse_dirt.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/core_block.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/core_block.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/deepslate.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/deepslate.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/dirt.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/dirt.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/grass.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/grass.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/podzol.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/podzol.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/powder_snow.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/powder_snow.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/red_sand.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/red_sand.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/snow.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/snow.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/terrain/stone.object.ron:5:12: Expected option",
-      "path": "defs/objects/terrain/stone.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/tools/stone_axe.object.ron:5:11: Expected option",
-      "path": "defs/objects/tools/stone_axe.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/tools/stone_pickaxe.object.ron:5:11: Expected option",
-      "path": "defs/objects/tools/stone_pickaxe.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/tools/stone_shovel.object.ron:5:11: Expected option",
-      "path": "defs/objects/tools/stone_shovel.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/acacia_leaves.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/acacia_leaves.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/acacia_log.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/acacia_log.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/birch_leaves.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/birch_leaves.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/birch_log.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/birch_log.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/dark_oak_leaves.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/dark_oak_leaves.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/dark_oak_log.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/dark_oak_log.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/jungle_leaves.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/jungle_leaves.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/jungle_log.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/jungle_log.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/oak_leaves.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/oak_leaves.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/oak_log.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/oak_log.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/spruce_leaves.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/spruce_leaves.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/trees/spruce_log.object.ron:5:12: Expected option",
-      "path": "defs/objects/trees/spruce_log.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "parse",
-      "message": "defs/objects/weapons/wood_bow.object.ron:5:11: Expected option",
-      "path": "defs/objects/weapons/wood_bow.object.ron",
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "filesystem",
-      "message": "missing required file: README.md",
-      "path": "README.md",
-      "id": null,
-      "field": null,
-      "suggestion": "create README.md at the pack root"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/alpine.biome.ron",
-      "id": "world/biomes/alpine",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'snow'",
-      "path": "defs/world/biomes/alpine.biome.ron",
-      "id": "world/biomes/alpine",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'snow'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/alpine.biome.ron",
-      "id": "world/biomes/alpine",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'andesite'",
-      "path": "defs/world/biomes/badlands.biome.ron",
-      "id": "world/biomes/badlands",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'andesite'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'red_sand'",
-      "path": "defs/world/biomes/badlands.biome.ron",
-      "id": "world/biomes/badlands",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'red_sand'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'coarse_dirt'",
-      "path": "defs/world/biomes/badlands.biome.ron",
-      "id": "world/biomes/badlands",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'coarse_dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'red_sand'",
-      "path": "defs/world/biomes/beach.biome.ron",
-      "id": "world/biomes/beach",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'red_sand'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'red_sand'",
-      "path": "defs/world/biomes/beach.biome.ron",
-      "id": "world/biomes/beach",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'red_sand'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/birch_forest.biome.ron",
-      "id": "world/biomes/birch_forest",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/biomes/birch_forest.biome.ron",
-      "id": "world/biomes/birch_forest",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/birch_forest.biome.ron",
-      "id": "world/biomes/birch_forest",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/dark_forest.biome.ron",
-      "id": "world/biomes/dark_forest",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'podzol'",
-      "path": "defs/world/biomes/dark_forest.biome.ron",
-      "id": "world/biomes/dark_forest",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'podzol'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/dark_forest.biome.ron",
-      "id": "world/biomes/dark_forest",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/desert.biome.ron",
-      "id": "world/biomes/desert",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'red_sand'",
-      "path": "defs/world/biomes/desert.biome.ron",
-      "id": "world/biomes/desert",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'red_sand'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'red_sand'",
-      "path": "defs/world/biomes/desert.biome.ron",
-      "id": "world/biomes/desert",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'red_sand'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/frozen_peaks.biome.ron",
-      "id": "world/biomes/frozen_peaks",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'snow'",
-      "path": "defs/world/biomes/frozen_peaks.biome.ron",
-      "id": "world/biomes/frozen_peaks",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'snow'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/frozen_peaks.biome.ron",
-      "id": "world/biomes/frozen_peaks",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/jungle.biome.ron",
-      "id": "world/biomes/jungle",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/biomes/jungle.biome.ron",
-      "id": "world/biomes/jungle",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/jungle.biome.ron",
-      "id": "world/biomes/jungle",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/jungle_edge.biome.ron",
-      "id": "world/biomes/jungle_edge",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/biomes/jungle_edge.biome.ron",
-      "id": "world/biomes/jungle_edge",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/jungle_edge.biome.ron",
-      "id": "world/biomes/jungle_edge",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/kelp_forest.biome.ron",
-      "id": "world/biomes/kelp_forest",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'deepslate'",
-      "path": "defs/world/biomes/kelp_forest.biome.ron",
-      "id": "world/biomes/kelp_forest",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'deepslate'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/meadow.biome.ron",
-      "id": "world/biomes/meadow",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/biomes/meadow.biome.ron",
-      "id": "world/biomes/meadow",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/meadow.biome.ron",
-      "id": "world/biomes/meadow",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/mountain_meadow.biome.ron",
-      "id": "world/biomes/mountain_meadow",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/biomes/mountain_meadow.biome.ron",
-      "id": "world/biomes/mountain_meadow",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/mountain_meadow.biome.ron",
-      "id": "world/biomes/mountain_meadow",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/ocean.biome.ron",
-      "id": "world/biomes/ocean",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'deepslate'",
-      "path": "defs/world/biomes/ocean.biome.ron",
-      "id": "world/biomes/ocean",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'deepslate'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/plains.biome.ron",
-      "id": "world/biomes/plains",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/biomes/plains.biome.ron",
-      "id": "world/biomes/plains",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/plains.biome.ron",
-      "id": "world/biomes/plains",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'coarse_dirt'",
-      "path": "defs/world/biomes/savanna.biome.ron",
-      "id": "world/biomes/savanna",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'coarse_dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/biomes/savanna.biome.ron",
-      "id": "world/biomes/savanna",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'coarse_dirt'",
-      "path": "defs/world/biomes/savanna.biome.ron",
-      "id": "world/biomes/savanna",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'coarse_dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/snowy_plains.biome.ron",
-      "id": "world/biomes/snowy_plains",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'snow'",
-      "path": "defs/world/biomes/snowy_plains.biome.ron",
-      "id": "world/biomes/snowy_plains",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'snow'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'powder_snow'",
-      "path": "defs/world/biomes/snowy_plains.biome.ron",
-      "id": "world/biomes/snowy_plains",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'powder_snow'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/snowy_taiga.biome.ron",
-      "id": "world/biomes/snowy_taiga",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'snow'",
-      "path": "defs/world/biomes/snowy_taiga.biome.ron",
-      "id": "world/biomes/snowy_taiga",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'snow'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/snowy_taiga.biome.ron",
-      "id": "world/biomes/snowy_taiga",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/stony_shore.biome.ron",
-      "id": "world/biomes/stony_shore",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/stony_shore.biome.ron",
-      "id": "world/biomes/stony_shore",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'andesite'",
-      "path": "defs/world/biomes/stony_shore.biome.ron",
-      "id": "world/biomes/stony_shore",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'andesite'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'podzol'",
-      "path": "defs/world/biomes/swamp.biome.ron",
-      "id": "world/biomes/swamp",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'podzol'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/swamp.biome.ron",
-      "id": "world/biomes/swamp",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/temperate_forest.biome.ron",
-      "id": "world/biomes/temperate_forest",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/biomes/temperate_forest.biome.ron",
-      "id": "world/biomes/temperate_forest",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/temperate_forest.biome.ron",
-      "id": "world/biomes/temperate_forest",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/tundra.biome.ron",
-      "id": "world/biomes/tundra",
-      "field": "slope.use",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'snow'",
-      "path": "defs/world/biomes/tundra.biome.ron",
-      "id": "world/biomes/tundra",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'snow'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/tundra.biome.ron",
-      "id": "world/biomes/tundra",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/biomes/warm_reef.biome.ron",
-      "id": "world/biomes/warm_reef",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'deepslate'",
-      "path": "defs/world/biomes/warm_reef.biome.ron",
-      "id": "world/biomes/warm_reef",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'deepslate'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'podzol'",
-      "path": "defs/world/biomes/wetland.biome.ron",
-      "id": "world/biomes/wetland",
-      "field": "surface.top",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'podzol'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/biomes/wetland.biome.ron",
-      "id": "world/biomes/wetland",
-      "field": "surface.under",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'air'",
-      "path": "defs/world/caves/default.cave.ron",
-      "id": "world/caves/default",
-      "field": "carve.air_block",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'air'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'coal_ore'",
-      "path": "defs/world/ores/coal.ore.ron",
-      "id": "world/ores/coal",
-      "field": "block",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'coal_ore'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'iron_ore'",
-      "path": "defs/world/ores/iron.ore.ron",
-      "id": "world/ores/iron",
-      "field": "block",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'iron_ore'"
-    },
-    {
-      "check": "references",
-      "message": "voxel model 'core:voxel/props/interactables/camps/tent' is missing on disk",
-      "path": "defs/world/props/core_props.prop_collection.ron",
-      "id": "world/props/core_props",
-      "field": "props.[0].model",
-      "suggestion": "create media/voxel/props/interactables/camps/tent.vox"
-    },
-    {
-      "check": "references",
-      "message": "voxel model 'core:voxel/props/lights/street_lamp' is missing on disk",
-      "path": "defs/world/props/core_props.prop_collection.ron",
-      "id": "world/props/core_props",
-      "field": "props.[1].model",
-      "suggestion": "create media/voxel/props/lights/street_lamp.vox"
-    },
-    {
-      "check": "references",
-      "message": "voxel model 'core:voxel/props/interactables/bells/bell' is missing on disk",
-      "path": "defs/world/props/core_props.prop_collection.ron",
-      "id": "world/props/core_props",
-      "field": "props.[2].model",
-      "suggestion": "create media/voxel/props/interactables/bells/bell.vox"
-    },
-    {
-      "check": "references",
-      "message": "voxel model 'core:voxel/props/structure_parts/ladders/ladder' is missing on disk",
-      "path": "defs/world/props/core_props.prop_collection.ron",
-      "id": "world/props/core_props",
-      "field": "props.[3].model",
-      "suggestion": "create media/voxel/props/structure_parts/ladders/ladder.vox"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'grass'",
-      "path": "defs/world/terrain/earth_crust.terrain_layers.ron",
-      "id": "world/terrain/earth_crust",
-      "field": "layers.[0].block",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'grass'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dirt'",
-      "path": "defs/world/terrain/earth_crust.terrain_layers.ron",
-      "id": "world/terrain/earth_crust",
-      "field": "layers.[1].block",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dirt'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'stone'",
-      "path": "defs/world/terrain/earth_crust.terrain_layers.ron",
-      "id": "world/terrain/earth_crust",
-      "field": "layers.[2].block",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'stone'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'deepslate'",
-      "path": "defs/world/terrain/earth_crust.terrain_layers.ron",
-      "id": "world/terrain/earth_crust",
-      "field": "layers.[3].block",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'deepslate'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'core_block'",
-      "path": "defs/world/terrain/earth_crust.terrain_layers.ron",
-      "id": "world/terrain/earth_crust",
-      "field": "layers.[4].block",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'core_block'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'acacia_leaves'",
-      "path": "defs/world/vegetation/acacia_tree.vegetation.ron",
-      "id": "world/vegetation/acacia_tree",
-      "field": "leaves",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'acacia_leaves'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'acacia_log'",
-      "path": "defs/world/vegetation/acacia_tree.vegetation.ron",
-      "id": "world/vegetation/acacia_tree",
-      "field": "trunk",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'acacia_log'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'birch_leaves'",
-      "path": "defs/world/vegetation/birch_tree.vegetation.ron",
-      "id": "world/vegetation/birch_tree",
-      "field": "leaves",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'birch_leaves'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'birch_log'",
-      "path": "defs/world/vegetation/birch_tree.vegetation.ron",
-      "id": "world/vegetation/birch_tree",
-      "field": "trunk",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'birch_log'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dark_oak_leaves'",
-      "path": "defs/world/vegetation/dark_oak_tree.vegetation.ron",
-      "id": "world/vegetation/dark_oak_tree",
-      "field": "leaves",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dark_oak_leaves'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dark_oak_log'",
-      "path": "defs/world/vegetation/dark_oak_tree.vegetation.ron",
-      "id": "world/vegetation/dark_oak_tree",
-      "field": "trunk",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dark_oak_log'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'jungle_leaves'",
-      "path": "defs/world/vegetation/jungle_tree.vegetation.ron",
-      "id": "world/vegetation/jungle_tree",
-      "field": "leaves",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'jungle_leaves'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'jungle_log'",
-      "path": "defs/world/vegetation/jungle_tree.vegetation.ron",
-      "id": "world/vegetation/jungle_tree",
-      "field": "trunk",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'jungle_log'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'oak_leaves'",
-      "path": "defs/world/vegetation/oak_tree.vegetation.ron",
-      "id": "world/vegetation/oak_tree",
-      "field": "leaves",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'oak_leaves'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'oak_log'",
-      "path": "defs/world/vegetation/oak_tree.vegetation.ron",
-      "id": "world/vegetation/oak_tree",
-      "field": "trunk",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'oak_log'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'spruce_leaves'",
-      "path": "defs/world/vegetation/spruce_tree.vegetation.ron",
-      "id": "world/vegetation/spruce_tree",
-      "field": "leaves",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'spruce_leaves'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'spruce_log'",
-      "path": "defs/world/vegetation/spruce_tree.vegetation.ron",
-      "id": "world/vegetation/spruce_tree",
-      "field": "trunk",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'spruce_log'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'oak_leaves'",
-      "path": "defs/world/vegetation/swamp_willow_tree.vegetation.ron",
-      "id": "world/vegetation/swamp_willow_tree",
-      "field": "leaves",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'oak_leaves'"
-    },
-    {
-      "check": "references",
-      "message": "world file references unknown 'dark_oak_log'",
-      "path": "defs/world/vegetation/swamp_willow_tree.vegetation.ron",
-      "id": "world/vegetation/swamp_willow_tree",
-      "field": "trunk",
-      "suggestion": "declare an object, biome, ore or world entity whose short name is 'dark_oak_log'"
-    }
-  ],
+  "errors": [],
   "warnings": [
     {
       "check": "filesystem",
-      "message": "empty directory: media/voxels",
-      "path": "media/voxels",
+      "message": "empty directory: defs/objects/liquids",
+      "path": "defs/objects/liquids",
       "id": null,
       "field": null,
       "suggestion": "remove the empty directory or fill it with content"
-    },
-    {
-      "check": "filesystem",
-      "message": "empty directory: render/techniques/foliage",
-      "path": "render/techniques/foliage",
-      "id": null,
-      "field": null,
-      "suggestion": "remove the empty directory or fill it with content"
-    },
-    {
-      "check": "filesystem",
-      "message": "empty directory: render/techniques/particles",
-      "path": "render/techniques/particles",
-      "id": null,
-      "field": null,
-      "suggestion": "remove the empty directory or fill it with content"
-    },
-    {
-      "check": "filesystem",
-      "message": "empty directory: render/techniques/shadows",
-      "path": "render/techniques/shadows",
-      "id": null,
-      "field": null,
-      "suggestion": "remove the empty directory or fill it with content"
-    },
-    {
-      "check": "progression",
-      "message": "MVP block 'grass' missing",
-      "path": null,
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "progression",
-      "message": "MVP block 'dirt' missing",
-      "path": null,
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "progression",
-      "message": "MVP block 'stone' missing",
-      "path": null,
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "progression",
-      "message": "MVP block 'coal_ore' missing",
-      "path": null,
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "progression",
-      "message": "MVP block 'iron_ore' missing",
-      "path": null,
-      "id": null,
-      "field": null,
-      "suggestion": null
-    },
-    {
-      "check": "progression",
-      "message": "MVP block 'oak_log' missing",
-      "path": null,
-      "id": null,
-      "field": null,
-      "suggestion": null
     }
   ],
   "unused": {
     "textures": [
-      "media/textures/blocks/andesite/all.albedo.png",
-      "media/textures/blocks/andesite/all.normal.png",
-      "media/textures/blocks/andesite/all.roughness.png",
-      "media/textures/blocks/bedrock/all.albedo.png",
-      "media/textures/blocks/bedrock/all.normal.png",
-      "media/textures/blocks/bedrock/all.roughness.png",
-      "media/textures/blocks/coal_ore/all.albedo.png",
-      "media/textures/blocks/coal_ore/all.normal.png",
-      "media/textures/blocks/coal_ore/all.roughness.png",
-      "media/textures/blocks/deepslate/side.albedo.png",
-      "media/textures/blocks/deepslate/side.normal.png",
-      "media/textures/blocks/deepslate/side.roughness.png",
-      "media/textures/blocks/deepslate/top.albedo.png",
-      "media/textures/blocks/deepslate/top.normal.png",
-      "media/textures/blocks/deepslate/top.roughness.png",
-      "media/textures/blocks/dirt/all.albedo.png",
-      "media/textures/blocks/dirt/all.normal.png",
-      "media/textures/blocks/dirt/all.roughness.png",
-      "media/textures/blocks/grass_block/bottom.albedo.png",
-      "media/textures/blocks/grass_block/bottom.normal.png",
-      "media/textures/blocks/grass_block/bottom.roughness.png",
-      "media/textures/blocks/grass_block/side.albedo.png",
-      "media/textures/blocks/grass_block/side.normal.png",
-      "media/textures/blocks/grass_block/side.roughness.png",
-      "media/textures/blocks/grass_block/top.albedo.png",
-      "media/textures/blocks/grass_block/top.normal.png",
-      "media/textures/blocks/grass_block/top.roughness.png",
-      "media/textures/blocks/iron_ore/all.albedo.png",
-      "media/textures/blocks/iron_ore/all.normal.png",
-      "media/textures/blocks/iron_ore/all.roughness.png",
-      "media/textures/blocks/oak_leaves/all.albedo.png",
-      "media/textures/blocks/oak_leaves/all.normal.png",
-      "media/textures/blocks/oak_leaves/all.roughness.png",
-      "media/textures/blocks/oak_log/side.albedo.png",
-      "media/textures/blocks/oak_log/side.normal.png",
-      "media/textures/blocks/oak_log/side.roughness.png",
-      "media/textures/blocks/oak_log/top.albedo.png",
-      "media/textures/blocks/oak_log/top.normal.png",
-      "media/textures/blocks/oak_log/top.roughness.png",
-      "media/textures/blocks/powder_snow/all.albedo.png",
-      "media/textures/blocks/powder_snow/all.normal.png",
-      "media/textures/blocks/powder_snow/all.roughness.png",
-      "media/textures/blocks/red_sand/all.albedo.png",
-      "media/textures/blocks/red_sand/all.normal.png",
-      "media/textures/blocks/red_sand/all.roughness.png",
-      "media/textures/blocks/smooth_stone/all.albedo.png",
-      "media/textures/blocks/smooth_stone/all.normal.png",
-      "media/textures/blocks/smooth_stone/all.roughness.png"
+      "media/textures/blocks/grass_block/grass_block_top_albedo.png"
     ],
     "materials": [],
     "items": [],
@@ -1270,18 +54,10 @@
       "media/voxel/props/decoration/crystals/ice_crystal_7.vox",
       "media/voxel/props/decoration/crystals/ice_crystal_8.vox",
       "media/voxel/props/decoration/crystals/ice_crystal_9.vox",
-      "media/voxel/props/decoration/rocks/rock_0.vox",
-      "media/voxel/props/decoration/rocks/rock_1.vox",
-      "media/voxel/props/decoration/rocks/rock_2.vox",
-      "media/voxel/props/decoration/seashells/shell_0.vox",
-      "media/voxel/props/decoration/seashells/shell_1.vox",
-      "media/voxel/props/decoration/snow_pebbles/snow_pebbles_0.vox",
-      "media/voxel/props/decoration/snow_pebbles/snow_pebbles_1.vox",
       "media/voxel/props/decoration/snow_pebbles/snow_pebbles_2.vox",
       "media/voxel/props/decoration/snow_pebbles/snow_pebbles_3.vox",
       "media/voxel/props/decoration/snow_pebbles/snow_pebbles_4.vox",
       "media/voxel/props/decoration/snow_pebbles/snow_pebbles_5.vox",
-      "media/voxel/vegetation/bushes/blueberry/blueberry_01.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_02.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_03.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_04.vox",
@@ -1290,25 +66,16 @@
       "media/voxel/vegetation/bushes/blueberry/blueberry_07.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_08.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_09.vox",
-      "media/voxel/vegetation/bushes/dead_bush/dead_bush_01.vox",
-      "media/voxel/vegetation/bushes/dead_bush/dead_bush_02.vox",
       "media/voxel/vegetation/bushes/dead_bush/dead_bush_03.vox",
       "media/voxel/vegetation/bushes/dead_bush/dead_bush_04.vox",
-      "media/voxel/vegetation/bushes/dead_plant/dead_plant_0.vox",
-      "media/voxel/vegetation/bushes/dead_plant/dead_plant_1.vox",
       "media/voxel/vegetation/bushes/dead_plant/dead_plant_2.vox",
       "media/voxel/vegetation/bushes/dead_plant/dead_plant_3.vox",
-      "media/voxel/vegetation/bushes/lingonberry/lingonberry_01.vox",
       "media/voxel/vegetation/bushes/lingonberry/lingonberry_02.vox",
       "media/voxel/vegetation/bushes/lingonberry/lingonberry_03.vox",
-      "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_01.vox",
-      "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_02.vox",
       "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_03.vox",
       "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_04.vox",
       "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_05.vox",
       "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_06.vox",
-      "media/voxel/vegetation/bushes/snow_bush/snow_bush_0.vox",
-      "media/voxel/vegetation/bushes/snow_bush/snow_bush_1.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_10.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_11.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_2.vox",
@@ -1319,7 +86,6 @@
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_7.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_8.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_9.vox",
-      "media/voxel/vegetation/bushes/welwitch/welwitch_01.vox",
       "media/voxel/vegetation/cave/cave_flower_0.vox",
       "media/voxel/vegetation/cave/cave_flower_1.vox",
       "media/voxel/vegetation/cave/cave_flower_2.vox",
@@ -1464,35 +230,27 @@
       "media/voxel/vegetation/crops/wheat_yellow/wheat_7.vox",
       "media/voxel/vegetation/crops/wheat_yellow/wheat_8.vox",
       "media/voxel/vegetation/crops/wheat_yellow/wheat_9.vox",
-      "media/voxel/vegetation/desert/cacti/barrel_cactus.vox",
       "media/voxel/vegetation/desert/cacti/cactus_barrel_flower.vox",
-      "media/voxel/vegetation/desert/cacti/cactus_branch_large_1.vox",
       "media/voxel/vegetation/desert/cacti/cactus_branch_large_1_flower.vox",
       "media/voxel/vegetation/desert/cacti/cactus_branch_large_2.vox",
       "media/voxel/vegetation/desert/cacti/cactus_branch_large_2_flower.vox",
-      "media/voxel/vegetation/desert/cacti/cactus_round.vox",
-      "media/voxel/vegetation/desert/cacti/cactus_short.vox",
       "media/voxel/vegetation/desert/cacti/flat_cactus_med.vox",
       "media/voxel/vegetation/desert/cacti/flat_cactus_short.vox",
       "media/voxel/vegetation/desert/cacti/large_cactus.vox",
       "media/voxel/vegetation/desert/cacti/tall.vox",
       "media/voxel/vegetation/desert/cacti/tall2.vox",
       "media/voxel/vegetation/flowers/cotton.vox",
-      "media/voxel/vegetation/flowers/flower_blue_1.vox",
       "media/voxel/vegetation/flowers/flower_blue_10.vox",
       "media/voxel/vegetation/flowers/flower_blue_2.vox",
-      "media/voxel/vegetation/flowers/flower_blue_3.vox",
       "media/voxel/vegetation/flowers/flower_blue_4.vox",
       "media/voxel/vegetation/flowers/flower_blue_5.vox",
       "media/voxel/vegetation/flowers/flower_blue_6.vox",
       "media/voxel/vegetation/flowers/flower_blue_7.vox",
       "media/voxel/vegetation/flowers/flower_blue_8.vox",
       "media/voxel/vegetation/flowers/flower_blue_9.vox",
-      "media/voxel/vegetation/flowers/flower_pink_1.vox",
       "media/voxel/vegetation/flowers/flower_pink_2.vox",
       "media/voxel/vegetation/flowers/flower_pink_3.vox",
       "media/voxel/vegetation/flowers/flower_pink_4.vox",
-      "media/voxel/vegetation/flowers/flower_purple_1.vox",
       "media/voxel/vegetation/flowers/flower_purple_2.vox",
       "media/voxel/vegetation/flowers/flower_purple_3.vox",
       "media/voxel/vegetation/flowers/flower_purple_4.vox",
@@ -1505,24 +263,18 @@
       "media/voxel/vegetation/flowers/flower_red_3.vox",
       "media/voxel/vegetation/flowers/flower_red_4.vox",
       "media/voxel/vegetation/flowers/flower_red_5.vox",
-      "media/voxel/vegetation/flowers/flower_white_1.vox",
       "media/voxel/vegetation/flowers/flower_white_2.vox",
       "media/voxel/vegetation/flowers/flower_white_3.vox",
       "media/voxel/vegetation/flowers/flower_white_4.vox",
       "media/voxel/vegetation/flowers/flower_white_5.vox",
-      "media/voxel/vegetation/flowers/flower_yellow_0.vox",
-      "media/voxel/vegetation/flowers/flower_yellow_1.vox",
-      "media/voxel/vegetation/flowers/jungle_flower_red_0.vox",
       "media/voxel/vegetation/flowers/jungle_flower_red_1.vox",
       "media/voxel/vegetation/flowers/moonbell.vox",
       "media/voxel/vegetation/flowers/pyrebloom.vox",
-      "media/voxel/vegetation/flowers/snow_crocus_0.vox",
       "media/voxel/vegetation/flowers/snow_crocus_1.vox",
       "media/voxel/vegetation/flowers/snow_crocus_2.vox",
       "media/voxel/vegetation/flowers/snow_crocus_3.vox",
       "media/voxel/vegetation/flowers/snow_crocus_4.vox",
       "media/voxel/vegetation/flowers/snow_crocus_5.vox",
-      "media/voxel/vegetation/flowers/snow_forsythia_0.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_1.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_2.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_3.vox",
@@ -1532,7 +284,6 @@
       "media/voxel/vegetation/flowers/snow_forsythia_7.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_8.vox",
       "media/voxel/vegetation/flowers/snow_rose_0.vox",
-      "media/voxel/vegetation/flowers/snow_rose_1.vox",
       "media/voxel/vegetation/flowers/snow_rose_10.vox",
       "media/voxel/vegetation/flowers/snow_rose_11.vox",
       "media/voxel/vegetation/flowers/snow_rose_2.vox",
@@ -1543,12 +294,8 @@
       "media/voxel/vegetation/flowers/snow_rose_7.vox",
       "media/voxel/vegetation/flowers/snow_rose_8.vox",
       "media/voxel/vegetation/flowers/snow_rose_9.vox",
-      "media/voxel/vegetation/flowers/sunflower_1.vox",
       "media/voxel/vegetation/flowers/sunflower_2.vox",
       "media/voxel/vegetation/grass/ferns/fern_0.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_01.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_02.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_03.vox",
       "media/voxel/vegetation/grass/ferns/ferns_04.vox",
       "media/voxel/vegetation/grass/ferns/ferns_05.vox",
       "media/voxel/vegetation/grass/ferns/ferns_06.vox",
@@ -1561,21 +308,14 @@
       "media/voxel/vegetation/grass/grass/grass_large_0.vox",
       "media/voxel/vegetation/grass/grass/grass_large_1.vox",
       "media/voxel/vegetation/grass/grass/grass_large_2.vox",
-      "media/voxel/vegetation/grass/grass/grass_long_1.vox",
-      "media/voxel/vegetation/grass/grass/grass_long_2.vox",
       "media/voxel/vegetation/grass/grass/grass_long_3.vox",
       "media/voxel/vegetation/grass/grass/grass_long_4.vox",
       "media/voxel/vegetation/grass/grass/grass_long_5.vox",
       "media/voxel/vegetation/grass/grass/grass_long_6.vox",
       "media/voxel/vegetation/grass/grass/grass_long_7.vox",
-      "media/voxel/vegetation/grass/grass/grass_med_1.vox",
-      "media/voxel/vegetation/grass/grass/grass_med_2.vox",
       "media/voxel/vegetation/grass/grass/grass_med_3.vox",
       "media/voxel/vegetation/grass/grass/grass_med_4.vox",
       "media/voxel/vegetation/grass/grass/grass_med_5.vox",
-      "media/voxel/vegetation/grass/grass/grass_savanna_0.vox",
-      "media/voxel/vegetation/grass/grass/grass_savanna_1.vox",
-      "media/voxel/vegetation/grass/grass/grass_savanna_2.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_3.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_4.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_5.vox",
@@ -1584,20 +324,15 @@
       "media/voxel/vegetation/grass/grass/grass_savanna_red_1.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_red_2.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_red_3.vox",
-      "media/voxel/vegetation/grass/grass/grass_savanna_tall_0.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_tall_1.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_tall_2.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_tall_3.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_tall_4.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_tall_5.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_tall_6.vox",
-      "media/voxel/vegetation/grass/grass/grass_short_1.vox",
-      "media/voxel/vegetation/grass/grass/grass_short_2.vox",
       "media/voxel/vegetation/grass/grass/grass_short_3.vox",
       "media/voxel/vegetation/grass/grass/grass_short_4.vox",
       "media/voxel/vegetation/grass/grass/grass_short_5.vox",
-      "media/voxel/vegetation/grass/grass/grass_snow_0.vox",
-      "media/voxel/vegetation/grass/grass/grass_snow_1.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_10.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_11.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_2.vox",
@@ -1629,23 +364,16 @@
       "media/voxel/vegetation/grass/grass/grass_taiga_7.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_8.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_9.vox",
-      "media/voxel/vegetation/grass/grass/seagrass_0.vox",
-      "media/voxel/vegetation/grass/grass/seagrass_1.vox",
       "media/voxel/vegetation/grass/grass/seagrass_2.vox",
       "media/voxel/vegetation/grass/grass/seagrass_3.vox",
       "media/voxel/vegetation/grass/grass/seagrass_4.vox",
-      "media/voxel/vegetation/grass/junglefern/junglefern_01.vox",
-      "media/voxel/vegetation/grass/junglefern/junglefern_02.vox",
       "media/voxel/vegetation/grass/junglefern/junglefern_03.vox",
       "media/voxel/vegetation/grass/junglefern/junglefern_04.vox",
-      "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_0.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_1.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_2.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_3.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_4.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_5.vox",
-      "media/voxel/vegetation/grass/leafy_plant/jungle_plant_0.vox",
-      "media/voxel/vegetation/grass/leafy_plant/jungle_plant_1.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_2.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_3.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_4.vox",
@@ -1654,7 +382,6 @@
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_2.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_3.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_4.vox",
-      "media/voxel/vegetation/grass/leafy_plant/leafy_plant_01.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_02.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_03.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_04.vox",
@@ -1664,21 +391,12 @@
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_08.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_09.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_10.vox",
-      "media/voxel/vegetation/grass/lianas/liana_0.vox",
       "media/voxel/vegetation/grass/lianas/liana_1.vox",
-      "media/voxel/vegetation/grass/reed/reed_0.vox",
-      "media/voxel/vegetation/grass/reed/reed_1.vox",
-      "media/voxel/vegetation/grass/reed/reed_2.vox",
       "media/voxel/vegetation/grass/reed/reed_3.vox",
       "media/voxel/vegetation/grass/reed/reed_4.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_0.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_1.vox",
       "media/voxel/vegetation/mushrooms/mushroom_10.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_2.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_3.vox",
       "media/voxel/vegetation/mushrooms/mushroom_4.vox",
       "media/voxel/vegetation/mushrooms/mushroom_5.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_6.vox",
       "media/voxel/vegetation/mushrooms/mushroom_7.vox",
       "media/voxel/vegetation/mushrooms/mushroom_8.vox",
       "media/voxel/vegetation/mushrooms/mushroom_9.vox",
@@ -1693,14 +411,10 @@
       "media/voxel/vegetation/underwater/algae/caulerpa_prolifera_1.vox",
       "media/voxel/vegetation/underwater/algae/caulerpa_prolifera_2.vox",
       "media/voxel/vegetation/underwater/algae/caulerpa_prolifera_3.vox",
-      "media/voxel/vegetation/underwater/algae/kelp_sprig_0.vox",
-      "media/voxel/vegetation/underwater/algae/kelp_sprig_1.vox",
-      "media/voxel/vegetation/underwater/algae/macrocystis_kelp_0.vox",
       "media/voxel/vegetation/underwater/algae/macrocystis_kelp_1.vox",
       "media/voxel/vegetation/underwater/algae/macrocystis_kelp_2.vox",
       "media/voxel/vegetation/underwater/algae/macrocystis_kelp_3.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_0.vox",
-      "media/voxel/vegetation/underwater/algae/nereocystis_kelp_1.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_2.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_3.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_4.vox",
@@ -1711,10 +425,8 @@
       "media/voxel/vegetation/underwater/algae/udotea_0.vox",
       "media/voxel/vegetation/underwater/algae/udotea_1.vox",
       "media/voxel/vegetation/underwater/algae/udotea_2.vox",
-      "media/voxel/vegetation/underwater/coral/blue_ricordea_1.vox",
       "media/voxel/vegetation/underwater/coral/blue_ricordea_2.vox",
       "media/voxel/vegetation/underwater/coral/blue_ricordea_3.vox",
-      "media/voxel/vegetation/underwater/coral/green_brain_coral_0.vox",
       "media/voxel/vegetation/underwater/coral/green_brain_coral_1.vox",
       "media/voxel/vegetation/underwater/coral/green_brain_coral_2.vox",
       "media/voxel/vegetation/underwater/coral/green_ricordea_1.vox",
@@ -1725,7 +437,6 @@
       "media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_1.vox",
       "media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_2.vox",
       "media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_3.vox",
-      "media/voxel/vegetation/underwater/coral/pink_brain_coral_0.vox",
       "media/voxel/vegetation/underwater/coral/pink_brain_coral_1.vox",
       "media/voxel/vegetation/underwater/coral/plating_acropora_0.vox",
       "media/voxel/vegetation/underwater/coral/plating_acropora_1.vox",
@@ -1739,7 +450,6 @@
       "media/voxel/vegetation/underwater/coral/purp_1.vox",
       "media/voxel/vegetation/underwater/coral/purple_finger_soft_coral_0.vox",
       "media/voxel/vegetation/underwater/coral/purple_finger_soft_coral_1.vox",
-      "media/voxel/vegetation/underwater/coral/red_fire_coral_0.vox",
       "media/voxel/vegetation/underwater/coral/red_fire_coral_1.vox",
       "media/voxel/vegetation/underwater/coral/red_fire_coral_2.vox",
       "media/voxel/vegetation/underwater/coral/red_sea_fan_1.vox",
@@ -1747,7 +457,6 @@
       "media/voxel/vegetation/underwater/coral/red_sea_fan_3.vox",
       "media/voxel/vegetation/underwater/coral/sea_anemone_1.vox",
       "media/voxel/vegetation/underwater/coral/yellow_fire_coral_0.vox",
-      "media/voxel/vegetation/underwater/coral/yellow_gorgonian_0.vox",
       "media/voxel/vegetation/underwater/coral/yellow_gorgonian_1.vox",
       "media/voxel/vegetation/underwater/coral/yellow_gorgonian_2.vox",
       "media/voxel/vegetation/underwater/lillypads/lillypad_0.vox",
@@ -1755,7 +464,6 @@
       "media/voxel/vegetation/underwater/lillypads/lillypad_2.vox",
       "media/voxel/vegetation/underwater/lillypads/lillypad_3.vox",
       "media/voxel/vegetation/underwater/lillypads/lillypad_4.vox",
-      "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_1.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_2.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_3.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_4.vox",
@@ -1764,12 +472,10 @@
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_7.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_8.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_9.vox",
-      "media/voxel/vegetation/underwater/lillypads/temperate_reeds_1.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_reeds_2.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_reeds_3.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_reeds_4.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_reeds_5.vox",
-      "media/voxel/vegetation/underwater/sea_urchins/sea_urchin.vox",
       "media/voxel/vegetation/underwater/underwater_grass/blue_0.vox",
       "media/voxel/vegetation/underwater/underwater_grass/blue_1.vox",
       "media/voxel/vegetation/underwater/underwater_mud/mud_0.vox",
@@ -1784,15 +490,550 @@
     "voxels": [],
     "shaders": []
   },
+  "planet": {
+    "counts": {
+      "planet_profiles": 1,
+      "biome_sets": 1,
+      "biomes": 23,
+      "vegetation_rules": 7,
+      "prop_scatters": 14,
+      "ore_rules": 2,
+      "cave_rules": 1,
+      "render_profiles": 4
+    },
+    "planet_profiles": [
+      {
+        "id": "world/planets/default",
+        "display_name": "Default Living Planet",
+        "near_voxel_lod_radius": 12,
+        "far_surface_lod_radius": 192,
+        "upload_budget_chunks_per_frame": 8,
+        "region_cell_voxels": 64,
+        "feature_budget_per_chunk": 384,
+        "vegetation_refs": 7,
+        "prop_scatter_refs": 14,
+        "ore_refs": 2,
+        "cave_refs": 1
+      }
+    ],
+    "biome_sets": [
+      {
+        "id": "world/biome_sets/earthlike",
+        "display_name": "Earthlike Planet Biomes",
+        "selectors": 23,
+        "blend_radius": 0.2400
+      }
+    ],
+    "biomes": [
+      {
+        "id": "world/biomes/alpine",
+        "display_name": "Alpine Heights",
+        "surface_top": "snow",
+        "surface_under": "stone",
+        "amplitude": 0.7200,
+        "flatness": 0.0600,
+        "tags": [
+          "cold",
+          "mountain"
+        ]
+      },
+      {
+        "id": "world/biomes/badlands",
+        "display_name": "Badlands",
+        "surface_top": "red_sand",
+        "surface_under": "coarse_dirt",
+        "amplitude": 0.4400,
+        "flatness": 0.2600,
+        "tags": [
+          "desert",
+          "dry",
+          "badlands"
+        ]
+      },
+      {
+        "id": "world/biomes/beach",
+        "display_name": "Sandy Beach",
+        "surface_top": "red_sand",
+        "surface_under": "red_sand",
+        "amplitude": 0.0500,
+        "flatness": 0.9000,
+        "tags": [
+          "beach",
+          "coastal"
+        ]
+      },
+      {
+        "id": "world/biomes/birch_forest",
+        "display_name": "Birch Forest",
+        "surface_top": "grass",
+        "surface_under": "dirt",
+        "amplitude": 0.2500,
+        "flatness": 0.4400,
+        "tags": [
+          "temperate",
+          "forest",
+          "birch"
+        ]
+      },
+      {
+        "id": "world/biomes/dark_forest",
+        "display_name": "Dark Forest",
+        "surface_top": "podzol",
+        "surface_under": "dirt",
+        "amplitude": 0.2800,
+        "flatness": 0.4000,
+        "tags": [
+          "temperate",
+          "forest",
+          "dark"
+        ]
+      },
+      {
+        "id": "world/biomes/desert",
+        "display_name": "Red Sand Desert",
+        "surface_top": "red_sand",
+        "surface_under": "red_sand",
+        "amplitude": 0.2400,
+        "flatness": 0.5600,
+        "tags": [
+          "desert",
+          "dry"
+        ]
+      },
+      {
+        "id": "world/biomes/frozen_peaks",
+        "display_name": "Frozen Peaks",
+        "surface_top": "snow",
+        "surface_under": "stone",
+        "amplitude": 0.8200,
+        "flatness": 0.0200,
+        "tags": [
+          "cold",
+          "mountain",
+          "frozen",
+          "snowy"
+        ]
+      },
+      {
+        "id": "world/biomes/jungle",
+        "display_name": "Jungle",
+        "surface_top": "grass",
+        "surface_under": "dirt",
+        "amplitude": 0.5000,
+        "flatness": 0.2000,
+        "tags": [
+          "jungle",
+          "tropical",
+          "wet"
+        ]
+      },
+      {
+        "id": "world/biomes/jungle_edge",
+        "display_name": "Jungle Edge",
+        "surface_top": "grass",
+        "surface_under": "dirt",
+        "amplitude": 0.3400,
+        "flatness": 0.3400,
+        "tags": [
+          "jungle",
+          "tropical",
+          "transition"
+        ]
+      },
+      {
+        "id": "world/biomes/kelp_forest",
+        "display_name": "Kelp Forest Shelf",
+        "surface_top": "stone",
+        "surface_under": "deepslate",
+        "amplitude": 0.1400,
+        "flatness": 0.7600,
+        "tags": [
+          "ocean",
+          "aquatic",
+          "kelp"
+        ]
+      },
+      {
+        "id": "world/biomes/meadow",
+        "display_name": "Flowering Meadow",
+        "surface_top": "grass",
+        "surface_under": "dirt",
+        "amplitude": 0.1800,
+        "flatness": 0.6600,
+        "tags": [
+          "temperate",
+          "plains",
+          "meadow"
+        ]
+      },
+      {
+        "id": "world/biomes/mountain_meadow",
+        "display_name": "Mountain Meadow",
+        "surface_top": "grass",
+        "surface_under": "dirt",
+        "amplitude": 0.3800,
+        "flatness": 0.3400,
+        "tags": [
+          "mountain",
+          "meadow",
+          "temperate"
+        ]
+      },
+      {
+        "id": "world/biomes/ocean",
+        "display_name": "Open Ocean Basin",
+        "surface_top": "stone",
+        "surface_under": "deepslate",
+        "amplitude": 0.1600,
+        "flatness": 0.8000,
+        "tags": [
+          "ocean",
+          "aquatic"
+        ]
+      },
+      {
+        "id": "world/biomes/plains",
+        "display_name": "Open Plains",
+        "surface_top": "grass",
+        "surface_under": "dirt",
+        "amplitude": 0.1500,
+        "flatness": 0.7200,
+        "tags": [
+          "temperate",
+          "plains"
+        ]
+      },
+      {
+        "id": "world/biomes/savanna",
+        "display_name": "Savanna",
+        "surface_top": "grass",
+        "surface_under": "coarse_dirt",
+        "amplitude": 0.1400,
+        "flatness": 0.7400,
+        "tags": [
+          "savanna",
+          "dry",
+          "warm"
+        ]
+      },
+      {
+        "id": "world/biomes/snowy_plains",
+        "display_name": "Snowy Plains",
+        "surface_top": "snow",
+        "surface_under": "powder_snow",
+        "amplitude": 0.1200,
+        "flatness": 0.7600,
+        "tags": [
+          "cold",
+          "snowy",
+          "plains"
+        ]
+      },
+      {
+        "id": "world/biomes/snowy_taiga",
+        "display_name": "Snowy Taiga",
+        "surface_top": "snow",
+        "surface_under": "dirt",
+        "amplitude": 0.3200,
+        "flatness": 0.4000,
+        "tags": [
+          "cold",
+          "forest",
+          "taiga",
+          "snowy"
+        ]
+      },
+      {
+        "id": "world/biomes/stony_shore",
+        "display_name": "Stony Shore",
+        "surface_top": "stone",
+        "surface_under": "andesite",
+        "amplitude": 0.1200,
+        "flatness": 0.6600,
+        "tags": [
+          "coastal",
+          "rocky"
+        ]
+      },
+      {
+        "id": "world/biomes/swamp",
+        "display_name": "Swamp",
+        "surface_top": "podzol",
+        "surface_under": "dirt",
+        "amplitude": 0.0700,
+        "flatness": 0.8800,
+        "tags": [
+          "swamp",
+          "wet",
+          "temperate"
+        ]
+      },
+      {
+        "id": "world/biomes/temperate_forest",
+        "display_name": "Temperate Forest",
+        "surface_top": "grass",
+        "surface_under": "dirt",
+        "amplitude": 0.3600,
+        "flatness": 0.3600,
+        "tags": [
+          "temperate",
+          "forest"
+        ]
+      },
+      {
+        "id": "world/biomes/tundra",
+        "display_name": "Wind-Cut Tundra",
+        "surface_top": "snow",
+        "surface_under": "dirt",
+        "amplitude": 0.1800,
+        "flatness": 0.6800,
+        "tags": [
+          "cold",
+          "snowy",
+          "tundra"
+        ]
+      },
+      {
+        "id": "world/biomes/warm_reef",
+        "display_name": "Warm Reef Shelf",
+        "surface_top": "stone",
+        "surface_under": "deepslate",
+        "amplitude": 0.1600,
+        "flatness": 0.7000,
+        "tags": [
+          "ocean",
+          "aquatic",
+          "reef"
+        ]
+      },
+      {
+        "id": "world/biomes/wetland",
+        "display_name": "Reed Wetland",
+        "surface_top": "podzol",
+        "surface_under": "dirt",
+        "amplitude": 0.0800,
+        "flatness": 0.8600,
+        "tags": [
+          "wet",
+          "swamp",
+          "coastal"
+        ]
+      }
+    ],
+    "features": [
+      {
+        "id": "world/vegetation/acacia_tree",
+        "kind": "vegetation",
+        "density": 0.0350,
+        "min_spacing_voxels": 10.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/alpine_rock_scatter",
+        "kind": "prop_scatter",
+        "density": 0.0700,
+        "min_spacing_voxels": 3.2000,
+        "variant_count": 5
+      },
+      {
+        "id": "world/vegetation/beach_detail_scatter",
+        "kind": "prop_scatter",
+        "density": 0.0850,
+        "min_spacing_voxels": 2.4000,
+        "variant_count": 5
+      },
+      {
+        "id": "world/vegetation/birch_tree",
+        "kind": "vegetation",
+        "density": 0.0550,
+        "min_spacing_voxels": 7.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/dark_forest_mushroom_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1100,
+        "min_spacing_voxels": 2.0000,
+        "variant_count": 5
+      },
+      {
+        "id": "world/vegetation/dark_oak_tree",
+        "kind": "vegetation",
+        "density": 0.0820,
+        "min_spacing_voxels": 8.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/desert_cactus_scatter",
+        "kind": "prop_scatter",
+        "density": 0.0550,
+        "min_spacing_voxels": 5.0000,
+        "variant_count": 8
+      },
+      {
+        "id": "world/vegetation/forest_floor_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1600,
+        "min_spacing_voxels": 1.6000,
+        "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/jungle_tree",
+        "kind": "vegetation",
+        "density": 0.0950,
+        "min_spacing_voxels": 8.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/jungle_undergrowth_scatter",
+        "kind": "prop_scatter",
+        "density": 0.3400,
+        "min_spacing_voxels": 1.1000,
+        "variant_count": 7
+      },
+      {
+        "id": "world/vegetation/meadow_bloom_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1800,
+        "min_spacing_voxels": 1.4000,
+        "variant_count": 7
+      },
+      {
+        "id": "world/vegetation/oak_tree",
+        "kind": "vegetation",
+        "density": 0.0450,
+        "min_spacing_voxels": 8.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/ocean_kelp_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1600,
+        "min_spacing_voxels": 2.4000,
+        "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/reef_coral_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1300,
+        "min_spacing_voxels": 2.8000,
+        "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/savanna_dry_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1600,
+        "min_spacing_voxels": 2.0000,
+        "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/snow_tundra_scatter",
+        "kind": "prop_scatter",
+        "density": 0.0850,
+        "min_spacing_voxels": 2.3000,
+        "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/spruce_tree",
+        "kind": "vegetation",
+        "density": 0.0700,
+        "min_spacing_voxels": 7.5000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/surface_rock_scatter",
+        "kind": "prop_scatter",
+        "density": 0.0400,
+        "min_spacing_voxels": 5.0000,
+        "variant_count": 4
+      },
+      {
+        "id": "world/vegetation/swamp_willow_tree",
+        "kind": "vegetation",
+        "density": 0.0320,
+        "min_spacing_voxels": 10.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/temperate_grass_scatter",
+        "kind": "prop_scatter",
+        "density": 0.2800,
+        "min_spacing_voxels": 1.0000,
+        "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/wetland_reed_scatter",
+        "kind": "prop_scatter",
+        "density": 0.2200,
+        "min_spacing_voxels": 1.5000,
+        "variant_count": 5
+      }
+    ],
+    "ores": [
+      {
+        "id": "world/ores/coal",
+        "block": "coal_ore",
+        "density": 0.0650,
+        "depth_voxels": [12, 180]
+      },
+      {
+        "id": "world/ores/iron",
+        "block": "iron_ore",
+        "density": 0.0450,
+        "depth_voxels": [8, 120]
+      }
+    ],
+    "caves": [
+      {
+        "id": "world/caves/default",
+        "fields": 4,
+        "depth_voxels": [14, 520],
+        "tunnel_radius": [2.0000, 9.0000],
+        "chamber_radius": [7.0000, 32.0000]
+      }
+    ],
+    "render_profiles": [
+      {
+        "id": "vv-render:potato",
+        "label": "Potato",
+        "quality_class": "potato",
+        "fog": false,
+        "water": "cheap",
+        "enabled_features": 0
+      },
+      {
+        "id": "vv-render:balanced",
+        "label": "Balanced",
+        "quality_class": "balanced",
+        "fog": true,
+        "water": "clean",
+        "enabled_features": 3
+      },
+      {
+        "id": "vv-render:high",
+        "label": "High",
+        "quality_class": "high",
+        "fog": true,
+        "water": "cinematic",
+        "enabled_features": 6
+      },
+      {
+        "id": "vv-render:ultra",
+        "label": "Ultra",
+        "quality_class": "ultra",
+        "fog": true,
+        "water": "cinematic+",
+        "enabled_features": 8
+      }
+    ],
+    "budget_notes": [
+      "world/planets/default: near LOD 12, far LOD 192, upload 8/frame, feature budget 384"
+    ]
+  },
   "progression": {
-    "basic_loop_reachable": false,
+    "basic_loop_reachable": true,
     "notes": [
-      "MVP block 'grass' is missing - first-hour loop is broken.",
-      "MVP block 'dirt' is missing - first-hour loop is broken.",
-      "MVP block 'stone' is missing - first-hour loop is broken.",
-      "MVP block 'coal_ore' is missing - first-hour loop is broken.",
-      "MVP block 'iron_ore' is missing - first-hour loop is broken.",
-      "MVP block 'oak_log' is missing - first-hour loop is broken."
+      "Basic loop blocks all present (grass, dirt, stone, oak_log, coal_ore, iron_ore)."
     ]
   }
 }

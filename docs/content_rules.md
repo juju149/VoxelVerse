@@ -137,6 +137,8 @@ Every material must:
 - Either reference a normal and roughness texture **or** intentionally omit them
   (the `Option`s in `RawMaterialDef` make this explicit).
 - Declare a `category` and a `sampling` mode.
+- Follow the terrain material direction in `docs/material_charter.md` when it is
+  a block-surface material.
 
 The `authoring.source` field, when set, must point to a real directory under
 `media/textures/`. The `generated_by` field is informational only.

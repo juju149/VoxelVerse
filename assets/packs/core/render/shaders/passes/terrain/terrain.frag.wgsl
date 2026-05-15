@@ -26,12 +26,13 @@ struct VertexOut {
     @location(6) @interpolate(flat) packed_tex_index: u32,
 }
 
-fn vv_prepare_albedo(layer: u32, uv: vec2<f32>, vertex_color: vec3<f32>, world_pos: vec3<f32>, normal: vec3<f32>, color_only: bool, triplanar: bool) -> vec3<f32> {
+fn vv_prepare_albedo(layer: u32, packed_tex_index: u32, uv: vec2<f32>, vertex_color: vec3<f32>, world_pos: vec3<f32>, normal: vec3<f32>, color_only: bool, triplanar: bool) -> vec3<f32> {
     var albedo = vv_sample_voxel_albedo(layer, uv, vertex_color, color_only);
 
     if !color_only && layer != VV_VERTEX_COLOR_ONLY {
         albedo = vv_material_face_variation(albedo, world_pos, normal);
         albedo = vv_material_large_scale_variation(albedo, world_pos, normal);
+        albedo = vv_material_apply_block_contact(albedo, packed_tex_index, uv, normal, world_pos);
 
         if triplanar {
             albedo *= 1.0 + vv_triplanar_grain(world_pos, normal);
@@ -79,7 +80,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let view_dir = vv_safe_normalize(vv_camera_position() - in.world_pos);
 
     let roughness = vv_sample_voxel_roughness(layer, in.uv, color_only);
-    let albedo = vv_prepare_albedo(layer, in.uv, in.color, in.world_pos, geometry_normal, color_only, triplanar);
+    let albedo = vv_prepare_albedo(layer, in.packed_tex_index, in.uv, in.color, in.world_pos, geometry_normal, color_only, triplanar);
     let normal = vv_sample_voxel_normal(layer, in.uv, geometry_normal, color_only);
 
     let ao = vv_vertex_ao(in.color) * vv_soft_contact_occlusion(geometry_normal, in.world_pos);
