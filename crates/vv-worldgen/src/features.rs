@@ -65,10 +65,6 @@ impl<'a> FeatureBakery<'a> {
         self.terrain.voxel_scale()
     }
 
-    fn density_scale(&self) -> f32 {
-        self.terrain.density_scale()
-    }
-
     /// Bake every tree voxel that overlaps the rectangle
     /// `[u_lo, u_hi) × [v_lo, v_hi)` (plus `margin` for face culling).
     /// Props (vox props) are NOT part of the voxel feature map — query

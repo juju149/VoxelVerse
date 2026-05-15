@@ -13,6 +13,5 @@ Object(
 
     mining: (
         tool: shovel,
-        drops: [],
     ),
 )

@@ -1,0 +1,34 @@
+// Torch - cheap placeable light for early exploration and building.
+Object(
+    name: "Torch",
+    tags: ["decorative", "light_source", "tier_0"],
+
+    block: (
+        texture: all("blocks/torch/all"),
+        render: cutout,
+        solid: false,
+        hardness: 0.1,
+        sound: wood,
+        shape: cross,
+    ),
+
+    item: (
+        stack: 64,
+        icon: "items/utility/torch",
+    ),
+
+    light: (
+        level: 14,
+        flicker: true,
+        colour: (1.0, 0.72, 0.36),
+    ),
+
+    mining: (
+        tool: any,
+    ),
+
+    recipe: (
+        shapeless: [oak_log, coal],
+        output: (item: "torch", count: 4),
+    ),
+)

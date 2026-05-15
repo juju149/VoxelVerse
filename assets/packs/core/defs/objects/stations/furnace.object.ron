@@ -25,7 +25,6 @@ Object(
     mining: (
         tool: pickaxe,
         tier: 0,
-        drops: [],
     ),
 
     recipe: (

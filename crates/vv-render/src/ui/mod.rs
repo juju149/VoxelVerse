@@ -11,3 +11,5 @@ pub use theme::{
 
 mod inventory_screen;
 mod theme;
+#[cfg(test)]
+mod theme_tests;

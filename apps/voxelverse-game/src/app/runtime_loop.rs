@@ -1,16 +1,15 @@
 use crate::app::content_bootstrap::load_core_content;
-use crate::ui::{
-    HeldStack, InventoryButton, InventoryLayout, InventoryUiState, UiTheme, UiViewport,
-};
+use crate::app::inventory_events::handle_inventory_window_event;
+use crate::ui::InventoryUiState;
 use std::sync::Arc;
 use std::time::Instant;
 use vv_diagnostics::SystemDiagnostics;
 use vv_gameplay::{
-    craft_recipe, quick_craft_recipe_indices, BlockActionIntent, BlockInteraction, BlockSelection,
-    BlockSelectionMode, Console, Controller, Hotbar, HotbarNotice, HotbarSlot, Inventory, ItemId,
-    PlanetResize, PlanetResizeIntent, Player, PlayerController, SlotRef,
+    BlockAction, BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, Console,
+    Controller, Hotbar, HotbarNotice, Inventory, ItemId, MiningProgress, PlanetResize,
+    PlanetResizeIntent, Player, PlayerController,
 };
-use vv_pack_compiler::{CompiledRecipe, LootRegistry, RecipeRegistry, TagRegistry};
+use vv_pack_compiler::{LootRegistry, RecipeRegistry};
 use vv_render::Renderer;
 use vv_world::{PlanetData, VoxModelRegistry};
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
@@ -38,6 +37,8 @@ pub fn run() {
     let mut hotbar = Hotbar::new();
     let mut inventory = Inventory::new();
     let mut inventory_ui = InventoryUiState::new();
+    let mut mining = MiningProgress::default();
+    let mut mining_button_held = false;
     // Latest known shift state — updated on every ModifiersChanged event.
     // Used by the inventory's quick-move (shift + left click) shortcut.
     let mut shift_held = false;
@@ -133,10 +134,10 @@ pub fn run() {
                     &mut hotbar,
                     &mut inventory,
                     &mut inventory_ui,
+                    &mut mining,
+                    &mut mining_button_held,
                     &console,
                     &recipes,
-                    &loot,
-                    &tags,
                 );
             }
             Event::AboutToWait => {
@@ -157,8 +158,11 @@ pub fn run() {
                     &mut player,
                     &mut planet,
                     &mut hotbar,
-                    &inventory,
+                    &mut inventory,
                     &inventory_ui,
+                    &mut mining,
+                    mining_button_held,
+                    &loot,
                     &mut console,
                 );
             }
@@ -182,14 +186,14 @@ fn create_console() -> Console {
     console
 }
 
-fn grab_cursor(window: &Window) {
+pub(super) fn grab_cursor(window: &Window) {
     let _ = window
         .set_cursor_grab(CursorGrabMode::Locked)
         .or_else(|_| window.set_cursor_grab(CursorGrabMode::Confined));
     window.set_cursor_visible(false);
 }
 
-fn release_cursor(window: &Window) {
+pub(super) fn release_cursor(window: &Window) {
     let _ = window.set_cursor_grab(CursorGrabMode::None);
     window.set_cursor_visible(true);
 }
@@ -273,10 +277,10 @@ fn handle_game_window_event(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
     inventory_ui: &mut InventoryUiState,
+    mining: &mut MiningProgress,
+    mining_button_held: &mut bool,
     console: &Console,
     recipes: &RecipeRegistry,
-    loot: &LootRegistry,
-    tags: &TagRegistry,
 ) {
     match event {
         WindowEvent::CloseRequested => target.exit(),
@@ -286,13 +290,19 @@ fn handle_game_window_event(
         }
         WindowEvent::Focused(true) => {}
         WindowEvent::Focused(false) => release_cursor(renderer.window),
-        WindowEvent::MouseInput {
-            state: ElementState::Pressed,
-            button,
-            ..
-        } => handle_mouse_action(
-            button, renderer, controller, player, planet, hotbar, inventory, loot, tags,
-        ),
+        WindowEvent::MouseInput { state, button, .. } => match (button, state) {
+            (MouseButton::Left, ElementState::Pressed) => {
+                *mining_button_held = true;
+            }
+            (MouseButton::Left, ElementState::Released) => {
+                *mining_button_held = false;
+                mining.cancel();
+            }
+            (MouseButton::Right, ElementState::Pressed) => {
+                handle_place_action(renderer, controller, player, planet, hotbar)
+            }
+            _ => {}
+        },
         WindowEvent::MouseWheel { delta, .. } if controller.first_person => {
             handle_hotbar_scroll(delta, hotbar);
         }
@@ -321,707 +331,119 @@ fn handle_game_window_event(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn handle_inventory_window_event(
-    event: WindowEvent,
-    target: &winit::event_loop::EventLoopWindowTarget<()>,
-    renderer: &mut Renderer<'_>,
-    controller: &mut Controller,
-    player: &Player,
-    planet: &PlanetData,
-    hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    inventory_ui: &mut InventoryUiState,
-    recipes: &RecipeRegistry,
-    tags: &TagRegistry,
-    shift_held: &mut bool,
-    console: &Console,
-) {
-    match event {
-        WindowEvent::CloseRequested => target.exit(),
-        WindowEvent::Resized(size) => renderer.resize(size.width, size.height),
-        WindowEvent::Focused(false) => release_cursor(renderer.window),
-        WindowEvent::ModifiersChanged(mods) => {
-            *shift_held = mods.state().shift_key();
-        }
-        WindowEvent::CursorMoved { position, .. } => {
-            inventory_ui.cursor = (position.x as f32, position.y as f32);
-            let theme = UiTheme::VOXELVERSE;
-            let vp = UiViewport::new(renderer.config.width as f32, renderer.config.height as f32);
-            let layout = InventoryLayout::compute(&theme, vp, inventory_ui.user_zoom);
-            let (px, py) = (position.x as f32, position.y as f32);
-            inventory_ui.hovered_slot = layout.slot_under_cursor(px, py);
-            inventory_ui.hovered_button = layout.button_under_cursor(px, py);
-            inventory_ui.hovered_search = layout.search_bar.contains(px, py);
-            inventory_ui.hovered_filter = layout.filter_under_cursor(px, py);
-            inventory_ui.hovered_recipe = layout
-                .recipe_under_cursor(px, py)
-                .and_then(|row| quick_craft_recipe_indices(recipes).get(row).copied());
-            renderer.window.request_redraw();
-        }
-        WindowEvent::MouseInput {
-            state: ElementState::Pressed,
-            button: MouseButton::Left,
-            ..
-        } => {
-            handle_inventory_left_click(
-                hotbar,
-                inventory,
-                inventory_ui,
-                planet,
-                recipes,
-                tags,
-                *shift_held,
-            );
-            renderer.window.request_redraw();
-        }
-        WindowEvent::MouseInput {
-            state: ElementState::Pressed,
-            button: MouseButton::Right,
-            ..
-        } => {
-            handle_inventory_right_click(hotbar, inventory, inventory_ui);
-            renderer.window.request_redraw();
-        }
-        WindowEvent::KeyboardInput { event: key, .. } if key.state == ElementState::Pressed => {
-            handle_inventory_key(
-                key.physical_key,
-                key.text.as_deref(),
-                renderer,
-                controller,
-                hotbar,
-                inventory,
-                inventory_ui,
-            );
-        }
-        WindowEvent::RedrawRequested => renderer.render(
-            controller,
-            player,
-            planet,
-            hotbar,
-            inventory,
-            inventory_ui,
-            recipes,
-            console,
-        ),
-        _ => {}
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn handle_inventory_key(
-    key: PhysicalKey,
-    text: Option<&str>,
-    renderer: &Renderer<'_>,
-    controller: &Controller,
-    hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    ui: &mut InventoryUiState,
-) {
-    // Focused search bar: keys go to the query, Escape just unfocuses.
-    if ui.search_focused {
-        match key {
-            PhysicalKey::Code(KeyCode::Escape) => {
-                ui.search_focused = false;
-            }
-            PhysicalKey::Code(KeyCode::Backspace) => {
-                ui.search_query.pop();
-            }
-            _ => {
-                if let Some(text) = text {
-                    for ch in text.chars() {
-                        if ch.is_control() {
-                            continue;
-                        }
-                        if ui.search_query.chars().count() < 32 {
-                            ui.search_query.push(ch);
-                        }
-                    }
-                }
-            }
-        }
-        renderer.window.request_redraw();
-        return;
-    }
-
-    // Unfocused: Minecraft-style shortcuts.
-    match key {
-        PhysicalKey::Code(KeyCode::Escape) | PhysicalKey::Code(KeyCode::KeyE) => {
-            close_inventory(renderer, controller, hotbar, inventory, ui);
-        }
-        PhysicalKey::Code(KeyCode::KeyQ) => {
-            // Q drops one item from the hovered slot (item is discarded —
-            // we don't have ground items yet).
-            if ui.held.is_some() {
-                // While holding, Q drops one from held (Minecraft parity).
-                drop_one_from_held(ui);
-            } else if let Some(slot_ref) = ui.hovered_slot {
-                drop_one_from_slot(hotbar, inventory, slot_ref);
-            }
-            renderer.window.request_redraw();
-        }
-        // Number keys 1-9 with cursor over a slot: swap with hotbar[N].
-        PhysicalKey::Code(code) => {
-            if let Some(idx) = digit_for_keycode(code) {
-                if let Some(slot_ref) = ui.hovered_slot {
-                    if !matches!(slot_ref, SlotRef::Hotbar(i) if i == idx) {
-                        swap_with_hotbar(hotbar, inventory, slot_ref, idx);
-                    }
-                    renderer.window.request_redraw();
-                } else {
-                    // Cursor not on a slot: just change selection (same as
-                    // in-game number keys).
-                    hotbar.select(idx);
-                    renderer.window.request_redraw();
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
-fn digit_for_keycode(code: KeyCode) -> Option<usize> {
-    match code {
-        KeyCode::Digit1 => Some(0),
-        KeyCode::Digit2 => Some(1),
-        KeyCode::Digit3 => Some(2),
-        KeyCode::Digit4 => Some(3),
-        KeyCode::Digit5 => Some(4),
-        KeyCode::Digit6 => Some(5),
-        KeyCode::Digit7 => Some(6),
-        KeyCode::Digit8 => Some(7),
-        KeyCode::Digit9 => Some(8),
-        _ => None,
-    }
-}
-
-fn close_inventory(
-    renderer: &Renderer<'_>,
-    controller: &Controller,
-    hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    ui: &mut InventoryUiState,
-) {
-    // Return any held stack to its source (or anywhere available).
-    if let Some(held) = ui.held.take() {
-        return_held(hotbar, inventory, held);
-    }
-    ui.close();
-    if controller.first_person {
-        grab_cursor(renderer.window);
-    }
-    renderer.window.request_redraw();
-}
-
-fn return_held(hotbar: &mut Hotbar, inventory: &mut Inventory, held: HeldStack) {
-    let source_empty = read_slot(hotbar, inventory, held.source).is_none();
-    if source_empty {
-        place_into(hotbar, inventory, held.source, held.stack);
-        return;
-    }
-    // Source no longer empty (player put something else there) — spill into
-    // the inventory one unit at a time.
-    for _ in 0..held.stack.quantity {
-        if !inventory.add(held.stack.item_id, 1, 99) {
-            break;
-        }
-    }
-}
-
-fn handle_inventory_left_click(
-    hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    ui: &mut InventoryUiState,
-    planet: &PlanetData,
-    recipes: &RecipeRegistry,
-    tags: &TagRegistry,
-    shift: bool,
-) {
-    // Search bar focus: clicking the bar focuses, clicking elsewhere
-    // unfocuses. Buttons take priority over slot/search clicks.
-    if let Some(button) = ui.hovered_button {
-        if button == InventoryButton::ClearSearch && ui.search_query.is_empty() {
-            // No-op: button isn't rendered for an empty query anyway.
-        } else {
-            ui.search_focused = false;
-            match button {
-                InventoryButton::Close => {
-                    if let Some(held) = ui.held.take() {
-                        return_held(hotbar, inventory, held);
-                    }
-                    ui.close();
-                }
-                InventoryButton::Sort => inventory.sort(),
-                InventoryButton::ClearSearch => ui.search_query.clear(),
-                InventoryButton::CraftQuantityDown => {
-                    ui.craft_quantity = ui.craft_quantity.saturating_sub(1).max(1);
-                }
-                InventoryButton::CraftQuantityUp => {
-                    ui.craft_quantity = ui.craft_quantity.saturating_add(1).min(99);
-                }
-                InventoryButton::CraftMax => {
-                    ui.craft_quantity = selected_recipe_index(ui, recipes)
-                        .and_then(|idx| recipes.recipes().get(idx))
-                        .map(|recipe| {
-                            max_craft_quantity(recipe, planet, tags, hotbar, inventory).max(1)
-                        })
-                        .unwrap_or(1);
-                }
-                InventoryButton::Craft => {
-                    if let Some(recipe) = selected_recipe_index(ui, recipes)
-                        .and_then(|idx| recipes.recipes().get(idx))
-                    {
-                        let _ = craft_recipe(
-                            recipe,
-                            &planet.items,
-                            tags,
-                            hotbar,
-                            inventory,
-                            ui.craft_quantity,
-                        );
-                    }
-                }
-            }
-            return;
-        }
-    }
-
-    if ui.hovered_search {
-        ui.search_focused = true;
-        return;
-    }
-    // Any other click defocuses the search.
-    ui.search_focused = false;
-    if let Some(filter) = ui.hovered_filter {
-        ui.active_filter = filter;
-        return;
-    }
-    if let Some(recipe_index) = ui.hovered_recipe {
-        ui.selected_recipe = Some(recipe_index);
-        return;
-    }
-    // Slot logic.
-    let Some(target) = ui.hovered_slot else {
-        return;
-    };
-
-    if shift {
-        quick_move(hotbar, inventory, target);
-        return;
-    }
-
-    // Pick / drop logic.
-    match ui.held.take() {
-        None => {
-            // Pick up the entire stack.
-            if let Some(stack) = read_slot(hotbar, inventory, target) {
-                place_into_optional(hotbar, inventory, target, None);
-                ui.held = Some(HeldStack {
-                    stack,
-                    source: target,
-                });
-            }
-        }
-        Some(held) => {
-            match read_slot(hotbar, inventory, target) {
-                None => {
-                    place_into(hotbar, inventory, target, held.stack);
-                }
-                Some(existing) if existing.item_id == held.stack.item_id => {
-                    let merged = HotbarSlot {
-                        item_id: held.stack.item_id,
-                        quantity: existing.quantity.saturating_add(held.stack.quantity),
-                    };
-                    place_into(hotbar, inventory, target, merged);
-                }
-                Some(existing) => {
-                    // Different items: swap.
-                    place_into(hotbar, inventory, target, held.stack);
-                    ui.held = Some(HeldStack {
-                        stack: existing,
-                        source: target,
-                    });
-                }
-            }
-        }
-    }
-}
-
-fn handle_inventory_right_click(
-    hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    ui: &mut InventoryUiState,
-) {
-    // Right click on a button cancels it; only slots react.
-    let Some(target) = ui.hovered_slot else {
-        return;
-    };
-    match ui.held.take() {
-        None => {
-            // Pick up half (rounded up).
-            if let Some(stack) = read_slot(hotbar, inventory, target) {
-                if stack.quantity <= 1 {
-                    place_into_optional(hotbar, inventory, target, None);
-                    ui.held = Some(HeldStack {
-                        stack,
-                        source: target,
-                    });
-                } else {
-                    let half_up = stack.quantity.div_ceil(2);
-                    let remaining = stack.quantity - half_up;
-                    place_into(
-                        hotbar,
-                        inventory,
-                        target,
-                        HotbarSlot {
-                            item_id: stack.item_id,
-                            quantity: remaining,
-                        },
-                    );
-                    ui.held = Some(HeldStack {
-                        stack: HotbarSlot {
-                            item_id: stack.item_id,
-                            quantity: half_up,
-                        },
-                        source: target,
-                    });
-                }
-            }
-        }
-        Some(mut held) => {
-            match read_slot(hotbar, inventory, target) {
-                None => {
-                    // Drop one item from held into the empty slot.
-                    place_into(
-                        hotbar,
-                        inventory,
-                        target,
-                        HotbarSlot {
-                            item_id: held.stack.item_id,
-                            quantity: 1,
-                        },
-                    );
-                    held.stack.quantity -= 1;
-                    if held.stack.quantity > 0 {
-                        ui.held = Some(held);
-                    }
-                }
-                Some(existing) if existing.item_id == held.stack.item_id => {
-                    let merged = HotbarSlot {
-                        item_id: held.stack.item_id,
-                        quantity: existing.quantity.saturating_add(1),
-                    };
-                    place_into(hotbar, inventory, target, merged);
-                    held.stack.quantity -= 1;
-                    if held.stack.quantity > 0 {
-                        ui.held = Some(held);
-                    }
-                }
-                Some(_) => {
-                    // Different item: treat right click as a swap (Minecraft
-                    // parity).
-                    let existing = read_slot(hotbar, inventory, target).unwrap();
-                    place_into(hotbar, inventory, target, held.stack);
-                    ui.held = Some(HeldStack {
-                        stack: existing,
-                        source: target,
-                    });
-                }
-            }
-        }
-    }
-}
-
-fn selected_recipe_index(ui: &InventoryUiState, recipes: &RecipeRegistry) -> Option<usize> {
-    let indices = quick_craft_recipe_indices(recipes);
-    ui.selected_recipe
-        .filter(|selected| indices.contains(selected))
-        .or_else(|| indices.first().copied())
-}
-
-fn max_craft_quantity(
-    recipe: &CompiledRecipe,
-    planet: &PlanetData,
-    tags: &TagRegistry,
-    hotbar: &Hotbar,
-    inventory: &Inventory,
-) -> u32 {
-    let mut max = 0;
-    for quantity in 1..=99 {
-        let mut trial_hotbar = hotbar.clone();
-        let mut trial_inventory = inventory.clone();
-        if craft_recipe(
-            recipe,
-            &planet.items,
-            tags,
-            &mut trial_hotbar,
-            &mut trial_inventory,
-            quantity,
-        )
-        .is_ok()
-        {
-            max = quantity;
-        } else {
-            break;
-        }
-    }
-    max
-}
-
-fn quick_move(hotbar: &mut Hotbar, inventory: &mut Inventory, source: SlotRef) {
-    let Some(stack) = read_slot(hotbar, inventory, source) else {
-        return;
-    };
-    match source {
-        SlotRef::Inventory(_) => {
-            // Inventory → hotbar: stack into matching slot, else first empty.
-            place_into_optional(hotbar, inventory, source, None);
-            let mut slots = *hotbar.slots();
-            if let Some(slot) = slots
-                .iter_mut()
-                .flatten()
-                .find(|s| s.item_id == stack.item_id)
-            {
-                slot.quantity = slot.quantity.saturating_add(stack.quantity);
-            } else if let Some(slot) = slots.iter_mut().find(|s| s.is_none()) {
-                *slot = Some(stack);
-            } else {
-                // No room — put back.
-                place_into(hotbar, inventory, source, stack);
-                return;
-            }
-            hotbar.set_slots(slots);
-        }
-        SlotRef::Hotbar(_) => {
-            // Hotbar → inventory: stack into matching slot, else first empty.
-            place_into_optional(hotbar, inventory, source, None);
-            let mut placed = false;
-            for slot in inventory
-                .slots()
-                .iter()
-                .enumerate()
-                .filter_map(|(i, s)| s.map(|s| (i, s)))
-                .collect::<Vec<_>>()
-            {
-                let (idx, s) = slot;
-                if s.item_id == stack.item_id {
-                    inventory.set(
-                        idx,
-                        Some(HotbarSlot {
-                            item_id: stack.item_id,
-                            quantity: s.quantity.saturating_add(stack.quantity),
-                        }),
-                    );
-                    placed = true;
-                    break;
-                }
-            }
-            if !placed {
-                for (i, s) in inventory.slots().iter().enumerate() {
-                    if s.is_none() {
-                        inventory.set(i, Some(stack));
-                        placed = true;
-                        break;
-                    }
-                }
-            }
-            if !placed {
-                // No room — put back.
-                place_into(hotbar, inventory, source, stack);
-            }
-        }
-    }
-}
-
-fn swap_with_hotbar(
-    hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    target: SlotRef,
-    hotbar_index: usize,
-) {
-    let a = read_slot(hotbar, inventory, target);
-    let b = hotbar.slots()[hotbar_index];
-    place_into_optional(hotbar, inventory, target, b);
-    let mut slots = *hotbar.slots();
-    slots[hotbar_index] = a;
-    hotbar.set_slots(slots);
-}
-
-fn drop_one_from_slot(hotbar: &mut Hotbar, inventory: &mut Inventory, slot: SlotRef) {
-    let Some(stack) = read_slot(hotbar, inventory, slot) else {
-        return;
-    };
-    if stack.quantity <= 1 {
-        place_into_optional(hotbar, inventory, slot, None);
-    } else {
-        place_into(
-            hotbar,
-            inventory,
-            slot,
-            HotbarSlot {
-                item_id: stack.item_id,
-                quantity: stack.quantity - 1,
-            },
-        );
-    }
-}
-
-fn drop_one_from_held(ui: &mut InventoryUiState) {
-    if let Some(mut held) = ui.held.take() {
-        held.stack.quantity = held.stack.quantity.saturating_sub(1);
-        if held.stack.quantity > 0 {
-            ui.held = Some(held);
-        }
-    }
-}
-
-fn read_slot(hotbar: &Hotbar, inventory: &Inventory, slot: SlotRef) -> Option<HotbarSlot> {
-    match slot {
-        SlotRef::Hotbar(i) => hotbar.slots()[i],
-        SlotRef::Inventory(i) => inventory.slot(i),
-    }
-}
-
-fn place_into(hotbar: &mut Hotbar, inventory: &mut Inventory, slot: SlotRef, stack: HotbarSlot) {
-    place_into_optional(hotbar, inventory, slot, Some(stack));
-}
-
-fn place_into_optional(
-    hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    slot: SlotRef,
-    stack: Option<HotbarSlot>,
-) {
-    match slot {
-        SlotRef::Hotbar(i) => {
-            let mut new_slots = *hotbar.slots();
-            new_slots[i] = stack;
-            hotbar.set_slots(new_slots);
-        }
-        SlotRef::Inventory(i) => {
-            inventory.set(i, stack);
-        }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn handle_mouse_action(
-    button: MouseButton,
+fn handle_place_action(
     renderer: &mut Renderer<'_>,
     controller: &mut Controller,
     player: &Player,
     planet: &mut PlanetData,
     hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    loot: &LootRegistry,
-    _tags: &TagRegistry,
 ) {
-    let intent = match button {
-        MouseButton::Right => Some(BlockActionIntent::Place),
-        MouseButton::Left => Some(BlockActionIntent::Mine),
-        _ => None,
-    };
-
-    let Some(intent) = intent else {
-        return;
-    };
-
-    // Resolve which voxel the selected item would place (if placing).
-    let active_voxel = if intent == BlockActionIntent::Place {
-        let selected = hotbar.selected_item_id();
-        match selected.and_then(|id| planet.resolve_item_voxel(id)) {
-            Some(voxel) => Some(voxel),
-            None => {
-                if selected.is_none() {
-                    hotbar.show_notice(HotbarNotice::EmptySlot);
-                } else {
-                    hotbar.show_notice(HotbarNotice::InvalidPlacement);
-                }
-                renderer.window.request_redraw();
-                return;
+    let selected = hotbar.selected_item_id();
+    let active_voxel = match selected.and_then(|id| planet.resolve_item_voxel(id)) {
+        Some(voxel) => Some(voxel),
+        None => {
+            if selected.is_none() {
+                hotbar.show_notice(HotbarNotice::EmptySlot);
+            } else {
+                hotbar.show_notice(HotbarNotice::InvalidPlacement);
             }
-        }
-    } else {
-        None
-    };
-
-    let placement = if intent == BlockActionIntent::Place {
-        let ray = controller.view_ray(
-            player,
-            renderer.config.width as f32,
-            renderer.config.height as f32,
-        );
-        BlockSelection::trace(
-            ray,
-            controller.interaction_reach(),
-            planet,
-            BlockSelectionMode::Placement,
-        )
-        .map(|(id, _)| id)
-    } else {
-        None
-    };
-
-    let mined_voxel = if intent == BlockActionIntent::Mine {
-        let Some(coord) = controller.cursor_id else {
-            if controller.first_person {
-                grab_cursor(renderer.window);
-            }
+            renderer.window.request_redraw();
             return;
-        };
-        Some(planet.get_voxel(coord))
-    } else {
-        None
+        }
     };
 
-    if intent == BlockActionIntent::Place && placement.is_none() {
+    let ray = controller.view_ray(
+        player,
+        renderer.config.width as f32,
+        renderer.config.height as f32,
+    );
+    let placement = BlockSelection::trace(
+        ray,
+        controller.interaction_reach(),
+        planet,
+        BlockSelectionMode::Placement,
+    )
+    .map(|(id, _)| id);
+    if placement.is_none() {
         hotbar.show_notice(HotbarNotice::InvalidPlacement);
         renderer.window.request_redraw();
         return;
     }
 
-    if let Some(action) =
-        BlockInteraction::resolve(intent, controller.cursor_id, placement, active_voxel)
-    {
+    if let Some(action) = BlockInteraction::resolve(
+        BlockActionIntent::Place,
+        controller.cursor_id,
+        placement,
+        active_voxel,
+    ) {
         let edit = BlockInteraction::apply(action, planet);
         let changed = !edit.dirty_chunks.is_empty();
         if changed {
-            match intent {
-                BlockActionIntent::Mine => {
-                    if let Some(voxel) = mined_voxel {
-                        // Roll the loot table for this block and hand items to
-                        // the hotbar first, then the inventory as overflow.
-                        let block = planet.content.block(voxel);
-                        let drops = if let Some(block) = block {
-                            roll_block_drops(&block.drops_key, loot)
-                        } else {
-                            Vec::new()
-                        };
-
-                        for (item_id, count) in drops {
-                            let item = planet.items.get(item_id);
-                            let max_stack = item.map(|i| i.stack_size.0).unwrap_or(99);
-                            if !hotbar.add(item_id, count, max_stack) {
-                                if !inventory.add(item_id, count, max_stack) {
-                                    hotbar.show_notice(HotbarNotice::Full);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                BlockActionIntent::Place => {
-                    hotbar.consume_selected();
-                }
-            }
+            hotbar.consume_selected();
             renderer.refresh_dirty_chunks(edit.dirty_chunks);
-            renderer.window.request_redraw();
-        } else if intent == BlockActionIntent::Mine {
-            hotbar.show_notice(HotbarNotice::ProtectedBlock);
             renderer.window.request_redraw();
         }
     } else if controller.cursor_id.is_none() && controller.first_person {
         grab_cursor(renderer.window);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn tick_mining(
+    dt: f32,
+    renderer: &mut Renderer<'_>,
+    controller: &Controller,
+    planet: &mut PlanetData,
+    hotbar: &mut Hotbar,
+    inventory: &mut Inventory,
+    mining: &mut MiningProgress,
+    loot: &LootRegistry,
+) {
+    let coord = controller.cursor_id;
+    let voxel = coord.map(|coord| planet.get_voxel(coord));
+    let block = voxel.and_then(|voxel| planet.content.block(voxel));
+    let outcome = mining.tick(
+        dt,
+        coord,
+        voxel,
+        block,
+        hotbar.selected_item_id(),
+        &planet.items,
+    );
+    let Some(outcome) = outcome else {
+        return;
+    };
+
+    let edit = BlockInteraction::apply(BlockAction::Mine(outcome.coord), planet);
+    if edit.dirty_chunks.is_empty() {
+        hotbar.show_notice(HotbarNotice::ProtectedBlock);
+        renderer.window.request_redraw();
+        return;
+    }
+
+    if outcome.drops_enabled {
+        if let Some(block) = planet.content.block(outcome.voxel) {
+            for (item_id, count) in roll_block_drops(&block.drops_key, loot) {
+                add_drop_to_player(item_id, count, planet, hotbar, inventory);
+            }
+        }
+    }
+
+    renderer.refresh_dirty_chunks(edit.dirty_chunks);
+    renderer.window.request_redraw();
+}
+
+fn add_drop_to_player(
+    item_id: ItemId,
+    count: u32,
+    planet: &PlanetData,
+    hotbar: &mut Hotbar,
+    inventory: &mut Inventory,
+) {
+    let item = planet.items.get(item_id);
+    let max_stack = item.map(|i| i.stack_size.0).unwrap_or(99);
+    if !hotbar.add(item_id, count, max_stack) && !inventory.add(item_id, count, max_stack) {
+        hotbar.show_notice(HotbarNotice::Full);
     }
 }
 
@@ -1151,8 +573,11 @@ fn tick_game_frame(
     player: &mut Player,
     planet: &mut PlanetData,
     hotbar: &mut Hotbar,
-    _inventory: &Inventory,
+    inventory: &mut Inventory,
     inventory_ui: &InventoryUiState,
+    mining: &mut MiningProgress,
+    mining_button_held: bool,
+    loot: &LootRegistry,
     console: &mut Console,
 ) {
     console.update_animation(dt);
@@ -1172,9 +597,17 @@ fn tick_game_frame(
             BlockSelectionMode::HitSolid,
         );
         controller.cursor_id = ray_result.map(|(id, _)| id);
+        if mining_button_held {
+            tick_mining(
+                dt, renderer, controller, planet, hotbar, inventory, mining, loot,
+            );
+        } else {
+            mining.cancel();
+        }
     } else {
         controller.clear_transient_input();
         controller.cursor_id = None;
+        mining.cancel();
         release_cursor(renderer.window);
     }
 

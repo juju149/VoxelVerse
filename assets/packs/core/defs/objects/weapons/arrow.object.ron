@@ -1,0 +1,11 @@
+// Arrow - basic ammunition for early bows.
+Object(
+    name: "Arrow",
+    tags: ["weapon", "ammo.arrow", "ranged", "tier_0"],
+
+    item: (
+        stack: 64,
+        icon: "items/weapons/arrow",
+        model: "voxel/items/arrow",
+    ),
+)

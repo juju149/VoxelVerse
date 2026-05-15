@@ -201,6 +201,7 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
         };
 
         let preferred_tool_tag = def.mining.as_ref().map(|m| tool_tag_key(m.tool));
+        let required_tool_tier = def.mining.as_ref().map(|m| m.tier).unwrap_or(0);
 
         if !is_air && default_place == VoxelId::AIR && solid {
             default_place = id;
@@ -226,6 +227,7 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
             max_stack,
             drops_key,
             preferred_tool_tag,
+            required_tool_tier,
         });
         families.push(CompiledBlockFamily {
             family_key: key.to_string(),

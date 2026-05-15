@@ -303,7 +303,6 @@ fn srgb_u8_to_linear(value: u8) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::TextureRegistry;
-    use crate::ContentCompiler;
     use std::path::Path;
     use vv_pack_loader::PackLoader;
 

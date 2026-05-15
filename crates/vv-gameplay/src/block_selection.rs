@@ -52,34 +52,56 @@ impl BlockSelection {
 #[cfg(test)]
 mod tests {
     use super::{BlockSelection, BlockSelectionMode};
-    use crate::app::content_bootstrap::asset_pack_root;
     use glam::Vec3;
-    use std::sync::Arc;
     use vv_math::Ray;
-    use vv_world::PlanetData;
+    use vv_voxel::{VoxelCoord, VoxelId};
+    use vv_world::{PlanetProfile, VoxelRead};
+
+    struct EmptyPlanet {
+        profile: PlanetProfile,
+    }
+
+    impl EmptyPlanet {
+        fn new() -> Self {
+            Self {
+                profile: PlanetProfile {
+                    resolution: 32,
+                    surface_layer: 16,
+                    core_layers: 4,
+                    voxel_size_meters: 1.0,
+                    edge_rounding_radius_voxels: 0.16,
+                    inner_radius: 4.0,
+                    surface_radius: 16.0,
+                    layer_height: 1.0,
+                    max_terrain_offset: 6,
+                    spawn_clearance_layers: 8.0,
+                    seed: 1,
+                },
+            }
+        }
+    }
+
+    impl VoxelRead for EmptyPlanet {
+        fn resolution(&self) -> u32 {
+            self.profile.resolution
+        }
+
+        fn profile(&self) -> PlanetProfile {
+            self.profile
+        }
+
+        fn get_voxel(&self, _coord: VoxelCoord) -> VoxelId {
+            VoxelId::AIR
+        }
+
+        fn exists(&self, _coord: VoxelCoord) -> bool {
+            false
+        }
+    }
 
     #[test]
     fn empty_ray_returns_no_hit() {
-        use vv_pack_compiler::compile::ContentCompiler;
-        use vv_pack_compiler::compile_objects;
-        use vv_pack_compiler::pack::PackLoader;
-        let core_pack_dir = asset_pack_root().join("core");
-        let pack = PackLoader::load_from_dir(&core_pack_dir)
-            .expect("assets/packs/core must exist for tests");
-        let procedural_pack =
-            PackLoader::load_procedural_from_dir(&core_pack_dir).expect("procedural pack");
-        let compiled = compile_objects(pack.objects).expect("compile_objects");
-        let registry = Arc::new(compiled.blocks);
-        let items = Arc::new(compiled.items);
-        let procedural = Arc::new(
-            ContentCompiler::compile_procedural(procedural_pack, &registry).expect("procedural"),
-        );
-        let planet_def = procedural
-            .first_planet()
-            .expect("procedural planet")
-            .base
-            .with_resolution(16);
-        let planet = PlanetData::new(planet_def, registry, items, procedural, 0);
+        let planet = EmptyPlanet::new();
         let ray = Ray {
             origin: Vec3::new(0.0, 0.0, 10_000.0),
             direction: Vec3::Z,

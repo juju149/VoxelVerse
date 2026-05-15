@@ -21,6 +21,10 @@ Object(
 
     mining: (
         tool: axe,
-        drops: [],
+    ),
+
+    recipe: (
+        shapeless: [oak_log, oak_log],
+        output: (item: "construction_workbench", count: 1),
     ),
 )

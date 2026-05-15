@@ -102,6 +102,7 @@ impl CompiledBlockFamily {
 /// Canonical value order for a state property. Built-in kinds use a fixed
 /// sequence so packs and pack-mods generate identical `VoxelId`s; `Enum`
 /// preserves the order declared by the author.
+#[allow(dead_code)]
 pub fn canonical_values(prop: &RawBlockStateProperty) -> Vec<String> {
     match prop {
         RawBlockStateProperty::Axis { .. } => vec!["x".into(), "y".into(), "z".into()],
@@ -130,6 +131,7 @@ pub fn canonical_values(prop: &RawBlockStateProperty) -> Vec<String> {
 }
 
 /// Default value as a string, used to identify the default variant.
+#[allow(dead_code)]
 pub fn default_value(prop: &RawBlockStateProperty) -> String {
     match prop {
         RawBlockStateProperty::Axis { default }
@@ -150,6 +152,7 @@ pub fn default_value(prop: &RawBlockStateProperty) -> String {
 
 /// Generate every `BlockStateValue` for a state schema in canonical order.
 /// A schema with no properties returns a single empty `BlockStateValue`.
+#[allow(dead_code)]
 pub fn enumerate_variants(states: &RawBlockStates) -> Vec<BlockStateValue> {
     if states.properties.is_empty() {
         return vec![BlockStateValue::empty()];
@@ -185,6 +188,7 @@ pub fn enumerate_variants(states: &RawBlockStates) -> Vec<BlockStateValue> {
 }
 
 /// Compute the default `BlockStateValue` from declared per-property defaults.
+#[allow(dead_code)]
 pub fn default_state(states: &RawBlockStates) -> BlockStateValue {
     let mut combo = BTreeMap::new();
     for (name, prop) in &states.properties {

@@ -65,8 +65,6 @@ fn check_pbr_triplet(
     index: &PackIndex<'_>,
     report: &mut Report,
 ) {
-    // Reference looks like `blocks/grass_block/top`. The base name (second
-    // segment) is the texture group on disk.
     let parts: Vec<&str> = reference.split('/').collect();
     if parts.len() < 3 {
         report.error(
@@ -86,17 +84,9 @@ fn check_pbr_triplet(
         );
         return;
     }
-    let group = parts[parts.len() - 2];
-    let face_name = parts[parts.len() - 1];
 
     for channel in CHANNELS {
-        let candidate = format!(
-            "media/textures/{}/{}_{}_{}.png",
-            parts[..parts.len() - 1].join("/"),
-            group,
-            face_name,
-            channel
-        );
+        let candidate = format!("media/textures/{}.{}.png", reference, channel);
         if !index.texture_exists(&candidate) {
             let severity = if *channel == "albedo" {
                 Severity::Error

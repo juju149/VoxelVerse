@@ -163,7 +163,7 @@ impl Default for Hotbar {
 #[cfg(test)]
 mod tests {
     use super::{Hotbar, HOTBAR_SLOT_COUNT};
-    use crate::item_stack::{ItemId, ItemStack};
+    use crate::item_stack::ItemId;
 
     const MAX: u32 = 99;
     fn id(n: u32) -> ItemId {

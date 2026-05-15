@@ -1,9 +1,10 @@
 //! Tag declarations and usages.
 //!
 //! Tags are arbitrary strings attached to objects (`tags: ["soil", "terrain"]`).
-//! Other files refer to them via `#tag.<name>`, `#station.<name>`, etc.
-//! This check verifies every referenced tag was actually declared somewhere
-//! and warns about declared tags that no file ever references.
+//! Other files may refer to them via `#tag.<name>`, `#station.<name>`, etc.
+//! This check verifies every referenced tag was actually declared somewhere.
+//! Plain object tags are also metadata, so declaring one is useful even when no
+//! cross-file reference points at it yet.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -45,25 +46,6 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
                     )),
                 );
             }
-        }
-    }
-
-    // 4) Flag declared-but-unused.
-    for tag in &declared {
-        if !referenced.contains_key(tag) {
-            report.warn(
-                Diagnostic::new(
-                    CHECK,
-                    format!(
-                        "tag '{}' is declared but never referenced via #{}",
-                        tag, tag
-                    ),
-                )
-                .with_suggestion(
-                    "remove the tag from `tags:` or reference it from a file that needs it"
-                        .to_string(),
-                ),
-            );
         }
     }
 }

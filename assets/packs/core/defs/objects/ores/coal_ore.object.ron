@@ -14,7 +14,7 @@ Object(
 
     mining: (
         tool: pickaxe,
-        tier: 0,
+        tier: 1,
         drops: [(item: "coal", count: (1, 3))],
     ),
 )

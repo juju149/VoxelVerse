@@ -19,6 +19,5 @@ Object(
 
     mining: (
         tool: axe,
-        drops: [],
     ),
 )

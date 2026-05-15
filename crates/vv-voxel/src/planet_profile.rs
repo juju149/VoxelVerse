@@ -106,6 +106,7 @@ impl PlanetProfile {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn radii_from_layers(
     surface_layer: u32,
     voxel_size_meters: f32,

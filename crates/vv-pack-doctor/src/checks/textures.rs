@@ -72,26 +72,14 @@ fn collect_block_refs(texture: &RawObjectTexture, out: &mut BTreeSet<String>) {
         RawObjectTexture::Column { top, side } => vec![top.clone(), side.clone()],
     };
     for r in refs {
-        let parts: Vec<&str> = r.split('/').collect();
-        if parts.len() < 2 {
-            continue;
-        }
-        let group = parts[parts.len() - 2];
-        let face = parts[parts.len() - 1];
         for ch in CHANNELS {
-            out.insert(format!(
-                "media/textures/{}/{}_{}_{}.png",
-                parts[..parts.len() - 1].join("/"),
-                group,
-                face,
-                ch
-            ));
+            out.insert(format!("media/textures/{}.{}.png", r, ch));
         }
     }
 }
 
 fn check_pbr_groups(index: &PackIndex<'_>, report: &mut Report) {
-    // Group disk PNGs by `media/textures/.../<group>_<face>` prefix and
+    // Group disk PNGs by `media/textures/.../<face>` prefix and
     // ensure each group has all three channels.
     use std::collections::BTreeMap;
     let mut groups: BTreeMap<String, BTreeSet<&'static str>> = BTreeMap::new();
@@ -102,7 +90,7 @@ fn check_pbr_groups(index: &PackIndex<'_>, report: &mut Report) {
             .unwrap_or(&tex.rel_path)
             .to_string();
         for ch in CHANNELS {
-            let suffix = format!("_{ch}");
+            let suffix = format!(".{ch}");
             if let Some(base) = stem.strip_suffix(&suffix) {
                 groups.entry(base.to_string()).or_default().insert(ch);
             }
@@ -119,7 +107,7 @@ fn check_pbr_groups(index: &PackIndex<'_>, report: &mut Report) {
                             base, ch
                         ),
                     )
-                    .with_path(format!("{base}_{ch}.png"))
+                    .with_path(format!("{base}.{ch}.png"))
                     .with_suggestion(
                         "PBR-lite expects albedo + normal + roughness per texture group"
                             .to_string(),

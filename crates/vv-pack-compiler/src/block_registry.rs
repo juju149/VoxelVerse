@@ -178,6 +178,8 @@ pub struct CompiledBlock {
     /// Tag key of the preferred tool (e.g. `"core:tag/item/tool/pickaxe"`).
     /// `None` means any tool (or bare hand) works equally.
     pub preferred_tool_tag: Option<String>,
+    /// Minimum tool tier required for reliable drops.
+    pub required_tool_tier: u32,
 }
 
 /// Runtime registry of all compiled blocks.

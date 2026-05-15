@@ -14,7 +14,7 @@ Object(
         damage: 4.0,
         draw_time: 1.0,
         durability: 64,
-        ammo: "#ammo.arrow",
+        ammo: "arrow",
     ),
 
     recipe: (
