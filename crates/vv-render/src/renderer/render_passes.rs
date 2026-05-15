@@ -171,24 +171,14 @@ impl<'a> Renderer<'a> {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        // -- Dynamic sun direction --
-        // Full day/night cycle in ~20 minutes. Sun orbits in the XY plane with a
-        // slight Z tilt so shadows always have a visible angle.
-        // Start at golden-hour (0.15 * TAU) so the game opens looking beautiful.
-        let elapsed_secs = self.elapsed_secs();
-        let day_secs = 1200.0_f32;
-        let day_phase = (elapsed_secs / day_secs + 0.15).fract();
-        let sun_angle = day_phase * std::f32::consts::TAU;
-        // y = cos → noon at 0, midnight at π.  x/z give direction in sky.
-        let sun_dir = glam::Vec3::new(sun_angle.sin() * 0.55, sun_angle.cos(), 0.30).normalize();
+        let surface_radius = planet.profile.surface_radius;
+        let atmosphere = self
+            .atmosphere
+            .evaluate(surface_radius, planet.world_time, self.quality);
+        let sun_dir = atmosphere.sun_dir;
 
         let shadow_dist = 200.0;
         let proj_size = 60.0;
-
-        // Fog density scales with planet surface radius so that all planet sizes
-        // have visually appropriate atmospheric depth.
-        // Formula: 0.75 / surface_radius → same angular density at every scale.
-        let fog_density = 0.75 / planet.profile.surface_radius.max(1.0);
 
         // basic LookAt
         let center = player.position;
@@ -258,135 +248,63 @@ impl<'a> Renderer<'a> {
         // fully past the geometric horizon — guaranteed invisible because the
         // planet body itself occludes it.  Conservative: skipped when the
         // camera is inside / very close to the surface.
-        let surface_radius = planet.profile.surface_radius;
-
-        // 1. Compute atmosphere colors from sun elevation.
-        //    sun_dir.y is the sine of the sun's elevation angle.
-        let sun_elevation = sun_dir.y.clamp(-1.0_f32, 1.0);
-        let above_horizon = sun_elevation.max(0.0_f32);
-
-        // dawn_factor: peaks near the horizon (sunrise/sunset), 0 at noon and night
-        let dawn_factor = {
-            let abs_elev = sun_elevation.abs();
-            let ramp_up = (sun_elevation * 6.0 + 0.8_f32).clamp(0.0, 1.0);
-            (1.0 - (abs_elev * 5.0_f32).min(1.0)).powi(2) * ramp_up
-        };
-
-        // Horizon color palette
-        let h_noon = glam::Vec3::new(0.50, 0.70, 1.00); // clear saturated blue
-        let h_dawn = glam::Vec3::new(1.00, 0.52, 0.18); // rich warm orange
-        let h_dusk = glam::Vec3::new(0.88, 0.36, 0.28); // deep rose-red
-        let h_night = glam::Vec3::new(0.055, 0.064, 0.105); // readable blue night
-
-        let sky_horizon_rgb = if sun_elevation >= 0.0 {
-            // Blend from noon toward dawn/dusk colors near horizon
-            let t = dawn_factor;
-            let dawn_col = if day_phase < 0.5 { h_dawn } else { h_dusk }; // morning vs evening
-            glam::Vec3::new(
-                h_noon.x * (1.0 - t) + dawn_col.x * t,
-                h_noon.y * (1.0 - t) + dawn_col.y * t,
-                h_noon.z * (1.0 - t) + dawn_col.z * t,
-            )
-        } else {
-            // Night: fade from dusk/dawn to deep space
-            let night_t = ((-sun_elevation - 0.05) * 5.0).clamp(0.0, 1.0);
-            let dawn_col = if day_phase < 0.5 { h_dawn } else { h_dusk };
-            glam::Vec3::new(
-                dawn_col.x * (1.0 - night_t) + h_night.x * night_t,
-                dawn_col.y * (1.0 - night_t) + h_night.y * night_t,
-                dawn_col.z * (1.0 - night_t) + h_night.z * night_t,
-            )
-        };
-
-        // Zenith color palette
-        let z_day = glam::Vec3::new(0.08, 0.28, 0.86); // vivid clean blue
-        let z_dawn = glam::Vec3::new(0.22, 0.20, 0.48); // calmer twilight
-        let z_night = glam::Vec3::new(0.028, 0.034, 0.072); // soft readable night
-
-        let day_t = above_horizon.powf(0.4);
-        let dawn_z = dawn_factor * 0.55;
-        let sky_zenith_rgb = glam::Vec3::new(
-            (z_day.x * day_t + z_night.x * (1.0 - day_t)) * (1.0 - dawn_z) + z_dawn.x * dawn_z,
-            (z_day.y * day_t + z_night.y * (1.0 - day_t)) * (1.0 - dawn_z) + z_dawn.y * dawn_z,
-            (z_day.z * day_t + z_night.z * (1.0 - day_t)) * (1.0 - dawn_z) + z_dawn.z * dawn_z,
-        );
-
-        let sun_intensity = above_horizon.powf(0.42).min(1.0);
-        // time_of_day: 0=midnight, 0.25=sunrise, 0.5=noon, 0.75=sunset
-        let time_of_day = day_phase;
         let quality_bits = self.quality.pack();
-        let atmosphere_strength = if self.quality.volumetric_fog {
-            1.0
-        } else {
-            0.0
-        };
-        let cloud_steps = self.quality.cloud_steps as f32;
-        let cloud_density = if self.quality.volumetric_clouds {
-            0.74
-        } else {
-            0.48
-        };
 
-        // 2. Build and upload the main global uniform.
-        let global_data = GlobalUniform {
-            view_proj: mvp.to_cols_array(),
+        let global_uniform = |view_proj: glam::Mat4| GlobalUniform {
+            view_proj: view_proj.to_cols_array(),
             light_view_proj: light_view_proj.to_cols_array(),
             cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, quality_bits],
-            // w component carries per-planet fog density (read in shader via sun_dir.w).
-            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, fog_density],
+            sun_dir: [
+                atmosphere.sun_dir.x,
+                atmosphere.sun_dir.y,
+                atmosphere.sun_dir.z,
+                atmosphere.fog_density,
+            ],
             sky_horizon: [
-                sky_horizon_rgb.x,
-                sky_horizon_rgb.y,
-                sky_horizon_rgb.z,
-                time_of_day,
+                atmosphere.sky_horizon.x,
+                atmosphere.sky_horizon.y,
+                atmosphere.sky_horizon.z,
+                atmosphere.time_of_day,
             ],
             sky_zenith: [
-                sky_zenith_rgb.x,
-                sky_zenith_rgb.y,
-                sky_zenith_rgb.z,
-                sun_intensity,
+                atmosphere.sky_zenith.x,
+                atmosphere.sky_zenith.y,
+                atmosphere.sky_zenith.z,
+                atmosphere.sun_intensity,
             ],
             render_params: [
-                elapsed_secs,
+                atmosphere.elapsed_seconds,
                 quality_bits,
                 self.config.width as f32,
                 self.config.height as f32,
             ],
-            atmosphere_params: [fog_density, 0.75, atmosphere_strength, 0.82],
-            cloud_params: [cloud_steps, cloud_density, 0.018, 0.58],
-            water_params: [0.48, 0.72, 0.72, 0.0],
+            atmosphere_params: [
+                atmosphere.fog_density,
+                atmosphere.height_fog_strength,
+                atmosphere.volumetric_fog_strength,
+                atmosphere.exposure,
+            ],
+            cloud_params: [
+                atmosphere.cloud_steps,
+                atmosphere.cloud_density,
+                atmosphere.cloud_speed,
+                atmosphere.cloud_coverage,
+            ],
+            water_params: [
+                atmosphere.water.fresnel,
+                atmosphere.water.specular,
+                atmosphere.water.alpha,
+                0.0,
+            ],
         };
+
+        // 1. Build and upload the main global uniform.
+        let global_data = global_uniform(mvp);
         self.queue
             .write_buffer(&self.global_buf, 0, bytemuck::cast_slice(&[global_data]));
 
-        // 3. Shadow global uniform uses the light matrix as view_proj.
-        let shadow_uniform_data = GlobalUniform {
-            view_proj: light_view_proj.to_cols_array(),
-            light_view_proj: light_view_proj.to_cols_array(),
-            cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z, quality_bits],
-            sun_dir: [sun_dir.x, sun_dir.y, sun_dir.z, fog_density],
-            sky_horizon: [
-                sky_horizon_rgb.x,
-                sky_horizon_rgb.y,
-                sky_horizon_rgb.z,
-                time_of_day,
-            ],
-            sky_zenith: [
-                sky_zenith_rgb.x,
-                sky_zenith_rgb.y,
-                sky_zenith_rgb.z,
-                sun_intensity,
-            ],
-            render_params: [
-                elapsed_secs,
-                quality_bits,
-                self.config.width as f32,
-                self.config.height as f32,
-            ],
-            atmosphere_params: [fog_density, 0.75, atmosphere_strength, 0.82],
-            cloud_params: [cloud_steps, cloud_density, 0.018, 0.58],
-            water_params: [0.48, 0.72, 0.72, 0.0],
-        };
+        // 2. Shadow global uniform uses the light matrix as view_proj.
+        let shadow_uniform_data = global_uniform(light_view_proj);
         self.queue.write_buffer(
             &self.shadow_global_buf,
             0,
@@ -509,25 +427,7 @@ impl<'a> Renderer<'a> {
         // --- PASS 2: SKY ---
         // Renders the atmospheric sky as a fullscreen triangle before terrain so
         // background pixels (horizon, space above planet) show the sky.
-        {
-            let mut sky_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Sky Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &self.scene.view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None, // sky writes no depth
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-            sky_pass.set_pipeline(&self.pipeline_sky);
-            sky_pass.set_bind_group(0, &self.sky_global_bind, &[]);
-            sky_pass.draw(0..3, 0..1); // fullscreen triangle from vertex_index
-        }
+        self.render_sky(&mut enc);
 
         // --- PASS 3: CLOUDS ---
         self.render_clouds(&mut enc);

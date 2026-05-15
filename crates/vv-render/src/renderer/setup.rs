@@ -1,4 +1,5 @@
 use super::{GlobalUniform, GpuScene, LocalUniform, Renderer};
+use crate::atmosphere::AtmosphereConfig;
 use crate::lod_animation::LodAnimator;
 use crate::perf_profile::{PerfProfile, PerfTier};
 use crate::render_graph::ShaderPath;
@@ -785,9 +786,8 @@ impl<'a> Renderer<'a> {
             quality: perf.quality,
             shadow_map_size: perf.shadow_map_size,
             lod_streaming: perf.lod_streaming,
+            atmosphere: AtmosphereConfig::default(),
             atlas_bind,
-            start_time: std::time::Instant::now(),
-            fixed_elapsed_secs: None,
         }
     }
 

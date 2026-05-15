@@ -29,6 +29,24 @@ Shader source lives in `assets/packs/core/render/shaders`:
 The packed quality flags control triplanar grain, PCF level, volumetric fog,
 volumetric clouds, FXAA and bloom. Change presets in `crates/vv-render/src/perf_profile.rs`.
 
+## Atmosphere Ownership
+
+Runtime time belongs to `vv-world::WorldTime`; the renderer consumes it and does
+not derive simulation time from its own startup clock. Artistic atmosphere
+values live in `vv-render::AtmosphereConfig`:
+
+- `SkyPalette` owns day, dawn, dusk and night sky colors.
+- `FogConfig` owns distance and height fog strength.
+- `CloudConfig` owns density, speed and shader step inputs.
+- `PostProcessConfig` owns exposure.
+- `WeatherConfig` owns current cloud coverage and fog multiplier.
+
+Render pass files stay split by responsibility: sky, clouds, fog, post-process,
+terrain, UI and world streaming are not bundled into one atmosphere catch-all.
+Built-in atmosphere presets are tropical, desert, frozen, lunar, toxic, alien
+and oceanic; each preset changes sky palette, fog, clouds, exposure and day
+length as one coherent planet signature.
+
 ## Future Rules
 
 - Add new passes by extending `ShaderPath` and the explicit Rust pipeline setup.

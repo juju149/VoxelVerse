@@ -17,14 +17,20 @@ fn vv_aerial_fog(color: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
     let density = raw_density * 0.055;
 
     let fog_distance = dist * density;
+    let height_strength = clamp(global.atmosphere_params.y, 0.0, 2.0);
 
     // Slower exponential curve: keeps distant mountains visible.
     let distance_fog = 1.0 - exp(-(fog_distance * fog_distance) * 0.08);
-
-    // Never let distance fog fully erase the world.
-    let fog_f = clamp(distance_fog, 0.0, 0.16);
-
+    let planet_up = normalize(world_pos);
     let view_dir = normalize(world_pos - cam_pos);
+    let horizon_depth = pow(clamp(1.0 - abs(dot(view_dir, planet_up)), 0.0, 1.0), 2.0)
+        * height_strength
+        * 0.055;
+
+    // Fog is an aesthetic depth layer, not a clipping mask.
+    let max_fog = 0.10 + height_strength * 0.065;
+    let fog_f = clamp(distance_fog + horizon_depth, 0.0, max_fog);
+
     let sun_dir = normalize(global.sun_dir.xyz);
     let sun_elev = sun_dir.y;
 

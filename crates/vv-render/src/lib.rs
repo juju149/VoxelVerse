@@ -1,3 +1,4 @@
+mod atmosphere;
 mod lod_animation;
 mod lod_streaming;
 pub mod perf_profile;
@@ -9,6 +10,7 @@ pub(crate) mod texture_atlas;
 mod types;
 pub mod ui;
 
+pub use atmosphere::{AtmosphereConfig, PlanetAtmospherePreset};
 pub use lod_streaming::{LodSplitCurve, LodStreamingConfig, StreamingView};
 pub use quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 pub use render_graph::{RenderPassId, ShaderPath};

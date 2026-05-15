@@ -42,7 +42,6 @@ pub fn run() {
     ));
     if let Some(scene) = golden_scene {
         renderer.quality = scene.quality;
-        renderer.set_fixed_elapsed_secs(Some(scene.fixed_elapsed_secs));
         renderer.set_engine_debug_page(true);
     }
     renderer.render_loading(0.0, "Initialisation planète");
@@ -80,6 +79,15 @@ pub fn run() {
         prop_models,
         |progress, message| renderer.render_loading(progress, message),
     );
+    planet
+        .world_time
+        .set_day_length_seconds(renderer.atmosphere.day_length_seconds);
+    planet
+        .world_time
+        .set_day_phase(renderer.atmosphere.start_phase);
+    if let Some(scene) = golden_scene {
+        scene.apply_time(&mut planet);
+    }
     renderer.render_loading(1.0, "Monde prêt");
     renderer.window.set_title("voxelverse");
     let mut console = create_console();
@@ -608,6 +616,7 @@ fn tick_game_frame(
 ) {
     console.update_animation(dt);
     hotbar.update(dt);
+    planet.world_time.tick(dt);
 
     if !console.is_open && !inventory_ui.is_open {
         let player_input = controller.sample_player_input();

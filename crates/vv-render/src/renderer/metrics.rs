@@ -1,4 +1,5 @@
 use super::Renderer;
+use crate::atmosphere::{AtmosphereConfig, PlanetAtmospherePreset};
 use vv_diagnostics::RenderStats;
 
 impl<'a> Renderer<'a> {
@@ -14,13 +15,8 @@ impl<'a> Renderer<'a> {
         self.engine_debug_page = enabled;
     }
 
-    pub fn set_fixed_elapsed_secs(&mut self, elapsed_secs: Option<f32>) {
-        self.fixed_elapsed_secs = elapsed_secs;
-    }
-
-    pub(super) fn elapsed_secs(&self) -> f32 {
-        self.fixed_elapsed_secs
-            .unwrap_or_else(|| self.start_time.elapsed().as_secs_f32())
+    pub fn set_atmosphere_preset(&mut self, preset: PlanetAtmospherePreset) {
+        self.atmosphere = AtmosphereConfig::preset(preset);
     }
 
     pub fn has_active_scene_chunks(&self) -> bool {

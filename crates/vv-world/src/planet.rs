@@ -1,4 +1,6 @@
-use crate::{BrokenPropLayer, PlanetProfile, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime};
+use crate::{
+    BrokenPropLayer, PlanetProfile, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime, WorldTime,
+};
 use std::sync::Arc;
 use vv_math::CoordSystem;
 use vv_pack_compiler::{BlockRegistry, CompiledPlanet, ItemRegistry, ProceduralRegistry};
@@ -46,6 +48,7 @@ pub struct PlanetData {
     pub resolution: u32,
     pub has_core: bool,
     pub terrain: ProceduralPlanetTerrain,
+    pub world_time: WorldTime,
     /// Read-only registry of pre-loaded .vox prop models.
     pub prop_models: Arc<VoxModelRegistry>,
     /// Mutable set of prop columns the player has explicitly destroyed.
@@ -118,6 +121,7 @@ impl PlanetData {
             resolution: profile.resolution,
             has_core: true,
             terrain,
+            world_time: WorldTime::new(1_200.0, 0.15),
             prop_models,
             broken_props: BrokenPropLayer::new(),
             player_surface_key: None,

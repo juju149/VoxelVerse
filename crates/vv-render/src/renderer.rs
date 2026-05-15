@@ -1,5 +1,6 @@
 // engine renderer
 
+use crate::atmosphere::AtmosphereConfig;
 use crate::lod_animation::LodAnimator;
 use crate::lod_streaming::{LodStreamingConfig, StreamingView};
 use crate::quality::QualitySettings;
@@ -182,15 +183,10 @@ pub struct Renderer<'a> {
     /// render pass for texel-snapping the sun view matrix.
     pub shadow_map_size: u32,
     pub lod_streaming: LodStreamingConfig,
+    pub atmosphere: AtmosphereConfig,
 
     // --- ATLAS ---
     atlas_bind: wgpu::BindGroup,
-
-    // --- TIME ---
-    /// Monotonic clock started when the renderer is created. Used to drive
-    /// the day/night sun orbit without any gameplay dependency.
-    pub start_time: std::time::Instant,
-    fixed_elapsed_secs: Option<f32>,
 }
 
 #[derive(Clone, Copy)]
@@ -215,8 +211,9 @@ struct MeshJobResult<K> {
     elapsed_ms: f32,
 }
 
-mod atmosphere_renderer;
+mod cloud_renderer;
 mod debug_draw;
+mod fog_renderer;
 mod gpu_scene;
 mod inventory;
 mod inventory_components;
@@ -225,9 +222,11 @@ mod inventory_text;
 mod lod_selection;
 mod metrics;
 mod pipelines;
+mod post_process_renderer;
 mod render_passes;
 mod render_resources;
 mod setup;
+mod sky_renderer;
 mod terrain_renderer;
 mod ui_renderer;
 mod world_streamer;
