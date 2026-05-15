@@ -533,6 +533,7 @@ impl<'a> Renderer<'a> {
         self.render_clouds(&mut enc);
 
         // --- PASS 4: MAIN RENDER ---
+        let terrain_draw_started = std::time::Instant::now();
         {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
@@ -661,6 +662,7 @@ impl<'a> Renderer<'a> {
                 main_draw_calls += 1;
             }
         }
+        self.last_terrain_draw_ms = terrain_draw_started.elapsed().as_secs_f32() * 1000.0;
 
         // --- PASS 5: VOLUMETRIC FOG VEIL ---
         self.render_volumetric_fog(&mut enc);

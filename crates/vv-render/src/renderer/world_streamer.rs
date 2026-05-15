@@ -1,5 +1,6 @@
 use super::{LocalUniform, MeshJobResult, Renderer};
 use crate::lod_animation::AnyKey;
+use crate::lod_streaming::StreamingView;
 use crate::types::{ChunkMesh, Vertex};
 use glam::Vec3;
 use vv_meshing::{CpuMesh, MeshGen};
@@ -14,6 +15,7 @@ fn cpu_verts_to_gpu(cpu: &CpuMesh) -> Vec<Vertex> {
 
 impl<'a> Renderer<'a> {
     pub(super) fn upload_lod_buffer(&mut self, key: LodKey, mesh: CpuMesh) {
+        let upload_started = std::time::Instant::now();
         let gpu_verts = cpu_verts_to_gpu(&mesh);
         let v_buf = self
             .device
@@ -71,6 +73,7 @@ impl<'a> Renderer<'a> {
             },
         );
         self.animator.start_spawn(AnyKey::Lod(key));
+        self.gpu_upload_ms += upload_started.elapsed().as_secs_f32() * 1000.0;
     }
 
     pub(super) fn process_load_queue(&mut self, _player_pos: Vec3, planet: &PlanetData) {
@@ -85,12 +88,14 @@ impl<'a> Renderer<'a> {
                 mesh,
                 elapsed_ms,
             } = result;
-            self.record_mesh_time(elapsed_ms);
+            self.record_voxel_mesh_time(elapsed_ms);
             self.pending_chunks.remove(&key);
             let is_dirty_rebuild = self.pending_dirty.remove(&key);
-            // Skip stale initial-load results (chunk was evicted while job was in flight).
-            // Always accept dirty rebuilds — they replace an existing chunk with updated geometry.
-            if !mesh.is_empty() && (is_dirty_rebuild || !self.chunks.contains_key(&key)) {
+            let still_needed = self.required_voxels.contains(&key);
+            if !mesh.is_empty()
+                && still_needed
+                && (is_dirty_rebuild || !self.chunks.contains_key(&key))
+            {
                 self.upload_chunk_buffers(key, mesh, planet.profile.edge_rounding_radius_voxels);
                 uploaded += 1;
                 self.scheduler_stats.uploaded_voxel += 1;
@@ -182,7 +187,15 @@ impl<'a> Renderer<'a> {
         self.player_chunk_pos = None;
         self.required_voxels.clear();
         self.required_lods.clear();
-        self.update_view(player_pos, planet);
+        self.update_view(
+            StreamingView {
+                player_pos,
+                camera_pos: player_pos,
+                view_dir: player_pos.normalize_or_zero(),
+                cursor_id: None,
+            },
+            planet,
+        );
     }
 
     /// Queue dirty chunks produced by world edits.
@@ -198,6 +211,7 @@ impl<'a> Renderer<'a> {
         mesh: CpuMesh,
         edge_rounding_radius_voxels: f32,
     ) {
+        let upload_started = std::time::Instant::now();
         let gpu_verts = cpu_verts_to_gpu(&mesh);
         let v_buf = self
             .device
@@ -261,6 +275,7 @@ impl<'a> Renderer<'a> {
         if !is_update {
             self.animator.start_spawn(AnyKey::Voxel(key));
         }
+        self.gpu_upload_ms += upload_started.elapsed().as_secs_f32() * 1000.0;
     }
 
     pub fn log_memory(&self, planet: &PlanetData) {

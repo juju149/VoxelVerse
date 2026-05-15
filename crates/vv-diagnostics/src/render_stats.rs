@@ -28,8 +28,15 @@ pub struct RenderStats {
 
     // --- timing (milliseconds) ---
     pub update_view_ms: f32,
+    pub lod_selection_ms: f32,
     pub meshing_avg_ms: f32,
     pub meshing_max_ms: f32,
+    pub voxel_meshing_avg_ms: f32,
+    pub voxel_meshing_max_ms: f32,
+    pub lod_meshing_avg_ms: f32,
+    pub lod_meshing_max_ms: f32,
+    pub gpu_upload_ms: f32,
+    pub terrain_draw_ms: f32,
     pub render_world_ms: f32,
     pub render_ui_ms: f32,
 }
@@ -62,10 +69,13 @@ impl RenderStats {
     ) -> String {
         let target = target_voxel.unwrap_or_else(|| "none".to_string());
         format!(
-            "Culling:  {culling}\nFrame:    {frame:.2} ms\nView:     {view:.2} ms\nRender:   {render:.2} ms\nPlayer:   {px:.1}, {py:.1}, {pz:.1}\nTarget:   {target}\nChunks:   {vc} / {ac}\nLODs:     {vl} / {al}\nDraws:    {draws} main / {shadow} shadow\nQueue:    {qc}\nPending:  {pc} chunks / {pl} LODs\nJobs:     {mj} mesh / {lj} LOD\nUploads:  {up} this frame\nMesh ms:  avg {ma:.2} / max {mx:.2}\nGPU:      {gpu}",
+            "Culling:  {culling}\nFrame:    {frame:.2} ms\nView:     {view:.2} ms\nLOD sel:  {lod_sel:.2} ms\nTerrain:  draw {terrain:.2} ms / upload {upload_ms:.2} ms\nRender:   {render:.2} ms\nPlayer:   {px:.1}, {py:.1}, {pz:.1}\nTarget:   {target}\nChunks:   {vc} / {ac}\nLODs:     {vl} / {al}\nDraws:    {draws} main / {shadow} shadow\nQueue:    {qc}\nPending:  {pc} chunks / {pl} LODs\nJobs:     {mj} mesh / {lj} LOD\nUploads:  {up} this frame\nMesh CPU: voxel {vma:.2}/{vmx:.2} ms  lod {lma:.2}/{lmx:.2} ms\nGPU:      {gpu}",
             culling = culling_status,
             frame = frame_time_ms,
             view = self.update_view_ms,
+            lod_sel = self.lod_selection_ms,
+            terrain = self.terrain_draw_ms,
+            upload_ms = self.gpu_upload_ms,
             render = self.render_world_ms,
             px = player_pos[0],
             py = player_pos[1],
@@ -83,8 +93,10 @@ impl RenderStats {
             mj = self.mesh_jobs_in_flight,
             lj = self.lod_jobs_in_flight,
             up = self.uploads_this_frame,
-            ma = self.meshing_avg_ms,
-            mx = self.meshing_max_ms,
+            vma = self.voxel_meshing_avg_ms,
+            vmx = self.voxel_meshing_max_ms,
+            lma = self.lod_meshing_avg_ms,
+            lmx = self.lod_meshing_max_ms,
             gpu = self.gpu_memory_label(),
         )
     }

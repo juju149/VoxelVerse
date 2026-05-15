@@ -1,19 +1,22 @@
 use super::{MeshJobResult, QuadContext, QuadNode, Renderer};
 use crate::lod_animation::AnyKey;
+use crate::lod_streaming::StreamingView;
 use glam::Vec3;
 use std::collections::HashSet;
 use vv_math::CoordSystem;
 use vv_meshing::MeshGen;
-use vv_voxel::{LodKey, SurfaceChunkKey, CHUNK_SIZE};
+use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
 use vv_world::PlanetData;
 
 impl<'a> Renderer<'a> {
-    pub fn update_view(&mut self, player_pos: Vec3, planet: &PlanetData) {
+    pub fn update_view(&mut self, view: StreamingView, planet: &PlanetData) {
         let update_started = std::time::Instant::now();
         self.reset_streaming_frame_stats();
+        self.animator
+            .set_fade_duration(self.lod_streaming.lod_transition_time);
 
         let res = planet.resolution;
-        let player_id = CoordSystem::pos_to_id(player_pos, planet.profile);
+        let player_id = CoordSystem::pos_to_id(view.player_pos, planet.profile);
         let player_surface_key = player_id.map(|id| SurfaceChunkKey {
             face: id.face,
             u_idx: id.u / CHUNK_SIZE,
@@ -24,11 +27,27 @@ impl<'a> Renderer<'a> {
         self.player_chunk_pos = player_surface_key;
 
         if should_rebuild_required {
-            self.rebuild_required_sets(player_pos, planet, player_id, res);
+            let selection_started = std::time::Instant::now();
+            self.rebuild_required_sets(view, planet, player_id, res);
+            self.lod_selection_ms = selection_started.elapsed().as_secs_f32() * 1000.0;
         }
 
-        // 2. Receive completed LOD meshes.
-        //    Only upload if the chunk is still needed — stale meshes are dropped.
+        self.receive_lod_meshes();
+
+        if should_rebuild_required {
+            self.evict_stale_lods();
+            self.dispatch_lod_jobs(view, planet);
+            self.evict_stale_voxels();
+            self.rebuild_load_queue(view, planet);
+        }
+
+        self.process_load_queue(view.player_pos, planet);
+        self.scheduler_stats.pending_voxel = self.pending_chunks.len();
+        self.scheduler_stats.pending_lod = self.pending_lods.len();
+        self.update_view_ms = update_started.elapsed().as_secs_f32() * 1000.0;
+    }
+
+    fn receive_lod_meshes(&mut self) {
         let mut uploaded_lods = 0;
         while self.scheduler.can_upload_lod(uploaded_lods) {
             let Ok(result) = self.lod_rx.try_recv() else {
@@ -39,70 +58,44 @@ impl<'a> Renderer<'a> {
                 mesh,
                 elapsed_ms,
             } = result;
-            self.record_mesh_time(elapsed_ms);
+            self.record_lod_mesh_time(elapsed_ms);
             self.pending_lods.remove(&key);
             if self.required_lods.contains(&key) {
                 self.upload_lod_buffer(key, mesh);
                 uploaded_lods += 1;
                 self.scheduler_stats.uploaded_lod += 1;
             }
-            // stale mesh: drop without uploading
         }
+    }
 
-        // 3. Evict stale meshes only when the required topology changes.
-        //    Keep any LOD that covers a voxel chunk still in flight (children_missing guard).
-        if should_rebuild_required {
-            let missing_voxels: Vec<SurfaceChunkKey> = self
-                .required_voxels
-                .iter()
-                .filter(|k| !self.chunks.contains_key(k))
-                .cloned()
-                .collect();
+    fn evict_stale_lods(&mut self) {
+        let missing_voxels: Vec<SurfaceChunkKey> = self
+            .required_voxels
+            .iter()
+            .filter(|k| !self.chunks.contains_key(k))
+            .copied()
+            .collect();
 
-            let current_lods: Vec<LodKey> = self.lod_chunks.keys().cloned().collect();
-            for k in current_lods {
-                if self.required_lods.contains(&k) {
-                    continue;
-                }
-                let mut children_missing = false;
-                for v_key in &missing_voxels {
-                    if v_key.face != k.face {
-                        continue;
-                    }
-                    let v_x = v_key.u_idx * CHUNK_SIZE;
-                    let v_y = v_key.v_idx * CHUNK_SIZE;
-                    let overlap = k.x < v_x + CHUNK_SIZE
-                        && k.x + k.size > v_x
-                        && k.y < v_y + CHUNK_SIZE
-                        && k.y + k.size > v_y;
-                    if overlap {
-                        children_missing = true;
-                        break;
-                    }
-                }
-                if children_missing {
-                    self.required_lods.insert(k);
-                } else if let Some(mesh) = self.lod_chunks.remove(&k) {
-                    self.animator.retire(AnyKey::Lod(k), mesh);
-                }
+        let current_lods: Vec<LodKey> = self.lod_chunks.keys().copied().collect();
+        for k in current_lods {
+            if self.required_lods.contains(&k) {
+                continue;
+            }
+            if lod_covers_any_missing_voxel(k, &missing_voxels) {
+                self.required_lods.insert(k);
+            } else if let Some(mesh) = self.lod_chunks.remove(&k) {
+                self.animator.retire(AnyKey::Lod(k), mesh);
             }
         }
+    }
 
-        // 4. Dispatch new LOD jobs — sorted nearest-first so the most visible
-        //    chunks are meshed before distant ones.
+    fn dispatch_lod_jobs(&mut self, view: StreamingView, planet: &PlanetData) {
         let mut to_spawn: Vec<(LodKey, f32)> = self
             .required_lods
             .iter()
             .filter(|k| !self.lod_chunks.contains_key(k) && !self.pending_lods.contains(k))
-            .map(|k| {
-                let cx = (k.x + k.size / 2).min(planet.resolution.saturating_sub(1));
-                let cy = (k.y + k.size / 2).min(planet.resolution.saturating_sub(1));
-                let h = planet.profile.surface_layer;
-                let wp = CoordSystem::get_vertex_pos(k.face, cx, cy, h, planet.profile);
-                (*k, wp.distance_squared(player_pos))
-            })
+            .map(|k| (*k, lod_priority(*k, view, planet)))
             .collect();
-        // nearest first (smallest distance_sq at front)
         to_spawn.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         for (key, _) in to_spawn {
@@ -127,45 +120,39 @@ impl<'a> Renderer<'a> {
             });
             self.scheduler_stats.dispatched_lod += 1;
         }
+    }
 
-        // 5. Evict voxel chunks no longer required and rebuild load queue.
-        if should_rebuild_required {
-            let current_voxels: Vec<SurfaceChunkKey> = self.chunks.keys().cloned().collect();
-            for k in current_voxels {
-                if !self.required_voxels.contains(&k) {
-                    if let Some(mesh) = self.chunks.remove(&k) {
-                        self.animator.retire(AnyKey::Voxel(k), mesh);
-                    }
+    fn evict_stale_voxels(&mut self) {
+        let current_voxels: Vec<SurfaceChunkKey> = self.chunks.keys().copied().collect();
+        for k in current_voxels {
+            if !self.required_voxels.contains(&k) {
+                if let Some(mesh) = self.chunks.remove(&k) {
+                    self.animator.retire(AnyKey::Voxel(k), mesh);
                 }
             }
-
-            self.rebuild_load_queue(player_pos, planet);
         }
-
-        self.process_load_queue(player_pos, planet);
-        self.scheduler_stats.pending_voxel = self.pending_chunks.len();
-        self.scheduler_stats.pending_lod = self.pending_lods.len();
-        self.update_view_ms = update_started.elapsed().as_secs_f32() * 1000.0;
     }
 
     fn rebuild_required_sets(
         &mut self,
-        player_pos: Vec3,
+        view: StreamingView,
         planet: &PlanetData,
-        player_id: Option<vv_voxel::VoxelCoord>,
+        player_id: Option<VoxelCoord>,
         resolution: u32,
     ) {
-        self.required_voxels.clear();
-        self.required_lods.clear();
+        let previous_voxels = self.required_voxels.clone();
+        let previous_lods = self.required_lods.clone();
+        let mut required_voxels = HashSet::new();
+        let mut required_lods = HashSet::new();
 
         let logical_size = resolution.next_power_of_two();
         let quad_context = QuadContext {
-            cam_pos: player_pos,
+            view,
             planet,
             player_id,
+            previous_voxels: &previous_voxels,
+            previous_lods: &previous_lods,
         };
-        let mut required_voxels = std::mem::take(&mut self.required_voxels);
-        let mut required_lods = std::mem::take(&mut self.required_lods);
 
         for face in 0..6 {
             self.process_quadtree(
@@ -181,11 +168,20 @@ impl<'a> Renderer<'a> {
             );
         }
 
+        enforce_streaming_budget(
+            self.lod_streaming.max_visible_voxel_chunks,
+            self.lod_streaming.max_visible_lod_tiles,
+            view,
+            planet,
+            &mut required_voxels,
+            &mut required_lods,
+        );
+
         self.required_voxels = required_voxels;
         self.required_lods = required_lods;
     }
 
-    fn rebuild_load_queue(&mut self, player_pos: Vec3, planet: &PlanetData) {
+    fn rebuild_load_queue(&mut self, view: StreamingView, planet: &PlanetData) {
         self.load_queue.clear();
         self.load_queue_set.clear();
 
@@ -197,10 +193,9 @@ impl<'a> Renderer<'a> {
             self.load_queue_set.insert(*key);
         }
 
-        // Sort farthest-first so pop() returns the nearest chunk.
         self.load_queue.sort_by(|a, b| {
-            let da = chunk_center(*a, planet).distance_squared(player_pos);
-            let db = chunk_center(*b, planet).distance_squared(player_pos);
+            let da = voxel_priority(*a, view, planet);
+            let db = voxel_priority(*b, view, planet);
             db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Equal)
         });
     }
@@ -222,39 +217,36 @@ impl<'a> Renderer<'a> {
         let center_u = (x + size / 2).min(planet.resolution - 1);
         let center_v = (y + size / 2).min(planet.resolution - 1);
         let h = planet.profile.surface_layer;
-
         let world_pos = CoordSystem::get_vertex_pos(face, center_u, center_v, h, planet.profile);
 
-        let mut dist = world_pos.distance(context.cam_pos);
+        let mut dist = world_pos.distance(context.view.camera_pos);
+        let cursor_inside = context
+            .view
+            .cursor_id
+            .is_some_and(|cursor| voxel_in_node(cursor, node));
 
         if let Some(pid) = context.player_id {
-            if pid.face == face && pid.u >= x && pid.u < x + size && pid.v >= y && pid.v < y + size
-            {
+            if voxel_in_node(pid, node) {
                 dist = 0.0;
             }
         }
 
         let node_radius_world =
             (size as f32 * planet.profile.layer_radius(h)) / planet.resolution as f32;
-
-        let mut lod_factor = 4.0;
-        if size <= CHUNK_SIZE * 8 {
-            lod_factor = 5.0;
-        }
-        if size <= CHUNK_SIZE * 4 {
-            lod_factor = 7.0;
-        }
-        if size <= CHUNK_SIZE * 2 {
-            lod_factor = 12.0;
-        }
-        if size <= CHUNK_SIZE {
-            lod_factor = 18.0;
-        }
-
-        let split_distance = node_radius_world * lod_factor * self.lod_distance_scale;
+        let node_size_chunks = (size / CHUNK_SIZE).max(1);
+        let split_distance = self
+            .lod_streaming
+            .split_distance(node_radius_world, node_size_chunks);
+        let hysteresis = self.lod_streaming.lod_hysteresis.clamp(0.0, 0.45);
+        let was_split = node_was_split(node, context.previous_voxels, context.previous_lods);
+        let split_threshold = if was_split {
+            split_distance * (1.0 + hysteresis)
+        } else {
+            split_distance * (1.0 - hysteresis)
+        };
         let is_smallest = size <= CHUNK_SIZE;
 
-        if dist < split_distance && !is_smallest {
+        if (cursor_inside || dist < split_threshold) && !is_smallest {
             let half = size / 2;
             self.process_quadtree(
                 QuadNode {
@@ -300,7 +292,7 @@ impl<'a> Renderer<'a> {
                 voxels,
                 lods,
             );
-        } else if size <= CHUNK_SIZE {
+        } else if is_smallest {
             let key = SurfaceChunkKey {
                 face,
                 u_idx: x / CHUNK_SIZE,
@@ -317,9 +309,196 @@ impl<'a> Renderer<'a> {
     }
 }
 
+fn enforce_streaming_budget(
+    max_voxels: usize,
+    max_lods: usize,
+    view: StreamingView,
+    planet: &PlanetData,
+    voxels: &mut HashSet<SurfaceChunkKey>,
+    lods: &mut HashSet<LodKey>,
+) {
+    if voxels.len() > max_voxels {
+        let mut ranked: Vec<(SurfaceChunkKey, f32)> = voxels
+            .iter()
+            .map(|k| (*k, voxel_priority(*k, view, planet)))
+            .collect();
+        ranked.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        let keep: HashSet<SurfaceChunkKey> =
+            ranked.iter().take(max_voxels).map(|(k, _)| *k).collect();
+        for dropped in voxels.difference(&keep) {
+            if let Some(fallback) = fallback_lod_for_voxel(*dropped, planet.resolution) {
+                lods.insert(fallback);
+            }
+        }
+        *voxels = keep;
+    }
+
+    if lods.len() > max_lods {
+        let mut ranked: Vec<(LodKey, f32)> = lods
+            .iter()
+            .map(|k| (*k, lod_priority(*k, view, planet)))
+            .collect();
+        ranked.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        *lods = ranked.iter().take(max_lods).map(|(k, _)| *k).collect();
+    }
+}
+
+fn voxel_priority(key: SurfaceChunkKey, view: StreamingView, planet: &PlanetData) -> f32 {
+    let center = chunk_center(key, planet);
+    let cursor_bonus = view
+        .cursor_id
+        .filter(|c| voxel_in_chunk(*c, key))
+        .map_or(0.0, |_| 20_000.0);
+    priority_score(
+        center,
+        chunk_radius_world(planet),
+        view,
+        planet,
+        cursor_bonus,
+    )
+}
+
+fn lod_priority(key: LodKey, view: StreamingView, planet: &PlanetData) -> f32 {
+    let center = lod_center(key, planet);
+    let radius = lod_radius_world(key, planet);
+    let cursor_bonus = view
+        .cursor_id
+        .filter(|c| voxel_in_lod(*c, key))
+        .map_or(0.0, |_| 15_000.0);
+    priority_score(center, radius, view, planet, cursor_bonus)
+}
+
+fn priority_score(
+    center: Vec3,
+    radius: f32,
+    view: StreamingView,
+    planet: &PlanetData,
+    cursor_bonus: f32,
+) -> f32 {
+    let to_center = center - view.camera_pos;
+    let dist = to_center.length().max(0.001);
+    let dir = to_center / dist;
+    let view_dir = view.view_dir.normalize_or_zero();
+    let angle_penalty = (1.0 - view_dir.dot(dir).clamp(-1.0, 1.0)) * dist * 0.55;
+    let horizon_bonus = horizon_importance(center, radius, view, planet) * dist * 0.25;
+    let landmark_bonus = terrain_landmark_importance(radius, planet) * dist * 0.18;
+    dist + angle_penalty - horizon_bonus - landmark_bonus - cursor_bonus
+}
+
+fn horizon_importance(center: Vec3, radius: f32, view: StreamingView, planet: &PlanetData) -> f32 {
+    let cam_dist = view.camera_pos.length();
+    let surface_radius = planet.profile.surface_radius;
+    if cam_dist <= surface_radius * 1.001 {
+        return 0.0;
+    }
+    let dist = center.length().max(0.001);
+    let cos_horizon = surface_radius / cam_dist;
+    let cos_angle = view.camera_pos.normalize_or_zero().dot(center / dist);
+    let angular_radius = radius / dist;
+    let band = (2.5 * angular_radius).max(0.015);
+    (1.0 - ((cos_angle - cos_horizon).abs() / band)).clamp(0.0, 1.0)
+}
+
+fn terrain_landmark_importance(radius: f32, planet: &PlanetData) -> f32 {
+    (radius / planet.profile.surface_radius.max(1.0)).clamp(0.0, 1.0)
+}
+
+fn node_was_split(
+    node: QuadNode,
+    previous_voxels: &HashSet<SurfaceChunkKey>,
+    previous_lods: &HashSet<LodKey>,
+) -> bool {
+    previous_voxels.iter().any(|k| chunk_in_node(*k, node))
+        || previous_lods
+            .iter()
+            .any(|k| k.face == node.face && k.size < node.size && lod_inside_node(*k, node))
+}
+
+fn lod_covers_any_missing_voxel(key: LodKey, missing_voxels: &[SurfaceChunkKey]) -> bool {
+    missing_voxels.iter().any(|v_key| {
+        let v_x = v_key.u_idx * CHUNK_SIZE;
+        let v_y = v_key.v_idx * CHUNK_SIZE;
+        key.face == v_key.face
+            && key.x < v_x + CHUNK_SIZE
+            && key.x + key.size > v_x
+            && key.y < v_y + CHUNK_SIZE
+            && key.y + key.size > v_y
+    })
+}
+
+fn fallback_lod_for_voxel(key: SurfaceChunkKey, resolution: u32) -> Option<LodKey> {
+    let size = CHUNK_SIZE * 2;
+    if size >= resolution.next_power_of_two() {
+        return None;
+    }
+    let x = (key.u_idx * CHUNK_SIZE / size) * size;
+    let y = (key.v_idx * CHUNK_SIZE / size) * size;
+    Some(LodKey {
+        face: key.face,
+        x,
+        y,
+        size,
+    })
+}
+
+fn chunk_in_node(key: SurfaceChunkKey, node: QuadNode) -> bool {
+    let x = key.u_idx * CHUNK_SIZE;
+    let y = key.v_idx * CHUNK_SIZE;
+    key.face == node.face
+        && x >= node.x
+        && y >= node.y
+        && x < node.x + node.size
+        && y < node.y + node.size
+}
+
+fn lod_inside_node(key: LodKey, node: QuadNode) -> bool {
+    key.x >= node.x
+        && key.y >= node.y
+        && key.x + key.size <= node.x + node.size
+        && key.y + key.size <= node.y + node.size
+}
+
+fn voxel_in_node(coord: VoxelCoord, node: QuadNode) -> bool {
+    coord.face == node.face
+        && coord.u >= node.x
+        && coord.u < node.x + node.size
+        && coord.v >= node.y
+        && coord.v < node.y + node.size
+}
+
+fn voxel_in_chunk(coord: VoxelCoord, key: SurfaceChunkKey) -> bool {
+    coord.face == key.face && coord.u / CHUNK_SIZE == key.u_idx && coord.v / CHUNK_SIZE == key.v_idx
+}
+
+fn voxel_in_lod(coord: VoxelCoord, key: LodKey) -> bool {
+    coord.face == key.face
+        && coord.u >= key.x
+        && coord.u < key.x + key.size
+        && coord.v >= key.y
+        && coord.v < key.y + key.size
+}
+
 fn chunk_center(key: SurfaceChunkKey, planet: &PlanetData) -> Vec3 {
     let u = key.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
     let v = key.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
     let h = planet.profile.surface_layer;
     CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile)
+}
+
+fn lod_center(key: LodKey, planet: &PlanetData) -> Vec3 {
+    let u = (key.x + key.size / 2).min(planet.resolution.saturating_sub(1));
+    let v = (key.y + key.size / 2).min(planet.resolution.saturating_sub(1));
+    let h = planet.profile.surface_layer;
+    CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile)
+}
+
+fn chunk_radius_world(planet: &PlanetData) -> f32 {
+    (CHUNK_SIZE as f32 * planet.profile.layer_radius(planet.profile.surface_layer))
+        / planet.resolution as f32
+}
+
+fn lod_radius_world(key: LodKey, planet: &PlanetData) -> f32 {
+    (key.size as f32 * planet.profile.layer_radius(planet.profile.surface_layer))
+        / planet.resolution as f32
 }

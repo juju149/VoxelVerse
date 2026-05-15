@@ -1,10 +1,10 @@
 // engine renderer
 
 use crate::lod_animation::LodAnimator;
+use crate::lod_streaming::{LodStreamingConfig, StreamingView};
 use crate::quality::QualitySettings;
 use crate::types::ChunkMesh;
 use bytemuck::{Pod, Zeroable};
-use glam::Vec3;
 use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{Receiver, Sender};
@@ -159,7 +159,16 @@ pub struct Renderer<'a> {
     completed_mesh_time_sum_ms: f32,
     completed_mesh_time_max_ms: f32,
     completed_mesh_count: usize,
+    completed_voxel_mesh_time_sum_ms: f32,
+    completed_voxel_mesh_time_max_ms: f32,
+    completed_voxel_mesh_count: usize,
+    completed_lod_mesh_time_sum_ms: f32,
+    completed_lod_mesh_time_max_ms: f32,
+    completed_lod_mesh_count: usize,
     update_view_ms: f32,
+    lod_selection_ms: f32,
+    gpu_upload_ms: f32,
+    last_terrain_draw_ms: f32,
     last_render_ms: f32,
     last_draw_calls: usize,
     last_shadow_draw_calls: usize,
@@ -172,8 +181,7 @@ pub struct Renderer<'a> {
     /// Edge length of the shadow depth texture, in pixels.  Read by the main
     /// render pass for texel-snapping the sun view matrix.
     pub shadow_map_size: u32,
-    /// Multiplier applied to the LOD-split distance — < 1 reduces draw work.
-    pub lod_distance_scale: f32,
+    pub lod_streaming: LodStreamingConfig,
 
     // --- ATLAS ---
     atlas_bind: wgpu::BindGroup,
@@ -194,9 +202,11 @@ struct QuadNode {
 }
 
 struct QuadContext<'a> {
-    cam_pos: Vec3,
+    view: StreamingView,
     planet: &'a PlanetData,
     player_id: Option<VoxelCoord>,
+    previous_voxels: &'a HashSet<SurfaceChunkKey>,
+    previous_lods: &'a HashSet<LodKey>,
 }
 
 struct MeshJobResult<K> {
@@ -244,12 +254,35 @@ impl<'a> Renderer<'a> {
         self.completed_mesh_time_sum_ms = 0.0;
         self.completed_mesh_time_max_ms = 0.0;
         self.completed_mesh_count = 0;
+        self.completed_voxel_mesh_time_sum_ms = 0.0;
+        self.completed_voxel_mesh_time_max_ms = 0.0;
+        self.completed_voxel_mesh_count = 0;
+        self.completed_lod_mesh_time_sum_ms = 0.0;
+        self.completed_lod_mesh_time_max_ms = 0.0;
+        self.completed_lod_mesh_count = 0;
         self.update_view_ms = 0.0;
+        self.lod_selection_ms = 0.0;
+        self.gpu_upload_ms = 0.0;
     }
 
     fn record_mesh_time(&mut self, elapsed_ms: f32) {
         self.completed_mesh_time_sum_ms += elapsed_ms;
         self.completed_mesh_time_max_ms = self.completed_mesh_time_max_ms.max(elapsed_ms);
         self.completed_mesh_count += 1;
+    }
+
+    fn record_voxel_mesh_time(&mut self, elapsed_ms: f32) {
+        self.record_mesh_time(elapsed_ms);
+        self.completed_voxel_mesh_time_sum_ms += elapsed_ms;
+        self.completed_voxel_mesh_time_max_ms =
+            self.completed_voxel_mesh_time_max_ms.max(elapsed_ms);
+        self.completed_voxel_mesh_count += 1;
+    }
+
+    fn record_lod_mesh_time(&mut self, elapsed_ms: f32) {
+        self.record_mesh_time(elapsed_ms);
+        self.completed_lod_mesh_time_sum_ms += elapsed_ms;
+        self.completed_lod_mesh_time_max_ms = self.completed_lod_mesh_time_max_ms.max(elapsed_ms);
+        self.completed_lod_mesh_count += 1;
     }
 }

@@ -11,7 +11,7 @@ use vv_gameplay::{
     PlanetResizeIntent, Player, PlayerController,
 };
 use vv_pack_compiler::{LootRegistry, RecipeRegistry};
-use vv_render::Renderer;
+use vv_render::{Renderer, StreamingView};
 use vv_world::{PlanetData, VoxModelRegistry};
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::EventLoop;
@@ -638,7 +638,18 @@ fn tick_game_frame(
     }
 
     renderer.update_cursor(planet, controller.cursor_id);
-    renderer.update_view(player.position, planet);
+    let width = renderer.config.width as f32;
+    let height = renderer.config.height as f32;
+    let view_ray = controller.view_ray(player, width, height);
+    renderer.update_view(
+        StreamingView {
+            player_pos: player.position,
+            camera_pos: controller.get_camera_pos(player),
+            view_dir: view_ray.direction,
+            cursor_id: controller.cursor_id,
+        },
+        planet,
+    );
     if !*first_scene_snapshot_logged && renderer.has_active_scene_chunks() {
         renderer.log_engine_snapshot("first-scene", planet);
         *first_scene_snapshot_logged = true;

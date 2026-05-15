@@ -6,6 +6,7 @@
 //! The user can force a tier with the `VV_PERF=low|medium|high|ultra` env
 //! variable; otherwise we fall back to [`PerfTier::detect`].
 
+use crate::lod_streaming::{LodSplitCurve, LodStreamingConfig};
 use crate::quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 use vv_meshing::SchedulerBudget;
 
@@ -96,9 +97,7 @@ pub struct PerfProfile {
     pub tier: PerfTier,
     /// Edge length (and width) of the square shadow depth texture.
     pub shadow_map_size: u32,
-    /// Multiplier applied to the LOD-split distance — values < 1 push voxel
-    /// chunks away faster (less work), > 1 keeps high-detail closer.
-    pub lod_distance_scale: f32,
+    pub lod_streaming: LodStreamingConfig,
     pub quality: QualitySettings,
     pub scheduler: SchedulerBudget,
 }
@@ -109,7 +108,19 @@ impl PerfProfile {
             PerfTier::Low => Self {
                 tier,
                 shadow_map_size: 1024,
-                lod_distance_scale: 0.55,
+                lod_streaming: LodStreamingConfig {
+                    lod_near_radius: 64.0,
+                    lod_split_curve: LodSplitCurve {
+                        far_factor: 2.2,
+                        mid_factor: 3.9,
+                        near_factor: 6.6,
+                        voxel_factor: 9.9,
+                    },
+                    lod_hysteresis: 0.18,
+                    lod_transition_time: 1.0,
+                    max_visible_voxel_chunks: 144,
+                    max_visible_lod_tiles: 320,
+                },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Potato,
                     triplanar_grain: false,
@@ -133,7 +144,19 @@ impl PerfProfile {
             PerfTier::Medium => Self {
                 tier,
                 shadow_map_size: 2048,
-                lod_distance_scale: 0.8,
+                lod_streaming: LodStreamingConfig {
+                    lod_near_radius: 88.0,
+                    lod_split_curve: LodSplitCurve {
+                        far_factor: 3.2,
+                        mid_factor: 5.6,
+                        near_factor: 9.6,
+                        voxel_factor: 14.4,
+                    },
+                    lod_hysteresis: 0.16,
+                    lod_transition_time: 1.15,
+                    max_visible_voxel_chunks: 256,
+                    max_visible_lod_tiles: 560,
+                },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Balanced,
                     triplanar_grain: false,
@@ -150,7 +173,19 @@ impl PerfProfile {
             PerfTier::High => Self {
                 tier,
                 shadow_map_size: 4096,
-                lod_distance_scale: 1.0,
+                lod_streaming: LodStreamingConfig {
+                    lod_near_radius: 112.0,
+                    lod_split_curve: LodSplitCurve {
+                        far_factor: 4.0,
+                        mid_factor: 7.0,
+                        near_factor: 12.0,
+                        voxel_factor: 18.0,
+                    },
+                    lod_hysteresis: 0.15,
+                    lod_transition_time: 1.25,
+                    max_visible_voxel_chunks: 384,
+                    max_visible_lod_tiles: 768,
+                },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::High,
                     triplanar_grain: false,
@@ -174,7 +209,19 @@ impl PerfProfile {
             PerfTier::Ultra => Self {
                 tier,
                 shadow_map_size: 4096,
-                lod_distance_scale: 1.25,
+                lod_streaming: LodStreamingConfig {
+                    lod_near_radius: 144.0,
+                    lod_split_curve: LodSplitCurve {
+                        far_factor: 5.0,
+                        mid_factor: 8.75,
+                        near_factor: 15.0,
+                        voxel_factor: 22.5,
+                    },
+                    lod_hysteresis: 0.14,
+                    lod_transition_time: 1.35,
+                    max_visible_voxel_chunks: 512,
+                    max_visible_lod_tiles: 1024,
+                },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Ultra,
                     triplanar_grain: false,
@@ -200,12 +247,16 @@ impl PerfProfile {
 
     pub fn print(&self) {
         println!(
-            "[perf] tier={} profile={:?} shadow={}px lod_scale={:.2} pcf={:?} triplanar={} fog={} clouds={} fxaa={} bloom={} \
+            "[perf] tier={} profile={:?} shadow={}px lod_near={:.1} hyst={:.2} transition={:.2}s max_chunks={} max_lods={} pcf={:?} triplanar={} fog={} clouds={} fxaa={} bloom={} \
              voxel(disp/up/pend)={}/{}/{} lod(disp/up/pend)={}/{}/{}",
             self.tier.label(),
             self.quality.profile,
             self.shadow_map_size,
-            self.lod_distance_scale,
+            self.lod_streaming.lod_near_radius,
+            self.lod_streaming.lod_hysteresis,
+            self.lod_streaming.lod_transition_time,
+            self.lod_streaming.max_visible_voxel_chunks,
+            self.lod_streaming.max_visible_lod_tiles,
             self.quality.pcf,
             self.quality.triplanar_grain,
             self.quality.volumetric_fog,

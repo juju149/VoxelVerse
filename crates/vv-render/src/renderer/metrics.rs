@@ -58,6 +58,16 @@ impl<'a> Renderer<'a> {
         } else {
             self.completed_mesh_time_sum_ms / self.completed_mesh_count as f32
         };
+        let voxel_meshing_avg_ms = if self.completed_voxel_mesh_count == 0 {
+            0.0
+        } else {
+            self.completed_voxel_mesh_time_sum_ms / self.completed_voxel_mesh_count as f32
+        };
+        let lod_meshing_avg_ms = if self.completed_lod_mesh_count == 0 {
+            0.0
+        } else {
+            self.completed_lod_mesh_time_sum_ms / self.completed_lod_mesh_count as f32
+        };
 
         RenderStats {
             visible_chunks,
@@ -77,8 +87,15 @@ impl<'a> Renderer<'a> {
             uploads_this_frame: self.scheduler_stats.uploaded_voxel
                 + self.scheduler_stats.uploaded_lod,
             update_view_ms: self.update_view_ms,
+            lod_selection_ms: self.lod_selection_ms,
             meshing_avg_ms,
             meshing_max_ms: self.completed_mesh_time_max_ms,
+            voxel_meshing_avg_ms,
+            voxel_meshing_max_ms: self.completed_voxel_mesh_time_max_ms,
+            lod_meshing_avg_ms,
+            lod_meshing_max_ms: self.completed_lod_mesh_time_max_ms,
+            gpu_upload_ms: self.gpu_upload_ms,
+            terrain_draw_ms: self.last_terrain_draw_ms,
             render_world_ms: self.last_render_ms,
             render_ui_ms: 0.0,
         }

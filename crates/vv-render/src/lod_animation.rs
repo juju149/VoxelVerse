@@ -28,9 +28,12 @@ impl LodAnimator {
         Self {
             dying_chunks: HashMap::new(),
             spawning_chunks: HashMap::new(),
-            // CHANGED: Increased to 2.0 seconds for a very slow, cinematic transition
             fade_duration: 2.0,
         }
+    }
+
+    pub fn set_fade_duration(&mut self, duration: f32) {
+        self.fade_duration = duration.max(0.05);
     }
 
     // smoothstep Interpolation (t * t * (3 - 2t))
