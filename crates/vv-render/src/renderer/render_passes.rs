@@ -1,3 +1,4 @@
+use super::terrain_renderer::TerrainRenderer;
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::lod_animation::AnyKey;
 use crate::types::{ChunkMesh, Vertex};
@@ -174,7 +175,7 @@ impl<'a> Renderer<'a> {
         // Full day/night cycle in ~20 minutes. Sun orbits in the XY plane with a
         // slight Z tilt so shadows always have a visible angle.
         // Start at golden-hour (0.15 * TAU) so the game opens looking beautiful.
-        let elapsed_secs = self.start_time.elapsed().as_secs_f32();
+        let elapsed_secs = self.elapsed_secs();
         let day_secs = 1200.0_f32;
         let day_phase = (elapsed_secs / day_secs + 0.15).fract();
         let sun_angle = day_phase * std::f32::consts::TAU;
@@ -258,32 +259,6 @@ impl<'a> Renderer<'a> {
         // planet body itself occludes it.  Conservative: skipped when the
         // camera is inside / very close to the surface.
         let surface_radius = planet.profile.surface_radius;
-        let cam_dist = cam_pos.length();
-        let horizon_active = cam_dist > surface_radius * 1.001;
-        let cos_horizon = if horizon_active {
-            surface_radius / cam_dist
-        } else {
-            -1.0
-        };
-        let cam_dir = if cam_dist > 1e-3 {
-            cam_pos / cam_dist
-        } else {
-            glam::Vec3::Y
-        };
-        let behind_horizon = |center: glam::Vec3, radius: f32| -> bool {
-            if !horizon_active {
-                return false;
-            }
-            let dist = center.length();
-            if dist < 1e-3 {
-                return false;
-            }
-            let cos_angle = cam_dir.dot(center) / dist;
-            // Subtract chunk angular radius (×1.5 safety) so we never cull a
-            // chunk whose silhouette could still poke above the horizon.
-            let angular_radius = radius / dist;
-            cos_angle < cos_horizon - 1.5 * angular_radius
-        };
 
         // 1. Compute atmosphere colors from sun elevation.
         //    sun_dir.y is the sine of the sun's elevation angle.
@@ -496,7 +471,12 @@ impl<'a> Renderer<'a> {
             shadow_pass.set_bind_group(2, &self.atlas_bind, &[]);
 
             for mesh in self.chunks.values() {
-                if behind_horizon(mesh.center, mesh.radius) {
+                if TerrainRenderer::behind_planet_horizon(
+                    surface_radius,
+                    cam_pos,
+                    mesh.center,
+                    mesh.radius,
+                ) {
                     continue;
                 }
                 if sun_frustum.intersects_sphere(mesh.center, mesh.radius) {
@@ -508,7 +488,12 @@ impl<'a> Renderer<'a> {
                 }
             }
             for mesh in self.lod_chunks.values() {
-                if behind_horizon(mesh.center, mesh.radius) {
+                if TerrainRenderer::behind_planet_horizon(
+                    surface_radius,
+                    cam_pos,
+                    mesh.center,
+                    mesh.radius,
+                ) {
                     continue;
                 }
                 if sun_frustum.intersects_sphere(mesh.center, mesh.radius) {
@@ -584,7 +569,12 @@ impl<'a> Renderer<'a> {
 
             // DRAW LOD CHUNKS
             for mesh in self.lod_chunks.values() {
-                if behind_horizon(mesh.center, mesh.radius) {
+                if TerrainRenderer::behind_planet_horizon(
+                    surface_radius,
+                    cam_pos,
+                    mesh.center,
+                    mesh.radius,
+                ) {
                     continue;
                 }
                 if cull_frustum.intersects_sphere(mesh.center, mesh.radius) {
@@ -599,7 +589,12 @@ impl<'a> Renderer<'a> {
 
             // DRAW VOXEL CHUNKS
             for mesh in self.chunks.values() {
-                if behind_horizon(mesh.center, mesh.radius) {
+                if TerrainRenderer::behind_planet_horizon(
+                    surface_radius,
+                    cam_pos,
+                    mesh.center,
+                    mesh.radius,
+                ) {
                     continue;
                 }
                 if cull_frustum.intersects_sphere(mesh.center, mesh.radius) {
@@ -855,7 +850,8 @@ impl<'a> Renderer<'a> {
 
             let mut debug_buf = Buffer::new(&mut self.font_system, Metrics::new(14.0, 18.0));
 
-            if player.debug_mode {
+            let show_engine_debug = player.debug_mode || self.engine_debug_page;
+            if show_engine_debug {
                 let status = if controller.freeze_culling {
                     "FROZEN"
                 } else {
@@ -919,7 +915,7 @@ impl<'a> Renderer<'a> {
                 default_color: glyphon::Color::rgb(255, 255, 255),
             });
 
-            if player.debug_mode {
+            if show_engine_debug {
                 text_areas.push(TextArea {
                     buffer: &debug_buf,
                     left: self.config.width as f32 - 180.0,

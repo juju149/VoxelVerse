@@ -16,6 +16,8 @@ use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord};
 use vv_world::PlanetData;
 use winit::window::Window;
 
+use gpu_scene::GpuScene;
+
 // --- UNIFORMS ---
 
 #[repr(C)]
@@ -33,7 +35,7 @@ pub struct GlobalUniform {
     pub water_params: [f32; 4], // bytes 240-255 (x=fresnel, y=specular, z=alpha, w=reserved)
 }
 
-/// Compile-time guard: buffer sizes in setup.rs / setup_resources.rs use
+/// Compile-time guard: buffer sizes in setup.rs / render_resources.rs use
 /// `std::mem::size_of::<GlobalUniform>()` so they stay in sync automatically.
 /// If you ever change GlobalUniform, this assertion documents the expected size.
 const _: () = assert!(
@@ -89,7 +91,7 @@ pub struct Renderer<'a> {
     sky_global_bind: wgpu::BindGroup,
     post_bind_layout: wgpu::BindGroupLayout,
     post_bind: wgpu::BindGroup,
-    scene: SceneTarget,
+    scene: GpuScene,
 
     // --- CORE ---
     animator: LodAnimator,
@@ -163,6 +165,7 @@ pub struct Renderer<'a> {
     last_shadow_draw_calls: usize,
 
     frame_stats: FrameStats,
+    engine_debug_page: bool,
 
     // --- QUALITY ---
     pub quality: QualitySettings,
@@ -179,47 +182,7 @@ pub struct Renderer<'a> {
     /// Monotonic clock started when the renderer is created. Used to drive
     /// the day/night sun orbit without any gameplay dependency.
     pub start_time: std::time::Instant,
-}
-
-struct SceneTarget {
-    _texture: wgpu::Texture,
-    view: wgpu::TextureView,
-    sampler: wgpu::Sampler,
-}
-
-impl SceneTarget {
-    const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-
-    fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
-        let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Scene HDR Color"),
-            size: wgpu::Extent3d {
-                width: width.max(1),
-                height: height.max(1),
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: Self::FORMAT,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("Scene HDR Sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            ..Default::default()
-        });
-        Self {
-            _texture: texture,
-            view,
-            sampler,
-        }
-    }
+    fixed_elapsed_secs: Option<f32>,
 }
 
 #[derive(Clone, Copy)]
@@ -242,8 +205,9 @@ struct MeshJobResult<K> {
     elapsed_ms: f32,
 }
 
-mod atmosphere_passes;
+mod atmosphere_renderer;
 mod debug_draw;
+mod gpu_scene;
 mod inventory;
 mod inventory_components;
 mod inventory_geometry;
@@ -252,10 +216,11 @@ mod lod_selection;
 mod metrics;
 mod pipelines;
 mod render_passes;
+mod render_resources;
 mod setup;
-mod setup_resources;
-mod streaming;
-mod ui;
+mod terrain_renderer;
+mod ui_renderer;
+mod world_streamer;
 
 impl<'a> Renderer<'a> {
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -263,7 +228,7 @@ impl<'a> Renderer<'a> {
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
         self.depth = Self::mk_depth(&self.device, &self.config);
-        self.scene = SceneTarget::new(&self.device, self.config.width, self.config.height);
+        self.scene = GpuScene::new(&self.device, self.config.width, self.config.height);
         self.post_bind = Self::create_post_bind_group(
             &self.device,
             &self.post_bind_layout,

@@ -1,4 +1,5 @@
 use crate::app::content_bootstrap::load_core_content;
+use crate::app::golden_scene::{golden_scene_enabled, GoldenScene};
 use crate::app::inventory_events::handle_inventory_window_event;
 use crate::ui::InventoryUiState;
 use std::sync::Arc;
@@ -20,7 +21,15 @@ use winit::window::{CursorGrabMode, Fullscreen, Window, WindowBuilder};
 pub fn run() {
     SystemDiagnostics::print_startup_info();
 
-    let content = load_core_content();
+    let mut content = load_core_content();
+    let golden_scene = golden_scene_enabled().then_some(GoldenScene::DEFAULT);
+    if let Some(scene) = golden_scene {
+        content.planet = scene.apply_planet(content.planet);
+        println!(
+            "[engine/golden] enabled seed={} resolution={} fixed_time_s={:.1}",
+            scene.seed, scene.resolution, scene.fixed_elapsed_secs
+        );
+    }
     let event_loop = EventLoop::new().unwrap();
     let window = create_window(&event_loop);
     grab_cursor(&window);
@@ -31,6 +40,11 @@ pub fn run() {
         content.blocks.material_colors(),
         &content.core_pack_dir,
     ));
+    if let Some(scene) = golden_scene {
+        renderer.quality = scene.quality;
+        renderer.set_fixed_elapsed_secs(Some(scene.fixed_elapsed_secs));
+        renderer.set_engine_debug_page(true);
+    }
     renderer.render_loading(0.0, "Initialisation planète");
     let mut controller = Controller::new();
     let mut player = Player::new();
@@ -70,9 +84,15 @@ pub fn run() {
     renderer.window.set_title("voxelverse");
     let mut console = create_console();
 
-    player.spawn(planet.spawn_position());
+    if let Some(scene) = golden_scene {
+        scene.spawn_player(&mut player, &planet);
+    } else {
+        player.spawn(planet.spawn_position());
+    }
+    renderer.log_engine_snapshot("startup", &planet);
     let mut last_time = Instant::now();
     let mut cursor_grabbed = false;
+    let mut first_scene_snapshot_logged = false;
 
     event_loop
         .run(move |event, target| match event {
@@ -164,6 +184,7 @@ pub fn run() {
                     mining_button_held,
                     &loot,
                     &mut console,
+                    &mut first_scene_snapshot_logged,
                 );
             }
             _ => {}
@@ -501,6 +522,10 @@ fn handle_pressed_key(
                 }
             );
         }
+        PhysicalKey::Code(KeyCode::F2) => {
+            renderer.toggle_engine_debug_page();
+            renderer.window.request_redraw();
+        }
         PhysicalKey::Code(KeyCode::F5) => {
             renderer.quality.triplanar_grain = !renderer.quality.triplanar_grain;
             println!(
@@ -579,6 +604,7 @@ fn tick_game_frame(
     mining_button_held: bool,
     loot: &LootRegistry,
     console: &mut Console,
+    first_scene_snapshot_logged: &mut bool,
 ) {
     console.update_animation(dt);
     hotbar.update(dt);
@@ -613,5 +639,9 @@ fn tick_game_frame(
 
     renderer.update_cursor(planet, controller.cursor_id);
     renderer.update_view(player.position, planet);
+    if !*first_scene_snapshot_logged && renderer.has_active_scene_chunks() {
+        renderer.log_engine_snapshot("first-scene", planet);
+        *first_scene_snapshot_logged = true;
+    }
     renderer.window.request_redraw();
 }

@@ -2,6 +2,48 @@ use super::Renderer;
 use vv_diagnostics::RenderStats;
 
 impl<'a> Renderer<'a> {
+    pub fn toggle_engine_debug_page(&mut self) {
+        self.engine_debug_page = !self.engine_debug_page;
+        println!(
+            "[engine] debug page = {}",
+            if self.engine_debug_page { "on" } else { "off" }
+        );
+    }
+
+    pub fn set_engine_debug_page(&mut self, enabled: bool) {
+        self.engine_debug_page = enabled;
+    }
+
+    pub fn set_fixed_elapsed_secs(&mut self, elapsed_secs: Option<f32>) {
+        self.fixed_elapsed_secs = elapsed_secs;
+    }
+
+    pub(super) fn elapsed_secs(&self) -> f32 {
+        self.fixed_elapsed_secs
+            .unwrap_or_else(|| self.start_time.elapsed().as_secs_f32())
+    }
+
+    pub fn has_active_scene_chunks(&self) -> bool {
+        !self.chunks.is_empty() || !self.lod_chunks.is_empty()
+    }
+
+    pub fn log_engine_snapshot(&self, label: &str, planet: &vv_world::PlanetData) {
+        let stats = self.render_stats(0, 0);
+        println!(
+            "[engine/{label}] profile={:?} planet_resolution={} chunks={} lods={} pending={}/{} uploads={} draw_calls={} frame_ms={:.2} gpu_est={}",
+            self.quality.profile,
+            planet.resolution,
+            stats.active_chunks,
+            stats.active_lods,
+            stats.pending_chunks,
+            stats.pending_lods,
+            stats.uploads_this_frame,
+            stats.draw_calls + stats.shadow_draw_calls,
+            self.frame_stats.frame_time_ms(),
+            stats.gpu_memory_label(),
+        );
+    }
+
     pub(super) fn render_stats(&self, visible_chunks: usize, visible_lods: usize) -> RenderStats {
         let mut gpu_vertices = 0;
         let mut gpu_indices = 0;

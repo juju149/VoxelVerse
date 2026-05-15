@@ -8,7 +8,7 @@ pub(crate) mod texture_atlas;
 mod types;
 pub mod ui;
 
-pub use quality::PcfQuality;
+pub use quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 pub use render_graph::{RenderPassId, ShaderPath};
 pub use renderer::Renderer;
 pub use types::Vertex;

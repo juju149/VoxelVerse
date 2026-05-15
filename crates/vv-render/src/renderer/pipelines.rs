@@ -1,4 +1,4 @@
-use super::{Renderer, SceneTarget};
+use super::{GpuScene, Renderer};
 use crate::Vertex;
 
 /// Shared vertex buffer layout matching `Vertex` (48 bytes).
@@ -58,7 +58,7 @@ impl<'a> Renderer<'a> {
             fragment: Some(wgpu::FragmentState {
                 module: fragment_shader,
                 entry_point: "fs_main",
-                targets: &[Some(SceneTarget::FORMAT.into())],
+                targets: &[Some(GpuScene::FORMAT.into())],
             }),
             primitive: wgpu::PrimitiveState {
                 topology,

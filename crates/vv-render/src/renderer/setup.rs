@@ -1,5 +1,4 @@
-use super::SceneTarget;
-use super::{GlobalUniform, LocalUniform, Renderer};
+use super::{GlobalUniform, GpuScene, LocalUniform, Renderer};
 use crate::lod_animation::LodAnimator;
 use crate::perf_profile::{PerfProfile, PerfTier};
 use crate::render_graph::ShaderPath;
@@ -513,7 +512,7 @@ impl<'a> Renderer<'a> {
             fragment: Some(wgpu::FragmentState {
                 module: &sky_shaders.fragment,
                 entry_point: "fs_main",
-                targets: &[Some(SceneTarget::FORMAT.into())],
+                targets: &[Some(GpuScene::FORMAT.into())],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -536,7 +535,7 @@ impl<'a> Renderer<'a> {
             &sky_layout,
             &clouds_shaders.vertex,
             &clouds_shaders.fragment,
-            SceneTarget::FORMAT,
+            GpuScene::FORMAT,
             Some(wgpu::BlendState::ALPHA_BLENDING),
             "Clouds Pipeline",
         );
@@ -552,12 +551,12 @@ impl<'a> Renderer<'a> {
             &sky_layout,
             &fog_shaders.vertex,
             &fog_shaders.fragment,
-            SceneTarget::FORMAT,
+            GpuScene::FORMAT,
             Some(wgpu::BlendState::ALPHA_BLENDING),
             "Volumetric Fog Pipeline",
         );
 
-        let scene = SceneTarget::new(&device, config.width, config.height);
+        let scene = GpuScene::new(&device, config.width, config.height);
         let post_bind_layout = Self::create_post_bind_layout(&device);
         let post_bind =
             Self::create_post_bind_group(&device, &post_bind_layout, &scene.view, &scene.sampler);
@@ -773,11 +772,13 @@ impl<'a> Renderer<'a> {
             last_shadow_draw_calls: 0,
 
             frame_stats: FrameStats::new(),
+            engine_debug_page: false,
             quality: perf.quality,
             shadow_map_size: perf.shadow_map_size,
             lod_distance_scale: perf.lod_distance_scale,
             atlas_bind,
             start_time: std::time::Instant::now(),
+            fixed_elapsed_secs: None,
         }
     }
 
