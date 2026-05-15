@@ -13,7 +13,7 @@ fn vv_sample_voxel_albedo(layer: u32, uv: vec2<f32>, vertex_tint: vec3<f32>, col
         return material_colors[layer].rgb * vertex_tint;
     }
 
-    return textureSample(t_albedo, s_material, uv, i32(layer)).rgb * vertex_tint;
+    return textureSample(t_albedo, s_material, fract(uv), i32(layer)).rgb * vertex_tint;
 }
 
 fn vv_sample_voxel_roughness(layer: u32, uv: vec2<f32>, color_only: bool) -> f32 {
@@ -21,7 +21,7 @@ fn vv_sample_voxel_roughness(layer: u32, uv: vec2<f32>, color_only: bool) -> f32
         return 0.74;
     }
 
-    return clamp(textureSample(t_roughness, s_material, uv, i32(layer)).r, 0.32, 1.0);
+    return clamp(textureSample(t_roughness, s_material, fract(uv), i32(layer)).r, 0.32, 1.0);
 }
 
 fn vv_sample_voxel_normal(layer: u32, uv: vec2<f32>, surface_normal: vec3<f32>, color_only: bool) -> vec3<f32> {
@@ -30,7 +30,7 @@ fn vv_sample_voxel_normal(layer: u32, uv: vec2<f32>, surface_normal: vec3<f32>, 
         return n;
     }
 
-    let tex_n = textureSample(t_normal, s_material, uv, i32(layer)).xyz * 2.0 - vec3<f32>(1.0);
+    let tex_n = textureSample(t_normal, s_material, fract(uv), i32(layer)).xyz * 2.0 - vec3<f32>(1.0);
     var reference = vec3<f32>(0.0, 1.0, 0.0);
     if abs(n.y) > 0.85 {
         reference = vec3<f32>(0.0, 0.0, 1.0);

@@ -59,6 +59,18 @@ pub enum CompiledCollision {
     LeafVolume,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CompiledMeshClass {
+    #[default]
+    OpaqueCube,
+    Cutout,
+    Prop,
+    Water,
+    Foliage,
+    Emissive,
+    Invisible,
+}
+
 #[derive(Clone, Debug)]
 pub struct CompiledBlockModel {
     pub id: BlockModelId,
@@ -180,6 +192,9 @@ pub struct CompiledBlock {
     pub preferred_tool_tag: Option<String>,
     /// Minimum tool tier required for reliable drops.
     pub required_tool_tier: u32,
+    /// Renderer/mesher routing class. This decides batching strategy; it is
+    /// content-owned, not inferred from concrete block names at runtime.
+    pub mesh_class: CompiledMeshClass,
 }
 
 /// Runtime registry of all compiled blocks.
@@ -303,6 +318,25 @@ impl BlockRegistry {
         self.models
             .get(block.visual.model_id)
             .is_some_and(|m| m.is_full_cube())
+    }
+
+    pub fn uses_greedy_opaque_meshing(&self, id: VoxelId) -> bool {
+        if id == VoxelId::AIR {
+            return false;
+        }
+        let Some(block) = self.block(id) else {
+            return false;
+        };
+        if !block.solid || block.mesh_class != CompiledMeshClass::OpaqueCube {
+            return false;
+        }
+        self.models
+            .get(block.visual.model_id)
+            .is_some_and(|m| matches!(m.mesh, CompiledMesh::Cube { .. }))
+    }
+
+    pub fn mesh_class(&self, id: VoxelId) -> CompiledMeshClass {
+        self.block(id).map(|b| b.mesh_class).unwrap_or_default()
     }
 
     pub fn is_renderable(&self, id: VoxelId) -> bool {

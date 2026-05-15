@@ -29,6 +29,54 @@ const MAX_FACES_PER_STAMP: usize = 256;
 /// below the GPU vertex budget.
 const MAX_QUADS_PER_CHUNK: usize = 2048;
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct PropBatchKey<'a> {
+    pub model_key: &'a str,
+    pub rotation: u8,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PropInstance {
+    pub face: u8,
+    pub u: u32,
+    pub v: u32,
+    pub surface_layer: u32,
+}
+
+#[derive(Clone, Debug)]
+pub struct PropInstanceBatch<'a> {
+    pub key: PropBatchKey<'a>,
+    pub instances: Vec<PropInstance>,
+}
+
+/// Group alive prop stamps by instance-compatible model/rotation.
+/// The current renderer still bakes these batches into terrain meshes, but
+/// this is the stable handoff shape for future GPU instancing.
+pub fn collect_prop_instance_batches(stamps: &[PropStamp]) -> Vec<PropInstanceBatch<'_>> {
+    let mut batches: Vec<PropInstanceBatch<'_>> = Vec::new();
+    for stamp in stamps {
+        let key = PropBatchKey {
+            model_key: stamp.model_key.as_str(),
+            rotation: stamp.rotation & 3,
+        };
+        let instance = PropInstance {
+            face: stamp.face,
+            u: stamp.u,
+            v: stamp.v,
+            surface_layer: stamp.surface_layer,
+        };
+        if let Some(batch) = batches.iter_mut().find(|batch| batch.key == key) {
+            batch.instances.push(instance);
+        } else {
+            batches.push(PropInstanceBatch {
+                key,
+                instances: vec![instance],
+            });
+        }
+    }
+    batches
+}
+
 /// Append prop geometry from `stamps` to `mesh`.
 ///
 /// Stamps come from `ProceduralPlanetTerrain::props_for_chunk()`.
@@ -47,16 +95,26 @@ pub fn bake_props(
     let mut idx = verts.len() as u32;
     let mut total_quads = 0usize;
 
-    for stamp in stamps {
-        if total_quads >= MAX_QUADS_PER_CHUNK {
-            break;
-        }
-        let Some(model) = models.get(&stamp.model_key) else {
+    for batch in collect_prop_instance_batches(stamps) {
+        let Some(model) = models.get(batch.key.model_key) else {
             continue;
         };
-        let before = verts.len();
-        bake_stamp(stamp, model, profile, &mut verts, &mut inds, &mut idx);
-        total_quads += (verts.len() - before) / 4;
+        for instance in &batch.instances {
+            if total_quads >= MAX_QUADS_PER_CHUNK {
+                break;
+            }
+            let before = verts.len();
+            bake_instance(
+                instance,
+                batch.key.rotation,
+                model,
+                profile,
+                &mut verts,
+                &mut inds,
+                &mut idx,
+            );
+            total_quads += (verts.len() - before) / 4;
+        }
     }
 
     mesh.vertices = verts;
@@ -65,8 +123,9 @@ pub fn bake_props(
 
 /// Bake one prop stamp into the mesh buffers.
 /// Uses the model's pre-baked `BakedFace` list — zero allocations.
-fn bake_stamp(
-    stamp: &PropStamp,
+fn bake_instance(
+    instance: &PropInstance,
+    rotation: u8,
     model: &VoxModel,
     profile: PlanetProfile,
     verts: &mut Vec<CpuVertex>,
@@ -81,14 +140,14 @@ fn bake_stamp(
     let inv_max_xy = 1.0_f32 / (model.size_x.max(model.size_y) as f32);
     let scale_z = inv_max_xy; // preserve aspect ratio
 
-    let base_u = stamp.u as f32;
-    let base_v = stamp.v as f32;
-    let base_l = stamp.surface_layer as f32 + 1.0; // sit above the surface
+    let base_u = instance.u as f32;
+    let base_v = instance.v as f32;
+    let base_l = instance.surface_layer as f32 + 1.0;
 
     // Rotation helpers — quarter-turn around the radial (+Z in model space) axis.
     let cx = model.size_x as f32 * 0.5;
     let cy = model.size_y as f32 * 0.5;
-    let rot = stamp.rotation & 3;
+    let rot = rotation & 3;
 
     // Precompute sin/cos for rotation.
     let (sin_r, cos_r) = match rot {
@@ -117,7 +176,7 @@ fn bake_stamp(
             let wu = base_u + rx * inv_max_xy;
             let wv = base_v + ry * inv_max_xy;
             let wl = base_l + mz * scale_z;
-            corners[i] = CoordSystem::get_vertex_pos_f32(stamp.face, wu, wv, wl, profile);
+            corners[i] = CoordSystem::get_vertex_pos_f32(instance.face, wu, wv, wl, profile);
         }
 
         // Compute face normal from cross product of two edges.
@@ -147,5 +206,41 @@ fn bake_stamp(
             base_idx + 3,
         ]);
         *idx += 4;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::collect_prop_instance_batches;
+    use vv_worldgen::procedural::PropStamp;
+
+    fn stamp(model_key: &str, rotation: u8, u: u32) -> PropStamp {
+        PropStamp {
+            face: 0,
+            u,
+            v: 2,
+            surface_layer: 10,
+            model_key: model_key.to_string(),
+            rotation,
+        }
+    }
+
+    #[test]
+    fn prop_instances_batch_by_model_and_rotation() {
+        let stamps = vec![
+            stamp("core:voxel/flower", 0, 1),
+            stamp("core:voxel/flower", 0, 2),
+            stamp("core:voxel/flower", 1, 3),
+            stamp("core:voxel/rock", 0, 4),
+        ];
+
+        let batches = collect_prop_instance_batches(&stamps);
+
+        assert_eq!(batches.len(), 3);
+        assert!(batches
+            .iter()
+            .any(|batch| batch.key.model_key == "core:voxel/flower"
+                && batch.key.rotation == 0
+                && batch.instances.len() == 2));
     }
 }

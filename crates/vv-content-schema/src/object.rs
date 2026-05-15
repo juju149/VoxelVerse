@@ -83,6 +83,8 @@ pub struct RawObjectBlock {
     #[serde(default)]
     pub shape: RawObjectShape,
     #[serde(default)]
+    pub mesh_class: Option<RawObjectMeshClass>,
+    #[serde(default)]
     pub states: Option<RawBlockStates>,
 }
 
@@ -116,6 +118,17 @@ pub enum RawObjectRenderMode {
     Invisible,
     Translucent,
     Cutout,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RawObjectMeshClass {
+    OpaqueCube,
+    Cutout,
+    Prop,
+    Water,
+    Foliage,
+    Emissive,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]

@@ -18,6 +18,7 @@ use vv_content_schema::{
 use vv_voxel::VoxelId;
 
 use crate::block_family::{BlockStateValue, CompiledBlockFamily};
+use crate::block_mesh_class::compile_mesh_class;
 use crate::block_registry::{
     BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, CompiledBlock,
     CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, MaterialTextureSet,
@@ -183,6 +184,7 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
             tint,
             model_id,
         };
+        let mesh_class = compile_mesh_class(block_sec, def.light.is_some());
 
         let category = def
             .tags
@@ -228,6 +230,7 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
             drops_key,
             preferred_tool_tag,
             required_tool_tier,
+            mesh_class,
         });
         families.push(CompiledBlockFamily {
             family_key: key.to_string(),

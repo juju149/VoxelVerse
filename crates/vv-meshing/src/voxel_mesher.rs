@@ -1,8 +1,9 @@
 use super::{
     ambient_occlusion, pack_material_edges, prop_baker::bake_props, CpuMesh, CpuVertex,
-    FaceEdgeMask, MeshGen,
+    FaceEdgeMask, GreedyMesher, MeshGen,
 };
 use glam::Vec3;
+use std::sync::OnceLock;
 use vv_math::CoordSystem;
 use vv_pack_compiler::CompiledMesh;
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
@@ -16,17 +17,17 @@ use vv_worldgen::ChunkFeatureMap;
 /// once via [`PlanetData::bake_chunk_features`]; this struct lets us reuse the
 /// resulting map and short-circuit every above-surface lookup to an O(1)
 /// hash-map probe.
-struct ChunkAccessor<'a> {
+pub(super) struct ChunkAccessor<'a> {
     data: &'a PlanetData,
     features: &'a ChunkFeatureMap,
 }
 
 impl<'a> ChunkAccessor<'a> {
-    fn new(data: &'a PlanetData, features: &'a ChunkFeatureMap) -> Self {
+    pub(super) fn new(data: &'a PlanetData, features: &'a ChunkFeatureMap) -> Self {
         Self { data, features }
     }
 
-    fn voxel_id(&self, coord: VoxelCoord) -> VoxelId {
+    pub(super) fn voxel_id(&self, coord: VoxelCoord) -> VoxelId {
         let res = self.data.resolution;
         if coord.u >= res || coord.v >= res || coord.layer >= res {
             return VoxelId::AIR;
@@ -41,12 +42,22 @@ impl<'a> ChunkAccessor<'a> {
         self.data.get_voxel(coord)
     }
 
-    fn has_renderable(&self, coord: VoxelCoord) -> bool {
+    pub(super) fn has_renderable(&self, coord: VoxelCoord) -> bool {
         self.data.content.is_renderable(self.voxel_id(coord))
     }
 
-    fn is_opaque_cube(&self, coord: VoxelCoord) -> bool {
+    pub(super) fn is_opaque_cube(&self, coord: VoxelCoord) -> bool {
         self.data.content.is_opaque_cube(self.voxel_id(coord))
+    }
+
+    pub(super) fn uses_greedy_opaque_meshing(&self, coord: VoxelCoord) -> bool {
+        self.data
+            .content
+            .uses_greedy_opaque_meshing(self.voxel_id(coord))
+    }
+
+    pub(super) fn data(&self) -> &'a PlanetData {
+        self.data
     }
 }
 
@@ -55,13 +66,13 @@ struct CandidateBuffer {
     coords: Vec<VoxelCoord>,
 }
 
-struct QuadFace {
-    pos: [Vec3; 4],
-    colors: [[f32; 3]; 4],
-    force_radial: bool,
-    packed_tex_index: u32,
-    flip_u: bool,
-    flip_v: bool,
+pub(super) struct QuadFace {
+    pub(super) pos: [Vec3; 4],
+    pub(super) colors: [[f32; 3]; 4],
+    pub(super) force_radial: bool,
+    pub(super) packed_tex_index: u32,
+    pub(super) flip_u: bool,
+    pub(super) flip_v: bool,
 }
 
 impl CandidateBuffer {
@@ -220,12 +231,25 @@ impl MeshGen {
             }
         }
 
-        for id in candidates.finish() {
+        let candidates = candidates.finish();
+        let greedy_enabled = greedy_meshing_enabled();
+        if greedy_enabled {
+            GreedyMesher::append_opaque_cubes(
+                &accessor,
+                &candidates,
+                &mut verts,
+                &mut inds,
+                &mut idx,
+            );
+        }
+
+        for id in candidates {
             if id.u >= u_start
                 && id.u < u_end
                 && id.v >= v_start
                 && id.v < v_end
                 && accessor.has_renderable(id)
+                && (!greedy_enabled || !accessor.uses_greedy_opaque_meshing(id))
             {
                 Self::add_voxel(id, &accessor, &mut verts, &mut inds, &mut idx);
             }
@@ -528,13 +552,28 @@ impl MeshGen {
         }
     }
 
-    fn quad(verts: &mut Vec<CpuVertex>, inds: &mut Vec<u32>, idx: &mut u32, face: QuadFace) {
+    pub(super) fn quad(
+        verts: &mut Vec<CpuVertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        face: QuadFace,
+    ) {
+        Self::quad_tiled(verts, inds, idx, face, [1.0, 1.0]);
+    }
+
+    pub(super) fn quad_tiled(
+        verts: &mut Vec<CpuVertex>,
+        inds: &mut Vec<u32>,
+        idx: &mut u32,
+        face: QuadFace,
+        uv_span: [f32; 2],
+    ) {
         // UV corners: (0,0) bl, (1,0) br, (1,1) tr, (0,1) tl
         // flip_u mirrors horizontally, flip_v mirrors vertically.
-        let u0 = if face.flip_u { 1.0_f32 } else { 0.0_f32 };
-        let u1 = if face.flip_u { 0.0_f32 } else { 1.0_f32 };
-        let v0 = if face.flip_v { 1.0_f32 } else { 0.0_f32 };
-        let v1 = if face.flip_v { 0.0_f32 } else { 1.0_f32 };
+        let u0 = if face.flip_u { uv_span[0] } else { 0.0_f32 };
+        let u1 = if face.flip_u { 0.0_f32 } else { uv_span[0] };
+        let v0 = if face.flip_v { uv_span[1] } else { 0.0_f32 };
+        let v1 = if face.flip_v { 0.0_f32 } else { uv_span[1] };
         let uvs: [[f32; 2]; 4] = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
 
         let normal = if face.force_radial {
@@ -640,4 +679,44 @@ mod tests {
         assert_eq!(inds, [0, 1, 2, 2, 3, 0]);
         assert_eq!(idx, 4);
     }
+
+    #[test]
+    fn quad_tiled_preserves_texture_repeat_span() {
+        let mut verts = Vec::new();
+        let mut inds = Vec::new();
+        let mut idx = 0;
+        MeshGen::quad_tiled(
+            &mut verts,
+            &mut inds,
+            &mut idx,
+            QuadFace {
+                pos: [
+                    Vec3::new(0.0, 0.0, 0.0),
+                    Vec3::new(2.0, 0.0, 0.0),
+                    Vec3::new(2.0, 3.0, 0.0),
+                    Vec3::new(0.0, 3.0, 0.0),
+                ],
+                colors: [[1.0, 1.0, 1.0]; 4],
+                force_radial: false,
+                packed_tex_index: 0,
+                flip_u: false,
+                flip_v: false,
+            },
+            [2.0, 3.0],
+        );
+
+        assert_eq!(
+            verts.iter().map(|v| v.uv).collect::<Vec<_>>(),
+            [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0],]
+        );
+        assert_eq!(inds, [0, 1, 2, 2, 3, 0]);
+    }
+}
+
+fn greedy_meshing_enabled() -> bool {
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    *ENABLED.get_or_init(|| {
+        !std::env::var("VV_DISABLE_GREEDY_MESH")
+            .is_ok_and(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+    })
 }

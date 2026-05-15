@@ -1,4 +1,5 @@
 mod block_family;
+mod block_mesh_class;
 mod block_registry;
 mod compiler;
 mod content_index;
@@ -16,7 +17,8 @@ mod texture_registry;
 pub use block_family::{BlockStateValue, CompiledBlockFamily, MAX_VARIANTS_PER_FAMILY};
 pub use block_registry::{
     BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, CompiledBlock,
-    CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, MaterialTextureSet,
+    CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, CompiledMeshClass,
+    MaterialTextureSet,
 };
 pub use compiler::ContentCompiler;
 pub use content_index::ContentIndex;
