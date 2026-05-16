@@ -37,7 +37,10 @@ impl<'a> ChunkAccessor<'a> {
         if let Some(v) = self.data.voxels.get_override(coord) {
             return v;
         }
-        let surface_h = self.data.terrain.get_height(coord.face, coord.u, coord.v);
+        let surface_h = self
+            .data
+            .terrain
+            .terrain_surface_layer(coord.face, coord.u, coord.v);
         if coord.layer > surface_h {
             if coord.layer <= self.data.terrain.sea_level_layer() {
                 return self.data.terrain.water_block().unwrap_or(VoxelId::AIR);
@@ -173,7 +176,7 @@ impl MeshGen {
             if u >= res || v >= res {
                 return 0;
             }
-            data.terrain.get_height(f, u, v)
+            data.terrain.terrain_surface_layer(f, u, v)
         };
 
         for u in u_start..u_end {
@@ -396,7 +399,7 @@ impl MeshGen {
         }
 
         // boost light if it's the natural surface (Grass) to ensure terrain looks bright
-        let natural_h = data.terrain.get_height(id.face, id.u, id.v);
+        let natural_h = data.terrain.terrain_surface_layer(id.face, id.u, id.v);
         if id.layer >= natural_h {
             light_val = 1.0;
         }

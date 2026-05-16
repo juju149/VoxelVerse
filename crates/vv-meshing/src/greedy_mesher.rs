@@ -260,7 +260,9 @@ fn merge_key(accessor: &ChunkAccessor<'_>, coord: VoxelCoord, dir: FaceDir) -> M
         FaceDir::Left => visual.layers.left,
         FaceDir::Right => visual.layers.right,
     };
-    let natural_h = data.terrain.get_height(coord.face, coord.u, coord.v);
+    let natural_h = data
+        .terrain
+        .terrain_surface_layer(coord.face, coord.u, coord.v);
     let light = if coord.layer >= natural_h {
         1.0
     } else if matches!(dir, FaceDir::Bottom) {

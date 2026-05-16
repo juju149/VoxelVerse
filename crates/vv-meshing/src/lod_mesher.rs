@@ -48,7 +48,7 @@ impl MeshGen {
             for ci in 0..=n {
                 let u = (key.x + ci * step).min(res.saturating_sub(1));
                 let v = (key.y + cj * step).min(res.saturating_sub(1));
-                h_corners.push(data.terrain.get_height(key.face, u, v));
+                h_corners.push(data.terrain.terrain_surface_layer(key.face, u, v));
             }
         }
         let cell_h = |i: u32, j: u32| -> u32 {

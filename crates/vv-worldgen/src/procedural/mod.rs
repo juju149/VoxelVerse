@@ -393,55 +393,20 @@ impl ProceduralPlanetTerrain {
         }
     }
 
+    pub fn terrain_surface_layer(&self, face: u8, u: u32, v: u32) -> u32 {
+        let base = self.get_height(face, u, v) as i32;
+        let adjusted = base + self.micro_height_offset(face, u, v);
+        adjusted.clamp(0, self.voxel_res.saturating_sub(1) as i32) as u32
+    }
+
     pub fn voxel_at(&self, coord: VoxelCoord, profile: PlanetProfile) -> VoxelId {
         if coord.layer >= self.voxel_res || coord.u >= self.voxel_res || coord.v >= self.voxel_res {
             return VoxelId::AIR;
         }
         let surface = self.surface_sample(coord.face, coord.u, coord.v);
 
-        // ── Micro-detail: two-octave height perturbation for organic surface ──────
-        // Bilinearly-interpolated per-corner hashes create smooth bumps at the
-        // voxel level without extra noise field lookups.  This fills in the
-        // ~10-voxel gap between field-cell resolution and single-voxel scale.
-        let micro_offset = {
-            // Octave 1: 4-voxel cells, ±2 voxels (fine surface texture).
-            let detail = {
-                const S: u32 = 4;
-                let cu = coord.u / S;
-                let cv = coord.v / S;
-                let fu = (coord.u % S) as f32 / S as f32;
-                let fv = (coord.v % S) as f32 / S as f32;
-                let c = |cu: u32, cv: u32| -> f32 {
-                    hash4(coord.face, cu, cv, 0xC3A5B1D7) as f32 / u32::MAX as f32 * 4.0 - 2.0
-                };
-                let su = fu * fu * (3.0 - 2.0 * fu);
-                let sv = fv * fv * (3.0 - 2.0 * fv);
-                c(cu, cv) * (1.0 - su) * (1.0 - sv)
-                    + c(cu + 1, cv) * su * (1.0 - sv)
-                    + c(cu, cv + 1) * (1.0 - su) * sv
-                    + c(cu + 1, cv + 1) * su * sv
-            };
-            // Octave 2: 16-voxel cells, ±3 voxels (medium rocky features).
-            let broad = {
-                const S: u32 = 16;
-                let cu = coord.u / S;
-                let cv = coord.v / S;
-                let fu = (coord.u % S) as f32 / S as f32;
-                let fv = (coord.v % S) as f32 / S as f32;
-                let c = |cu: u32, cv: u32| -> f32 {
-                    hash4(coord.face, cu, cv, 0x7B4F2E91) as f32 / u32::MAX as f32 * 6.0 - 3.0
-                };
-                let su = fu * fu * (3.0 - 2.0 * fu);
-                let sv = fv * fv * (3.0 - 2.0 * fv);
-                c(cu, cv) * (1.0 - su) * (1.0 - sv)
-                    + c(cu + 1, cv) * su * (1.0 - sv)
-                    + c(cu, cv + 1) * (1.0 - su) * sv
-                    + c(cu + 1, cv + 1) * su * sv
-            };
-            (detail + broad).round() as i32
-        };
-
-        let depth_from_surface = surface.height as i32 - coord.layer as i32 + micro_offset;
+        let surface_layer = self.terrain_surface_layer(coord.face, coord.u, coord.v);
+        let depth_from_surface = surface_layer as i32 - coord.layer as i32;
         let dir = CoordSystem::get_direction(coord.face, coord.u, coord.v, self.voxel_res);
         let ctx = GeneratedVoxelContext {
             face: coord.face,
@@ -456,6 +421,46 @@ impl ProceduralPlanetTerrain {
             return self.resolve_above_surface_voxel(&ctx);
         }
         self.resolve_voxel(&ctx, profile)
+    }
+
+    // Two-octave height perturbation for organic surface detail. Kept in one
+    // function so voxel resolution and mesh candidate generation cannot drift.
+    fn micro_height_offset(&self, face: u8, u: u32, v: u32) -> i32 {
+        // Octave 1: 4-voxel cells, +/-2 voxels.
+        let detail = {
+            const S: u32 = 4;
+            let cu = u / S;
+            let cv = v / S;
+            let fu = (u % S) as f32 / S as f32;
+            let fv = (v % S) as f32 / S as f32;
+            let c = |cu: u32, cv: u32| -> f32 {
+                hash4(face, cu, cv, 0xC3A5B1D7) as f32 / u32::MAX as f32 * 4.0 - 2.0
+            };
+            let su = fu * fu * (3.0 - 2.0 * fu);
+            let sv = fv * fv * (3.0 - 2.0 * fv);
+            c(cu, cv) * (1.0 - su) * (1.0 - sv)
+                + c(cu + 1, cv) * su * (1.0 - sv)
+                + c(cu, cv + 1) * (1.0 - su) * sv
+                + c(cu + 1, cv + 1) * su * sv
+        };
+        // Octave 2: 16-voxel cells, +/-3 voxels.
+        let broad = {
+            const S: u32 = 16;
+            let cu = u / S;
+            let cv = v / S;
+            let fu = (u % S) as f32 / S as f32;
+            let fv = (v % S) as f32 / S as f32;
+            let c = |cu: u32, cv: u32| -> f32 {
+                hash4(face, cu, cv, 0x7B4F2E91) as f32 / u32::MAX as f32 * 6.0 - 3.0
+            };
+            let su = fu * fu * (3.0 - 2.0 * fu);
+            let sv = fv * fv * (3.0 - 2.0 * fv);
+            c(cu, cv) * (1.0 - su) * (1.0 - sv)
+                + c(cu + 1, cv) * su * (1.0 - sv)
+                + c(cu, cv + 1) * (1.0 - su) * sv
+                + c(cu + 1, cv + 1) * su * sv
+        };
+        (detail + broad).round() as i32
     }
 
     pub fn features_for_chunk(&self, key: SurfaceChunkKey) -> Vec<FeatureStamp> {
