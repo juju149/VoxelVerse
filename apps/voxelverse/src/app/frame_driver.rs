@@ -9,5 +9,7 @@ pub(super) fn tick_game_frame(app: &mut GameApp<'_>, dt: f32) {
     tick_world_frame(&mut app.runtime, dt);
     tick_ui_frame(&mut app.runtime, dt);
     tick_player_frame(&mut app.runtime, &mut app.renderer, &mut app.audio, dt);
-    tick_render_frame(&mut app.runtime, &mut app.renderer, dt);
+    if tick_render_frame(&mut app.runtime, &mut app.renderer, dt) {
+        app.renderer.window.request_redraw();
+    }
 }

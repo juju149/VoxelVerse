@@ -1,6 +1,5 @@
-use crate::app::action_result::FeedbackEvent;
+use crate::app::action_result::{BlockSoundKind, FeedbackEvent};
 use vv_audio::{AudioEngine, SoundEvent, SoundKind};
-use vv_pack_compiler::CompiledSoundKind;
 use vv_render::{PlayerActionFeedback, Renderer};
 
 /// Forward a slice of feedback events produced by an action to the renderer and audio engine.
@@ -27,7 +26,7 @@ pub(super) fn route_feedback_events(
                     strength: *strength,
                 });
                 audio.play(SoundEvent::MineHit {
-                    sound_kind: *sound_kind,
+                    sound_kind: to_audio_kind(*sound_kind),
                     strength: *strength,
                 });
             }
@@ -39,28 +38,30 @@ pub(super) fn route_feedback_events(
                     strength: *strength,
                 });
                 audio.play(SoundEvent::BlockBreak {
-                    sound_kind: *sound_kind,
+                    sound_kind: to_audio_kind(*sound_kind),
                     strength: *strength,
                 });
             }
             FeedbackEvent::BlockPlace { sound_kind } => {
                 renderer.notify_player_action(PlayerActionFeedback::Place);
                 audio.play(SoundEvent::BlockPlace {
-                    sound_kind: *sound_kind,
+                    sound_kind: to_audio_kind(*sound_kind),
                 });
             }
         }
     }
 }
 
-pub(super) fn sound_kind(kind: CompiledSoundKind) -> SoundKind {
+/// Convert the app-layer `BlockSoundKind` to the audio-crate `SoundKind`.
+/// This conversion is the only place in the app that depends on both types.
+fn to_audio_kind(kind: BlockSoundKind) -> SoundKind {
     match kind {
-        CompiledSoundKind::None => SoundKind::None,
-        CompiledSoundKind::Grass => SoundKind::Grass,
-        CompiledSoundKind::Stone => SoundKind::Stone,
-        CompiledSoundKind::Wood => SoundKind::Wood,
-        CompiledSoundKind::Sand => SoundKind::Sand,
-        CompiledSoundKind::Snow => SoundKind::Snow,
-        CompiledSoundKind::Dirt => SoundKind::Dirt,
+        BlockSoundKind::None => SoundKind::None,
+        BlockSoundKind::Grass => SoundKind::Grass,
+        BlockSoundKind::Stone => SoundKind::Stone,
+        BlockSoundKind::Wood => SoundKind::Wood,
+        BlockSoundKind::Sand => SoundKind::Sand,
+        BlockSoundKind::Snow => SoundKind::Snow,
+        BlockSoundKind::Dirt => SoundKind::Dirt,
     }
 }

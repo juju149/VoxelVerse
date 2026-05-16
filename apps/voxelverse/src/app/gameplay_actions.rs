@@ -1,11 +1,10 @@
-use crate::app::action_result::{ActionResult, FeedbackEvent};
-use crate::app::feedback_router::sound_kind;
+use crate::app::action_result::{ActionResult, BlockSoundKind, FeedbackEvent, UiEvent};
 use vv_gameplay::{
     BlockAction, BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode,
     Controller, Hotbar, HotbarNotice, Inventory, ItemId, MiningFeedback, MiningState,
     MiningStrikeInput, Player,
 };
-use vv_pack_compiler::LootRegistry;
+use vv_pack_compiler::{CompiledSoundKind, LootRegistry};
 use vv_world::{BlockDamageResult, PlanetData};
 
 /// Context for placing a block. Contains only gameplay state — no renderer, no audio.
@@ -39,6 +38,20 @@ struct BreakBlockContext<'a> {
     drops_enabled: bool,
 }
 
+/// Convert a pack-level sound kind to the app-layer equivalent.
+/// The conversion lives here so no gameplay action imports a feedback or audio crate.
+fn block_sound(kind: CompiledSoundKind) -> BlockSoundKind {
+    match kind {
+        CompiledSoundKind::None => BlockSoundKind::None,
+        CompiledSoundKind::Grass => BlockSoundKind::Grass,
+        CompiledSoundKind::Stone => BlockSoundKind::Stone,
+        CompiledSoundKind::Wood => BlockSoundKind::Wood,
+        CompiledSoundKind::Sand => BlockSoundKind::Sand,
+        CompiledSoundKind::Snow => BlockSoundKind::Snow,
+        CompiledSoundKind::Dirt => BlockSoundKind::Dirt,
+    }
+}
+
 /// Place the block currently selected in the hotbar onto the targeted face.
 /// Returns all feedback and frame commands — never touches renderer or audio directly.
 pub(super) fn place_block(ctx: PlaceBlockContext<'_>) -> ActionResult {
@@ -49,9 +62,9 @@ pub(super) fn place_block(ctx: PlaceBlockContext<'_>) -> ActionResult {
         Some(voxel) => Some(voxel),
         None => {
             if selected.is_none() {
-                ctx.hotbar.show_notice(HotbarNotice::EmptySlot);
+                result.push_ui_event(UiEvent::HotbarNotice(HotbarNotice::EmptySlot));
             } else {
-                ctx.hotbar.show_notice(HotbarNotice::InvalidPlacement);
+                result.push_ui_event(UiEvent::HotbarNotice(HotbarNotice::InvalidPlacement));
             }
             result.push_redraw();
             return result;
@@ -69,7 +82,7 @@ pub(super) fn place_block(ctx: PlaceBlockContext<'_>) -> ActionResult {
     )
     .map(|(id, _)| id);
     if placement.is_none() {
-        ctx.hotbar.show_notice(HotbarNotice::InvalidPlacement);
+        result.push_ui_event(UiEvent::HotbarNotice(HotbarNotice::InvalidPlacement));
         result.push_redraw();
         return result;
     }
@@ -85,7 +98,7 @@ pub(super) fn place_block(ctx: PlaceBlockContext<'_>) -> ActionResult {
             ctx.hotbar.consume_selected();
             let snd = active_voxel
                 .and_then(|voxel| ctx.planet.content.block(voxel))
-                .map(|block| sound_kind(block.sound_kind))
+                .map(|block| block_sound(block.sound_kind))
                 .unwrap_or_default();
             result.push_feedback(FeedbackEvent::BlockPlace { sound_kind: snd });
             result.push_refresh_chunks(edit.dirty_chunks);
@@ -119,7 +132,7 @@ pub(super) fn mine_block(ctx: MineBlockContext<'_>, dt: f32) -> ActionResult {
     match feedback {
         MiningFeedback::None => {}
         MiningFeedback::Blocked => {
-            ctx.hotbar.show_notice(HotbarNotice::ProtectedBlock);
+            result.push_ui_event(UiEvent::HotbarNotice(HotbarNotice::ProtectedBlock));
             result.push_redraw();
         }
         MiningFeedback::Hit {
@@ -135,7 +148,7 @@ pub(super) fn mine_block(ctx: MineBlockContext<'_>, dt: f32) -> ActionResult {
                 .planet
                 .content
                 .block(voxel)
-                .map(|b| sound_kind(b.sound_kind))
+                .map(|b| block_sound(b.sound_kind))
                 .unwrap_or_default();
             result.push_feedback(FeedbackEvent::ToolSwing {
                 strength: impact_strength,
@@ -181,15 +194,21 @@ fn break_block(ctx: BreakBlockContext<'_>) -> ActionResult {
     let mut result = ActionResult::none();
     let edit = BlockInteraction::apply(BlockAction::Mine(ctx.coord), ctx.planet);
     if edit.dirty_chunks.is_empty() {
-        ctx.hotbar.show_notice(HotbarNotice::ProtectedBlock);
+        result.push_ui_event(UiEvent::HotbarNotice(HotbarNotice::ProtectedBlock));
         result.push_redraw();
         return result;
     }
 
     if ctx.drops_enabled {
         if let Some(block) = ctx.planet.content.block(ctx.voxel) {
+            let mut inventory_full = false;
             for (item_id, count) in roll_block_drops(&block.drops_key, ctx.loot) {
-                collect_drop(item_id, count, ctx.planet, ctx.hotbar, ctx.inventory);
+                if collect_drop(item_id, count, ctx.planet, ctx.hotbar, ctx.inventory) {
+                    inventory_full = true;
+                }
+            }
+            if inventory_full {
+                result.push_ui_event(UiEvent::HotbarNotice(HotbarNotice::Full));
             }
         }
     }
@@ -198,18 +217,17 @@ fn break_block(ctx: BreakBlockContext<'_>) -> ActionResult {
     result
 }
 
+/// Returns `true` if the item could not be collected (inventory and hotbar both full).
 fn collect_drop(
     item_id: ItemId,
     count: u32,
     planet: &PlanetData,
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
-) {
+) -> bool {
     let item = planet.items.get(item_id);
     let max_stack = item.map(|i| i.stack_size.0).unwrap_or(99);
-    if !hotbar.add(item_id, count, max_stack) && !inventory.add(item_id, count, max_stack) {
-        hotbar.show_notice(HotbarNotice::Full);
-    }
+    !hotbar.add(item_id, count, max_stack) && !inventory.add(item_id, count, max_stack)
 }
 
 fn roll_block_drops(drops_key: &str, loot: &LootRegistry) -> Vec<(ItemId, u32)> {
@@ -222,13 +240,14 @@ fn roll_block_drops(drops_key: &str, loot: &LootRegistry) -> Vec<(ItemId, u32)> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::action_result::FrameCommand;
+    use crate::app::action_result::{FrameCommand, UiEvent};
 
     #[test]
     fn action_result_starts_empty() {
         let r = ActionResult::none();
         assert!(r.feedback.is_empty());
         assert!(r.commands.is_empty());
+        assert!(r.ui_events.is_empty());
     }
 
     #[test]
@@ -269,6 +288,14 @@ mod tests {
         r.push_grab_cursor();
         assert_eq!(r.commands.len(), 1);
         assert!(matches!(r.commands[0], FrameCommand::GrabCursor));
+    }
+
+    #[test]
+    fn push_ui_event_adds_hotbar_notice() {
+        let mut r = ActionResult::none();
+        r.push_ui_event(UiEvent::HotbarNotice(HotbarNotice::EmptySlot));
+        assert_eq!(r.ui_events.len(), 1);
+        assert!(r.commands.is_empty());
     }
 
     #[test]

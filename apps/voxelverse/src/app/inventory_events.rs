@@ -1,10 +1,10 @@
 use crate::app::cursor::{grab_cursor, release_cursor};
+use crate::app::runtime_state::InventoryInputContext;
 use crate::ui::{
     HeldStack, InventoryButton, InventoryLayout, InventoryUiState, UiTheme, UiViewport,
 };
 use vv_gameplay::{
-    craft_recipe, quick_craft_recipe_indices, Controller, Hotbar, HotbarSlot, Inventory, Player,
-    SlotRef,
+    craft_recipe, quick_craft_recipe_indices, Controller, Hotbar, HotbarSlot, Inventory, SlotRef,
 };
 use vv_pack_compiler::{CompiledRecipe, RecipeRegistry, TagRegistry};
 use vv_render::Renderer;
@@ -12,42 +12,32 @@ use vv_world::PlanetData;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn handle_inventory_window_event(
     event: WindowEvent,
     target: &winit::event_loop::EventLoopWindowTarget<()>,
     renderer: &mut Renderer<'_>,
-    controller: &mut Controller,
-    player: &Player,
-    planet: &PlanetData,
-    hotbar: &mut Hotbar,
-    inventory: &mut Inventory,
-    inventory_ui: &mut InventoryUiState,
-    recipes: &RecipeRegistry,
-    tags: &TagRegistry,
-    shift_held: &mut bool,
-    console: &vv_gameplay::Console,
+    ctx: &mut InventoryInputContext<'_>,
 ) {
     match event {
         WindowEvent::CloseRequested => target.exit(),
         WindowEvent::Resized(size) => renderer.resize(size.width, size.height),
         WindowEvent::Focused(false) => release_cursor(renderer.window),
         WindowEvent::ModifiersChanged(mods) => {
-            *shift_held = mods.state().shift_key();
+            *ctx.shift_held = mods.state().shift_key();
         }
         WindowEvent::CursorMoved { position, .. } => {
-            inventory_ui.cursor = (position.x as f32, position.y as f32);
+            ctx.inventory_ui.cursor = (position.x as f32, position.y as f32);
             let theme = UiTheme::VOXELVERSE;
             let vp = UiViewport::new(renderer.config.width as f32, renderer.config.height as f32);
-            let layout = InventoryLayout::compute(&theme, vp, inventory_ui.user_zoom);
+            let layout = InventoryLayout::compute(&theme, vp, ctx.inventory_ui.user_zoom);
             let (px, py) = (position.x as f32, position.y as f32);
-            inventory_ui.hovered_slot = layout.slot_under_cursor(px, py);
-            inventory_ui.hovered_button = layout.button_under_cursor(px, py);
-            inventory_ui.hovered_search = layout.search_bar.contains(px, py);
-            inventory_ui.hovered_filter = layout.filter_under_cursor(px, py);
-            inventory_ui.hovered_recipe = layout
+            ctx.inventory_ui.hovered_slot = layout.slot_under_cursor(px, py);
+            ctx.inventory_ui.hovered_button = layout.button_under_cursor(px, py);
+            ctx.inventory_ui.hovered_search = layout.search_bar.contains(px, py);
+            ctx.inventory_ui.hovered_filter = layout.filter_under_cursor(px, py);
+            ctx.inventory_ui.hovered_recipe = layout
                 .recipe_under_cursor(px, py)
-                .and_then(|row| quick_craft_recipe_indices(recipes).get(row).copied());
+                .and_then(|row| quick_craft_recipe_indices(ctx.recipes).get(row).copied());
             renderer.window.request_redraw();
         }
         WindowEvent::MouseInput {
@@ -56,13 +46,13 @@ pub(super) fn handle_inventory_window_event(
             ..
         } => {
             handle_inventory_left_click(
-                hotbar,
-                inventory,
-                inventory_ui,
-                planet,
-                recipes,
-                tags,
-                *shift_held,
+                ctx.hotbar,
+                ctx.inventory,
+                ctx.inventory_ui,
+                ctx.planet,
+                ctx.recipes,
+                ctx.tags,
+                *ctx.shift_held,
             );
             renderer.window.request_redraw();
         }
@@ -71,7 +61,7 @@ pub(super) fn handle_inventory_window_event(
             button: MouseButton::Right,
             ..
         } => {
-            handle_inventory_right_click(hotbar, inventory, inventory_ui);
+            handle_inventory_right_click(ctx.hotbar, ctx.inventory, ctx.inventory_ui);
             renderer.window.request_redraw();
         }
         WindowEvent::KeyboardInput { event: key, .. } if key.state == ElementState::Pressed => {
@@ -79,21 +69,21 @@ pub(super) fn handle_inventory_window_event(
                 key.physical_key,
                 key.text.as_deref(),
                 renderer,
-                controller,
-                hotbar,
-                inventory,
-                inventory_ui,
+                ctx.controller,
+                ctx.hotbar,
+                ctx.inventory,
+                ctx.inventory_ui,
             );
         }
         WindowEvent::RedrawRequested => renderer.render(
-            controller,
-            player,
-            planet,
-            hotbar,
-            inventory,
-            inventory_ui,
-            recipes,
-            console,
+            ctx.controller,
+            ctx.player,
+            ctx.planet,
+            ctx.hotbar,
+            ctx.inventory,
+            ctx.inventory_ui,
+            ctx.recipes,
+            ctx.console,
         ),
         _ => {}
     }

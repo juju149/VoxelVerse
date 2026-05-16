@@ -24,7 +24,14 @@ pub(super) struct GameApp<'a> {
 
 impl<'a> GameApp<'a> {
     pub(super) fn new(window: &'a Window) -> Self {
-        let mut content = load_core_content();
+        let mut content = match load_core_content() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("[voxelverse] Content load failed:\n{e}");
+                eprintln!("[voxelverse] Run `cargo run -p vv-pack-doctor -- assets/packs/core` for details.");
+                std::process::exit(1);
+            }
+        };
         let golden_scene = golden_scene_enabled().then_some(GoldenScene::DEFAULT);
         if let Some(scene) = golden_scene {
             content.planet = scene.apply_planet(content.planet);

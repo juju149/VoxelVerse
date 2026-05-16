@@ -2,7 +2,15 @@ use crate::app::runtime_state::GameRuntime;
 use vv_render::{Renderer, StreamingView};
 
 /// Update all renderer state that depends on the current frame's gameplay data.
-pub(super) fn tick_render_frame(runtime: &mut GameRuntime, renderer: &mut Renderer<'_>, dt: f32) {
+///
+/// Returns `true` when the window must be repainted this frame.
+/// The game loop runs at display rate — this currently always returns `true`.
+/// When the renderer exposes per-system change signals, this can become selective.
+pub(super) fn tick_render_frame(
+    runtime: &mut GameRuntime,
+    renderer: &mut Renderer<'_>,
+    dt: f32,
+) -> bool {
     let cursor_id = runtime.cursor_id();
     renderer.update_cursor(runtime.planet(), cursor_id);
     renderer.update_block_damage_overlay(runtime.planet(), cursor_id);
@@ -33,5 +41,5 @@ pub(super) fn tick_render_frame(runtime: &mut GameRuntime, renderer: &mut Render
         runtime.mark_scene_snapshot_logged();
     }
 
-    renderer.window.request_redraw();
+    true
 }

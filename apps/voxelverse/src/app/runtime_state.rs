@@ -9,6 +9,21 @@ use vv_voxel::VoxelCoord;
 use vv_world::PlanetData;
 use winit::event::WindowEvent;
 
+/// Typed context for inventory input — replaces the 10-element tuple from the old
+/// `inventory_event_parts()` method.
+pub(super) struct InventoryInputContext<'a> {
+    pub(super) controller: &'a mut Controller,
+    pub(super) player: &'a Player,
+    pub(super) planet: &'a PlanetData,
+    pub(super) hotbar: &'a mut Hotbar,
+    pub(super) inventory: &'a mut Inventory,
+    pub(super) inventory_ui: &'a mut InventoryUiState,
+    pub(super) recipes: &'a RecipeRegistry,
+    pub(super) tags: &'a TagRegistry,
+    pub(super) shift_held: &'a mut bool,
+    pub(super) console: &'a Console,
+}
+
 /// Top-level runtime state. Fields are private; use controlled accessor methods.
 pub(super) struct GameRuntime {
     gameplay: GameplayRuntime,
@@ -16,6 +31,9 @@ pub(super) struct GameRuntime {
     content: RuntimeContent,
     planet: PlanetData,
     first_scene_snapshot_logged: bool,
+    /// True when dev/debug features are enabled.
+    /// Automatically active in debug builds; set via `VOXELVERSE_DEV` env var in release.
+    dev_mode: bool,
 }
 
 struct GameplayRuntime {
@@ -69,6 +87,7 @@ impl GameRuntime {
             },
             planet,
             first_scene_snapshot_logged: false,
+            dev_mode: cfg!(debug_assertions) || std::env::var("VOXELVERSE_DEV").is_ok(),
         }
     }
 
@@ -181,6 +200,10 @@ impl GameRuntime {
         self.first_scene_snapshot_logged = true;
     }
 
+    pub(super) fn dev_mode(&self) -> bool {
+        self.dev_mode
+    }
+
     // ── Multi-field action contexts ───────────────────────────────────────────
     // These methods split-borrow internal fields so callers never need to reach
     // into the private structs directly.
@@ -211,35 +234,21 @@ impl GameRuntime {
         }
     }
 
-    // ── Inventory event helpers ───────────────────────────────────────────────
-    // Provide structured access for inventory_events without exposing inner types.
+    // ── Inventory input context ───────────────────────────────────────────────
 
-    pub(super) fn inventory_event_parts(
-        &mut self,
-    ) -> (
-        &mut Controller,
-        &Player,
-        &PlanetData,
-        &mut Hotbar,
-        &mut Inventory,
-        &mut InventoryUiState,
-        &RecipeRegistry,
-        &TagRegistry,
-        &mut bool,
-        &Console,
-    ) {
-        (
-            &mut self.gameplay.controller,
-            &self.gameplay.player,
-            &self.planet,
-            &mut self.gameplay.hotbar,
-            &mut self.gameplay.inventory,
-            &mut self.ui.inventory,
-            &self.content.recipes,
-            &self.content.tags,
-            &mut self.ui.shift_held,
-            &self.ui.console,
-        )
+    pub(super) fn as_inventory_context(&mut self) -> InventoryInputContext<'_> {
+        InventoryInputContext {
+            controller: &mut self.gameplay.controller,
+            player: &self.gameplay.player,
+            planet: &self.planet,
+            hotbar: &mut self.gameplay.hotbar,
+            inventory: &mut self.gameplay.inventory,
+            inventory_ui: &mut self.ui.inventory,
+            recipes: &self.content.recipes,
+            tags: &self.content.tags,
+            shift_held: &mut self.ui.shift_held,
+            console: &self.ui.console,
+        }
     }
 
     // ── Console submit ────────────────────────────────────────────────────────

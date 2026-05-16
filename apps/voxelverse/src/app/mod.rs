@@ -4,6 +4,7 @@ mod cursor;
 mod debug_input;
 mod event_router;
 mod feedback_router;
+mod frame_commands;
 mod frame_driver;
 mod game_app;
 mod gameplay_actions;

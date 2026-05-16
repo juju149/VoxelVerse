@@ -62,31 +62,6 @@ pub(super) fn handle_inventory_input(
     runtime: &mut GameRuntime,
     renderer: &mut Renderer<'_>,
 ) {
-    let (
-        controller,
-        player,
-        planet,
-        hotbar,
-        inventory,
-        inventory_ui,
-        recipes,
-        tags,
-        shift_held,
-        console,
-    ) = runtime.inventory_event_parts();
-    handle_inventory_window_event(
-        event,
-        target,
-        renderer,
-        controller,
-        player,
-        planet,
-        hotbar,
-        inventory,
-        inventory_ui,
-        recipes,
-        tags,
-        shift_held,
-        console,
-    );
+    let mut ctx = runtime.as_inventory_context();
+    handle_inventory_window_event(event, target, renderer, &mut ctx);
 }

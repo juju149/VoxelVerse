@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn golden_scene_locks_planet_seed_resolution_and_quality() {
-        let content = load_core_content();
+        let content = load_core_content().expect("core pack must load in tests");
         let scene = GoldenScene::DEFAULT;
         let planet = scene.apply_planet(content.planet);
 

@@ -1,5 +1,6 @@
 use crate::app::cursor::{grab_cursor, release_cursor};
-use crate::app::debug_input::handle_dev_key;
+use crate::app::debug_input::decode_dev_key;
+use crate::app::frame_commands::{apply_action_result, apply_frame_commands};
 use crate::app::game_app::GameApp;
 use crate::app::input_intent::{intent_for_hotbar_key, intent_for_mouse_button, intent_for_scroll};
 use crate::app::player_input_router::dispatch_intent;
@@ -64,13 +65,19 @@ fn route_game_event(app: &mut GameApp<'_>, event: WindowEvent, target: &EventLoo
 
         WindowEvent::MouseInput { state, button, .. } => {
             if let Some(intent) = intent_for_mouse_button(button, state) {
-                dispatch_intent(intent, &mut app.runtime, &mut app.renderer, &mut app.audio);
+                let w = app.renderer.config.width as f32;
+                let h = app.renderer.config.height as f32;
+                let result = dispatch_intent(intent, &mut app.runtime, w, h);
+                apply_action_result(result, &mut app.renderer, &mut app.audio, &mut app.runtime);
             }
         }
 
         WindowEvent::MouseWheel { delta, .. } if app.runtime.first_person() => {
             if let Some(intent) = intent_for_scroll(delta) {
-                dispatch_intent(intent, &mut app.runtime, &mut app.renderer, &mut app.audio);
+                let w = app.renderer.config.width as f32;
+                let h = app.renderer.config.height as f32;
+                let result = dispatch_intent(intent, &mut app.runtime, w, h);
+                apply_action_result(result, &mut app.renderer, &mut app.audio, &mut app.runtime);
             }
         }
 
@@ -87,29 +94,34 @@ fn route_game_event(app: &mut GameApp<'_>, event: WindowEvent, target: &EventLoo
 fn route_pressed_key(app: &mut GameApp<'_>, key: PhysicalKey) {
     // Inventory toggle.
     if key == PhysicalKey::Code(KeyCode::KeyE) {
-        dispatch_intent(
+        let w = app.renderer.config.width as f32;
+        let h = app.renderer.config.height as f32;
+        let result = dispatch_intent(
             crate::app::input_intent::InputIntent::ToggleInventory,
             &mut app.runtime,
-            &mut app.renderer,
-            &mut app.audio,
+            w,
+            h,
         );
-        if app.runtime.inventory_ui().is_open {
-            release_cursor(app.renderer.window);
-        } else if app.runtime.first_person() {
-            grab_cursor(app.renderer.window);
-        }
+        apply_action_result(result, &mut app.renderer, &mut app.audio, &mut app.runtime);
         return;
     }
 
     // Hotbar digit keys.
     if let Some(intent) = intent_for_hotbar_key(key) {
-        dispatch_intent(intent, &mut app.runtime, &mut app.renderer, &mut app.audio);
+        let w = app.renderer.config.width as f32;
+        let h = app.renderer.config.height as f32;
+        let result = dispatch_intent(intent, &mut app.runtime, w, h);
+        apply_action_result(result, &mut app.renderer, &mut app.audio, &mut app.runtime);
         return;
     }
 
-    // Dev / debug keys (planet resize, quality toggles).
-    let (planet, player) = app.runtime.planet_and_player_mut();
-    handle_dev_key(key, &mut app.renderer, planet, player);
+    // Dev / debug keys — only active when dev_mode is enabled.
+    if app.runtime.dev_mode() {
+        let cmds = decode_dev_key(key);
+        if !cmds.is_empty() {
+            apply_frame_commands(cmds, &mut app.renderer, &mut app.runtime);
+        }
+    }
 }
 
 // ─── System event routing (active while console or other overlay is open) ─────
