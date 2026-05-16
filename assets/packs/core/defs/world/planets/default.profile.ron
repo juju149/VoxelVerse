@@ -2,8 +2,8 @@ PlanetProfile(
     display_name: "Default Living Planet",
     seed: 1,
     shape: SphericalVoxelPlanet((
-        resolution: 10000,
-        surface_layer: 5000,
+        resolution: 20000,
+        surface_layer: 10000,
         voxel_size_meters: 0.5,
         edge_rounding_radius_voxels: 0.16,
         core_layers: 6,
