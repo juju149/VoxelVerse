@@ -1,4 +1,4 @@
-use super::Renderer;
+use super::{HotbarCacheSignature, Renderer};
 use crate::ui::{ComponentState, UiRect, UiTheme};
 use crate::Vertex;
 use vv_gameplay::{Hotbar, HOTBAR_SLOT_COUNT};
@@ -73,6 +73,14 @@ impl<'a> Renderer<'a> {
     }
 
     pub fn update_hotbar_mesh(&mut self, hotbar: &Hotbar, planet: &PlanetData) {
+        let signature = HotbarCacheSignature {
+            revision: hotbar.revision(),
+            viewport: (self.config.width, self.config.height),
+        };
+        if self.hotbar_cache_signature == Some(signature) {
+            return;
+        }
+
         let layout = self.hotbar_layout();
         let theme = UiTheme::VOXELVERSE;
         let mut verts = Vec::with_capacity(512);
@@ -119,6 +127,7 @@ impl<'a> Renderer<'a> {
         self.queue
             .write_buffer(&self.hotbar_i_buf, 0, bytemuck::cast_slice(&inds));
         self.hotbar_inds = inds.len() as u32;
+        self.hotbar_cache_signature = Some(signature);
     }
 
     pub(super) fn hotbar_text_specs(&self, hotbar: &Hotbar) -> Vec<HotbarTextSpec> {

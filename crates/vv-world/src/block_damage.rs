@@ -17,13 +17,21 @@ pub enum BlockDamageResult {
 #[derive(Clone, Debug, Default)]
 pub struct BlockDamageLayer {
     entries: HashMap<VoxelCoord, BlockDamage>,
+    revision: u64,
 }
 
 impl BlockDamageLayer {
     pub fn new() -> Self {
         Self {
             entries: HashMap::new(),
+            revision: 0,
         }
+    }
+
+    /// Monotonic counter incremented on every mutation. Consumers cache the
+    /// last value they saw and skip work when unchanged.
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     pub fn get(&self, coord: VoxelCoord) -> Option<BlockDamage> {
@@ -47,6 +55,7 @@ impl BlockDamageLayer {
             .entry(coord)
             .or_insert(BlockDamage { voxel, amount: 0.0 });
         entry.amount += amount;
+        self.revision = self.revision.wrapping_add(1);
 
         if entry.amount >= break_threshold {
             self.entries.remove(&coord);
@@ -81,11 +90,16 @@ impl BlockDamageLayer {
     }
 
     pub fn clear(&mut self, coord: VoxelCoord) {
-        self.entries.remove(&coord);
+        if self.entries.remove(&coord).is_some() {
+            self.revision = self.revision.wrapping_add(1);
+        }
     }
 
     pub fn clear_all(&mut self) {
-        self.entries.clear();
+        if !self.entries.is_empty() {
+            self.entries.clear();
+            self.revision = self.revision.wrapping_add(1);
+        }
     }
 
     pub fn clear_if_voxel_changed(&mut self, coord: VoxelCoord, voxel: VoxelId) {
@@ -95,6 +109,7 @@ impl BlockDamageLayer {
             .is_some_and(|damage| damage.voxel != voxel)
         {
             self.entries.remove(&coord);
+            self.revision = self.revision.wrapping_add(1);
         }
     }
 

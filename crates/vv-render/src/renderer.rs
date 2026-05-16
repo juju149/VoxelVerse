@@ -65,6 +65,7 @@ pub struct Renderer<'a> {
     swash_cache: SwashCache,
     text_atlas: TextAtlas,
     text_renderer: GlyphRenderer,
+    text_cache: text_cache::TextCache,
 
     // --- SHADOWS ---
     shadow_view: wgpu::TextureView,
@@ -187,6 +188,12 @@ pub struct Renderer<'a> {
     engine_debug_page: bool,
 
     // --- QUALITY ---
+    /// Cached signatures so we skip rebuilding meshes when their inputs are
+    /// unchanged.  Each entry tracks `(revision, viewport, …)` of the last
+    /// successful upload.
+    hotbar_cache_signature: Option<HotbarCacheSignature>,
+    block_damage_cache_signature: Option<BlockDamageCacheSignature>,
+
     pub quality: QualitySettings,
     /// Edge length of the shadow depth texture, in pixels.  Read by the main
     /// render pass for texel-snapping the sun view matrix.
@@ -220,6 +227,18 @@ struct MeshJobResult<K> {
     elapsed_ms: f32,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct HotbarCacheSignature {
+    revision: u64,
+    viewport: (u32, u32),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct BlockDamageCacheSignature {
+    revision: u64,
+    focused: Option<VoxelCoord>,
+}
+
 mod block_damage_overlay;
 mod cloud_renderer;
 mod debug_draw;
@@ -240,6 +259,7 @@ mod render_resources;
 mod setup;
 mod sky_renderer;
 mod terrain_renderer;
+mod text_cache;
 mod ui_renderer;
 mod world_streamer;
 

@@ -30,6 +30,7 @@ pub struct Hotbar {
     selected: usize,
     notice: Option<HotbarNotice>,
     notice_seconds: f32,
+    revision: u64,
 }
 
 impl Hotbar {
@@ -41,7 +42,19 @@ impl Hotbar {
             selected: 0,
             notice: None,
             notice_seconds: 0.0,
+            revision: 0,
         }
+    }
+
+    /// Monotonic counter bumped on every visual state change (selection,
+    /// slot content, notice).  Renderers cache the last seen value to skip
+    /// rebuilding the hotbar mesh when nothing changed.
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    fn bump(&mut self) {
+        self.revision = self.revision.wrapping_add(1);
     }
 
     pub fn slots(&self) -> &[Option<HotbarSlot>; HOTBAR_SLOT_COUNT] {
@@ -52,6 +65,7 @@ impl Hotbar {
     /// between the hotbar and the inventory in a single shot.
     pub fn set_slots(&mut self, slots: [Option<HotbarSlot>; HOTBAR_SLOT_COUNT]) {
         self.slots = slots;
+        self.bump();
     }
 
     pub fn selected_index(&self) -> usize {
@@ -67,14 +81,19 @@ impl Hotbar {
     }
 
     pub fn select(&mut self, index: usize) {
-        if index < HOTBAR_SLOT_COUNT {
+        if index < HOTBAR_SLOT_COUNT && self.selected != index {
             self.selected = index;
+            self.bump();
         }
     }
 
     pub fn select_offset(&mut self, delta: i32) {
         let len = HOTBAR_SLOT_COUNT as i32;
-        self.selected = (self.selected as i32 + delta).rem_euclid(len) as usize;
+        let next = (self.selected as i32 + delta).rem_euclid(len) as usize;
+        if next != self.selected {
+            self.selected = next;
+            self.bump();
+        }
     }
 
     pub fn can_accept(&self, item_id: ItemId, max_stack: u32) -> bool {
@@ -88,14 +107,21 @@ impl Hotbar {
     /// slots first, then occupies empty slots. Returns `true` on success.
     pub fn add(&mut self, item_id: ItemId, count: u32, max_stack: u32) -> bool {
         let mut remaining = count;
+        let mut changed = false;
 
         // Stack into existing matching slots first.
         for slot in self.slots.iter_mut().flatten() {
             if slot.item_id == item_id && slot.quantity < max_stack {
                 let added = slot.try_add(remaining, max_stack);
+                if added > 0 {
+                    changed = true;
+                }
                 remaining -= added;
                 if remaining == 0 {
                     self.clear_notice();
+                    if changed {
+                        self.bump();
+                    }
                     return true;
                 }
             }
@@ -107,9 +133,14 @@ impl Hotbar {
                 let batch = remaining.min(max_stack);
                 *slot = Some(ItemStack::new(item_id, batch));
                 remaining -= batch;
+                changed = true;
             } else {
                 break;
             }
+        }
+
+        if changed {
+            self.bump();
         }
 
         if remaining == 0 {
@@ -129,18 +160,23 @@ impl Hotbar {
             self.slots[self.selected] = None;
         }
         self.clear_notice();
+        self.bump();
         Some(item_id)
     }
 
     pub fn show_notice(&mut self, notice: HotbarNotice) {
+        if self.notice != Some(notice) {
+            self.bump();
+        }
         self.notice = Some(notice);
         self.notice_seconds = Self::NOTICE_DURATION_SECONDS;
     }
 
     pub fn update(&mut self, dt: f32) {
         self.notice_seconds = (self.notice_seconds - dt).max(0.0);
-        if self.notice_seconds <= 0.0 {
+        if self.notice_seconds <= 0.0 && self.notice.is_some() {
             self.notice = None;
+            self.bump();
         }
     }
 
@@ -149,6 +185,9 @@ impl Hotbar {
     }
 
     fn clear_notice(&mut self) {
+        if self.notice.is_some() {
+            self.bump();
+        }
         self.notice = None;
         self.notice_seconds = 0.0;
     }

@@ -1,6 +1,7 @@
 /// Per-frame budgets that govern how aggressively the scheduler dispatches
-/// and uploads jobs.  Lowering these reduces GPU stalls at the cost of
-/// slower streaming; raising them speeds up loading at the cost of frame spikes.
+/// and uploads jobs.  Upload paths apply three ceilings simultaneously
+/// (count, bytes, time) so a single oversized chunk cannot spike the frame
+/// even if the chunk-count budget still allows another upload.
 #[derive(Clone, Copy, Debug)]
 pub struct SchedulerBudget {
     /// Max mesh upload operations per frame (voxel chunks).
@@ -15,19 +16,38 @@ pub struct SchedulerBudget {
     pub dispatch_lod: usize,
     /// Max simultaneous in-flight LOD jobs.
     pub max_pending_lod: usize,
+    /// Cumulative byte ceiling on uploads per frame (voxel + LOD combined).
+    /// Picked at roughly 4–6 average chunks worth, so one giant chunk caps
+    /// the frame instead of streaming six in a row.
+    pub upload_bytes_per_frame: usize,
+    /// Wall-clock ceiling on the upload phase, in milliseconds.  Guards
+    /// against GPU driver pauses (e.g. allocator stalls) snowballing into a
+    /// visible hitch.
+    pub upload_time_budget_ms: f32,
 }
 
 impl Default for SchedulerBudget {
     fn default() -> Self {
         Self {
-            upload_voxel: 4,
-            dispatch_voxel: 4,
-            max_pending_voxel: 16,
-            upload_lod: 8,
-            dispatch_lod: 10,
-            max_pending_lod: 24,
+            upload_voxel: 8,
+            dispatch_voxel: 8,
+            max_pending_voxel: 48,
+            upload_lod: 12,
+            dispatch_lod: 14,
+            max_pending_lod: 32,
+            upload_bytes_per_frame: 16 * 1024 * 1024,
+            upload_time_budget_ms: 6.0,
         }
     }
+}
+
+/// Cumulative upload state tracked per frame by the renderer and fed back
+/// into the scheduler to decide whether another upload may proceed.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct UploadBudgetState {
+    pub count: usize,
+    pub bytes: usize,
+    pub elapsed_ms: f32,
 }
 
 /// Lightweight per-frame statistics produced by the scheduler.
@@ -64,8 +84,10 @@ impl MeshScheduler {
     }
 
     /// Returns `true` if another voxel mesh can be uploaded to GPU this frame.
-    pub fn can_upload_voxel(&self, uploaded: usize) -> bool {
-        uploaded < self.budget.upload_voxel
+    /// Gated by count, total byte volume and wall-clock time so any single
+    /// dimension can stop the upload loop.
+    pub fn can_upload_voxel(&self, state: &UploadBudgetState) -> bool {
+        self.within_upload_envelope(state, self.budget.upload_voxel)
     }
 
     /// Returns `true` if a new LOD job can be dispatched this frame.
@@ -74,14 +96,28 @@ impl MeshScheduler {
     }
 
     /// Returns `true` if another LOD mesh can be uploaded to GPU this frame.
-    pub fn can_upload_lod(&self, uploaded: usize) -> bool {
-        uploaded < self.budget.upload_lod
+    pub fn can_upload_lod(&self, state: &UploadBudgetState) -> bool {
+        self.within_upload_envelope(state, self.budget.upload_lod)
+    }
+
+    fn within_upload_envelope(&self, state: &UploadBudgetState, count_ceiling: usize) -> bool {
+        state.count < count_ceiling
+            && state.bytes < self.budget.upload_bytes_per_frame
+            && state.elapsed_ms < self.budget.upload_time_budget_ms
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn state(count: usize, bytes: usize, elapsed_ms: f32) -> UploadBudgetState {
+        UploadBudgetState {
+            count,
+            bytes,
+            elapsed_ms,
+        }
+    }
 
     #[test]
     fn dispatch_allowed_within_budget() {
@@ -93,37 +129,52 @@ mod tests {
     #[test]
     fn dispatch_blocked_when_dispatch_limit_reached() {
         let s = MeshScheduler::new(SchedulerBudget::default());
-        // budget.dispatch_voxel = 4
-        assert!(!s.can_dispatch_voxel(4, 0));
+        let dispatch = s.budget.dispatch_voxel;
+        assert!(!s.can_dispatch_voxel(dispatch, 0));
     }
 
     #[test]
     fn dispatch_blocked_when_pending_limit_reached() {
         let s = MeshScheduler::new(SchedulerBudget::default());
-        // budget.max_pending_voxel = 16
-        assert!(!s.can_dispatch_voxel(0, 16));
+        let pending = s.budget.max_pending_voxel;
+        assert!(!s.can_dispatch_voxel(0, pending));
     }
 
     #[test]
     fn upload_allowed_within_budget() {
         let s = MeshScheduler::new(SchedulerBudget::default());
-        assert!(s.can_upload_voxel(3));
+        assert!(s.can_upload_voxel(&state(3, 0, 0.0)));
     }
 
     #[test]
-    fn upload_blocked_at_limit() {
+    fn upload_blocked_at_count_limit() {
         let s = MeshScheduler::new(SchedulerBudget::default());
-        // budget.upload_voxel = 4
-        assert!(!s.can_upload_voxel(4));
+        let limit = s.budget.upload_voxel;
+        assert!(!s.can_upload_voxel(&state(limit, 0, 0.0)));
+    }
+
+    #[test]
+    fn upload_blocked_when_bytes_exceed_budget() {
+        let s = MeshScheduler::new(SchedulerBudget::default());
+        let bytes = s.budget.upload_bytes_per_frame;
+        assert!(!s.can_upload_voxel(&state(0, bytes, 0.0)));
+    }
+
+    #[test]
+    fn upload_blocked_when_time_exceeds_budget() {
+        let s = MeshScheduler::new(SchedulerBudget::default());
+        let ms = s.budget.upload_time_budget_ms;
+        assert!(!s.can_upload_voxel(&state(0, 0, ms)));
     }
 
     #[test]
     fn lod_budget_independent_from_voxel_budget() {
         let s = MeshScheduler::new(SchedulerBudget::default());
-        // Can dispatch LOD even if voxel budget exhausted
         assert!(s.can_dispatch_lod(0, 0));
-        assert!(!s.can_dispatch_lod(10, 0)); // dispatch_lod = 10
-        assert!(!s.can_upload_lod(8)); // upload_lod = 8
+        let dispatch = s.budget.dispatch_lod;
+        assert!(!s.can_dispatch_lod(dispatch, 0));
+        let limit = s.budget.upload_lod;
+        assert!(!s.can_upload_lod(&state(limit, 0, 0.0)));
     }
 
     #[test]

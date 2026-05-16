@@ -1,6 +1,6 @@
 use crate::{
-    BlockDamageLayer, BlockDamageResult, BrokenPropLayer, PlanetProfile, TerrainVisualPalette,
-    VoxModelRegistry, VoxelRuntime, WorldTime,
+    BlockDamageLayer, BlockDamageResult, BrokenPropLayer, PlanetProfile, PlanetSnapshot,
+    TerrainVisualPalette, VoxModelRegistry, VoxelRuntime, WorldTime,
 };
 use std::sync::Arc;
 use vv_math::CoordSystem;
@@ -39,7 +39,7 @@ pub trait VoxelRead {
 
 #[derive(Clone)]
 pub struct PlanetData {
-    pub voxels: VoxelRuntime,
+    pub voxels: Arc<VoxelRuntime>,
     pub content: Arc<BlockRegistry>,
     pub items: Arc<ItemRegistry>,
     pub terrain_visuals: Arc<TerrainVisualPalette>,
@@ -53,7 +53,7 @@ pub struct PlanetData {
     /// Read-only registry of pre-loaded .vox prop models.
     pub prop_models: Arc<VoxModelRegistry>,
     /// Mutable set of prop columns the player has explicitly destroyed.
-    pub broken_props: BrokenPropLayer,
+    pub broken_props: Arc<BrokenPropLayer>,
     /// Persistent per-voxel damage used by gameplay and rendered as cracks.
     pub block_damage: BlockDamageLayer,
     /// Surface-chunk key of the player's current position (updated each frame
@@ -113,7 +113,7 @@ impl PlanetData {
         let block_ids = PlanetBlockIds::from_registry(&registry);
 
         Self {
-            voxels: VoxelRuntime::new(),
+            voxels: Arc::new(VoxelRuntime::new()),
             block_ids,
             content: registry,
             items,
@@ -126,7 +126,7 @@ impl PlanetData {
             terrain,
             world_time: WorldTime::new(1_200.0, 0.15),
             prop_models,
-            broken_props: BrokenPropLayer::new(),
+            broken_props: Arc::new(BrokenPropLayer::new()),
             block_damage: BlockDamageLayer::new(),
             player_surface_key: None,
             seed: profile.seed,
@@ -143,7 +143,7 @@ impl PlanetData {
             self.resolution = new_res.max(8);
         }
 
-        self.voxels.clear();
+        Arc::make_mut(&mut self.voxels).clear();
         self.block_damage.clear_all();
         self.planet_def = self.planet_def.with_resolution(self.resolution);
         self.planet_def.seed = self.seed;
@@ -173,7 +173,7 @@ impl PlanetData {
         // If a prop is sitting directly above the broken block, destroy it too.
         // Props sit at `surface_layer + 1`, so a prop whose surface_layer == coord.layer
         // is supported by this block.
-        self.broken_props.break_prop(coord.face, coord.u, coord.v);
+        Arc::make_mut(&mut self.broken_props).break_prop(coord.face, coord.u, coord.v);
 
         self.set_voxel(coord, VoxelId::AIR)
     }
@@ -203,10 +203,28 @@ impl PlanetData {
         self.block_damage.clear(coord);
         let generated = self.generated_voxel(coord);
         let override_voxel = (voxel != generated).then_some(voxel);
-        self.voxels.set_override(coord, override_voxel);
+        Arc::make_mut(&mut self.voxels).set_override(coord, override_voxel);
         VoxelEditResult {
             changed: coord,
             dirty_chunks: Self::dirty_chunks_for_coord(self.resolution, coord),
+        }
+    }
+
+    /// Build a cheap read-only snapshot for off-thread mesh workers.
+    /// Every field is either an `Arc` clone (refcount bump) or a `Copy` value.
+    pub fn snapshot(&self) -> PlanetSnapshot {
+        PlanetSnapshot {
+            voxels: Arc::clone(&self.voxels),
+            broken_props: Arc::clone(&self.broken_props),
+            content: Arc::clone(&self.content),
+            terrain_visuals: Arc::clone(&self.terrain_visuals),
+            prop_models: Arc::clone(&self.prop_models),
+            terrain: self.terrain.clone(),
+            profile: self.profile,
+            resolution: self.resolution,
+            has_core: self.has_core,
+            core_voxel: self.block_ids.core,
+            player_surface_key: self.player_surface_key,
         }
     }
 

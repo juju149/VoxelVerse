@@ -3,10 +3,14 @@ use crate::lod_animation::AnyKey;
 use crate::lod_streaming::StreamingView;
 use crate::types::{ChunkMesh, Vertex};
 use glam::Vec3;
-use vv_meshing::{CpuMesh, MeshGen};
+use vv_meshing::{CpuMesh, MeshGen, UploadBudgetState};
 use vv_voxel::{LodKey, SurfaceChunkKey};
 use vv_world::PlanetData;
 use wgpu::util::DeviceExt;
+
+fn mesh_byte_size(mesh: &CpuMesh) -> usize {
+    mesh.vertices.len() * std::mem::size_of::<Vertex>() + mesh.indices.len() * 4
+}
 
 /// Convert a `CpuMesh` vertex slice to GPU-ready `Vertex` bytes.
 fn cpu_verts_to_gpu(cpu: &CpuMesh) -> Vec<Vertex> {
@@ -77,9 +81,16 @@ impl<'a> Renderer<'a> {
     }
 
     pub(super) fn process_load_queue(&mut self, _player_pos: Vec3, planet: &PlanetData) {
-        // Drain completed voxel meshes from the channel.
-        let mut uploaded = 0;
-        while self.scheduler.can_upload_voxel(uploaded) {
+        // Drain completed voxel meshes from the channel.  Upload budget is
+        // tracked in (count, bytes, ms) — any single ceiling can stop the loop
+        // so a giant chunk cannot snowball into a frame spike.
+        let upload_started = std::time::Instant::now();
+        let mut budget = UploadBudgetState::default();
+        loop {
+            budget.elapsed_ms = upload_started.elapsed().as_secs_f32() * 1000.0;
+            if !self.scheduler.can_upload_voxel(&budget) {
+                break;
+            }
             let Ok(result) = self.mesh_rx.try_recv() else {
                 break;
             };
@@ -96,8 +107,10 @@ impl<'a> Renderer<'a> {
                 && still_needed
                 && (is_dirty_rebuild || !self.chunks.contains_key(&key))
             {
+                let bytes = mesh_byte_size(&mesh);
                 self.upload_chunk_buffers(key, mesh, planet.profile.edge_rounding_radius_voxels);
-                uploaded += 1;
+                budget.count += 1;
+                budget.bytes += bytes;
                 self.scheduler_stats.uploaded_voxel += 1;
             }
         }
@@ -119,12 +132,12 @@ impl<'a> Renderer<'a> {
             }
             self.pending_chunks.insert(key);
             self.pending_dirty.insert(key);
-            let mut planet_clone = planet.clone();
-            planet_clone.player_surface_key = self.player_chunk_pos;
+            let mut snapshot = planet.snapshot();
+            snapshot.player_surface_key = self.player_chunk_pos;
             let tx = self.mesh_tx.clone();
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
-                let mesh = MeshGen::build_chunk(key, &planet_clone);
+                let mesh = MeshGen::build_chunk(key, &snapshot);
                 let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
                 let _ = tx.send(MeshJobResult {
                     key,
@@ -135,7 +148,7 @@ impl<'a> Renderer<'a> {
             self.scheduler_stats.dispatched_voxel += 1;
         }
 
-        if !self.scheduler.can_upload_voxel(uploaded) || self.load_queue.is_empty() {
+        if !self.scheduler.can_upload_voxel(&budget) || self.load_queue.is_empty() {
             return;
         }
         if !self.scheduler.can_dispatch_voxel(
@@ -158,12 +171,12 @@ impl<'a> Renderer<'a> {
                 continue;
             }
             self.pending_chunks.insert(key);
-            let mut planet_clone = planet.clone();
-            planet_clone.player_surface_key = self.player_chunk_pos;
+            let mut snapshot = planet.snapshot();
+            snapshot.player_surface_key = self.player_chunk_pos;
             let tx = self.mesh_tx.clone();
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
-                let mesh = MeshGen::build_chunk(key, &planet_clone);
+                let mesh = MeshGen::build_chunk(key, &snapshot);
                 let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
                 let _ = tx.send(MeshJobResult {
                     key,

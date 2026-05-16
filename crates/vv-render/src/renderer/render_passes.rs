@@ -1,9 +1,11 @@
 use super::terrain_renderer::TerrainRenderer;
+use super::text_cache::TextSlot;
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::lod_animation::AnyKey;
 use crate::types::{ChunkMesh, Vertex};
 use crate::ui::InventoryUiState;
 use glyphon::{Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea, TextBounds};
+use std::collections::HashSet;
 use vv_gameplay::Console;
 use vv_gameplay::Controller;
 use vv_gameplay::{Hotbar, Inventory, Player};
@@ -11,6 +13,15 @@ use vv_math::Frustum;
 use vv_meshing::MeshGen;
 use vv_pack_compiler::RecipeRegistry;
 use vv_world::PlanetData;
+
+struct PendingText {
+    slot: TextSlot,
+    text: String,
+    size: f32,
+    color: [u8; 3],
+    left: f32,
+    top: f32,
+}
 
 impl<'a> Renderer<'a> {
     pub fn render_loading(&mut self, progress: f32, message: &str) {
@@ -143,6 +154,7 @@ impl<'a> Renderer<'a> {
         self.update_console_mesh(console.height_fraction);
         if inventory_ui.is_open {
             self.hotbar_inds = 0;
+            self.hotbar_cache_signature = None;
         } else {
             self.update_hotbar_mesh(hotbar, planet);
         }
@@ -388,24 +400,10 @@ impl<'a> Renderer<'a> {
             shadow_pass.set_bind_group(0, &self.shadow_global_bind, &[]);
             shadow_pass.set_bind_group(2, &self.atlas_bind, &[]);
 
+            // Only near voxel chunks contribute to the sun's 60-unit ortho box.
+            // LOD tiles live well outside the shadow frustum, so iterating them
+            // here only wastes per-mesh `intersects_sphere` work on the CPU.
             for mesh in self.chunks.values() {
-                if TerrainRenderer::behind_planet_horizon(
-                    surface_radius,
-                    cam_pos,
-                    mesh.center,
-                    mesh.radius,
-                ) {
-                    continue;
-                }
-                if sun_frustum.intersects_sphere(mesh.center, mesh.radius) {
-                    shadow_pass.set_bind_group(1, &mesh.bind_group, &[]);
-                    shadow_pass.set_vertex_buffer(0, mesh.v_buf.slice(..));
-                    shadow_pass.set_index_buffer(mesh.i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                    shadow_pass.draw_indexed(0..mesh.num_inds, 0, 0..1);
-                    shadow_draw_calls += 1;
-                }
-            }
-            for mesh in self.lod_chunks.values() {
                 if TerrainRenderer::behind_planet_horizon(
                     surface_radius,
                     cam_pos,
@@ -641,7 +639,8 @@ impl<'a> Renderer<'a> {
         // --- PASS 3: TEXT RENDER ---
         // run this pass every frame to show FPS
         {
-            let mut text_buffers = Vec::new();
+            let mut pending: Vec<PendingText> = Vec::new();
+
             if console.height_fraction > 0.0 {
                 let console_pixel_height =
                     (self.config.height as f32 / 2.0) * console.height_fraction;
@@ -653,35 +652,21 @@ impl<'a> Renderer<'a> {
                     if y < 0.0 {
                         break;
                     }
-
-                    let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
-                    buffer.set_size(
-                        &mut self.font_system,
-                        self.config.width as f32,
-                        self.config.height as f32,
-                    );
-                    buffer.set_text(
-                        &mut self.font_system,
-                        line_text,
-                        Attrs::new()
-                            .family(Family::Monospace)
-                            .color(glyphon::Color::rgb(
-                                (color[0] * 255.0) as u8,
-                                (color[1] * 255.0) as u8,
-                                (color[2] * 255.0) as u8,
-                            )),
-                        Shaping::Advanced,
-                    );
-                    text_buffers.push((buffer, 10.0, y));
+                    pending.push(PendingText {
+                        slot: TextSlot::console_history(i as u32),
+                        text: line_text.clone(),
+                        size: 16.0,
+                        color: [
+                            (color[0] * 255.0) as u8,
+                            (color[1] * 255.0) as u8,
+                            (color[2] * 255.0) as u8,
+                        ],
+                        left: 10.0,
+                        top: y,
+                    });
                 }
 
                 let input_y = console_pixel_height - 20.0;
-                let mut input_buf = Buffer::new(&mut self.font_system, Metrics::new(16.0, 20.0));
-                input_buf.set_size(
-                    &mut self.font_system,
-                    self.config.width as f32,
-                    self.config.height as f32,
-                );
                 let time = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
@@ -691,84 +676,50 @@ impl<'a> Renderer<'a> {
                 } else {
                     " "
                 };
-                input_buf.set_text(
-                    &mut self.font_system,
-                    &format!("> {}{}", console.input_buffer, cursor),
-                    Attrs::new()
-                        .family(Family::Monospace)
-                        .color(glyphon::Color::rgb(255, 255, 0)),
-                    Shaping::Advanced,
-                );
-                text_buffers.push((input_buf, 10.0, input_y));
+                pending.push(PendingText {
+                    slot: TextSlot::console_input(),
+                    text: format!("> {}{}", console.input_buffer, cursor),
+                    size: 16.0,
+                    color: [255, 255, 0],
+                    left: 10.0,
+                    top: input_y,
+                });
             }
 
-            for spec in self.hotbar_text_specs(hotbar) {
-                let size = spec.size.max(8.0);
-                let line = (size * 1.25).max(size + 2.0);
-                let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(size, line));
-                buffer.set_size(
-                    &mut self.font_system,
-                    self.config.width as f32,
-                    self.config.height as f32,
-                );
-                buffer.set_text(
-                    &mut self.font_system,
-                    &spec.text,
-                    Attrs::new()
-                        .family(Family::Monospace)
-                        .color(glyphon::Color::rgb(
-                            spec.color[0],
-                            spec.color[1],
-                            spec.color[2],
-                        )),
-                    Shaping::Advanced,
-                );
-                text_buffers.push((buffer, spec.left, spec.top));
+            for (i, spec) in self.hotbar_text_specs(hotbar).into_iter().enumerate() {
+                pending.push(PendingText {
+                    slot: TextSlot::hotbar_quantity(i as u32),
+                    text: spec.text,
+                    size: spec.size.max(8.0),
+                    color: spec.color,
+                    left: spec.left,
+                    top: spec.top,
+                });
             }
 
-            // Inventory text overlay (titles, labels, search content, badges).
-            for spec in self.inventory_text_specs(inventory, hotbar, inventory_ui, planet, recipes)
+            for (i, spec) in self
+                .inventory_text_specs(inventory, hotbar, inventory_ui, planet, recipes)
+                .into_iter()
+                .enumerate()
             {
-                let size = spec.size.max(8.0);
-                let line = (size * 1.25).max(size + 2.0);
-                let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(size, line));
-                buffer.set_size(
-                    &mut self.font_system,
-                    self.config.width as f32,
-                    self.config.height as f32,
-                );
-                buffer.set_text(
-                    &mut self.font_system,
-                    &spec.text,
-                    Attrs::new()
-                        .family(Family::Monospace)
-                        .color(glyphon::Color::rgb(
-                            spec.color[0],
-                            spec.color[1],
-                            spec.color[2],
-                        )),
-                    Shaping::Advanced,
-                );
-                text_buffers.push((buffer, spec.left, spec.top));
+                pending.push(PendingText {
+                    slot: TextSlot::inventory_spec(i as u32),
+                    text: spec.text,
+                    size: spec.size.max(8.0),
+                    color: spec.color,
+                    left: spec.left,
+                    top: spec.top,
+                });
             }
 
-            // 2. FPS Text
-            let mut fps_buffer = Buffer::new(&mut self.font_system, Metrics::new(20.0, 24.0));
-            fps_buffer.set_size(
-                &mut self.font_system,
-                self.config.width as f32,
-                self.config.height as f32,
-            );
-            fps_buffer.set_text(
-                &mut self.font_system,
-                &format!("FPS: {}", self.frame_stats.fps()),
-                Attrs::new()
-                    .family(Family::Monospace)
-                    .color(glyphon::Color::rgb(0, 255, 0)),
-                Shaping::Advanced,
-            );
-
-            let mut debug_buf = Buffer::new(&mut self.font_system, Metrics::new(14.0, 18.0));
+            pending.push(PendingText {
+                slot: TextSlot::FPS,
+                text: format!("FPS: {}", self.frame_stats.fps()),
+                size: 20.0,
+                color: [0, 255, 0],
+                left: self.config.width as f32 - 120.0,
+                top: 10.0,
+            });
 
             let show_engine_debug = player.debug_mode || self.engine_debug_page;
             if show_engine_debug {
@@ -787,69 +738,51 @@ impl<'a> Renderer<'a> {
                     player.position.to_array(),
                     target,
                 );
-
-                debug_buf.set_size(
-                    &mut self.font_system,
-                    self.config.width as f32,
-                    self.config.height as f32,
-                );
-                debug_buf.set_text(
-                    &mut self.font_system,
-                    &info,
-                    Attrs::new()
-                        .family(Family::Monospace)
-                        .color(glyphon::Color::rgb(200, 200, 200)),
-                    Shaping::Advanced,
-                );
-            }
-
-            // create text areas
-            let mut text_areas: Vec<TextArea> = text_buffers
-                .iter()
-                .map(|(buf, x, y)| TextArea {
-                    buffer: buf,
-                    left: *x,
-                    top: *y,
-                    scale: 1.0,
-                    bounds: TextBounds {
-                        left: 0,
-                        top: 0,
-                        right: self.config.width as i32,
-                        bottom: self.config.height as i32,
-                    },
-                    default_color: glyphon::Color::rgb(255, 255, 255),
-                })
-                .collect();
-
-            text_areas.push(TextArea {
-                buffer: &fps_buffer,
-                left: self.config.width as f32 - 120.0,
-                top: 10.0,
-                scale: 1.0,
-                bounds: TextBounds {
-                    left: 0,
-                    top: 0,
-                    right: self.config.width as i32,
-                    bottom: self.config.height as i32,
-                },
-                default_color: glyphon::Color::rgb(255, 255, 255),
-            });
-
-            if show_engine_debug {
-                text_areas.push(TextArea {
-                    buffer: &debug_buf,
+                pending.push(PendingText {
+                    slot: TextSlot::DEBUG,
+                    text: info,
+                    size: 14.0,
+                    color: [200, 200, 200],
                     left: self.config.width as f32 - 180.0,
                     top: 40.0,
-                    scale: 1.0,
-                    bounds: TextBounds {
-                        left: 0,
-                        top: 0,
-                        right: self.config.width as i32,
-                        bottom: self.config.height as i32,
-                    },
-                    default_color: glyphon::Color::rgb(255, 255, 255),
                 });
             }
+
+            let viewport_w = self.config.width;
+            let viewport_h = self.config.height;
+            for item in &pending {
+                self.text_cache.ensure(
+                    item.slot,
+                    &mut self.font_system,
+                    &item.text,
+                    item.size,
+                    item.color,
+                    viewport_w,
+                    viewport_h,
+                );
+            }
+
+            let used: HashSet<TextSlot> = pending.iter().map(|p| p.slot).collect();
+            self.text_cache.retain(|slot| used.contains(slot));
+
+            let text_areas: Vec<TextArea> = pending
+                .iter()
+                .filter_map(|item| {
+                    self.text_cache.get(item.slot).map(|buffer| TextArea {
+                        buffer,
+                        left: item.left,
+                        top: item.top,
+                        scale: 1.0,
+                        bounds: TextBounds {
+                            left: 0,
+                            top: 0,
+                            right: viewport_w as i32,
+                            bottom: viewport_h as i32,
+                        },
+                        default_color: glyphon::Color::rgb(255, 255, 255),
+                    })
+                })
+                .collect();
 
             self.text_renderer
                 .prepare(
@@ -858,8 +791,8 @@ impl<'a> Renderer<'a> {
                     &mut self.font_system,
                     &mut self.text_atlas,
                     Resolution {
-                        width: self.config.width,
-                        height: self.config.height,
+                        width: viewport_w,
+                        height: viewport_h,
                     },
                     text_areas,
                     &mut self.swash_cache,

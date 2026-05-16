@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 use vv_math::CoordSystem;
 use vv_pack_compiler::{CompiledMesh, CompiledMeshClass};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use vv_world::PlanetData;
+use vv_world::PlanetSnapshot;
 use vv_worldgen::ChunkFeatureMap;
 
 const PROP_LOD_CHUNK_RADIUS: u32 = 5;
@@ -20,12 +20,12 @@ const PROP_LOD_CHUNK_RADIUS: u32 = 5;
 /// resulting map and short-circuit every above-surface lookup to an O(1)
 /// hash-map probe.
 pub(super) struct ChunkAccessor<'a> {
-    data: &'a PlanetData,
+    data: &'a PlanetSnapshot,
     features: &'a ChunkFeatureMap,
 }
 
 impl<'a> ChunkAccessor<'a> {
-    pub(super) fn new(data: &'a PlanetData, features: &'a ChunkFeatureMap) -> Self {
+    pub(super) fn new(data: &'a PlanetSnapshot, features: &'a ChunkFeatureMap) -> Self {
         Self { data, features }
     }
 
@@ -72,7 +72,7 @@ impl<'a> ChunkAccessor<'a> {
             .uses_greedy_opaque_meshing(self.voxel_id(coord))
     }
 
-    pub(super) fn data(&self) -> &'a PlanetData {
+    pub(super) fn data(&self) -> &'a PlanetSnapshot {
         self.data
     }
 }
@@ -155,7 +155,7 @@ impl MeshGen {
         }
     }
 
-    pub fn build_chunk(key: SurfaceChunkKey, data: &PlanetData) -> CpuMesh {
+    pub fn build_chunk(key: SurfaceChunkKey, data: &PlanetSnapshot) -> CpuMesh {
         let mut verts = Vec::with_capacity((CHUNK_SIZE * CHUNK_SIZE * 4) as usize);
         let mut inds = Vec::with_capacity((CHUNK_SIZE * CHUNK_SIZE * 6) as usize);
         let mut idx = 0u32;

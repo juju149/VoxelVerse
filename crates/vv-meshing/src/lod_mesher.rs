@@ -21,7 +21,7 @@ use glam::Vec3;
 use vv_math::CoordSystem;
 use vv_pack_compiler::TerrainPalette;
 use vv_voxel::{LodKey, CHUNK_SIZE};
-use vv_world::PlanetData;
+use vv_world::PlanetSnapshot;
 
 /// Cells per side per LOD tile.  Equal to `CHUNK_SIZE` so the macro-voxel size
 /// matches one base voxel chunk at the smallest LOD level and doubles cleanly
@@ -29,7 +29,7 @@ use vv_world::PlanetData;
 const LOD_GRID_RES: u32 = CHUNK_SIZE;
 
 impl MeshGen {
-    pub fn generate_lod_mesh(key: LodKey, data: &PlanetData) -> CpuMesh {
+    pub fn generate_lod_mesh(key: LodKey, data: &PlanetSnapshot) -> CpuMesh {
         let n = LOD_GRID_RES;
         // Base-voxel size of one macro cell.  `key.size` is the tile width in
         // base voxels; `step` divides it into `n` cells.  Clamped to at least 1
@@ -239,7 +239,7 @@ fn lod_display_height(terrain_height: u32, sea_level: u32, has_water: bool) -> u
     }
 }
 
-fn lod_water_color(data: &PlanetData) -> Option<[f32; 3]> {
+fn lod_water_color(data: &PlanetSnapshot) -> Option<[f32; 3]> {
     let water = data.terrain.water_block()?;
     if water == vv_voxel::VoxelId::AIR {
         return None;
@@ -253,7 +253,7 @@ fn lod_surface_color(
     v: u32,
     height: u32,
     slope: f32,
-    data: &PlanetData,
+    data: &PlanetSnapshot,
 ) -> [f32; 3] {
     if data.has_core && height < data.profile.core_layers {
         return TerrainPalette::LOD_CORE;
@@ -308,7 +308,7 @@ fn lod_surface_color(
     scale_color(color, variation)
 }
 
-fn lod_wall_color(face: u8, u: u32, v: u32, height: u32, data: &PlanetData) -> [f32; 3] {
+fn lod_wall_color(face: u8, u: u32, v: u32, height: u32, data: &PlanetSnapshot) -> [f32; 3] {
     if data.has_core && height < data.profile.core_layers {
         return TerrainPalette::LOD_CORE;
     }

@@ -1,4 +1,4 @@
-use super::Renderer;
+use super::{BlockDamageCacheSignature, Renderer};
 use crate::Vertex;
 use glam::Vec3;
 use vv_math::CoordSystem;
@@ -13,12 +13,21 @@ impl<'a> Renderer<'a> {
         planet: &PlanetData,
         focused: Option<VoxelCoord>,
     ) {
+        let signature = BlockDamageCacheSignature {
+            revision: planet.block_damage.revision(),
+            focused,
+        };
+        if self.block_damage_cache_signature == Some(signature) {
+            return;
+        }
+
         let (verts, inds) = build_block_damage_overlay_mesh(planet, focused);
         self.queue
             .write_buffer(&self.block_damage_v_buf, 0, bytemuck::cast_slice(&verts));
         self.queue
             .write_buffer(&self.block_damage_i_buf, 0, bytemuck::cast_slice(&inds));
         self.block_damage_inds = inds.len() as u32;
+        self.block_damage_cache_signature = Some(signature);
     }
 }
 

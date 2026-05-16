@@ -1,12 +1,17 @@
 use super::{MeshJobResult, QuadContext, QuadNode, Renderer};
 use crate::lod_animation::AnyKey;
 use crate::lod_streaming::StreamingView;
+use crate::types::Vertex;
 use glam::Vec3;
 use std::collections::HashSet;
 use vv_math::CoordSystem;
-use vv_meshing::MeshGen;
+use vv_meshing::{CpuMesh, MeshGen, UploadBudgetState};
 use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
 use vv_world::PlanetData;
+
+fn lod_mesh_byte_size(mesh: &CpuMesh) -> usize {
+    mesh.vertices.len() * std::mem::size_of::<Vertex>() + mesh.indices.len() * 4
+}
 
 impl<'a> Renderer<'a> {
     pub fn update_view(&mut self, view: StreamingView, planet: &PlanetData) {
@@ -50,8 +55,13 @@ impl<'a> Renderer<'a> {
     }
 
     fn receive_lod_meshes(&mut self) {
-        let mut uploaded_lods = 0;
-        while self.scheduler.can_upload_lod(uploaded_lods) {
+        let upload_started = std::time::Instant::now();
+        let mut budget = UploadBudgetState::default();
+        loop {
+            budget.elapsed_ms = upload_started.elapsed().as_secs_f32() * 1000.0;
+            if !self.scheduler.can_upload_lod(&budget) {
+                break;
+            }
             let Ok(result) = self.lod_rx.try_recv() else {
                 break;
             };
@@ -63,8 +73,10 @@ impl<'a> Renderer<'a> {
             self.record_lod_mesh_time(elapsed_ms);
             self.pending_lods.remove(&key);
             if self.required_lods.contains(&key) {
+                let bytes = lod_mesh_byte_size(&mesh);
                 self.upload_lod_buffer(key, mesh);
-                uploaded_lods += 1;
+                budget.count += 1;
+                budget.bytes += bytes;
                 self.scheduler_stats.uploaded_lod += 1;
             }
         }
@@ -109,10 +121,10 @@ impl<'a> Renderer<'a> {
             }
             self.pending_lods.insert(key);
             let tx = self.lod_tx.clone();
-            let p = planet.clone();
+            let snapshot = planet.snapshot();
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
-                let mesh = MeshGen::generate_lod_mesh(key, &p);
+                let mesh = MeshGen::generate_lod_mesh(key, &snapshot);
                 let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
                 let _ = tx.send(MeshJobResult {
                     key,
