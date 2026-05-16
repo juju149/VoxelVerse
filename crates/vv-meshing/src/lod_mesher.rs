@@ -60,9 +60,16 @@ impl MeshGen {
         };
 
         let mut heights = vec![0u32; (n * n) as usize];
+        let mut water_cells = vec![false; (n * n) as usize];
+        let water_color = lod_water_color(data);
+        let sea_level = data.terrain.sea_level_layer();
         for j in 0..n {
             for i in 0..n {
-                heights[(j * n + i) as usize] = cell_h(i, j);
+                let terrain_height = cell_h(i, j);
+                let is_water = water_color.is_some() && terrain_height < sea_level;
+                let idx = (j * n + i) as usize;
+                heights[idx] = lod_display_height(terrain_height, sea_level, is_water);
+                water_cells[idx] = is_water;
             }
         }
 
@@ -78,7 +85,9 @@ impl MeshGen {
 
         for cj in 0..n {
             for ci in 0..n {
-                let h = heights[(cj * n + ci) as usize];
+                let cell_idx = (cj * n + ci) as usize;
+                let h = heights[cell_idx];
+                let is_water = water_cells[cell_idx];
 
                 // Cell extent on the planet grid (in base voxels).  Clamped to
                 // the planet resolution so edge cells fall back onto the same
@@ -101,8 +110,16 @@ impl MeshGen {
                 let cell_center = (p_bl + p_br + p_tr + p_tl) * 0.25;
                 let radial = cell_center.normalize_or_zero();
                 let slope = 1.0_f32; // top face is by construction radial-aligned at LOD scale
-                let top_color = lod_surface_color(key.face, mid_u, mid_v, h, slope, data);
-                let wall_color = lod_wall_color(key.face, mid_u, mid_v, h, data);
+                let top_color = if is_water {
+                    water_color.unwrap_or([0.08, 0.30, 0.62])
+                } else {
+                    lod_surface_color(key.face, mid_u, mid_v, h, slope, data)
+                };
+                let wall_color = if is_water {
+                    scale_color(top_color, 0.78)
+                } else {
+                    lod_wall_color(key.face, mid_u, mid_v, h, data)
+                };
 
                 push_quad(
                     &mut verts,
@@ -212,6 +229,22 @@ fn push_quad(
     // (per-vertex normals carry the real orientation).  We use both windings to
     // make sure the quad is solid from either side.
     inds.extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
+}
+
+fn lod_display_height(terrain_height: u32, sea_level: u32, has_water: bool) -> u32 {
+    if has_water {
+        sea_level
+    } else {
+        terrain_height
+    }
+}
+
+fn lod_water_color(data: &PlanetData) -> Option<[f32; 3]> {
+    let water = data.terrain.water_block()?;
+    if water == vv_voxel::VoxelId::AIR {
+        return None;
+    }
+    Some(data.terrain_visuals.block_color(water))
 }
 
 fn lod_surface_color(
@@ -331,4 +364,15 @@ fn hash01(face: u8, u: u32, v: u32) -> f32 {
     x = x.wrapping_mul(0x846C_A68B);
     x ^= x >> 16;
     x as f32 / u32::MAX as f32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::lod_display_height;
+
+    #[test]
+    fn lod_display_height_uses_sea_level_for_water_cells() {
+        assert_eq!(lod_display_height(90, 100, true), 100);
+        assert_eq!(lod_display_height(120, 100, false), 120);
+    }
 }

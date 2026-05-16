@@ -402,7 +402,7 @@ fn tint_color(tint: RawObjectTint) -> [f32; 3] {
     match tint {
         RawObjectTint::Grass => [0.5, 0.8, 0.3],
         RawObjectTint::Foliage => [0.4, 0.7, 0.2],
-        RawObjectTint::Water => [0.2, 0.4, 0.9],
+        RawObjectTint::Water => [0.18, 0.48, 1.0],
     }
 }
 
@@ -421,7 +421,7 @@ fn compile_sound_kind(kind: RawObjectSoundKind) -> CompiledSoundKind {
 fn category_color(cat: &str) -> [f32; 3] {
     match cat {
         "terrain" | "stone" | "sand" | "snow" => [0.6, 0.6, 0.6],
-        "water" | "fluid" => [0.28, 0.55, 0.82],
+        "water" | "fluid" => [0.10, 0.40, 0.88],
         "soil" | "grass" => [0.4, 0.7, 0.3],
         "ore" => [0.5, 0.5, 0.8],
         "log" | "wood" | "leaves" => [0.5, 0.7, 0.4],

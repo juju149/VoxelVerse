@@ -401,6 +401,7 @@ impl MeshGen {
             light_val = 1.0;
         }
 
+        let mesh_class = data.content.mesh_class(voxel_id);
         let visual = data.content.visual(voxel_id);
         let mut fallback_color = data.content.color(voxel_id);
 
@@ -430,7 +431,15 @@ impl MeshGen {
 
         let face_color = |layer: u32, ao: f32| -> [f32; 3] {
             let c = if layer == 0 {
-                fallback_color
+                if mesh_class == CompiledMeshClass::Water {
+                    [
+                        visual.tint[0] * light_val,
+                        visual.tint[1] * light_val,
+                        visual.tint[2] * light_val,
+                    ]
+                } else {
+                    fallback_color
+                }
             } else {
                 [
                     visual.tint[0] * light_val,
