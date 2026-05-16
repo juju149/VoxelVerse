@@ -99,6 +99,19 @@ pub fn run() {
     } else {
         player.spawn(planet.spawn_position());
     }
+
+    // Drain the streaming queue before the first gameplay frame so the player
+    // never sees an empty horizon waiting for LOD tiles to mesh.
+    let warmup_view = StreamingView {
+        player_pos: player.position,
+        camera_pos: player.position,
+        view_dir: player.position.normalize_or_zero(),
+        cursor_id: None,
+    };
+    renderer.prewarm_until_idle(&planet, warmup_view, |r, progress, message| {
+        r.render_loading(progress, message);
+    });
+
     renderer.log_engine_snapshot("startup", &planet);
     let mut last_time = Instant::now();
     let mut cursor_grabbed = false;

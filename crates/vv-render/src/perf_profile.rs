@@ -119,7 +119,7 @@ impl PerfProfile {
                     lod_hysteresis: 0.18,
                     lod_transition_time: 1.0,
                     max_visible_voxel_chunks: 144,
-                    max_visible_lod_tiles: 320,
+                    max_visible_lod_tiles: 1024,
                 },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Potato,
@@ -157,7 +157,7 @@ impl PerfProfile {
                     lod_hysteresis: 0.16,
                     lod_transition_time: 1.15,
                     max_visible_voxel_chunks: 256,
-                    max_visible_lod_tiles: 560,
+                    max_visible_lod_tiles: 2048,
                 },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Balanced,
@@ -186,7 +186,7 @@ impl PerfProfile {
                     lod_hysteresis: 0.15,
                     lod_transition_time: 1.25,
                     max_visible_voxel_chunks: 384,
-                    max_visible_lod_tiles: 768,
+                    max_visible_lod_tiles: 3072,
                 },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::High,
@@ -224,7 +224,7 @@ impl PerfProfile {
                     lod_hysteresis: 0.14,
                     lod_transition_time: 1.35,
                     max_visible_voxel_chunks: 512,
-                    max_visible_lod_tiles: 1024,
+                    max_visible_lod_tiles: 4096,
                 },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Ultra,

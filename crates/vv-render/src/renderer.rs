@@ -254,6 +254,7 @@ mod lod_selection;
 mod metrics;
 mod pipelines;
 mod post_process_renderer;
+mod prewarm;
 mod render_passes;
 mod render_resources;
 mod setup;

@@ -83,10 +83,20 @@ impl<'a> Renderer<'a> {
     }
 
     fn evict_stale_lods(&mut self) {
+        // A LOD that the quadtree no longer needs is only safe to retire once
+        // every smaller replacement covering its region — voxel chunks *and*
+        // finer LODs — is actually meshed.  Otherwise its retirement opens a
+        // visible void at exactly the spots the player is approaching.
         let missing_voxels: Vec<SurfaceChunkKey> = self
             .required_voxels
             .iter()
             .filter(|k| !self.chunks.contains_key(k))
+            .copied()
+            .collect();
+        let missing_lods: Vec<LodKey> = self
+            .required_lods
+            .iter()
+            .filter(|k| !self.lod_chunks.contains_key(k))
             .copied()
             .collect();
 
@@ -95,7 +105,9 @@ impl<'a> Renderer<'a> {
             if self.required_lods.contains(&k) {
                 continue;
             }
-            if lod_covers_any_missing_voxel(k, &missing_voxels) {
+            if lod_covers_any_missing_voxel(k, &missing_voxels)
+                || lod_covers_any_missing_smaller_lod(k, &missing_lods)
+            {
                 self.required_lods.insert(k);
             } else if let Some(mesh) = self.lod_chunks.remove(&k) {
                 self.animator.retire(AnyKey::Lod(k), mesh);
@@ -370,11 +382,20 @@ fn enforce_streaming_budget(
     }
 
     if lods.len() > max_lods {
+        // Coarse LODs are the planet's only coverage at the horizon — losing
+        // one leaves a visible void.  Fine LODs near the player are about to
+        // be replaced by voxel chunks anyway, so dropping them is harmless.
+        // Rank by size descending (coarsest kept first), tie-break with the
+        // usual distance/view priority.
         let mut ranked: Vec<(LodKey, f32)> = lods
             .iter()
             .map(|k| (*k, lod_priority(*k, view, planet)))
             .collect();
-        ranked.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        ranked.sort_by(|a, b| {
+            b.0.size
+                .cmp(&a.0.size)
+                .then_with(|| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+        });
         *lods = ranked.iter().take(max_lods).map(|(k, _)| *k).collect();
     }
 }
@@ -459,6 +480,21 @@ fn lod_covers_any_missing_voxel(key: LodKey, missing_voxels: &[SurfaceChunkKey])
             && key.x + key.size > v_x
             && key.y < v_y + CHUNK_SIZE
             && key.y + key.size > v_y
+    })
+}
+
+/// True if any *smaller* required LOD that has not been meshed yet falls
+/// inside `parent`'s area.  The parent is the quadtree's only coverage of
+/// that region until the finer tile uploads — retiring it early would tear
+/// a hole in the horizon for several frames.
+fn lod_covers_any_missing_smaller_lod(parent: LodKey, missing_lods: &[LodKey]) -> bool {
+    missing_lods.iter().any(|child| {
+        child.size < parent.size
+            && child.face == parent.face
+            && parent.x < child.x + child.size
+            && parent.x + parent.size > child.x
+            && parent.y < child.y + child.size
+            && parent.y + parent.size > child.y
     })
 }
 
