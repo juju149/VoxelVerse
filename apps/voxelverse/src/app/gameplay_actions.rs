@@ -1,27 +1,26 @@
-use crate::app::cursor::grab_cursor;
-use crate::app::feedback_router::{route_feedback, sound_kind, AppFeedback};
-use vv_audio::AudioEngine;
+use crate::app::action_result::{ActionResult, FeedbackEvent};
+use crate::app::feedback_router::sound_kind;
 use vv_gameplay::{
     BlockAction, BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode,
     Controller, Hotbar, HotbarNotice, Inventory, ItemId, MiningFeedback, MiningState,
     MiningStrikeInput, Player,
 };
 use vv_pack_compiler::LootRegistry;
-use vv_render::Renderer;
 use vv_world::{BlockDamageResult, PlanetData};
 
-pub(super) struct PlaceBlockContext<'a, 'window> {
-    pub(super) renderer: &'a mut Renderer<'window>,
-    pub(super) audio: &'a mut AudioEngine,
+/// Context for placing a block. Contains only gameplay state — no renderer, no audio.
+/// `view_width` and `view_height` are plain floats copied from the renderer config.
+pub(super) struct PlaceBlockContext<'a> {
     pub(super) controller: &'a mut Controller,
     pub(super) player: &'a Player,
     pub(super) planet: &'a mut PlanetData,
     pub(super) hotbar: &'a mut Hotbar,
+    pub(super) view_width: f32,
+    pub(super) view_height: f32,
 }
 
-pub(super) struct MineBlockContext<'a, 'window> {
-    pub(super) renderer: &'a mut Renderer<'window>,
-    pub(super) audio: &'a mut AudioEngine,
+/// Context for the mining tick. Contains only gameplay state — no renderer, no audio.
+pub(super) struct MineBlockContext<'a> {
     pub(super) controller: &'a Controller,
     pub(super) planet: &'a mut PlanetData,
     pub(super) hotbar: &'a mut Hotbar,
@@ -30,8 +29,7 @@ pub(super) struct MineBlockContext<'a, 'window> {
     pub(super) loot: &'a LootRegistry,
 }
 
-struct BreakBlockContext<'a, 'window> {
-    renderer: &'a mut Renderer<'window>,
+struct BreakBlockContext<'a> {
     planet: &'a mut PlanetData,
     hotbar: &'a mut Hotbar,
     inventory: &'a mut Inventory,
@@ -41,7 +39,11 @@ struct BreakBlockContext<'a, 'window> {
     drops_enabled: bool,
 }
 
-pub(super) fn place_block(ctx: PlaceBlockContext<'_, '_>) {
+/// Place the block currently selected in the hotbar onto the targeted face.
+/// Returns all feedback and frame commands — never touches renderer or audio directly.
+pub(super) fn place_block(ctx: PlaceBlockContext<'_>) -> ActionResult {
+    let mut result = ActionResult::none();
+
     let selected = ctx.hotbar.selected_item_id();
     let active_voxel = match selected.and_then(|id| ctx.planet.resolve_item_voxel(id)) {
         Some(voxel) => Some(voxel),
@@ -51,16 +53,14 @@ pub(super) fn place_block(ctx: PlaceBlockContext<'_, '_>) {
             } else {
                 ctx.hotbar.show_notice(HotbarNotice::InvalidPlacement);
             }
-            ctx.renderer.window.request_redraw();
-            return;
+            result.push_redraw();
+            return result;
         }
     };
 
-    let ray = ctx.controller.view_ray(
-        ctx.player,
-        ctx.renderer.config.width as f32,
-        ctx.renderer.config.height as f32,
-    );
+    let ray = ctx
+        .controller
+        .view_ray(ctx.player, ctx.view_width, ctx.view_height);
     let placement = BlockSelection::trace(
         ray,
         ctx.controller.interaction_reach(),
@@ -70,8 +70,8 @@ pub(super) fn place_block(ctx: PlaceBlockContext<'_, '_>) {
     .map(|(id, _)| id);
     if placement.is_none() {
         ctx.hotbar.show_notice(HotbarNotice::InvalidPlacement);
-        ctx.renderer.window.request_redraw();
-        return;
+        result.push_redraw();
+        return result;
     }
 
     if let Some(action) = BlockInteraction::resolve(
@@ -81,30 +81,31 @@ pub(super) fn place_block(ctx: PlaceBlockContext<'_, '_>) {
         active_voxel,
     ) {
         let edit = BlockInteraction::apply(action, ctx.planet);
-        let changed = !edit.dirty_chunks.is_empty();
-        if changed {
+        if !edit.dirty_chunks.is_empty() {
             ctx.hotbar.consume_selected();
-            let sound_kind = active_voxel
+            let snd = active_voxel
                 .and_then(|voxel| ctx.planet.content.block(voxel))
                 .map(|block| sound_kind(block.sound_kind))
                 .unwrap_or_default();
-            route_feedback(
-                ctx.renderer,
-                ctx.audio,
-                AppFeedback::BlockPlace { sound_kind },
-            );
-            ctx.renderer.refresh_dirty_chunks(edit.dirty_chunks);
-            ctx.renderer.window.request_redraw();
+            result.push_feedback(FeedbackEvent::BlockPlace { sound_kind: snd });
+            result.push_refresh_chunks(edit.dirty_chunks);
+            result.push_redraw();
         }
     } else if ctx.controller.cursor_id.is_none() && ctx.controller.first_person {
-        grab_cursor(ctx.renderer.window);
+        result.push_grab_cursor();
     }
+
+    result
 }
 
-pub(super) fn mine_block(ctx: MineBlockContext<'_, '_>, dt: f32) {
+/// Advance the mining state by one frame.
+/// Returns all feedback and frame commands — never touches renderer or audio directly.
+pub(super) fn mine_block(ctx: MineBlockContext<'_>, dt: f32) -> ActionResult {
+    let mut result = ActionResult::none();
+
     let coord = ctx.controller.cursor_id;
-    let voxel = coord.map(|coord| ctx.planet.get_voxel(coord));
-    let block = voxel.and_then(|voxel| ctx.planet.content.block(voxel));
+    let voxel = coord.map(|c| ctx.planet.get_voxel(c));
+    let block = voxel.and_then(|v| ctx.planet.content.block(v));
     let feedback = ctx.mining.tick(MiningStrikeInput {
         coord,
         voxel,
@@ -119,7 +120,7 @@ pub(super) fn mine_block(ctx: MineBlockContext<'_, '_>, dt: f32) {
         MiningFeedback::None => {}
         MiningFeedback::Blocked => {
             ctx.hotbar.show_notice(HotbarNotice::ProtectedBlock);
-            ctx.renderer.window.request_redraw();
+            result.push_redraw();
         }
         MiningFeedback::Hit {
             coord,
@@ -130,67 +131,59 @@ pub(super) fn mine_block(ctx: MineBlockContext<'_, '_>, dt: f32) {
             drops_enabled,
             ..
         } => {
-            let sound = ctx
+            let snd = ctx
                 .planet
                 .content
                 .block(voxel)
-                .map(|block| sound_kind(block.sound_kind))
+                .map(|b| sound_kind(b.sound_kind))
                 .unwrap_or_default();
-            route_feedback(
-                ctx.renderer,
-                ctx.audio,
-                AppFeedback::ToolSwing {
-                    strength: impact_strength,
-                },
-            );
+            result.push_feedback(FeedbackEvent::ToolSwing {
+                strength: impact_strength,
+            });
             match ctx
                 .planet
                 .apply_block_damage(coord, damage, break_threshold)
             {
                 BlockDamageResult::Unchanged => {}
                 BlockDamageResult::Damaged { .. } => {
-                    route_feedback(
-                        ctx.renderer,
-                        ctx.audio,
-                        AppFeedback::BlockHit {
-                            sound_kind: sound,
-                            strength: impact_strength,
-                        },
-                    );
-                    ctx.renderer.window.request_redraw();
+                    result.push_feedback(FeedbackEvent::BlockHit {
+                        sound_kind: snd,
+                        strength: impact_strength,
+                    });
+                    result.push_redraw();
                 }
                 BlockDamageResult::Broken => {
-                    break_block(BreakBlockContext {
-                        renderer: &mut *ctx.renderer,
-                        planet: &mut *ctx.planet,
-                        hotbar: &mut *ctx.hotbar,
-                        inventory: &mut *ctx.inventory,
+                    let break_result = break_block(BreakBlockContext {
+                        planet: ctx.planet,
+                        hotbar: ctx.hotbar,
+                        inventory: ctx.inventory,
                         loot: ctx.loot,
                         coord,
                         voxel,
                         drops_enabled,
                     });
-                    route_feedback(
-                        ctx.renderer,
-                        ctx.audio,
-                        AppFeedback::BlockBreak {
-                            sound_kind: sound,
-                            strength: impact_strength,
-                        },
-                    );
+                    result.feedback.extend(break_result.feedback);
+                    result.commands.extend(break_result.commands);
+                    result.push_feedback(FeedbackEvent::BlockBreak {
+                        sound_kind: snd,
+                        strength: impact_strength,
+                    });
                 }
             }
         }
         MiningFeedback::Broken { .. } => {}
     }
+
+    result
 }
 
-fn break_block(ctx: BreakBlockContext<'_, '_>) {
+fn break_block(ctx: BreakBlockContext<'_>) -> ActionResult {
+    let mut result = ActionResult::none();
     let edit = BlockInteraction::apply(BlockAction::Mine(ctx.coord), ctx.planet);
     if edit.dirty_chunks.is_empty() {
         ctx.hotbar.show_notice(HotbarNotice::ProtectedBlock);
-        ctx.renderer.window.request_redraw();
-        return;
+        result.push_redraw();
+        return result;
     }
 
     if ctx.drops_enabled {
@@ -200,8 +193,9 @@ fn break_block(ctx: BreakBlockContext<'_, '_>) {
             }
         }
     }
-    ctx.renderer.refresh_dirty_chunks(edit.dirty_chunks);
-    ctx.renderer.window.request_redraw();
+    result.push_refresh_chunks(edit.dirty_chunks);
+    result.push_redraw();
+    result
 }
 
 fn collect_drop(
@@ -222,5 +216,68 @@ fn roll_block_drops(drops_key: &str, loot: &LootRegistry) -> Vec<(ItemId, u32)> 
     match loot.get_by_key(drops_key) {
         Some(table) => table.roll(|| 0.0),
         None => Vec::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::action_result::FrameCommand;
+
+    #[test]
+    fn action_result_starts_empty() {
+        let r = ActionResult::none();
+        assert!(r.feedback.is_empty());
+        assert!(r.commands.is_empty());
+    }
+
+    #[test]
+    fn push_redraw_adds_one_command() {
+        let mut r = ActionResult::none();
+        r.push_redraw();
+        assert_eq!(r.commands.len(), 1);
+        assert!(matches!(r.commands[0], FrameCommand::Redraw));
+    }
+
+    #[test]
+    fn push_refresh_chunks_empty_is_noop() {
+        let mut r = ActionResult::none();
+        r.push_refresh_chunks(vec![]);
+        assert!(
+            r.commands.is_empty(),
+            "empty dirty list must not push a command"
+        );
+    }
+
+    #[test]
+    fn push_refresh_chunks_nonempty_adds_command() {
+        use vv_voxel::SurfaceChunkKey;
+        let mut r = ActionResult::none();
+        let key = SurfaceChunkKey {
+            face: 0,
+            u_idx: 0,
+            v_idx: 0,
+        };
+        r.push_refresh_chunks(vec![key]);
+        assert_eq!(r.commands.len(), 1);
+        assert!(matches!(&r.commands[0], FrameCommand::RefreshDirtyChunks(v) if v.len() == 1));
+    }
+
+    #[test]
+    fn push_grab_cursor_adds_command() {
+        let mut r = ActionResult::none();
+        r.push_grab_cursor();
+        assert_eq!(r.commands.len(), 1);
+        assert!(matches!(r.commands[0], FrameCommand::GrabCursor));
+    }
+
+    #[test]
+    fn feedback_events_accumulate_independently_from_commands() {
+        let mut r = ActionResult::none();
+        r.push_feedback(FeedbackEvent::ToolSwing { strength: 0.5 });
+        r.push_redraw();
+        r.push_feedback(FeedbackEvent::ToolSwing { strength: 1.0 });
+        assert_eq!(r.feedback.len(), 2);
+        assert_eq!(r.commands.len(), 1);
     }
 }

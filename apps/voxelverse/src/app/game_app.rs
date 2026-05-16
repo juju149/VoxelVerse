@@ -134,8 +134,8 @@ impl<'a> GameApp<'a> {
 
         sync_cursor_mode(
             self.renderer.window,
-            self.runtime.gameplay.controller.first_person,
-            self.runtime.ui.console.is_open || self.runtime.ui.inventory.is_open,
+            self.runtime.first_person(),
+            self.runtime.ui_captures_input(),
             &mut self.cursor_grabbed,
         );
         tick_game_frame(self, dt);
