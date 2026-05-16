@@ -6,6 +6,9 @@
 #include "include/atmosphere/aerial_perspective.wgsl"
 #include "include/material/water_material.wgsl"
 
+// Ghibli water: turquoise body, soft cyan sky reflection, painterly highlights.
+// One vector reflection + Schlick fresnel — no waves, no textures.
+
 struct WaterFragmentIn {
     @builtin(position) clip_pos: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -23,20 +26,31 @@ fn fs_main(in: WaterFragmentIn) -> @location(0) vec4<f32> {
     let view_dir = normalize(global.camera_pos.xyz - in.world_pos);
     let sun_dir = normalize(global.sun_dir.xyz);
 
-    let fresnel = vv_schlick_fresnel(max(dot(view_dir, normal), 0.0), 0.035) * global.water_params.x;
+    let n_dot_v = max(dot(view_dir, normal), 0.0);
 
+    // Body: stylized aquamarine, slightly desaturated when looking straight down.
+    let deep    = vec3<f32>(0.030, 0.18, 0.32);
+    let shallow = vec3<f32>(0.22,  0.62, 0.72);
+    let body = mix(shallow, deep, pow(n_dot_v, 0.9));
+
+    // Fresnel-driven sky reflection. Soft blue sky horizon.
+    let f0 = 0.025;
+    let fresnel = vv_schlick_fresnel(n_dot_v, f0) * global.water_params.x;
+    let sky_reflect = mix(global.sky_horizon.rgb, global.sky_zenith.rgb, 0.35);
+
+    var color = mix(body, sky_reflect, fresnel);
+
+    // Painterly sun glint: tight, day-only.
     let half_dir = normalize(view_dir + sun_dir);
-    let spec = pow(max(dot(normal, half_dir), 0.0), 52.0) * global.water_params.y * 0.44 * global.sky_zenith.w;
-
-    let deep = vec3<f32>(0.025, 0.12, 0.22);
-    let shallow = vec3<f32>(0.12, 0.45, 0.66);
-    let body = mix(deep, shallow, 0.35);
-
-    var color = mix(body, global.sky_horizon.rgb, fresnel);
-    color += vec3<f32>(0.86, 0.88, 0.82) * spec;
+    let spec = pow(max(dot(normal, half_dir), 0.0), 92.0)
+             * global.water_params.y
+             * 0.55
+             * vv_day_factor();
+    let sun_tint = mix(vec3<f32>(1.05, 0.55, 0.30), vec3<f32>(1.05, 1.02, 0.92), vv_day_factor());
+    color += sun_tint * spec;
 
     color = vv_apply_aerial_perspective(color, in.world_pos);
 
-    return vec4<f32>(color, mix(global.water_params.z, 0.96, fresnel));
+    let alpha = mix(global.water_params.z, 0.97, fresnel);
+    return vec4<f32>(color, alpha);
 }
-

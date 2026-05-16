@@ -15,6 +15,10 @@
 #include "include/voxel/ao.wgsl"
 #include "include/camera/depth.wgsl"
 
+// Ghibli-styled terrain fragment.
+// Soft warm key light, tinted painterly shadows, gentle saturation lift.
+// One sample per material map; no extra texture lookups vs the previous pass.
+
 struct VertexOut {
     @builtin(position) clip_pos: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -26,7 +30,16 @@ struct VertexOut {
     @location(6) @interpolate(flat) packed_tex_index: u32,
 }
 
-fn vv_prepare_albedo(layer: u32, packed_tex_index: u32, uv: vec2<f32>, vertex_color: vec3<f32>, world_pos: vec3<f32>, normal: vec3<f32>, color_only: bool, triplanar: bool) -> vec3<f32> {
+fn vv_prepare_albedo(
+    layer: u32,
+    packed_tex_index: u32,
+    uv: vec2<f32>,
+    vertex_color: vec3<f32>,
+    world_pos: vec3<f32>,
+    normal: vec3<f32>,
+    color_only: bool,
+    triplanar: bool,
+) -> vec3<f32> {
     var albedo = vv_sample_voxel_albedo(layer, uv, vertex_color, color_only);
 
     if !color_only && layer != VV_VERTEX_COLOR_ONLY {
@@ -42,30 +55,43 @@ fn vv_prepare_albedo(layer: u32, packed_tex_index: u32, uv: vec2<f32>, vertex_co
     return max(albedo, vec3<f32>(0.0));
 }
 
-fn vv_direct_light(normal: vec3<f32>, world_pos: vec3<f32>, shadow_pos: vec3<f32>, roughness: f32) -> vec3<f32> {
+// Light contribution from the sun: wrap-around diffuse + soft backlight.
+// Shadows are tinted warm at dawn and cool during the day for painterly depth.
+fn vv_ghibli_direct(
+    normal: vec3<f32>,
+    world_pos: vec3<f32>,
+    shadow_pos: vec3<f32>,
+) -> vec3<f32> {
     let sun_dir = vv_sun_direction();
     let ndotl = vv_sun_wrap_diffuse(normal, sun_dir);
-    let shadow = mix(0.08, 1.0, vv_shadow(shadow_pos, ndotl, vv_shadow_pcf_level()));
+    let shadow = vv_shadow(shadow_pos, ndotl, vv_shadow_pcf_level());
+
+    // Painterly shadow tint mixes sky + dawn warmth.
+    let dawn = vv_dawn_factor();
+    let shadow_cool = global.sky_zenith.rgb * 0.18;
+    let shadow_warm = vec3<f32>(0.30, 0.18, 0.20);
+    let shadow_floor = mix(shadow_cool, shadow_warm, dawn);
+
     let sun = vv_sun_color();
+    let wrap = sun * ndotl;
+    let back = sun * vv_soft_backlight(normal, sun_dir) * 1.4;
 
-    let wrap = sun * ndotl * shadow;
-    let back = sun * vv_soft_backlight(normal, sun_dir);
-
-    return wrap + back;
+    // Lift shadows toward the sky tint instead of crushing to black.
+    return wrap * shadow + shadow_floor * (1.0 - shadow * 0.75) + back;
 }
 
-fn vv_apply_cinematic_depth(color: vec3<f32>, normal: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
+// Subtle saturation boost: paintings push primaries without going neon.
+fn vv_ghibli_paint(color: vec3<f32>) -> vec3<f32> {
+    let luma = dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+    return mix(vec3<f32>(luma), color, 1.10);
+}
+
+// Gentle hemispheric tint: top of geometry catches sky, side faces stay neutral.
+fn vv_ghibli_sky_lift(color: vec3<f32>, normal: vec3<f32>, world_pos: vec3<f32>) -> vec3<f32> {
     let up = vv_planet_up(world_pos);
     let sky_facing = max(dot(normal, up), 0.0);
-
-    // Tiny lift for upward faces so plains read cleanly under atmospheric fog.
-    let sky_lift = global.sky_zenith.rgb * sky_facing * 0.006 * vv_day_factor();
-
-    // Gentle coolness on far side faces gives sculpted voxel relief.
-    let side = vv_saturate(1.0 - abs(dot(normal, up)));
-    let cool_side = vec3<f32>(0.985, 0.992, 1.006);
-
-    return (color + sky_lift) * mix(vec3<f32>(1.0), cool_side, side * 0.020);
+    let lift = global.sky_zenith.rgb * sky_facing * 0.012 * vv_day_factor();
+    return color + lift;
 }
 
 @fragment
@@ -74,30 +100,31 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let qbits = vv_quality_bits();
 
     let color_only = (qbits & VV_Q_COLOR_ONLY) != 0u;
-    let triplanar = (qbits & VV_Q_TRIPLANAR) != 0u;
+    let triplanar  = (qbits & VV_Q_TRIPLANAR)  != 0u;
 
     let geometry_normal = vv_safe_normalize(in.world_normal);
     let view_dir = vv_safe_normalize(vv_camera_position() - in.world_pos);
 
     let roughness = vv_sample_voxel_roughness(layer, in.uv, color_only);
-    let albedo = vv_prepare_albedo(layer, in.packed_tex_index, in.uv, in.color, in.world_pos, geometry_normal, color_only, triplanar);
+    var albedo = vv_prepare_albedo(layer, in.packed_tex_index, in.uv, in.color, in.world_pos, geometry_normal, color_only, triplanar);
+    albedo = vv_ghibli_paint(albedo);
+
     let normal = vv_sample_voxel_normal(layer, in.uv, geometry_normal, color_only);
 
     let ao = vv_vertex_ao(in.color) * vv_soft_contact_occlusion(geometry_normal, in.world_pos);
 
-    let direct = vv_direct_light(normal, in.world_pos, in.shadow_pos, roughness);
+    let direct = vv_ghibli_direct(normal, in.world_pos, in.shadow_pos);
     let ambient = vv_hemisphere_ambient(normal, in.world_pos) * ao;
     let bounce = vv_micro_bounce(normal, in.world_pos, albedo);
 
+    // Crisp painterly highlight, gated by shadow.
     let sun_dir = vv_sun_direction();
     let shadow_for_spec = vv_shadow(in.shadow_pos, max(dot(normal, sun_dir), 0.0), vv_shadow_pcf_level());
-    let specular_strength = vv_specular_lite(normal, view_dir, sun_dir, roughness);
-    let specular = vv_sun_color() * specular_strength * shadow_for_spec;
+    let specular = vv_sun_color() * vv_specular_lite(normal, view_dir, sun_dir, roughness) * shadow_for_spec;
 
     var color = albedo * (direct + ambient + bounce) + specular;
-    color = vv_apply_cinematic_depth(color, geometry_normal, in.world_pos);
+    color = vv_ghibli_sky_lift(color, geometry_normal, in.world_pos);
     color = vv_apply_aerial_perspective(color, in.world_pos);
 
     return vec4<f32>(max(color, vec3<f32>(0.0)), 1.0);
 }
-
