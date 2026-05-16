@@ -480,12 +480,14 @@ impl ProceduralPlanetTerrain {
             let veg = &self.registry.vegetation[*veg_idx];
             crate::placement::for_each_candidate(
                 &veg.placement,
-                key.face,
-                u0,
-                u1,
-                v0,
-                v1,
-                voxel_scale,
+                crate::placement::PlacementArea {
+                    face: key.face,
+                    u_lo: u0,
+                    u_hi: u1,
+                    v_lo: v0,
+                    v_hi: v1,
+                    voxel_scale,
+                },
                 |candidate| {
                     if budget > 0 && stamps.len() >= budget {
                         return;
@@ -562,12 +564,14 @@ impl ProceduralPlanetTerrain {
             }
             crate::placement::for_each_candidate(
                 &scatter.placement,
-                key.face,
-                u0,
-                u1,
-                v0,
-                v1,
-                voxel_scale,
+                crate::placement::PlacementArea {
+                    face: key.face,
+                    u_lo: u0,
+                    u_hi: u1,
+                    v_lo: v0,
+                    v_hi: v1,
+                    voxel_scale,
+                },
                 |candidate| {
                     if budget > 0 && props.len() >= budget {
                         return;

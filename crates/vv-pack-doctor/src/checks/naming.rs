@@ -53,7 +53,7 @@ fn check_name(name: &str, rel: &str, report: &mut Report) {
         );
     }
     let stem = stem_of(name);
-    if BANNED_STEMS.iter().any(|b| stem == *b) {
+    if BANNED_STEMS.contains(&stem) {
         report.error(
             Diagnostic::new(CHECK, format!("banned stem '{}' in filename", stem))
                 .with_path(rel.to_string())

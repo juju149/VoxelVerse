@@ -30,7 +30,7 @@
 //! all-solid and exits after the first couple of steps.  In practice this
 //! costs < 2 ms per chunk on a modern CPU, well within the async budget.
 
-use crate::placement::for_each_candidate;
+use crate::placement::{for_each_candidate, PlacementArea};
 use crate::procedural::{ProceduralPlanetTerrain, PropOrientation, PropStamp};
 use vv_pack_compiler::{CaveSurface, CompiledVoxPropScatter};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
@@ -95,12 +95,14 @@ pub(crate) fn cave_props_for_chunk(
         }
         for_each_candidate(
             &scatter.placement,
-            key.face,
-            u0,
-            u1,
-            v0,
-            v1,
-            voxel_scale,
+            PlacementArea {
+                face: key.face,
+                u_lo: u0,
+                u_hi: u1,
+                v_lo: v0,
+                v_hi: v1,
+                voxel_scale,
+            },
             |candidate| {
                 if budget > 0 && props.len() >= budget {
                     return;
@@ -129,7 +131,7 @@ pub(crate) fn cave_props_for_chunk(
                     if prev_is_air && !is_air {
                         // Cave air above → solid here: this is a cave floor.
                         if let Some(variant) =
-                            scatter.pick_variant(candidate.seed ^ layer ^ 0xF100_F)
+                            scatter.pick_variant(candidate.seed ^ layer ^ 0x000F_100F)
                         {
                             let rotation = ((candidate.rotation / std::f32::consts::TAU * 4.0)
                                 .rem_euclid(4.0) as u8)
@@ -165,12 +167,14 @@ pub(crate) fn cave_props_for_chunk(
         }
         for_each_candidate(
             &scatter.placement,
-            key.face,
-            u0,
-            u1,
-            v0,
-            v1,
-            voxel_scale,
+            PlacementArea {
+                face: key.face,
+                u_lo: u0,
+                u_hi: u1,
+                v_lo: v0,
+                v_hi: v1,
+                voxel_scale,
+            },
             |candidate| {
                 if budget > 0 && props.len() >= budget {
                     return;

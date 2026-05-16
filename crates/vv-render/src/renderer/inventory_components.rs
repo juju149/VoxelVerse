@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use super::Renderer;
 use crate::ui::{ComponentState, UiColor, UiRect, UiTheme};
 use crate::Vertex;

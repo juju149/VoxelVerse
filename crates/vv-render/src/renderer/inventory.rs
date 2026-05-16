@@ -10,6 +10,8 @@
 //! `inventory_text_specs` emits every label with its target font size and
 //! glyphon draws them after the mesh pass.
 
+#![allow(clippy::too_many_arguments)]
+
 use super::inventory_geometry::equip_slot_rects;
 use super::inventory_text::{
     push_column_titles, push_craft_placeholder, push_equipment_placeholder, push_filter_text,
@@ -380,7 +382,7 @@ impl<'a> Renderer<'a> {
         for (row, ingredient) in layout
             .craft_ingredient_rows
             .iter()
-            .zip(recipe_ingredient_counts(recipe).into_iter())
+            .zip(recipe_ingredient_counts(recipe))
         {
             self.fill_rounded_rect(verts, inds, *row, theme.slot.fill_empty, 5.0 * layout.scale);
             if let CompiledIngredient::Item(item_id) = ingredient.0 {

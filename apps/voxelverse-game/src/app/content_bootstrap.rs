@@ -96,9 +96,8 @@ pub fn load_core_content() -> LoadedCoreContent {
             let full_id = def.id.0.clone();
             // Strip "namespace:" prefix to produce a short key variant.
             let short_id = full_id
-                .splitn(2, ':')
-                .nth(1)
-                .map(|s| (s.to_string(), path.clone()));
+                .split_once(':')
+                .map(|(_, s)| (s.to_string(), path.clone()));
             std::iter::once((full_id, path)).chain(short_id)
         })
         .collect();

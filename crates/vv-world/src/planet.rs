@@ -29,6 +29,15 @@ pub struct VoxelEditResult {
     pub dirty_chunks: Vec<SurfaceChunkKey>,
 }
 
+pub struct PlanetDataSources {
+    pub registry: Arc<BlockRegistry>,
+    pub items: Arc<ItemRegistry>,
+    pub terrain_visuals: Arc<TerrainVisualPalette>,
+    pub procedural: Arc<ProceduralRegistry>,
+    pub procedural_planet_index: usize,
+    pub prop_models: Arc<VoxModelRegistry>,
+}
+
 #[allow(dead_code)]
 pub trait VoxelRead {
     fn resolution(&self) -> u32;
@@ -77,26 +86,31 @@ impl PlanetData {
     ) -> Self {
         Self::new_with_progress(
             planet_def,
-            registry.clone(),
-            items,
-            Arc::new(TerrainVisualPalette::fallback_from_blocks(&registry)),
-            procedural,
-            procedural_planet_index,
-            Arc::new(VoxModelRegistry::default()),
+            PlanetDataSources {
+                registry: registry.clone(),
+                items,
+                terrain_visuals: Arc::new(TerrainVisualPalette::fallback_from_blocks(&registry)),
+                procedural,
+                procedural_planet_index,
+                prop_models: Arc::new(VoxModelRegistry::default()),
+            },
             |_, _| {},
         )
     }
 
     pub fn new_with_progress(
         planet_def: CompiledPlanet,
-        registry: Arc<BlockRegistry>,
-        items: Arc<ItemRegistry>,
-        terrain_visuals: Arc<TerrainVisualPalette>,
-        procedural: Arc<ProceduralRegistry>,
-        procedural_planet_index: usize,
-        prop_models: Arc<VoxModelRegistry>,
+        sources: PlanetDataSources,
         progress: impl FnMut(f32, &str),
     ) -> Self {
+        let PlanetDataSources {
+            registry,
+            items,
+            terrain_visuals,
+            procedural,
+            procedural_planet_index,
+            prop_models,
+        } = sources;
         let profile = planet_def.to_planet_profile();
         println!(
             "Generating terrain for resolution {}  (voxel {} m, radius ≈ {:.1} m)…",

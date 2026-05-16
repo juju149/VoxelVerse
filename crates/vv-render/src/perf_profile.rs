@@ -8,6 +8,7 @@
 
 use crate::lod_streaming::{LodSplitCurve, LodStreamingConfig};
 use crate::quality::{PcfQuality, QualitySettings, RenderQualityProfile};
+use std::str::FromStr;
 use vv_meshing::SchedulerBudget;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -25,18 +26,6 @@ impl PerfTier {
             PerfTier::Medium => "Medium",
             PerfTier::High => "High",
             PerfTier::Ultra => "Ultra",
-        }
-    }
-
-    /// Parse `low|medium|high|ultra` (case-insensitive). Returns `None` on
-    /// unknown input so callers can fall back to auto-detection.
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s.trim().to_ascii_lowercase().as_str() {
-            "low" | "lo" | "1" => Some(PerfTier::Low),
-            "medium" | "med" | "2" => Some(PerfTier::Medium),
-            "high" | "hi" | "3" => Some(PerfTier::High),
-            "ultra" | "max" | "4" => Some(PerfTier::Ultra),
-            _ => None,
         }
     }
 
@@ -78,7 +67,7 @@ impl PerfTier {
     /// Resolve a tier honouring the `VV_PERF` env override.
     pub fn resolve(adapter_info: &wgpu::AdapterInfo) -> Self {
         if let Ok(forced) = std::env::var("VV_PERF") {
-            if let Some(t) = Self::from_str(&forced) {
+            if let Ok(t) = forced.parse::<Self>() {
                 println!("[perf] tier forced via VV_PERF = {}", t.label());
                 return t;
             }
@@ -88,6 +77,20 @@ impl PerfTier {
             );
         }
         Self::detect(adapter_info)
+    }
+}
+
+impl FromStr for PerfTier {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "low" | "lo" | "1" => Ok(PerfTier::Low),
+            "medium" | "med" | "2" => Ok(PerfTier::Medium),
+            "high" | "hi" | "3" => Ok(PerfTier::High),
+            "ultra" | "max" | "4" => Ok(PerfTier::Ultra),
+            _ => Err(()),
+        }
     }
 }
 

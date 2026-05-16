@@ -233,12 +233,7 @@ fn check_recipe_refs(
     }
 }
 
-fn check_strict_object_ref(
-    value: &str,
-    obj: &ParsedObject,
-    report: &mut Report,
-    field: &str,
-) {
+fn check_strict_object_ref(value: &str, obj: &ParsedObject, report: &mut Report, field: &str) {
     if value == "self" || is_strict_object_ref(value) {
         return;
     }

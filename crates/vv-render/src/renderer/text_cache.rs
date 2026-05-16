@@ -7,6 +7,8 @@
 //! re-`set_text`s only when the (text, size, line height, color, viewport)
 //! tuple actually changed since the previous frame.
 
+#![allow(clippy::too_many_arguments)]
+
 use glyphon::{Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping};
 use std::collections::HashMap;
 

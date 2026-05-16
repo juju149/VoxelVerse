@@ -657,6 +657,14 @@ impl MeshGen {
     }
 }
 
+fn greedy_meshing_enabled() -> bool {
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    *ENABLED.get_or_init(|| {
+        !std::env::var("VV_DISABLE_GREEDY_MESH")
+            .is_ok_and(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{CandidateBuffer, MeshGen, QuadFace};
@@ -789,12 +797,4 @@ mod tests {
         );
         assert_eq!(inds, [0, 1, 2, 2, 3, 0]);
     }
-}
-
-fn greedy_meshing_enabled() -> bool {
-    static ENABLED: OnceLock<bool> = OnceLock::new();
-    *ENABLED.get_or_init(|| {
-        !std::env::var("VV_DISABLE_GREEDY_MESH")
-            .is_ok_and(|value| value == "1" || value.eq_ignore_ascii_case("true"))
-    })
 }

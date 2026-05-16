@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use super::Renderer;
 use crate::ui::{ComponentState, InventoryButton, InventoryUiState, UiColor, UiRect};
 use crate::Vertex;
@@ -159,9 +161,9 @@ impl<'a> Renderer<'a> {
     }
 
     /// Hollow rounded-rect outline. Four straight rim strips on the edges
-    /// + four corner "ring arcs" (triangle strip between an outer arc and
+    /// plus four corner "ring arcs" (triangle strip between an outer arc and
     /// an inner arc). No body fill is drawn so the caller must paint the
-    /// inside separately *before* stroking.
+    /// inside separately before stroking.
     pub(super) fn stroke_rounded_rect(
         &self,
         verts: &mut Vec<Vertex>,

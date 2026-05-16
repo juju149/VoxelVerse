@@ -50,6 +50,16 @@ pub struct PlacementCandidate {
     pub scale: f32,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct PlacementArea {
+    pub face: u8,
+    pub u_lo: u32,
+    pub u_hi: u32,
+    pub v_lo: u32,
+    pub v_hi: u32,
+    pub voxel_scale: f32,
+}
+
 /// Cell side length (in voxels) used by a placement.  Always ≥ 1 so cells
 /// stay aligned to the voxel grid even when authored `min_spacing` is < 1.
 #[inline]
@@ -66,14 +76,17 @@ pub fn placement_cell_size(placement: &CompiledFeaturePlacement, voxel_scale: f3
 /// physical spacing stays constant across voxel resolutions.
 pub fn for_each_candidate<F: FnMut(PlacementCandidate)>(
     placement: &CompiledFeaturePlacement,
-    face: u8,
-    u_lo: u32,
-    u_hi: u32,
-    v_lo: u32,
-    v_hi: u32,
-    voxel_scale: f32,
+    area: PlacementArea,
     mut emit: F,
 ) {
+    let PlacementArea {
+        face,
+        u_lo,
+        u_hi,
+        v_lo,
+        v_hi,
+        voxel_scale,
+    } = area;
     if u_hi <= u_lo || v_hi <= v_lo {
         return;
     }
@@ -217,8 +230,30 @@ mod tests {
         // Two adjacent "chunks" 32 voxels wide.  They must see the same
         // cells in their overlap (the boundary itself) — which proves the
         // placement grid is world-aligned, not chunk-local.
-        for_each_candidate(&placement, 2, 0, 32, 0, 32, 1.0, |c| left.push(c));
-        for_each_candidate(&placement, 2, 32, 64, 0, 32, 1.0, |c| right.push(c));
+        for_each_candidate(
+            &placement,
+            PlacementArea {
+                face: 2,
+                u_lo: 0,
+                u_hi: 32,
+                v_lo: 0,
+                v_hi: 32,
+                voxel_scale: 1.0,
+            },
+            |c| left.push(c),
+        );
+        for_each_candidate(
+            &placement,
+            PlacementArea {
+                face: 2,
+                u_lo: 32,
+                u_hi: 64,
+                v_lo: 0,
+                v_hi: 32,
+                voxel_scale: 1.0,
+            },
+            |c| right.push(c),
+        );
         // No overlap (cells fall entirely in one chunk or the other), but
         // the candidates must be deterministic and grid-aligned.
         for cand in &left {
@@ -233,7 +268,18 @@ mod tests {
     fn min_spacing_drives_cell_size() {
         let placement = dummy_placement(8.0, 0.0);
         let mut count = 0usize;
-        for_each_candidate(&placement, 0, 0, 64, 0, 64, 1.0, |_| count += 1);
+        for_each_candidate(
+            &placement,
+            PlacementArea {
+                face: 0,
+                u_lo: 0,
+                u_hi: 64,
+                v_lo: 0,
+                v_hi: 64,
+                voxel_scale: 1.0,
+            },
+            |_| count += 1,
+        );
         // 64 / 8 = 8 cells per side → ≤64 candidates total.
         assert!(count <= 64);
         assert!(count > 0);
@@ -244,9 +290,18 @@ mod tests {
         let placement = dummy_placement(3.0, 0.7);
         let collect = || {
             let mut out = Vec::new();
-            for_each_candidate(&placement, 4, 16, 48, 16, 48, 1.0, |c| {
-                out.push((c.pu, c.pv, c.seed))
-            });
+            for_each_candidate(
+                &placement,
+                PlacementArea {
+                    face: 4,
+                    u_lo: 16,
+                    u_hi: 48,
+                    v_lo: 16,
+                    v_hi: 48,
+                    voxel_scale: 1.0,
+                },
+                |c| out.push((c.pu, c.pv, c.seed)),
+            );
             out
         };
         assert_eq!(collect(), collect());

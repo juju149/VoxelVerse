@@ -1,4 +1,4 @@
-use crate::app::runtime_loop::{grab_cursor, release_cursor};
+use crate::app::cursor::{grab_cursor, release_cursor};
 use crate::ui::{
     HeldStack, InventoryButton, InventoryLayout, InventoryUiState, UiTheme, UiViewport,
 };

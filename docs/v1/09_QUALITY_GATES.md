@@ -32,7 +32,7 @@ Required result:
 ## Runtime smoke gate
 
 ```powershell
-cargo run -p voxelverse-game --release
+cargo run -p voxelverse --release
 ```
 
 Manual checks:

@@ -12,9 +12,9 @@
 use std::collections::{HashMap, HashSet};
 
 use vv_content_schema::{
-    RawObjectCount, RawObjectDef, RawObjectRecipeKind, RawObjectRecipeSection, RawObjectRenderMode,
-    RawObjectInventoryIcon, RawObjectItemCategory, RawObjectShape, RawObjectSoundKind,
-    RawObjectTexture, RawObjectTint, RawObjectToolKind, RawObjectWeaponKind,
+    RawObjectCount, RawObjectDef, RawObjectInventoryIcon, RawObjectItemCategory,
+    RawObjectRecipeKind, RawObjectRecipeSection, RawObjectRenderMode, RawObjectShape,
+    RawObjectSoundKind, RawObjectTexture, RawObjectTint, RawObjectToolKind, RawObjectWeaponKind,
 };
 use vv_voxel::VoxelId;
 
@@ -97,10 +97,7 @@ fn compile_tags_from_objects(raw: &[(String, RawObjectDef)]) -> TagRegistry {
             let Some(tag) = normalize_tag_key(tag) else {
                 continue;
             };
-            tag_members
-                .entry(tag)
-                .or_default()
-                .insert(obj_key.clone());
+            tag_members.entry(tag).or_default().insert(obj_key.clone());
         }
     }
 
@@ -766,18 +763,16 @@ fn compile_one_recipe(
                     } else {
                         let sym = ch.to_string();
                         match shaped.legend.get(&sym) {
-                            Some(item_name) => {
-                                match resolve_item_id(item_name, items) {
-                                    Some(id) => Some(CompiledIngredient::Item(id)),
-                                    None => {
-                                        errors.push(format!(
-                                            "recipe '{}'#{}: ingredient '{}' does not resolve",
-                                            object_key, recipe_idx, item_name
-                                        ));
-                                        None
-                                    }
+                            Some(item_name) => match resolve_item_id(item_name, items) {
+                                Some(id) => Some(CompiledIngredient::Item(id)),
+                                None => {
+                                    errors.push(format!(
+                                        "recipe '{}'#{}: ingredient '{}' does not resolve",
+                                        object_key, recipe_idx, item_name
+                                    ));
+                                    None
                                 }
-                            }
+                            },
                             None => {
                                 errors.push(format!(
                                     "recipe '{}'#{}: legend symbol '{}' has no mapping",

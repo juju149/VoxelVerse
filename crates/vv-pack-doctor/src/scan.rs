@@ -98,7 +98,7 @@ impl PackScan {
             .unwrap_or_else(|| derive_namespace(&pack_root));
 
         let mut all_ron = Vec::new();
-        collect_files(&pack_root, "ron", &mut all_ron, &SOURCE_SKIP);
+        collect_files(&pack_root, "ron", &mut all_ron, SOURCE_SKIP);
 
         let objects = load_objects(&pack_root, &mut errors);
         let voxel_models = load_voxel_models(&pack_root, &mut errors);

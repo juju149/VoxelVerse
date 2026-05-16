@@ -67,7 +67,7 @@ Read:
 
 - `crates/vv-gameplay/src/lib.rs`;
 - target gameplay module;
-- app wiring in `apps/voxelverse-game/src/app/runtime_loop.rs`;
+- app wiring in `apps/voxelverse/src/app/runtime_loop.rs`;
 - world APIs in `crates/vv-world/src/planet.rs` if blocks change;
 - `docs/v1/06_GAMEPLAY_LOOP.md`.
 
@@ -98,7 +98,7 @@ Read:
 - `crates/vv-render/src/ui/mod.rs`;
 - `crates/vv-render/src/ui/theme.rs`;
 - `crates/vv-render/src/renderer/inventory*`;
-- `apps/voxelverse-game/src/app/inventory_events.rs`;
+- `apps/voxelverse/src/app/inventory_events.rs`;
 - `docs/v1/07_UI_UX.md`.
 
 ## Implementation rules

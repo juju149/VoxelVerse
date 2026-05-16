@@ -37,6 +37,13 @@ struct FaceCell {
     merge: MergeKey,
 }
 
+#[derive(Clone, Copy)]
+struct QuadRun {
+    cell: FaceCell,
+    width: u32,
+    height: u32,
+}
+
 impl GreedyMesher {
     pub fn append_opaque_cubes(
         accessor: &ChunkAccessor<'_>,
@@ -134,7 +141,18 @@ impl GreedyMesher {
                 }
             }
 
-            emit_quad(accessor, plane, *cell, width, height, verts, inds, idx);
+            emit_quad(
+                accessor,
+                plane,
+                QuadRun {
+                    cell: *cell,
+                    width,
+                    height,
+                },
+                verts,
+                inds,
+                idx,
+            );
         }
     }
 }
@@ -188,21 +206,20 @@ fn run_height(
 fn emit_quad(
     accessor: &ChunkAccessor<'_>,
     plane: PlaneKey,
-    cell: FaceCell,
-    width: u32,
-    height: u32,
+    run: QuadRun,
     verts: &mut Vec<CpuVertex>,
     inds: &mut Vec<u32>,
     idx: &mut u32,
 ) {
     let data = accessor.data();
+    let cell = run.cell;
     let p = |u: u32, v: u32, l: u32| {
         vv_math::CoordSystem::get_vertex_pos(cell.coord.face, u, v, l, data.profile)
     };
     let a0 = cell.a;
-    let a1 = cell.a + width;
+    let a1 = cell.a + run.width;
     let b0 = cell.b;
-    let b1 = cell.b + height;
+    let b1 = cell.b + run.height;
     let f = plane.fixed;
 
     let pos = match plane.dir {
@@ -227,7 +244,7 @@ fn emit_quad(
             flip_u: false,
             flip_v: !matches!(plane.dir, FaceDir::Top),
         },
-        [width as f32, height as f32],
+        [run.width as f32, run.height as f32],
     );
 }
 

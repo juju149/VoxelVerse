@@ -132,7 +132,7 @@ V1 action:
 1. Install these V1 docs in the repo.
 2. Update root README to point to `AGENTS.md` and `docs/v1/`.
 3. Rewrite old `docs/CONTENT_PIPELINE.md` so it no longer promotes old split content as target.
-4. Split `apps/voxelverse-game/src/app/runtime_loop.rs` into focused modules.
+4. Split `apps/voxelverse/src/app/runtime_loop.rs` into focused modules.
 5. Introduce a gameplay feedback event pipeline.
 6. Make Pack Doctor stricter around `.object.ron`, drops, station tags and voxel model refs.
 7. Tune LOD/streaming diagnostics and fix visible seam/horizon artifacts.

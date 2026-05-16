@@ -122,13 +122,10 @@ fn check_declared_tag(
         return;
     }
     report.error(
-        Diagnostic::new(
-            CHECK,
-            format!("tag '{}' is not a strict V1 tag", tag),
-        )
-        .with_path(obj.rel_path.clone())
-        .with_id(obj.id.clone())
-        .with_field(field.to_string())
-        .with_suggestion("use `#<namespace>:tag/<category>/<name>`".to_string()),
+        Diagnostic::new(CHECK, format!("tag '{}' is not a strict V1 tag", tag))
+            .with_path(obj.rel_path.clone())
+            .with_id(obj.id.clone())
+            .with_field(field.to_string())
+            .with_suggestion("use `#<namespace>:tag/<category>/<name>`".to_string()),
     );
 }

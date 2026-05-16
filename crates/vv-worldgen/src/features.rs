@@ -17,7 +17,7 @@
 //! duplicated inside [`ProceduralPlanetTerrain::evaluate_tree_at`].  The slow
 //! path now delegates to these helpers as well.
 
-use crate::placement::{for_each_candidate, PlacementCandidate};
+use crate::placement::{for_each_candidate, PlacementArea, PlacementCandidate};
 use crate::procedural::ProceduralPlanetTerrain;
 use std::collections::HashMap;
 use vv_pack_compiler::{CompiledProceduralPlanet, CompiledVegetation, ProceduralRegistry};
@@ -109,12 +109,14 @@ impl<'a> FeatureBakery<'a> {
             // and Poisson-like spacing without an O(N²) rejection pass.
             for_each_candidate(
                 &veg.placement,
-                face,
-                scan_u_lo,
-                scan_u_hi,
-                scan_v_lo,
-                scan_v_hi,
-                voxel_scale,
+                PlacementArea {
+                    face,
+                    u_lo: scan_u_lo,
+                    u_hi: scan_u_hi,
+                    v_lo: scan_v_lo,
+                    v_hi: scan_v_hi,
+                    voxel_scale,
+                },
                 |candidate| {
                     if budget > 0 && placed >= budget {
                         return;

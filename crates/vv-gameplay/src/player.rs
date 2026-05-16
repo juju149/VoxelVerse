@@ -152,3 +152,9 @@ impl Player {
         Mat4::look_at_rh(cam_pos, cam_pos + forward, up)
     }
 }
+
+impl Default for Player {
+    fn default() -> Self {
+        Self::new()
+    }
+}

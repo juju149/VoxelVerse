@@ -8,7 +8,7 @@ It is intentionally stricter than the current code.
 The Rust workspace is already a strong base. V1 should keep the crate split and make ownership sharper:
 
 ```text
-apps/voxelverse-game       playable runtime app
+apps/voxelverse       playable runtime app
 crates/vv-audio            audio playback and audio asset access
 crates/vv-content-schema   raw RON schemas only
 crates/vv-diagnostics      diagnostics, counters, reports
@@ -66,12 +66,12 @@ Forbidden dependency examples:
 
 ## App target architecture
 
-`apps/voxelverse-game` should be a thin composition layer.
+`apps/voxelverse` should be a thin composition layer.
 
 Target folders:
 
 ```text
-apps/voxelverse-game/src/
+apps/voxelverse/src/
   main.rs
   app/
     mod.rs

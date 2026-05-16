@@ -232,3 +232,9 @@ impl Controller {
         }
     }
 }
+
+impl Default for Controller {
+    fn default() -> Self {
+        Self::new()
+    }
+}

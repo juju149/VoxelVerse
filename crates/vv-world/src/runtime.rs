@@ -1,16 +1,14 @@
 use std::collections::HashMap;
 use vv_voxel::{VoxelChunk, VoxelChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct VoxelRuntime {
     chunks: HashMap<VoxelChunkKey, VoxelChunk>,
 }
 
 impl VoxelRuntime {
     pub fn new() -> Self {
-        Self {
-            chunks: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn clear(&mut self) {

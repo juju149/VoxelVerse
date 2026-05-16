@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "apps/voxelverse-game",
+    "apps/voxelverse",
     "crates/vv-content-schema",
     "crates/vv-diagnostics",
     "crates/vv-math",

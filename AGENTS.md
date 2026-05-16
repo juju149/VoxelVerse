@@ -163,7 +163,7 @@ cargo test -p vv-worldgen
 Minimum gate for render or performance changes:
 
 ```powershell
-cargo run -p voxelverse-game --release
+cargo run -p voxelverse --release
 ```
 
 Then capture or read the in-game diagnostics overlay and verify:

@@ -244,11 +244,7 @@ fn push_recipe_rows(
 
     let selected = selected_recipe_index(ui, recipes);
     let size = theme.text.control_size * layout.scale;
-    for (row, recipe_index) in layout
-        .craft_recipe_rows
-        .iter()
-        .zip(recipe_indices.into_iter())
-    {
+    for (row, recipe_index) in layout.craft_recipe_rows.iter().zip(recipe_indices) {
         let Some(recipe) = recipes.recipes().get(recipe_index) else {
             continue;
         };
@@ -318,7 +314,7 @@ fn push_recipe_detail(
     for (row, (ingredient, count)) in layout
         .craft_ingredient_rows
         .iter()
-        .zip(recipe_ingredient_counts(recipe).into_iter())
+        .zip(recipe_ingredient_counts(recipe))
     {
         let label = ingredient_label(&ingredient, planet);
         specs.push(InventoryTextSpec {

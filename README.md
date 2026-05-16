@@ -83,7 +83,7 @@ $$
 
 VoxelVerse is now a Rust workspace:
 
-- `apps/voxelverse-game`: playable runtime app.
+- `apps/voxelverse`: playable runtime app.
 - `crates/vv-voxel`: compact voxel IDs, coordinates, chunk keys, and voxel chunk storage.
 - `crates/vv-math`: pure math used by world, rendering, and gameplay.
 - `crates/vv-content-schema`: raw `.ron` content schemas.

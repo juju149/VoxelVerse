@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use super::terrain_renderer::TerrainRenderer;
 use super::text_cache::TextSlot;
 use super::{GlobalUniform, LocalUniform, Renderer};

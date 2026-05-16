@@ -18,17 +18,17 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
     for obj in &index.scan.objects {
         if let Some(station) = &obj.def.station {
             for tag in &station.station_tags {
-                if let Some(rest) = normalize_tag_key(tag).and_then(|t| {
-                    t.strip_prefix("station/").map(str::to_string)
-                }) {
+                if let Some(rest) = normalize_tag_key(tag)
+                    .and_then(|t| t.strip_prefix("station/").map(str::to_string))
+                {
                     owners.entry(rest.to_string()).or_default().push(obj);
                 }
             }
         }
         for tag in &obj.def.tags {
-            if let Some(rest) = normalize_tag_key(tag).and_then(|t| {
-                t.strip_prefix("station/").map(str::to_string)
-            }) {
+            if let Some(rest) =
+                normalize_tag_key(tag).and_then(|t| t.strip_prefix("station/").map(str::to_string))
+            {
                 owners.entry(rest.to_string()).or_default().push(obj);
             }
         }

@@ -384,7 +384,7 @@ fn check_noise_fields(index: &PackIndex<'_>, report: &mut Report) {
                 "frequency",
             ));
         }
-        if amplitude < 0.0 || amplitude > 4.0 {
+        if !(0.0..=4.0).contains(&amplitude) {
             report.error(diag(
                 field,
                 format!("noise amplitude {amplitude:.3} is invalid"),
