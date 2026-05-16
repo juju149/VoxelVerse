@@ -1,0 +1,34 @@
+PropScatter(
+    name: "Snowy Taiga Undergrowth",
+    placement: (
+        allowed_surface_blocks: ["snow", "dirt", "podzol"],
+        biome_tags: ["taiga", "spruce", "dark_canopy"],
+        density: 0.13,
+        slope_max_degrees: 30,
+        scatter_field: "rolling_hills",
+        min_spacing_voxels: 2.0,
+        jitter_strength: 0.90,
+        clump_field: Some("forest_clump"),
+        clump_strength: 0.46,
+        humidity_range: Some((0.30, 0.92)),
+        temperature_range: Some((0.02, 0.50)),
+        scale_variance: Some((0.84, 1.16)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        // Snow-dusted grasses
+        (model: "voxel/vegetation/grass/grass/grass_snow_0",      weight: 6, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.15)]),
+        (model: "voxel/vegetation/grass/grass/grass_snow_2",      weight: 6, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.15)]),
+        (model: "voxel/vegetation/grass/grass/grass_snow_tall_0", weight: 4, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.20)]),
+        (model: "voxel/vegetation/grass/grass/grass_snow_tall_3", weight: 4, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.20)]),
+        // Taiga-specific grasses
+        (model: "voxel/vegetation/grass/grass/grass_taiga_1",     weight: 5, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.18)]),
+        (model: "voxel/vegetation/grass/grass/grass_taiga_4",     weight: 5, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.18)]),
+        // Snow bushes under trees
+        (model: "voxel/vegetation/bushes/snow_bush/snow_bush_2",  weight: 3),
+        (model: "voxel/vegetation/bushes/snow_bush/snow_bush_6",  weight: 3),
+        (model: "voxel/vegetation/bushes/snow_bush/snow_bush_9",  weight: 2),
+        // Rare lingonberry under spruce
+        (model: "voxel/vegetation/bushes/lingonberry/lingonberry_01", weight: 1, drops: [(item: "apple", count: (1, 2), chance: 0.60)]),
+    ],
+)

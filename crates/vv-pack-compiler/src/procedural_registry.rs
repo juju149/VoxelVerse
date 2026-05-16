@@ -401,6 +401,12 @@ pub struct CompiledVegetation {
     pub shape_kind: CompiledTreeShapeKind,
     /// 0..=1 keep-rate for canopy leaf voxels (lower = airier).
     pub canopy_density: f32,
+    /// Surface root flare radius in voxels (0 = no roots).
+    pub root_radius: f32,
+    /// Probability 0..1 that a placement becomes a fallen trunk instead.
+    pub fallen_chance: f32,
+    /// 0..1 mid-trunk S-curve strength applied on top of lean.
+    pub trunk_curve_strength: f32,
 }
 
 #[derive(Clone, Debug)]

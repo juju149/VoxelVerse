@@ -10,17 +10,19 @@ Biome(
         flatness: 0.68,
         noise: "soft_hills",
         ridges: "alpine_detail",
+        curve: power(exponent: 0.85),
         mountain: 0.18,
         slope_smooth: 0.48,
     ),
 
     palette: (
-        grass: (0.72, 0.78, 0.78),
-        foliage: (0.52, 0.62, 0.62),
+        grass: (0.73, 0.79, 0.79),
+        foliage: (0.53, 0.63, 0.63),
+        fog_bias: (0.02, 0.03, 0.04),
     ),
 
     vegetation: ["cold", "snowy", "tundra"],
     fauna: ["small_herbivore"],
 
-    tags: ["cold", "snowy", "tundra"],
+    tags: ["cold", "snowy", "tundra", "windswept", "barren", "ancient", "survival"],
 )

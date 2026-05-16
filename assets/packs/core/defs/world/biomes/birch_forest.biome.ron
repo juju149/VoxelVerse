@@ -9,18 +9,20 @@ Biome(
         amplitude: 0.25,
         flatness:  0.44,
         noise:     "rolling_hills",
+        curve:     smoothstep,
         mountain:  0.5,
         slope_smooth: 0.35,
     ),
 
     palette: (
-        grass:   (0.42, 0.72, 0.30),
-        foliage: (0.28, 0.58, 0.22),
+        grass:   (0.43, 0.73, 0.31),
+        foliage: (0.29, 0.59, 0.23),
+        fog_bias: (0.01, 0.02, 0.01),
     ),
 
     vegetation: ["temperate", "forest"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["temperate", "forest", "birch"],
+    tags: ["temperate", "forest", "birch", "bright", "airy", "open_canopy"],
 )

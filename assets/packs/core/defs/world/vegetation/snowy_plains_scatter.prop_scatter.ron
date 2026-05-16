@@ -1,0 +1,38 @@
+PropScatter(
+    name: "Snowy Plains Winter Flowers",
+    placement: (
+        allowed_surface_blocks: ["snow", "powder_snow"],
+        biome_tags: ["pristine", "frozen"],
+        density: 0.060,
+        slope_max_degrees: 22,
+        scatter_field: "soft_hills",
+        min_spacing_voxels: 3.0,
+        jitter_strength: 0.93,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.50,
+        temperature_range: Some((0.00, 0.40)),
+        scale_variance: Some((0.82, 1.14)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        // Snow grass variants
+        (model: "voxel/vegetation/grass/grass/grass_snow_3",      weight: 6, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.12)]),
+        (model: "voxel/vegetation/grass/grass/grass_snow_6",      weight: 6, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.12)]),
+        (model: "voxel/vegetation/grass/grass/grass_snow_9",      weight: 5, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.12)]),
+        // Snow bushes
+        (model: "voxel/vegetation/bushes/snow_bush/snow_bush_3",  weight: 4),
+        (model: "voxel/vegetation/bushes/snow_bush/snow_bush_7",  weight: 4),
+        (model: "voxel/vegetation/bushes/snow_bush/snow_bush_11", weight: 3),
+        // Snow crocus — rare bursts of color
+        (model: "voxel/vegetation/flowers/snow_crocus_1",         weight: 2, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/snow_crocus_3",         weight: 2, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        // Snow rose — even rarer
+        (model: "voxel/vegetation/flowers/snow_rose_0",           weight: 1, drops: [(item: "flower", count: (1, 1), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/snow_rose_5",           weight: 1, drops: [(item: "flower", count: (1, 1), chance: 1.0)]),
+        // Snow forsythia — golden on white
+        (model: "voxel/vegetation/flowers/snow_forsythia_2",      weight: 1, drops: [(item: "flower", count: (1, 1), chance: 0.80)]),
+        (model: "voxel/vegetation/flowers/snow_forsythia_6",      weight: 1, drops: [(item: "flower", count: (1, 1), chance: 0.80)]),
+        // Snow pebbles
+        (model: "voxel/props/decoration/snow_pebbles/snow_pebbles_0", weight: 3),
+    ],
+)

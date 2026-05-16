@@ -9,18 +9,20 @@ Biome(
         amplitude:  0.15,
         flatness:   0.72,
         noise:      "soft_hills",
+        curve:      smoothstep,
         mountain:   0.05,
         slope_smooth: 0.6,
     ),
 
     palette: (
-        grass:   (0.46, 0.72, 0.30),
-        foliage: (0.30, 0.58, 0.24),
+        grass:   (0.45, 0.72, 0.29),
+        foliage: (0.29, 0.57, 0.23),
+        fog_bias: (0.02, 0.04, 0.01),
     ),
 
     vegetation: ["temperate", "plains"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["temperate", "plains"],
+    tags: ["temperate", "plains", "starter", "soft", "build_friendly", "open", "pastoral"],
 )

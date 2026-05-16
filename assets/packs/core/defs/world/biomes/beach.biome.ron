@@ -14,12 +14,13 @@ Biome(
     ),
 
     palette: (
-        grass:   (0.86, 0.74, 0.46),
-        foliage: (0.60, 0.52, 0.28),
+        grass:   (0.87, 0.75, 0.47),
+        foliage: (0.61, 0.53, 0.29),
+        fog_bias: (0.01, 0.03, 0.04),
     ),
 
     vegetation: ["beach", "coastal", "dry"],
     fauna: ["small_herbivore"],
 
-    tags: ["beach", "coastal"],
+    tags: ["coastal", "beach", "sandy", "warm_edge", "transition", "ocean_gate"],
 )

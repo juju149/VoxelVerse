@@ -17,13 +17,14 @@ Biome(
     ),
 
     palette: (
-        grass:   (0.50, 0.62, 0.45),
-        foliage: (0.32, 0.44, 0.34),
+        grass:   (0.51, 0.63, 0.46),
+        foliage: (0.33, 0.45, 0.35),
+        fog_bias: (0.01, 0.02, 0.03),
     ),
 
     vegetation: ["cold", "mountain"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["cold", "mountain"],
+    tags: ["cold", "mountain", "alpine", "rocky", "elevation", "mineral_rich"],
 )

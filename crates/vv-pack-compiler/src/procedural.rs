@@ -435,6 +435,9 @@ fn compile_vegetation(
         trunk_lean_max: finite(def.trunk_lean_max, 0.12),
         shape_kind: CompiledTreeShapeKind::from(&def.shape_kind),
         canopy_density: finite(def.canopy_density, 1.0).clamp(0.05, 1.0),
+        root_radius: finite(def.root_radius, 0.0).max(0.0),
+        fallen_chance: finite(def.fallen_chance, 0.0).clamp(0.0, 1.0),
+        trunk_curve_strength: finite(def.trunk_curve_strength, 0.0).clamp(0.0, 1.0),
     })
 }
 

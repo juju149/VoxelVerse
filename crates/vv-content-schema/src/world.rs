@@ -466,6 +466,15 @@ pub struct RawVegetationDef {
     pub scale_variance: Option<(f32, f32)>,
     #[serde(default = "default_rotation_variance")]
     pub rotation_variance: f32,
+    /// Surface root flare radius in voxels.  0 = no roots (default).
+    #[serde(default)]
+    pub root_radius: f32,
+    /// 0..1 probability that a placement becomes a fallen trunk.  0 = never (default).
+    #[serde(default)]
+    pub fallen_chance: f32,
+    /// 0..1 mid-trunk S-curve strength on top of lean.  0 = straight (default).
+    #[serde(default)]
+    pub trunk_curve_strength: f32,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]

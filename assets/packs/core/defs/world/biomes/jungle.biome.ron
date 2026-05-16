@@ -15,13 +15,14 @@ Biome(
     ),
 
     palette: (
-        grass:   (0.28, 0.68, 0.22),
-        foliage: (0.16, 0.54, 0.14),
+        grass:   (0.27, 0.67, 0.21),
+        foliage: (0.15, 0.53, 0.13),
+        fog_bias: (0.01, 0.04, 0.01),
     ),
 
     vegetation: ["jungle", "tropical"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["jungle", "tropical", "wet"],
+    tags: ["jungle", "tropical", "wet", "dense", "loot_rich", "hot", "dangerous"],
 )

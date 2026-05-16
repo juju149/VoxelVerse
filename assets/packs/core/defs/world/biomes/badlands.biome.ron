@@ -16,11 +16,12 @@ Biome(
     ),
 
     palette: (
-        grass:   (0.72, 0.44, 0.24),
-        foliage: (0.56, 0.34, 0.16),
+        grass:   (0.74, 0.45, 0.23),
+        foliage: (0.58, 0.35, 0.15),
+        fog_bias: (0.04, 0.03, 0.01),
     ),
 
     vegetation: ["desert", "dry"],
 
-    tags: ["desert", "dry", "badlands"],
+    tags: ["desert", "dry", "badlands", "rocky", "mineral_rich", "plateau", "rare_ores"],
 )

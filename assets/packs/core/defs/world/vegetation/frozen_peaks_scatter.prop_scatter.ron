@@ -1,0 +1,29 @@
+PropScatter(
+    name: "Frozen Peaks Ice And Snow",
+    placement: (
+        allowed_surface_blocks: ["snow", "stone"],
+        biome_tags: ["extreme", "inhospitable"],
+        density: 0.030,
+        slope_min_degrees: Some(4),
+        slope_max_degrees: 60,
+        scatter_field: "mountain_sharp",
+        min_spacing_voxels: 6.0,
+        jitter_strength: 0.85,
+        clump_field: Some("alpine_detail"),
+        clump_strength: 0.22,
+        altitude_range: Some((60.0, 400.0)),
+        scale_variance: Some((0.74, 1.44)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        // Mostly rocks and ice formations
+        (model: "voxel/props/decoration/rocks/rock_0",            weight: 5),
+        (model: "voxel/props/decoration/rocks/rock_1",            weight: 5),
+        (model: "voxel/props/decoration/rocks/rock_2",            weight: 4),
+        // Snow pebbles on ledges
+        (model: "voxel/props/decoration/snow_pebbles/snow_pebbles_0", weight: 4),
+        (model: "voxel/props/decoration/snow_pebbles/snow_pebbles_1", weight: 4),
+        // Very rare snow flowers at lower peak edges
+        (model: "voxel/vegetation/flowers/snow_forsythia_0",      weight: 1, drops: [(item: "flower", count: (1, 1), chance: 0.60)]),
+    ],
+)

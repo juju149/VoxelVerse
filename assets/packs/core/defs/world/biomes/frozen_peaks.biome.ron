@@ -17,11 +17,12 @@ Biome(
     ),
 
     palette: (
-        grass:   (0.88, 0.92, 0.96),
-        foliage: (0.70, 0.80, 0.88),
+        grass:   (0.89, 0.93, 0.97),
+        foliage: (0.71, 0.81, 0.89),
+        fog_bias: (0.01, 0.02, 0.06),
     ),
 
     vegetation: ["cold", "mountain", "frozen", "snowy"],
 
-    tags: ["cold", "mountain", "frozen", "snowy"],
+    tags: ["cold", "mountain", "frozen", "snowy", "extreme", "elevation", "inhospitable"],
 )

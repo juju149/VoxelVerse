@@ -9,18 +9,20 @@ Biome(
         amplitude: 0.28,
         flatness:  0.40,
         noise:     "rolling_hills",
+        curve:     power(exponent: 0.85),
         mountain:  0.5,
         slope_smooth: 0.35,
     ),
 
     palette: (
-        grass:   (0.26, 0.46, 0.24),
-        foliage: (0.14, 0.32, 0.16),
+        grass:   (0.24, 0.44, 0.22),
+        foliage: (0.12, 0.30, 0.14),
+        fog_bias: (0.01, 0.02, 0.01),
     ),
 
     vegetation: ["temperate", "forest"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["temperate", "forest", "dark"],
+    tags: ["temperate", "forest", "dark", "dense", "shadowed", "hostile_night", "mushroom"],
 )

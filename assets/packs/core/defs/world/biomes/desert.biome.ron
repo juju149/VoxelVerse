@@ -10,18 +10,20 @@ Biome(
         flatness:  0.56,
         noise:     "rolling_hills",
         ridges:    "dune_ridges",
+        curve:     power(exponent: 1.3),
         mountain:  0.3,
         slope_smooth: 0.2,
     ),
 
     palette: (
-        grass:   (0.78, 0.60, 0.28),
-        foliage: (0.60, 0.46, 0.20),
+        grass:   (0.80, 0.62, 0.27),
+        foliage: (0.62, 0.48, 0.19),
+        fog_bias: (0.06, 0.05, 0.01),
     ),
 
     vegetation: ["desert", "dry"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["desert", "dry"],
+    tags: ["desert", "dry", "harsh", "arid", "sandy", "challenge"],
 )

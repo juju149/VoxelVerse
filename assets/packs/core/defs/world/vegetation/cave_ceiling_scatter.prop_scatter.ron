@@ -1,0 +1,41 @@
+PropScatter(
+    name: "Cave Ceiling Growth",
+    placement: (
+        allowed_surface_blocks: ["stone", "deepslate"],
+        biome_tags: ["cave", "underground"],
+        density: 0.15,
+        slope_max_degrees: 0,
+        slope_min_degrees: Some(160),
+        scatter_field: "soft_hills",
+        min_spacing_voxels: 2.2,
+        jitter_strength: 0.90,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.55,
+        altitude_range: Some((-360.0, -8.0)),
+        scale_variance: Some((0.76, 1.32)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        // Molds — cover large ceiling areas
+        (model: "voxel/vegetation/cave/ceiling/mold_0",              weight: 6),
+        (model: "voxel/vegetation/cave/ceiling/mold_2",              weight: 6),
+        (model: "voxel/vegetation/cave/ceiling/mold_4",              weight: 5),
+        (model: "voxel/vegetation/cave/ceiling/mold_6",              weight: 4),
+        // Mycel patches
+        (model: "voxel/vegetation/cave/ceiling/mycel_0",             weight: 4),
+        (model: "voxel/vegetation/cave/ceiling/mycel_2",             weight: 3),
+        // Hanging cave mushrooms
+        (model: "voxel/vegetation/cave/ceiling/mushroom_0",          weight: 3, drops: [(item: "mushroom", count: (1, 2), chance: 0.75)]),
+        (model: "voxel/vegetation/cave/ceiling/mushroom_2",          weight: 2, drops: [(item: "mushroom", count: (1, 2), chance: 0.75)]),
+        // Luminous hanging roots
+        (model: "voxel/vegetation/cave/ceiling/root_0",              weight: 3),
+        (model: "voxel/vegetation/cave/ceiling/root_2",              weight: 3),
+        (model: "voxel/vegetation/cave/ceiling/root_5",              weight: 2),
+        // Glowing orbs
+        (model: "voxel/vegetation/cave/ceiling/orb_0",               weight: 2),
+        (model: "voxel/vegetation/cave/ceiling/orb_2",               weight: 2),
+        // Hanging lantern plants
+        (model: "voxel/vegetation/cave/ceiling/cave_lantern_plant_0", weight: 2, drops: [(item: "flower", count: (1, 1), chance: 0.65)]),
+        (model: "voxel/vegetation/cave/ceiling/cave_lantern_flower_1", weight: 1, drops: [(item: "flower", count: (1, 1), chance: 0.80)]),
+    ],
+)

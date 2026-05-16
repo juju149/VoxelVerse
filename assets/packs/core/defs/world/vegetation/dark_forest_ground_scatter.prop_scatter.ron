@@ -1,0 +1,34 @@
+PropScatter(
+    name: "Dark Forest Ground Cover",
+    placement: (
+        allowed_surface_blocks: ["podzol", "dirt"],
+        biome_tags: ["dark", "shadowed", "mushroom"],
+        density: 0.20,
+        slope_max_degrees: 32,
+        scatter_field: "flower_noise",
+        min_spacing_voxels: 1.4,
+        jitter_strength: 0.91,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.60,
+        humidity_range: Some((0.50, 1.00)),
+        temperature_range: Some((0.14, 0.72)),
+        scale_variance: Some((0.80, 1.30)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        // Thick dark ferns
+        (model: "voxel/vegetation/grass/ferns/ferns_11",    weight: 5, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        (model: "voxel/vegetation/grass/ferns/ferns_12",    weight: 5, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        // Mushrooms — denser than forest_floor
+        (model: "voxel/vegetation/mushrooms/mushroom_0",    weight: 5, drops: [(item: "mushroom", count: (1, 3), chance: 1.0)]),
+        (model: "voxel/vegetation/mushrooms/mushroom_2",    weight: 5, drops: [(item: "mushroom", count: (1, 3), chance: 1.0)]),
+        (model: "voxel/vegetation/mushrooms/mushroom_5",    weight: 4, drops: [(item: "mushroom", count: (1, 2), chance: 0.90)]),
+        (model: "voxel/vegetation/mushrooms/mushroom_8",    weight: 3, drops: [(item: "mushroom", count: (1, 2), chance: 0.85)]),
+        (model: "voxel/vegetation/mushrooms/mushroom_10",   weight: 2, drops: [(item: "mushroom", count: (1, 2), chance: 0.80)]),
+        // Dead and shadow plants
+        (model: "voxel/vegetation/bushes/dead_plant/dead_plant_2", weight: 2),
+        (model: "voxel/vegetation/bushes/dead_plant/dead_plant_3", weight: 2),
+        // Sparse dark leafy plants
+        (model: "voxel/vegetation/grass/leafy_plant/leafy_plant_09", weight: 2, drops: [(item: "plant_fiber", count: (1, 1), chance: 0.20)]),
+    ],
+)

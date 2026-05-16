@@ -16,12 +16,12 @@ Biome(
     ),
 
     palette: (
-        grass: (0.12, 0.42, 0.48),
-        foliage: (0.10, 0.36, 0.38),
+        grass: (0.11, 0.41, 0.47),
+        foliage: (0.09, 0.35, 0.37),
         fog_bias: (0.02, 0.06, 0.08),
     ),
 
     vegetation: ["aquatic", "reef", "tropical", "wet"],
 
-    tags: ["ocean", "aquatic", "reef"],
+    tags: ["ocean", "aquatic", "reef", "tropical", "warm_water", "shallow", "colorful"],
 )

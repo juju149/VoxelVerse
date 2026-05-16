@@ -1,0 +1,32 @@
+PropScatter(
+    name: "Ocean Floor Seabed",
+    placement: (
+        allowed_surface_blocks: ["stone", "deepslate"],
+        biome_tags: ["abyssal", "deep", "dark_water"],
+        density: 0.085,
+        slope_max_degrees: 18,
+        scatter_field: "valley_floor",
+        min_spacing_voxels: 3.0,
+        jitter_strength: 0.92,
+        clump_field: Some("ocean_garden"),
+        clump_strength: 0.42,
+        altitude_range: Some((-360.0, -20.0)),
+        scale_variance: Some((0.80, 1.22)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        // Seagrass
+        (model: "voxel/vegetation/grass/grass/seagrass_0",         weight: 6),
+        (model: "voxel/vegetation/grass/grass/seagrass_1",         weight: 6),
+        (model: "voxel/vegetation/grass/grass/seagrass_3",         weight: 5),
+        // Cold-water algae
+        (model: "voxel/vegetation/underwater/algae/caulerpa_prolifera_0", weight: 3),
+        (model: "voxel/vegetation/underwater/algae/caulerpa_prolifera_2", weight: 3),
+        (model: "voxel/vegetation/underwater/algae/udotea_0",       weight: 2),
+        // Scattered mud patches
+        (model: "voxel/vegetation/underwater/underwater_mud/mud_0", weight: 4),
+        (model: "voxel/vegetation/underwater/underwater_mud/mud_1", weight: 4),
+        // Sea urchins
+        (model: "voxel/vegetation/underwater/sea_urchins/sea_urchin", weight: 1),
+    ],
+)

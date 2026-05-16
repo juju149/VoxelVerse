@@ -9,18 +9,20 @@ Biome(
         amplitude: 0.14,
         flatness:  0.74,
         noise:     "soft_hills",
+        curve:     power(exponent: 0.75),
         mountain:  0.4,
         slope_smooth: 0.35,
     ),
 
     palette: (
-        grass:   (0.72, 0.66, 0.30),
-        foliage: (0.56, 0.50, 0.22),
+        grass:   (0.73, 0.67, 0.29),
+        foliage: (0.57, 0.51, 0.21),
+        fog_bias: (0.05, 0.04, 0.01),
     ),
 
     vegetation: ["savanna", "dry"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["savanna", "dry", "warm"],
+    tags: ["savanna", "dry", "warm", "open", "golden", "grassland", "tropical_edge"],
 )

@@ -15,11 +15,12 @@ Biome(
     ),
 
     palette: (
-        grass:   (0.18, 0.32, 0.52),
-        foliage: (0.14, 0.26, 0.44),
+        grass:   (0.17, 0.31, 0.51),
+        foliage: (0.13, 0.25, 0.43),
+        fog_bias: (0.01, 0.03, 0.07),
     ),
 
     vegetation: ["aquatic", "ocean", "wet"],
 
-    tags: ["ocean", "aquatic"],
+    tags: ["ocean", "aquatic", "deep", "dark_water", "abyssal"],
 )

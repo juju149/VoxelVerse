@@ -1,0 +1,54 @@
+PropScatter(
+    name: "Warm Reef Full Coral Spectrum",
+    placement: (
+        allowed_surface_blocks: ["stone", "deepslate"],
+        biome_tags: ["colorful", "shallow"],
+        density: 0.18,
+        slope_max_degrees: 28,
+        scatter_field: "reef_coral",
+        min_spacing_voxels: 2.2,
+        jitter_strength: 0.94,
+        clump_field: Some("ocean_garden"),
+        clump_strength: 0.70,
+        altitude_range: Some((-80.0, -2.0)),
+        temperature_range: Some((0.68, 1.00)),
+        scale_variance: Some((0.82, 1.24)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        // Ricordea variety
+        (model: "voxel/vegetation/underwater/coral/blue_ricordea_1",          weight: 3),
+        (model: "voxel/vegetation/underwater/coral/blue_ricordea_2",          weight: 3),
+        (model: "voxel/vegetation/underwater/coral/green_ricordea_1",         weight: 3),
+        (model: "voxel/vegetation/underwater/coral/green_ricordea_3",         weight: 3),
+        // Brain corals
+        (model: "voxel/vegetation/underwater/coral/green_brain_coral_0",      weight: 3),
+        (model: "voxel/vegetation/underwater/coral/green_brain_coral_2",      weight: 2),
+        (model: "voxel/vegetation/underwater/coral/pink_brain_coral_0",       weight: 3),
+        (model: "voxel/vegetation/underwater/coral/pink_brain_coral_1",       weight: 2),
+        // Fire coral
+        (model: "voxel/vegetation/underwater/coral/red_fire_coral_0",         weight: 2),
+        (model: "voxel/vegetation/underwater/coral/red_fire_coral_2",         weight: 2),
+        (model: "voxel/vegetation/underwater/coral/yellow_fire_coral_0",      weight: 2),
+        // Birdsnest coral
+        (model: "voxel/vegetation/underwater/coral/pink_birdsnest_coral_0",   weight: 2),
+        (model: "voxel/vegetation/underwater/coral/pink_birdsnest_coral_2",   weight: 2),
+        // Sea fans — tall and dramatic
+        (model: "voxel/vegetation/underwater/coral/red_sea_fan_1",            weight: 2),
+        (model: "voxel/vegetation/underwater/coral/red_sea_fan_2",            weight: 2),
+        (model: "voxel/vegetation/underwater/coral/yellow_gorgonian_0",       weight: 2),
+        (model: "voxel/vegetation/underwater/coral/yellow_gorgonian_2",       weight: 2),
+        // Plating acropora — flat wide coral
+        (model: "voxel/vegetation/underwater/coral/plating_acropora_0",       weight: 2),
+        (model: "voxel/vegetation/underwater/coral/plating_acropora_4",       weight: 2),
+        // Purple finger soft coral
+        (model: "voxel/vegetation/underwater/coral/purple_finger_soft_coral_0", weight: 2),
+        // Sea anemone
+        (model: "voxel/vegetation/underwater/coral/sea_anemone_1",            weight: 1),
+        // Sea urchins
+        (model: "voxel/vegetation/underwater/sea_urchins/sea_urchin",         weight: 1),
+        // Tropical algae variety
+        (model: "voxel/vegetation/underwater/algae/acetabularia_0",           weight: 2),
+        (model: "voxel/vegetation/underwater/algae/acetabularia_2",           weight: 2),
+    ],
+)

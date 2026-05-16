@@ -9,18 +9,20 @@ Biome(
         amplitude: 0.32,
         flatness:  0.40,
         noise:     "rolling_hills",
+        curve:     smoothstep,
         mountain:  0.7,
         slope_smooth: 0.25,
     ),
 
     palette: (
-        grass:   (0.62, 0.72, 0.62),
-        foliage: (0.36, 0.50, 0.40),
+        grass:   (0.63, 0.73, 0.63),
+        foliage: (0.37, 0.51, 0.41),
+        fog_bias: (0.01, 0.02, 0.04),
     ),
 
     vegetation: ["cold", "forest", "taiga", "snowy"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["cold", "forest", "taiga", "snowy"],
+    tags: ["cold", "forest", "taiga", "snowy", "spruce", "dark_canopy", "survival"],
 )

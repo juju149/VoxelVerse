@@ -1,0 +1,33 @@
+PropScatter(
+    name: "Jungle Edge Transition",
+    placement: (
+        allowed_surface_blocks: ["grass", "dirt", "podzol"],
+        biome_tags: ["edge", "transition"],
+        density: 0.22,
+        slope_max_degrees: 34,
+        scatter_field: "jungle_scatter",
+        min_spacing_voxels: 1.4,
+        jitter_strength: 0.93,
+        clump_field: Some("prop_clump"),
+        clump_strength: 0.28,
+        humidity_range: Some((0.42, 1.00)),
+        temperature_range: Some((0.42, 0.90)),
+        scale_variance: Some((0.84, 1.18)),
+        rotation_variance: 1.0,
+    ),
+    variants: [
+        // Thinning jungle ferns mixed with temperate plants
+        (model: "voxel/vegetation/grass/junglefern/junglefern_03",    weight: 5, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.25)]),
+        (model: "voxel/vegetation/grass/junglefern/junglefern_04",    weight: 4, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.25)]),
+        (model: "voxel/vegetation/grass/ferns/ferns_05",              weight: 4, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.28)]),
+        (model: "voxel/vegetation/grass/ferns/ferns_08",              weight: 3, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.28)]),
+        // Leafy jungle border plants
+        (model: "voxel/vegetation/grass/leafy_plant/jungle_plant_2",  weight: 4, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        (model: "voxel/vegetation/grass/leafy_plant/jungle_plant_4",  weight: 3, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.30)]),
+        // Temperate leafy plants mixing in
+        (model: "voxel/vegetation/grass/leafy_plant/leafy_plant_04",  weight: 3, drops: [(item: "plant_fiber", count: (1, 2), chance: 0.22)]),
+        // Jungle edge flowers
+        (model: "voxel/vegetation/flowers/jungle_flower_red_0",       weight: 2, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+        (model: "voxel/vegetation/flowers/flower_purple_4",           weight: 2, drops: [(item: "flower", count: (1, 2), chance: 1.0)]),
+    ],
+)

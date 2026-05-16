@@ -79,6 +79,13 @@ pub struct TreeShape {
 
     pub branches: Vec<Branch>,
     pub lobes: Vec<CanopyLobe>,
+
+    /// Surface root arms: each is `(angle_radians, length_voxels)`.  Empty
+    /// when `veg.root_radius == 0`.
+    pub root_arms: Vec<(f32, f32)>,
+    /// Per-tree lateral S-curve applied at mid-trunk on top of lean.
+    /// Zero when `veg.trunk_curve_strength == 0`.
+    pub trunk_curve_offset: (f32, f32),
 }
 
 impl TreeShape {
@@ -106,6 +113,26 @@ impl TreeShape {
 
         let trunk_top_layer = plant_height + height;
         let pivot = Vec3::new(pu as f32 + 0.5, plant_height as f32 + 0.5, pv as f32 + 0.5);
+
+        // -- surface root arms ---------------------------------------------
+        let root_arms: Vec<(f32, f32)> = if veg.root_radius > 0.0 {
+            let n_arms = 3 + hash4(face, pu, pv, 0x42) % 3; // 3..=5
+            (0..n_arms)
+                .map(|i| {
+                    let angle = hash01(face, pu, pv, 0x200 + i) * TAU;
+                    let length =
+                        veg.root_radius * (0.60 + hash01(face, pu, pv, 0x300 + i) * 0.40);
+                    (angle, length)
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        // -- trunk S-curve offset ------------------------------------------
+        let curve_max = (height as f32) * veg.trunk_curve_strength * 0.18;
+        let curve_theta = hash01(face, pu, pv, 0x77C) * TAU;
+        let trunk_curve_offset = (curve_theta.cos() * curve_max, curve_theta.sin() * curve_max);
 
         // -- trunk lean (suppressed for shapes that need a straight trunk) --
         let allow_lean = matches!(
@@ -196,17 +223,25 @@ impl TreeShape {
             canopy_seed,
             branches,
             lobes,
+            root_arms,
+            trunk_curve_offset,
         }
     }
 
     /// Walk every voxel that belongs to this tree and forward it to `emit`.
     /// The bakery uses this to populate the chunk feature map.
     pub fn stamp(&self, emit: &mut dyn FnMut(i32, i32, i32, VoxelId)) {
-        // Trunk: layer-by-layer disc with lean, taper, and per-voxel jitter.
+        // Trunk: layer-by-layer disc with lean, taper, per-voxel jitter, and
+        // optional S-curve on top of the quadratic lean.
         for layer in (self.plant_height + 1)..=self.trunk_top_layer {
             let t = (layer - self.plant_height) as f32 / self.height.max(1) as f32;
-            let cx = self.trunk_pivot.x + self.trunk_lean.0 * t * t;
-            let cz = self.trunk_pivot.z + self.trunk_lean.1 * t * t;
+            let curve_bump = (t * std::f32::consts::PI).sin();
+            let cx = self.trunk_pivot.x
+                + self.trunk_lean.0 * t * t
+                + self.trunk_curve_offset.0 * curve_bump;
+            let cz = self.trunk_pivot.z
+                + self.trunk_lean.1 * t * t
+                + self.trunk_curve_offset.1 * curve_bump;
             let r = trunk_radius_at(
                 layer as f32,
                 self.plant_height as f32,
@@ -263,6 +298,14 @@ impl TreeShape {
                 emit,
             );
         }
+
+        // Surface roots: radial tapered ridges at the base layer.
+        if !self.root_arms.is_empty() {
+            let base_layer = (self.plant_height + 1) as i32;
+            let cx = self.trunk_pivot.x;
+            let cz = self.trunk_pivot.z;
+            stamp_root_arms(cx, cz, base_layer, &self.root_arms, self.trunk_seed, self.trunk_block, emit);
+        }
     }
 
     /// Test whether the voxel at `(u, layer, v)` belongs to this tree.
@@ -272,8 +315,13 @@ impl TreeShape {
         if (layer as u32) > self.plant_height && (layer as u32) <= self.trunk_top_layer {
             let l = layer as u32;
             let t = (l - self.plant_height) as f32 / self.height.max(1) as f32;
-            let cx = self.trunk_pivot.x + self.trunk_lean.0 * t * t;
-            let cz = self.trunk_pivot.z + self.trunk_lean.1 * t * t;
+            let curve_bump = (t * std::f32::consts::PI).sin();
+            let cx = self.trunk_pivot.x
+                + self.trunk_lean.0 * t * t
+                + self.trunk_curve_offset.0 * curve_bump;
+            let cz = self.trunk_pivot.z
+                + self.trunk_lean.1 * t * t
+                + self.trunk_curve_offset.1 * curve_bump;
             let r = trunk_radius_at(
                 layer as f32,
                 self.plant_height as f32,
@@ -317,6 +365,20 @@ impl TreeShape {
                 return Some(self.leaves_block);
             }
         }
+        // Surface roots
+        if !self.root_arms.is_empty()
+            && layer == (self.plant_height + 1) as i32
+            && root_arm_contains(
+                u,
+                v,
+                self.trunk_pivot.x,
+                self.trunk_pivot.z,
+                &self.root_arms,
+                self.trunk_seed,
+            )
+        {
+            return Some(self.trunk_block);
+        }
         None
     }
 }
@@ -324,6 +386,69 @@ impl TreeShape {
 // ---------------------------------------------------------------------------
 // Per-shape builders.  Each one returns `(branches, lobes)` for one tree.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Surface root helpers.
+// ---------------------------------------------------------------------------
+
+/// Stamp tapered radial root ridges at `base_layer`.
+fn stamp_root_arms(
+    cx: f32,
+    cz: f32,
+    base_layer: i32,
+    arms: &[(f32, f32)],
+    seed: u32,
+    block: VoxelId,
+    emit: &mut dyn FnMut(i32, i32, i32, VoxelId),
+) {
+    for (ai, &(angle, length)) in arms.iter().enumerate() {
+        let steps = length.ceil() as i32;
+        for s in 0..=steps {
+            let t = if steps > 0 { s as f32 / steps as f32 } else { 0.0 };
+            let d = angle.cos() * (s as f32);
+            let e = angle.sin() * (s as f32);
+            // Taper from 1.4 at base to 0.5 at tip.
+            let r = ((1.0 - t) * 1.4 + 0.5).max(0.5);
+            stamp_disc(
+                cx + d,
+                cz + e,
+                base_layer,
+                r,
+                seed
+                    ^ (ai as u32).wrapping_mul(17)
+                    ^ (s as u32).wrapping_mul(31),
+                block,
+                emit,
+            );
+        }
+    }
+}
+
+/// Mirror of `stamp_root_arms` for the slow path (`voxel_at`).
+fn root_arm_contains(u: i32, v: i32, cx: f32, cz: f32, arms: &[(f32, f32)], seed: u32) -> bool {
+    for (ai, &(angle, length)) in arms.iter().enumerate() {
+        let steps = length.ceil() as i32;
+        for s in 0..=steps {
+            let t = if steps > 0 { s as f32 / steps as f32 } else { 0.0 };
+            let d = angle.cos() * (s as f32);
+            let e = angle.sin() * (s as f32);
+            let r = ((1.0 - t) * 1.4 + 0.5).max(0.5);
+            if disc_contains(
+                u,
+                v,
+                cx + d,
+                cz + e,
+                r,
+                seed
+                    ^ (ai as u32).wrapping_mul(17)
+                    ^ (s as u32).wrapping_mul(31),
+            ) {
+                return true;
+            }
+        }
+    }
+    false
+}
 
 #[allow(clippy::too_many_arguments)]
 fn build_broad_leaf(

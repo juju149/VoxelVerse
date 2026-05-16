@@ -23,5 +23,5 @@ Biome(
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["wet", "swamp", "coastal"],
+    tags: ["wet", "swamp", "coastal", "reeds", "temperate", "flat", "reflective"],
 )

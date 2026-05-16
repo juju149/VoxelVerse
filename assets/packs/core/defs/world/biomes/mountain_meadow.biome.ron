@@ -19,11 +19,12 @@ Biome(
     palette: (
         grass: (0.46, 0.70, 0.32),
         foliage: (0.30, 0.54, 0.28),
+        fog_bias: (0.01, 0.02, 0.02),
     ),
 
     vegetation: ["temperate", "meadow", "mountain", "alpine"],
     fauna: ["small_herbivore"],
     structures: ["small"],
 
-    tags: ["mountain", "meadow", "temperate"],
+    tags: ["mountain", "meadow", "temperate", "deferred", "v1_1"],
 )
