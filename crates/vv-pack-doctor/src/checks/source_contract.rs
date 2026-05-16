@@ -28,6 +28,33 @@ pub fn run(scan: &PackScan, report: &mut Report) {
                     ),
                 );
             }
+            if trimmed.contains("#station.") {
+                report.error(
+                    Diagnostic::new(
+                        CHECK,
+                        "legacy station tag syntax is forbidden in V1",
+                    )
+                    .with_path(rel.clone())
+                    .with_field(format!("line {}", line_idx + 1))
+                    .with_suggestion(
+                        "use `#core:tag/station/<name>` instead of `#station.<name>`"
+                            .to_string(),
+                    ),
+                );
+            }
+            if trimmed.starts_with("icon:") {
+                report.error(
+                    Diagnostic::new(
+                        CHECK,
+                        "legacy `item.icon` field is forbidden in V1",
+                    )
+                    .with_path(rel.clone())
+                    .with_field(format!("line {}", line_idx + 1))
+                    .with_suggestion(
+                        "use `inventory_icon: texture(\"core:texture/items/...\")`".to_string(),
+                    ),
+                );
+            }
         }
     }
 }

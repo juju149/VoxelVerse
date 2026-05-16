@@ -13,8 +13,8 @@ use std::collections::{HashMap, HashSet};
 
 use vv_content_schema::{
     RawObjectCount, RawObjectDef, RawObjectRecipeKind, RawObjectRecipeSection, RawObjectRenderMode,
-    RawObjectShape, RawObjectSoundKind, RawObjectTexture, RawObjectTint, RawObjectToolKind,
-    RawObjectWeaponKind,
+    RawObjectInventoryIcon, RawObjectItemCategory, RawObjectShape, RawObjectSoundKind,
+    RawObjectTexture, RawObjectTint, RawObjectToolKind, RawObjectWeaponKind,
 };
 use vv_voxel::VoxelId;
 
@@ -85,7 +85,7 @@ fn compile_tags_from_objects(raw: &[(String, RawObjectDef)]) -> TagRegistry {
     // Collect all unique tag names (sorted for deterministic IDs).
     let all_tags: Vec<String> = raw
         .iter()
-        .flat_map(|(_, def)| def.tags.iter().cloned())
+        .flat_map(|(_, def)| def.tags.iter().filter_map(|tag| normalize_tag_key(tag)))
         .collect::<std::collections::BTreeSet<_>>()
         .into_iter()
         .collect();
@@ -94,8 +94,11 @@ fn compile_tags_from_objects(raw: &[(String, RawObjectDef)]) -> TagRegistry {
     let mut tag_members: HashMap<String, HashSet<String>> = HashMap::new();
     for (obj_key, def) in raw {
         for tag in &def.tags {
+            let Some(tag) = normalize_tag_key(tag) else {
+                continue;
+            };
             tag_members
-                .entry(tag.clone())
+                .entry(tag)
                 .or_default()
                 .insert(obj_key.clone());
         }
@@ -117,6 +120,19 @@ fn compile_tags_from_objects(raw: &[(String, RawObjectDef)]) -> TagRegistry {
     TagRegistry::new(compiled)
 }
 
+fn normalize_tag_key(tag: &str) -> Option<String> {
+    let stripped = tag.strip_prefix('#')?;
+    let (_, path) = stripped.split_once(':')?;
+    path.strip_prefix("tag/").map(str::to_string)
+}
+
+fn has_tag(def: &RawObjectDef, key: &str) -> bool {
+    def.tags
+        .iter()
+        .filter_map(|tag| normalize_tag_key(tag))
+        .any(|tag| tag == key)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 // Block compilation
@@ -128,7 +144,7 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
     // Find the air object: must have tag "air" AND a block section.
     let air_key = raw
         .iter()
-        .find(|(_, def)| def.tags.contains(&"air".to_string()) && def.block.is_some())
+        .find(|(_, def)| has_tag(def, "block/air") && def.block.is_some())
         .map(|(k, _)| k.clone());
 
     if air_key.is_none() {
@@ -190,8 +206,10 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
 
         let category = def
             .tags
-            .first()
-            .cloned()
+            .iter()
+            .filter_map(|t| normalize_tag_key(t))
+            .next()
+            .and_then(|t| t.rsplit('/').next().map(str::to_string))
             .unwrap_or_else(|| "terrain".into());
         let color = category_color(&category);
         let max_stack = def.item.as_ref().map(|i| i.stack).unwrap_or(99);
@@ -211,8 +229,7 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
             default_place = id;
         }
         if planet_core_opt.is_none()
-            && (def.tags.contains(&"core".to_string())
-                || def.tags.contains(&"unbreakable".to_string()))
+            && (has_tag(def, "block/core") || has_tag(def, "block/unbreakable"))
         {
             planet_core_opt = Some(id);
         }
@@ -373,17 +390,7 @@ fn loot_key_for_object(obj_key: &str) -> String {
 }
 
 fn resolve_item_id(short_name: &str, items: &ItemRegistry) -> Option<ItemId> {
-    if let Some(id) = items.lookup(short_name) {
-        return Some(id);
-    }
-    items.items().iter().find_map(|item| {
-        let stem = item.key.rsplit('/').next().unwrap_or(&item.key);
-        if stem == short_name {
-            Some(item.id)
-        } else {
-            None
-        }
-    })
+    items.lookup(short_name)
 }
 
 fn tool_tag_key(kind: RawObjectToolKind) -> String {
@@ -520,7 +527,11 @@ fn compile_items_from_objects(raw: &[(String, RawObjectDef)]) -> Result<ItemRegi
         }
 
         // Determine gameplay category.
-        let category = infer_item_category(def);
+        let category = def
+            .item
+            .as_ref()
+            .map(|i| item_category_key(i.category))
+            .unwrap_or_else(|| infer_item_category(def));
 
         let stack_size =
             def.item
@@ -531,13 +542,14 @@ fn compile_items_from_objects(raw: &[(String, RawObjectDef)]) -> Result<ItemRegi
         let icon_key = def
             .item
             .as_ref()
-            .and_then(|i| i.icon.clone())
-            .unwrap_or_else(|| format!("items/{}", stem_from_key(key)));
+            .and_then(|i| i.inventory_icon.as_ref())
+            .map(|icon| compile_inventory_icon_key(icon, key))
+            .unwrap_or_else(|| format!("core:texture/items/{}", stem_from_key(key)));
 
         let world_model = def
             .item
             .as_ref()
-            .and_then(|i| i.model.clone())
+            .and_then(|i| i.world_model.clone())
             .map(CompiledItemWorldModel::Voxel)
             .unwrap_or(if has_block {
                 CompiledItemWorldModel::BlockItem(key.clone())
@@ -552,7 +564,12 @@ fn compile_items_from_objects(raw: &[(String, RawObjectDef)]) -> Result<ItemRegi
         };
 
         let gameplay = compile_item_gameplay(def, key);
-        let tag_keys = def.tags.iter().map(|t| format!("core:tag/{}", t)).collect();
+        let tag_keys = def
+            .tags
+            .iter()
+            .filter_map(|t| normalize_tag_key(t))
+            .map(|t| format!("core:tag/{t}"))
+            .collect();
 
         items.push(CompiledItem {
             id: ItemId::from_raw(idx),
@@ -649,6 +666,32 @@ fn infer_item_category(def: &RawObjectDef) -> String {
     "resource".into()
 }
 
+fn item_category_key(category: RawObjectItemCategory) -> String {
+    match category {
+        RawObjectItemCategory::Block => "block",
+        RawObjectItemCategory::Resource => "resource",
+        RawObjectItemCategory::Food => "food",
+        RawObjectItemCategory::Tool => "tool",
+        RawObjectItemCategory::Weapon => "weapon",
+        RawObjectItemCategory::Armor => "armor",
+        RawObjectItemCategory::Station => "station",
+        RawObjectItemCategory::Utility => "utility",
+        RawObjectItemCategory::Material => "material",
+        RawObjectItemCategory::Quest => "quest",
+        RawObjectItemCategory::Debug => "debug",
+    }
+    .into()
+}
+
+fn compile_inventory_icon_key(icon: &RawObjectInventoryIcon, object_key: &str) -> String {
+    match icon {
+        RawObjectInventoryIcon::Texture(key) => key.clone(),
+        RawObjectInventoryIcon::Block => format!("{object_key}#icon/block"),
+        RawObjectInventoryIcon::VoxelModel(key) => format!("{key}#icon/voxel_model"),
+        RawObjectInventoryIcon::AutoGenerated => format!("{object_key}#icon/generated"),
+    }
+}
+
 fn stem_from_key(key: &str) -> String {
     key.rsplit('/').next().unwrap_or(key).to_string()
 }
@@ -693,6 +736,10 @@ fn compile_one_recipe(
     errors: &mut Vec<String>,
 ) -> Option<(CompiledRecipe, u32)> {
     let Some(output_id) = resolve_item_id(&recipe.output.item, items) else {
+        errors.push(format!(
+            "recipe '{}'#{}: output item '{}' does not resolve",
+            object_key, recipe_idx, recipe.output.item
+        ));
         return None;
     };
     let recipe_key = if recipe_idx == 0 {
@@ -720,7 +767,16 @@ fn compile_one_recipe(
                         let sym = ch.to_string();
                         match shaped.legend.get(&sym) {
                             Some(item_name) => {
-                                resolve_item_id(item_name, items).map(CompiledIngredient::Item)
+                                match resolve_item_id(item_name, items) {
+                                    Some(id) => Some(CompiledIngredient::Item(id)),
+                                    None => {
+                                        errors.push(format!(
+                                            "recipe '{}'#{}: ingredient '{}' does not resolve",
+                                            object_key, recipe_idx, item_name
+                                        ));
+                                        None
+                                    }
+                                }
                             }
                             None => {
                                 errors.push(format!(
@@ -740,11 +796,16 @@ fn compile_one_recipe(
             })
         }
         RawObjectRecipeKind::Shapeless(shapeless) => {
-            let ingredients = shapeless
-                .ingredients
-                .iter()
-                .filter_map(|name| resolve_item_id(name, items).map(CompiledIngredient::Item))
-                .collect();
+            let mut ingredients = Vec::new();
+            for name in &shapeless.ingredients {
+                match resolve_item_id(name, items) {
+                    Some(id) => ingredients.push(CompiledIngredient::Item(id)),
+                    None => errors.push(format!(
+                        "recipe '{}'#{}: ingredient '{}' does not resolve",
+                        object_key, recipe_idx, name
+                    )),
+                }
+            }
             CompiledRecipeKind::Shapeless(CompiledShapelessRecipe { ingredients })
         }
         RawObjectRecipeKind::Processing(processing) => {
@@ -756,6 +817,10 @@ fn compile_one_recipe(
                 return None;
             }
             let Some(ing_id) = resolve_item_id(&processing.inputs[0].item, items) else {
+                errors.push(format!(
+                    "recipe '{}'#{}: processing input '{}' does not resolve",
+                    object_key, recipe_idx, processing.inputs[0].item
+                ));
                 return None;
             };
             CompiledRecipeKind::Smelting(CompiledSmeltingRecipe {

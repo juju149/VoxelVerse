@@ -1,0 +1,15 @@
+VoxelModel(
+    format_version: 1,
+    source: "voxel/equipment/weapons/bow_wood",
+    usage: [inventory, hand, world_item],
+    scale: (1.0, 1.0, 1.0),
+    pivot: (0.5, 0.0, 0.5),
+    orientation: (0.0, 0.0, 0.0),
+    bounds: (1.0, 1.0, 1.0),
+    collision: none,
+    render: opaque,
+    inventory: render_preview,
+    hand: first_person,
+    world: dropped_item,
+    structure: disabled,
+)

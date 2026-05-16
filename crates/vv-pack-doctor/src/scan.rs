@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use vv_content_schema::{RawObjectDef, RawPackManifest};
+use vv_content_schema::{RawObjectDef, RawPackManifest, RawVoxelModelManifest};
 
 use crate::parse::{pack_relative, parse_string, parse_value, read_typed, ParseError};
 
@@ -17,6 +17,7 @@ pub struct PackScan {
     pub namespace: String,
 
     pub objects: Vec<ParsedObject>,
+    pub voxel_models: Vec<ParsedVoxelModel>,
     pub world_files: Vec<ParsedWorldFile>,
     pub render: RenderScan,
 
@@ -32,6 +33,12 @@ pub struct ParsedObject {
     pub id: String,
     pub rel_path: String,
     pub def: RawObjectDef,
+}
+
+pub struct ParsedVoxelModel {
+    pub id: String,
+    pub rel_path: String,
+    pub def: RawVoxelModelManifest,
 }
 
 /// Files under `defs/world/...` use a small custom schema that is still being
@@ -94,6 +101,7 @@ impl PackScan {
         collect_files(&pack_root, "ron", &mut all_ron, &SOURCE_SKIP);
 
         let objects = load_objects(&pack_root, &mut errors);
+        let voxel_models = load_voxel_models(&pack_root, &mut errors);
         let world_files = load_world(&pack_root, &mut errors);
         let render = load_render(&pack_root, &namespace, &mut errors);
 
@@ -123,6 +131,7 @@ impl PackScan {
             manifest,
             namespace,
             objects,
+            voxel_models,
             world_files,
             render,
             texture_files,
@@ -185,6 +194,28 @@ fn load_objects(pack_root: &Path, errors: &mut Vec<ParseError>) -> Vec<ParsedObj
             Ok(def) => {
                 let id = derive_object_id(pack_root, &path);
                 out.push(ParsedObject {
+                    id,
+                    rel_path: rel,
+                    def,
+                });
+            }
+            Err(e) => errors.push(e),
+        }
+    }
+    out
+}
+
+fn load_voxel_models(pack_root: &Path, errors: &mut Vec<ParseError>) -> Vec<ParsedVoxelModel> {
+    let root = pack_root.join("defs").join("voxel_models");
+    let mut paths = Vec::new();
+    collect_files(&root, "ron", &mut paths, &[]);
+    let mut out = Vec::with_capacity(paths.len());
+    for path in paths {
+        let rel = pack_relative(pack_root, &path);
+        match read_typed::<RawVoxelModelManifest>(pack_root, &path) {
+            Ok(def) => {
+                let id = derive_voxel_model_id(pack_root, &path);
+                out.push(ParsedVoxelModel {
                     id,
                     rel_path: rel,
                     def,
@@ -369,6 +400,28 @@ fn derive_world_id(pack_root: &Path, path: &Path) -> String {
         parts.push(stem);
     }
     format!("world/{}", parts.join("/"))
+}
+
+fn derive_voxel_model_id(pack_root: &Path, path: &Path) -> String {
+    let rel = match path.strip_prefix(pack_root.join("defs").join("voxel_models")) {
+        Ok(r) => r,
+        Err(_) => return pack_relative(pack_root, path),
+    };
+    let mut parts: Vec<String> = rel
+        .iter()
+        .filter_map(|p| p.to_str())
+        .map(str::to_string)
+        .collect();
+    if let Some(last) = parts.pop() {
+        let stem = last
+            .trim_end_matches(".ron")
+            .split('.')
+            .next()
+            .unwrap_or(&last)
+            .to_string();
+        parts.push(stem);
+    }
+    format!("voxel_model/{}", parts.join("/"))
 }
 
 fn classify_world_path(rel: &str) -> WorldCategory {

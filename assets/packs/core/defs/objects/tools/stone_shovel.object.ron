@@ -1,11 +1,13 @@
 Object(
     name: "Stone Shovel",
-    tags: ["tool", "shovel", "tier_1"],
+    tags: ["#core:tag/item/tool", "#core:tag/tool/shovel", "#core:tag/tier/1"],
 
     item: (
         stack: 1,
-        icon: "items/tools/stone_shovel",
-        model: "voxel/equipment/tools/shovel_stone",
+        category: tool,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/tools/stone_shovel"),
+        world_model: "core:voxel_model/equipment/tools/shovel_stone",
     ),
 
     tool: (
@@ -16,15 +18,15 @@ Object(
     ),
 
     recipes: [(
-        station: "#station.construction",
+        station: "#core:tag/station/construction",
         kind: shaped((
             pattern: [
                 " S ",
                 " F ",
                 " F ",
             ],
-            legend: { "S": "stone", "F": "plant_fiber" },
+            legend: { "S": "core:object/terrain/stone", "F": "core:object/resources/plant_fiber" },
         )),
-        output: (item: "stone_shovel", count: 1),
+        output: (item: "core:object/tools/stone_shovel", count: 1),
     )],
 )

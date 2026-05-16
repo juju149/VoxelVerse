@@ -1,12 +1,14 @@
 // Stone Pickaxe — tier-1 pickaxe; crafted at the construction workbench.
 Object(
     name: "Stone Pickaxe",
-    tags: ["tool", "pickaxe", "tier_1"],
+    tags: ["#core:tag/item/tool", "#core:tag/tool/pickaxe", "#core:tag/tier/1"],
 
     item: (
         stack: 1,
-        icon: "items/tools/stone_pickaxe",
-        model: "voxel/equipment/tools/pickaxe_stone",
+        category: tool,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/tools/stone_pickaxe"),
+        world_model: "core:voxel_model/equipment/tools/pickaxe_stone",
     ),
 
     tool: (
@@ -17,15 +19,15 @@ Object(
     ),
 
     recipes: [(
-        station: "#station.construction",
+        station: "#core:tag/station/construction",
         kind: shaped((
             pattern: [
                 "SSS",
                 " F ",
                 " F ",
             ],
-            legend: { "S": "stone", "F": "plant_fiber" },
+            legend: { "S": "core:object/terrain/stone", "F": "core:object/resources/plant_fiber" },
         )),
-        output: (item: "stone_pickaxe", count: 1),
+        output: (item: "core:object/tools/stone_pickaxe", count: 1),
     )],
 )

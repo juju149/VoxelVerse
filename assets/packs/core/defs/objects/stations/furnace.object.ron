@@ -1,7 +1,7 @@
 // Furnace — smelts ores into ingots and cooks food.
 Object(
     name: "Furnace",
-    tags: ["station.furnace", "furniture", "stone"],
+    tags: ["#core:tag/station/furnace", "#core:tag/block/furniture", "#core:tag/material/stone"],
 
     block: (
         texture: cube(
@@ -15,7 +15,12 @@ Object(
         sound: stone,
     ),
 
-    item: ( stack: 1 ),
+    item: (
+        stack: 1,
+        category: station,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     station: (
         type: processor,
@@ -28,15 +33,15 @@ Object(
     ),
 
     recipes: [(
-        station: "#station.construction",
+        station: "#core:tag/station/construction",
         kind: shaped((
             pattern: [
                 "SSS",
                 "S S",
                 "SSS",
             ],
-            legend: { "S": "stone" },
+            legend: { "S": "core:object/terrain/stone" },
         )),
-        output: (item: "furnace", count: 1),
+        output: (item: "core:object/stations/furnace", count: 1),
     )],
 )

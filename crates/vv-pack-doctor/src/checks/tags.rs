@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::index::{parse_tag_ref, PackIndex};
+use crate::index::{normalize_tag_key, parse_tag_ref, PackIndex};
 use crate::report::{Diagnostic, Report};
 
 const CHECK: &str = "tags";
@@ -17,6 +17,14 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
     // 1) Gather every referenced tag from objects + world files.
     let mut referenced: BTreeMap<String, Vec<TagUsage>> = BTreeMap::new();
     for obj in &index.scan.objects {
+        for (i, tag) in obj.def.tags.iter().enumerate() {
+            check_declared_tag(tag, obj, &format!("tags[{i}]"), report);
+        }
+        if let Some(station) = &obj.def.station {
+            for (i, tag) in station.station_tags.iter().enumerate() {
+                check_declared_tag(tag, obj, &format!("station.station_tags[{i}]"), report);
+            }
+        }
         // mining.tool isn't a tag; surface/biome refs are strings, so we walk
         // through any string field looking for the `#xxx.yyy` pattern.
         scan_object_for_tag_refs(obj, &mut referenced);
@@ -93,8 +101,34 @@ fn scan_value_for_tag_refs(
 
 fn record_tag_ref(s: &str, path: String, id: String, out: &mut BTreeMap<String, Vec<TagUsage>>) {
     let Some((kind, name)) = parse_tag_ref(s) else {
+        if s.starts_with('#') {
+            out.entry(format!("__invalid__/{s}"))
+                .or_default()
+                .push(TagUsage { path, id });
+        }
         return;
     };
-    let full = format!("{kind}.{name}");
+    let full = format!("{kind}/{name}");
     out.entry(full).or_default().push(TagUsage { path, id });
+}
+
+fn check_declared_tag(
+    tag: &str,
+    obj: &crate::scan::ParsedObject,
+    field: &str,
+    report: &mut Report,
+) {
+    if normalize_tag_key(tag).is_some() {
+        return;
+    }
+    report.error(
+        Diagnostic::new(
+            CHECK,
+            format!("tag '{}' is not a strict V1 tag", tag),
+        )
+        .with_path(obj.rel_path.clone())
+        .with_id(obj.id.clone())
+        .with_field(field.to_string())
+        .with_suggestion("use `#<namespace>:tag/<category>/<name>`".to_string()),
+    );
 }

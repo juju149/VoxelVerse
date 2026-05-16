@@ -1,7 +1,7 @@
 // Chest — 27-slot storage container.
 Object(
     name: "Chest",
-    tags: ["storage", "furniture", "wood"],
+    tags: ["#core:tag/block/storage", "#core:tag/block/furniture", "#core:tag/material/wood"],
 
     block: (
         texture: cube(
@@ -15,7 +15,12 @@ Object(
         sound: wood,
     ),
 
-    item: ( stack: 1 ),
+    item: (
+        stack: 1,
+        category: station,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     storage: (
         slots: 27,
@@ -27,15 +32,15 @@ Object(
     ),
 
     recipes: [(
-        station: "#station.construction",
+        station: "#core:tag/station/construction",
         kind: shaped((
             pattern: [
                 "LLL",
                 "L L",
                 "LLL",
             ],
-            legend: { "L": "oak_log" },
+            legend: { "L": "core:object/trees/oak_log" },
         )),
-        output: (item: "chest", count: 1),
+        output: (item: "core:object/stations/chest", count: 1),
     )],
 )

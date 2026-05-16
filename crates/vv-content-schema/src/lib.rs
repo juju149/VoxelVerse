@@ -28,6 +28,7 @@ mod pack;
 mod skeleton;
 mod sound;
 mod version;
+mod voxel_model;
 mod world;
 
 pub use common::ContentRef;
@@ -41,4 +42,5 @@ pub use pack::{RawIdentityMode, RawPackContentRoots, RawPackKind, RawPackManifes
 pub use skeleton::*;
 pub use sound::*;
 pub use version::*;
+pub use voxel_model::*;
 pub use world::*;

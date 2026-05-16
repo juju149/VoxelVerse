@@ -1,12 +1,14 @@
 // Wood Bow — first ranged weapon; fires arrow items.
 Object(
     name: "Wood Bow",
-    tags: ["weapon", "bow", "ranged", "tier_0"],
+    tags: ["#core:tag/item/weapon", "#core:tag/weapon/bow", "#core:tag/weapon/ranged", "#core:tag/tier/0"],
 
     item: (
         stack: 1,
-        icon: "items/weapons/wood_bow",
-        model: "voxel/equipment/weapons/bow_wood",
+        category: weapon,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/weapons/wood_bow"),
+        world_model: "core:voxel_model/equipment/weapons/bow_wood",
     ),
 
     weapon: (
@@ -14,19 +16,19 @@ Object(
         damage: 4.0,
         draw_time: 1.0,
         durability: 64,
-        ammo: "arrow",
+        ammo: "core:object/weapons/arrow",
     ),
 
     recipes: [(
-        station: "#station.weapon",
+        station: "#core:tag/station/weapon",
         kind: shaped((
             pattern: [
                 " SF",
                 "S F",
                 " SF",
             ],
-            legend: { "S": "plant_fiber", "F": "oak_log" },
+            legend: { "S": "core:object/resources/plant_fiber", "F": "core:object/trees/oak_log" },
         )),
-        output: (item: "wood_bow", count: 1),
+        output: (item: "core:object/weapons/wood_bow", count: 1),
     )],
 )

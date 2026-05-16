@@ -9,7 +9,7 @@
 use std::collections::BTreeSet;
 use std::fs::File;
 
-use vv_content_schema::RawObjectTexture;
+use vv_content_schema::{RawObjectInventoryIcon, RawObjectTexture};
 
 use crate::allowed::AllowedUnused;
 use crate::index::PackIndex;
@@ -54,8 +54,10 @@ fn collect_used_paths(index: &PackIndex<'_>) -> BTreeSet<String> {
             collect_block_refs(&block.texture, &mut used);
         }
         if let Some(item) = &obj.def.item {
-            if let Some(icon) = &item.icon {
-                used.insert(format!("media/textures/{}.png", icon));
+            if let Some(RawObjectInventoryIcon::Texture(icon)) = &item.inventory_icon {
+                if let Some(path) = texture_key_to_path(icon) {
+                    used.insert(path);
+                }
             }
         }
     }
@@ -76,6 +78,12 @@ fn collect_block_refs(texture: &RawObjectTexture, out: &mut BTreeSet<String>) {
             out.insert(format!("media/textures/{}.{}.png", r, ch));
         }
     }
+}
+
+fn texture_key_to_path(key: &str) -> Option<String> {
+    let (_, path) = key.split_once(':')?;
+    let rest = path.strip_prefix("texture/")?;
+    Some(format!("media/textures/{rest}.png"))
 }
 
 fn check_pbr_groups(index: &PackIndex<'_>, report: &mut Report) {

@@ -1,10 +1,12 @@
 Object(
     name: "Wooden Pickaxe",
-    tags: ["tool", "pickaxe", "tier_0"],
+    tags: ["#core:tag/item/tool", "#core:tag/tool/pickaxe", "#core:tag/tier/0"],
 
     item: (
         stack: 1,
-        icon: "items/tools/wooden_pickaxe",
+        category: tool,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/tools/wooden_pickaxe"),
     ),
 
     tool: (
@@ -15,15 +17,15 @@ Object(
     ),
 
     recipes: [(
-        station: "#station.construction",
+        station: "#core:tag/station/construction",
         kind: shaped((
             pattern: [
                 "LLL",
                 " F ",
                 " F ",
             ],
-            legend: { "L": "oak_log", "F": "plant_fiber" },
+            legend: { "L": "core:object/trees/oak_log", "F": "core:object/resources/plant_fiber" },
         )),
-        output: (item: "wooden_pickaxe", count: 1),
+        output: (item: "core:object/tools/wooden_pickaxe", count: 1),
     )],
 )

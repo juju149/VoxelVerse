@@ -1,7 +1,7 @@
 // Armor Workbench — unlocks armor and clothing crafting.
 Object(
     name: "Armor Workbench",
-    tags: ["station.armor", "station.clothing", "furniture"],
+    tags: ["#core:tag/station/armor", "#core:tag/station/clothing", "#core:tag/block/furniture"],
 
     block: (
         texture: cube(
@@ -14,7 +14,12 @@ Object(
         sound: wood,
     ),
 
-    item: ( stack: 1 ),
+    item: (
+        stack: 1,
+        category: station,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     station: (
         type: workbench,),
@@ -24,16 +29,16 @@ Object(
     ),
 
     recipes: [(
-        station: "#station.construction",
+        station: "#core:tag/station/construction",
         kind: shapeless((
             ingredients: [
-                "oak_log",
-                "oak_log",
-                "plant_fiber",
-                "plant_fiber",
-                "plant_fiber",
+                "core:object/trees/oak_log",
+                "core:object/trees/oak_log",
+                "core:object/resources/plant_fiber",
+                "core:object/resources/plant_fiber",
+                "core:object/resources/plant_fiber",
             ],
         )),
-        output: (item: "armor_workbench", count: 1),
+        output: (item: "core:object/stations/armor_workbench", count: 1),
     )],
 )

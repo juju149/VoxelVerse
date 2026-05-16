@@ -1,20 +1,22 @@
 // Iron Ingot — smelted from iron ore chunks; used in metal recipes.
 Object(
     name: "Iron Ingot",
-    tags: ["resource", "metal"],
+    tags: ["#core:tag/item/resource", "#core:tag/material/metal"],
 
     item: (
         stack: 64,
-        icon: "items/resources/iron_ingot",
-        model: "voxel/items/iron_ingot",
+        category: resource,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/resources/iron_ingot"),
+        world_model: "core:voxel_model/items/iron_ingot",
     ),
 
     recipes: [(
-        station: "#station.furnace",
+        station: "#core:tag/station/furnace",
         kind: processing((
-            inputs: [(item: "iron_ore_chunk", count: 1)],
+            inputs: [(item: "core:object/resources/iron_ore_chunk", count: 1)],
             duration_seconds: 10.0,
         )),
-        output: (item: "iron_ingot", count: 1),
+        output: (item: "core:object/resources/iron_ingot", count: 1),
     )],
 )

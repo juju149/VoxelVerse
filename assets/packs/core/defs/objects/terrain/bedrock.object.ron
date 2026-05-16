@@ -1,7 +1,7 @@
 // Bedrock — unbreakable planet boundary.
 Object(
     name: "Bedrock",
-    tags: ["terrain", "unbreakable"],
+    tags: ["#core:tag/block/terrain", "#core:tag/block/unbreakable"],
 
     block: (
         texture: all("blocks/bedrock/all"),
@@ -10,5 +10,10 @@ Object(
         sound: stone,
     ),
 
-    item: ( stack: 99 ),
+    item: (
+        stack: 99,
+        category: block,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 )

@@ -1,10 +1,12 @@
 Object(
     name: "Flower",
-    tags: ["resource", "decorative", "plant"],
+    tags: ["#core:tag/item/resource", "#core:tag/item/decorative", "#core:tag/worldgen/plant"],
 
     item: (
         stack: 64,
-        icon: "items/misc/flower",
-        model: "voxel/items/flower",
+        category: resource,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/misc/flower"),
+        world_model: "core:voxel_model/items/flower",
     ),
 )

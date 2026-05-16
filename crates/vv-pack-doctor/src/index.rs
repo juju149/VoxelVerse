@@ -15,6 +15,7 @@ pub struct PackIndex<'a> {
     pub world_by_short: BTreeMap<(WorldCategory, String), Vec<&'a ParsedWorldFile>>,
     pub tags_declared: BTreeSet<String>,
     pub stations_declared: BTreeSet<String>,
+    pub voxel_model_set: BTreeSet<String>,
     pub texture_set: BTreeSet<String>,
     pub voxel_set: BTreeSet<String>,
 }
@@ -29,16 +30,20 @@ impl<'a> PackIndex<'a> {
             let short = short_name(&obj.id);
             object_by_short.entry(short).or_default().push(obj);
             for tag in &obj.def.tags {
-                tags_declared.insert(tag.clone());
-                if let Some(rest) = tag.strip_prefix("station.") {
-                    stations_declared.insert(rest.to_string());
+                if let Some(normalized) = normalize_tag_key(tag) {
+                    tags_declared.insert(normalized.clone());
+                    if let Some(rest) = normalized.strip_prefix("station/") {
+                        stations_declared.insert(rest.to_string());
+                    }
                 }
             }
             if let Some(station) = &obj.def.station {
                 for tag in &station.station_tags {
-                    tags_declared.insert(tag.clone());
-                    if let Some(rest) = tag.strip_prefix("station.") {
-                        stations_declared.insert(rest.to_string());
+                    if let Some(normalized) = normalize_tag_key(tag) {
+                        tags_declared.insert(normalized.clone());
+                        if let Some(rest) = normalized.strip_prefix("station/") {
+                            stations_declared.insert(rest.to_string());
+                        }
                     }
                 }
             }
@@ -52,6 +57,11 @@ impl<'a> PackIndex<'a> {
                 .entry((file.category, short))
                 .or_default()
                 .push(file);
+        }
+
+        let mut voxel_model_set = BTreeSet::new();
+        for model in &scan.voxel_models {
+            voxel_model_set.insert(format!("{}:{}", scan.namespace, model.id));
         }
 
         let mut texture_set = BTreeSet::new();
@@ -69,6 +79,7 @@ impl<'a> PackIndex<'a> {
             world_by_short,
             tags_declared,
             stations_declared,
+            voxel_model_set,
             texture_set,
             voxel_set,
         }
@@ -139,17 +150,28 @@ impl<'a> PackIndex<'a> {
     pub fn voxel_exists(&self, rel: &str) -> bool {
         self.voxel_set.contains(rel)
     }
+
+    pub fn voxel_model_exists(&self, key: &str) -> bool {
+        self.voxel_model_set.contains(key)
+    }
 }
 
 pub fn short_name(id: &str) -> String {
     id.rsplit('/').next().unwrap_or(id).to_string()
 }
 
-/// Parse a tag reference. Examples:
-///   `"#tag.soil"`   → Some(("tag",     "soil"))
-///   `"#station.construction"` → Some(("station", "construction"))
+/// Parse a strict V1 tag reference.
+/// Example: `#core:tag/station/construction`.
 pub fn parse_tag_ref(value: &str) -> Option<(&str, &str)> {
     let stripped = value.strip_prefix('#')?;
-    let (kind, rest) = stripped.split_once('.')?;
-    Some((kind, rest))
+    let (_, path) = stripped.split_once(':')?;
+    let rest = path.strip_prefix("tag/")?;
+    let (kind, name) = rest.split_once('/')?;
+    Some((kind, name))
+}
+
+pub fn normalize_tag_key(value: &str) -> Option<String> {
+    let stripped = value.strip_prefix('#')?;
+    let (_, path) = stripped.split_once(':')?;
+    path.strip_prefix("tag/").map(str::to_string)
 }

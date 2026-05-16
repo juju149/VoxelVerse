@@ -41,6 +41,12 @@ fn check_object(obj: &ParsedObject, index: &PackIndex<'_>, report: &mut Report) 
                 if drop.item == "self" {
                     continue;
                 }
+                check_strict_object_ref(
+                    &drop.item,
+                    obj,
+                    report,
+                    &format!("mining.drops[{i}].item"),
+                );
                 if index.resolve_object(&drop.item).is_none() {
                     report.error(
                         Diagnostic::new(
@@ -72,6 +78,12 @@ fn check_object(obj: &ParsedObject, index: &PackIndex<'_>, report: &mut Report) 
 
     if let Some(loot) = loot {
         for (i, drop) in loot.when_killed.iter().enumerate() {
+            check_strict_object_ref(
+                &drop.item,
+                obj,
+                report,
+                &format!("loot.when_killed[{i}].item"),
+            );
             if index.resolve_object(&drop.item).is_none() {
                 report.error(
                     Diagnostic::new(
@@ -98,6 +110,7 @@ fn check_object(obj: &ParsedObject, index: &PackIndex<'_>, report: &mut Report) 
 
     if let Some(weapon) = weapon {
         if let Some(ammo) = &weapon.ammo {
+            check_strict_object_ref(ammo, obj, report, "weapon.ammo");
             if index.resolve_object(ammo).is_none() {
                 report.error(
                     Diagnostic::new(
@@ -138,10 +151,22 @@ fn check_recipe_refs(
             .with_field(format!("recipes[{ri}].output.item")),
         );
     }
+    check_strict_object_ref(
+        &recipe.output.item,
+        obj,
+        report,
+        &format!("recipes[{ri}].output.item"),
+    );
 
     match &recipe.kind {
         RawObjectRecipeKind::Shaped(shaped) => {
             for (sym, item) in &shaped.legend {
+                check_strict_object_ref(
+                    item,
+                    obj,
+                    report,
+                    &format!("recipes[{ri}].kind.shaped.legend.{sym}"),
+                );
                 if index.resolve_object(item).is_none() {
                     report.error(
                         Diagnostic::new(
@@ -157,6 +182,12 @@ fn check_recipe_refs(
         }
         RawObjectRecipeKind::Shapeless(shapeless) => {
             for (i, ingredient) in shapeless.ingredients.iter().enumerate() {
+                check_strict_object_ref(
+                    ingredient,
+                    obj,
+                    report,
+                    &format!("recipes[{ri}].kind.shapeless.ingredients[{i}]"),
+                );
                 if index.resolve_object(ingredient).is_none() {
                     report.error(
                         Diagnostic::new(
@@ -176,6 +207,12 @@ fn check_recipe_refs(
         }
         RawObjectRecipeKind::Processing(processing) => {
             for (i, input) in processing.inputs.iter().enumerate() {
+                check_strict_object_ref(
+                    &input.item,
+                    obj,
+                    report,
+                    &format!("recipes[{ri}].kind.processing.inputs[{i}].item"),
+                );
                 if index.resolve_object(&input.item).is_none() {
                     report.error(
                         Diagnostic::new(
@@ -194,6 +231,41 @@ fn check_recipe_refs(
             }
         }
     }
+}
+
+fn check_strict_object_ref(
+    value: &str,
+    obj: &ParsedObject,
+    report: &mut Report,
+    field: &str,
+) {
+    if value == "self" || is_strict_object_ref(value) {
+        return;
+    }
+    report.error(
+        Diagnostic::new(
+            CHECK,
+            format!(
+                "short object reference '{}' is forbidden in V1; use `namespace:object/...`",
+                value
+            ),
+        )
+        .with_path(obj.rel_path.clone())
+        .with_id(obj.id.clone())
+        .with_field(field.to_string())
+        .with_suggestion(format!(
+            "replace '{}' with a fully-qualified object reference such as `core:object/<category>/{}`",
+            value,
+            value
+        )),
+    );
+}
+
+fn is_strict_object_ref(value: &str) -> bool {
+    let Some((namespace, path)) = value.split_once(':') else {
+        return false;
+    };
+    !namespace.is_empty() && path.starts_with("object/") && path.len() > "object/".len()
 }
 
 fn check_count(count: &RawObjectCount, obj: &ParsedObject, report: &mut Report, field: &str) {

@@ -1,6 +1,6 @@
 Object(
     name: "Water",
-    tags: ["water", "fluid"],
+    tags: ["#core:tag/block/water", "#core:tag/block/fluid"],
 
     block: (
         texture: none,

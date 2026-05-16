@@ -1,12 +1,14 @@
 // Coal — raw fuel, dropped by coal ore.
 Object(
     name: "Coal",
-    tags: ["resource", "fuel"],
+    tags: ["#core:tag/item/resource", "#core:tag/item/fuel"],
 
     item: (
         stack: 64,
-        icon: "items/resources/coal",
-        model: "voxel/items/coal",
+        category: resource,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/resources/coal"),
+        world_model: "core:voxel_model/items/coal",
     ),
 
     fuel: ( duration: 800 ),          // 800 ticks of furnace fuel

@@ -1,9 +1,7 @@
-//! End-to-end smoke test: run Pack Doctor against the bundled `core` pack
-//! and confirm the pipeline survives whatever state the pack is in.
+//! End-to-end V1 gate for the bundled `core` pack.
 //!
-//! The pipeline is tolerant by design — parse errors become diagnostics
-//! rather than panics — so the test always succeeds in *executing* the
-//! checks. Concrete content assertions live in dedicated rules tests below.
+//! Pack Doctor is allowed to keep scanning after broken files, but the core
+//! V1 pack itself must not ship with diagnostics.
 
 use std::path::Path;
 
@@ -24,9 +22,31 @@ fn core_pack_pipeline_runs_to_completion() {
 }
 
 #[test]
+fn core_pack_v1_has_no_diagnostics() {
+    let report = run(&core_pack()).expect("pack doctor should run");
+    assert!(
+        report.errors.is_empty(),
+        "core pack must have zero Pack Doctor errors:\n{:#?}",
+        report.errors
+    );
+    assert!(
+        report.warnings.is_empty(),
+        "core pack must have zero Pack Doctor warnings:\n{:#?}",
+        report.warnings
+    );
+    assert_eq!(report.health_score, 100);
+}
+
+#[test]
+fn core_pack_v1_counts_recipes_and_media_contracts() {
+    let report = run(&core_pack()).expect("pack doctor should run");
+    assert!(report.summary.recipes > 0, "recipes must not be ignored");
+    assert!(report.summary.items > 0, "items must be discovered");
+    assert!(report.summary.voxels > 0, "voxel media must be discovered");
+}
+
+#[test]
 fn core_pack_emits_only_structured_diagnostics() {
-    // Every error must have at least one of (path, id) so the report is
-    // actionable. Anonymous errors are a regression.
     let report = run(&core_pack()).expect("pack doctor should run");
     for err in &report.errors {
         assert!(

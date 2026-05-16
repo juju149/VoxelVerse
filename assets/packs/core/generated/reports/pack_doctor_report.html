@@ -21,91 +21,106 @@
 <header>
 <h1>VoxelVerse Pack Doctor</h1>
 <p><strong>Pack:</strong> assets/packs/core</p>
-<p><strong>Health score:</strong> 99/100</p>
+<p><strong>Health score:</strong> 100/100</p>
 </header>
 <section class="summary">
 <h2>Summary</h2>
 <table>
 <tr><th>Errors</th><td>0</td></tr>
-<tr><th>Warnings</th><td>1</td></tr>
-<tr><th>Blocks</th><td>34</td></tr>
-<tr><th>Items</th><td>49</td></tr>
+<tr><th>Warnings</th><td>0</td></tr>
+<tr><th>Blocks</th><td>35</td></tr>
+<tr><th>Items</th><td>53</td></tr>
 <tr><th>Materials</th><td>0</td></tr>
-<tr><th>Textures</th><td>159</td></tr>
-<tr><th>Recipes</th><td>0</td></tr>
+<tr><th>Textures</th><td>162</td></tr>
+<tr><th>Recipes</th><td>15</td></tr>
 <tr><th>Loot tables</th><td>1</td></tr>
 </table>
 </section>
 <section><h2>Errors (0)</h2>
 <p class="empty">None.</p>
 </section>
-<section><h2>Warnings (1)</h2>
-<table class="diagnostics warning">
-<thead><tr><th>Check</th><th>Message</th><th>Where</th><th>Field</th><th>Fix</th></tr></thead>
-<tbody>
-<tr><td>filesystem</td><td>empty directory: defs/objects/liquids</td><td>defs/objects/liquids</td><td>-</td><td>remove the empty directory or fill it with content</td></tr>
-</tbody></table>
+<section><h2>Warnings (0)</h2>
+<p class="empty">None.</p>
 </section>
 <section><h2>Planet</h2>
 <table>
 <tr><th>Planet profiles</th><td>1</td></tr>
 <tr><th>Biome sets</th><td>1</td></tr>
 <tr><th>Biomes</th><td>23</td></tr>
-<tr><th>Vegetation rules</th><td>7</td></tr>
-<tr><th>Prop scatters</th><td>14</td></tr>
+<tr><th>Vegetation rules</th><td>12</td></tr>
+<tr><th>Prop scatters</th><td>28</td></tr>
 <tr><th>Ore rules</th><td>2</td></tr>
 <tr><th>Cave rules</th><td>1</td></tr>
 <tr><th>Render profiles</th><td>4</td></tr>
 </table>
 <details open><summary>Planet profiles (1)</summary><table><thead><tr><th>ID</th><th>LOD near/far</th><th>Upload</th><th>Feature budget</th><th>Refs</th></tr></thead><tbody>
-<tr><td><code>world/planets/default</code><br><small>Default Living Planet</small></td><td>12/192</td><td>8</td><td>384</td><td>7 veg / 14 props / 2 ores / 1 caves</td></tr>
+<tr><td><code>world/planets/default</code><br><small>Default Living Planet</small></td><td>12/192</td><td>8</td><td>192</td><td>7 veg / 28 props / 2 ores / 1 caves</td></tr>
 </tbody></table></details>
 <details><summary>Biomes (23)</summary><table><thead><tr><th>ID</th><th>Surface</th><th>Terrain</th><th>Tags</th></tr></thead><tbody>
-<tr><td><code>world/biomes/alpine</code><br><small>Alpine Heights</small></td><td>snow / stone</td><td>amp 0.72, flat 0.06</td><td>cold, mountain</td></tr>
-<tr><td><code>world/biomes/badlands</code><br><small>Badlands</small></td><td>red_sand / coarse_dirt</td><td>amp 0.44, flat 0.26</td><td>desert, dry, badlands</td></tr>
-<tr><td><code>world/biomes/beach</code><br><small>Sandy Beach</small></td><td>red_sand / red_sand</td><td>amp 0.05, flat 0.90</td><td>beach, coastal</td></tr>
-<tr><td><code>world/biomes/birch_forest</code><br><small>Birch Forest</small></td><td>grass / dirt</td><td>amp 0.25, flat 0.44</td><td>temperate, forest, birch</td></tr>
-<tr><td><code>world/biomes/dark_forest</code><br><small>Dark Forest</small></td><td>podzol / dirt</td><td>amp 0.28, flat 0.40</td><td>temperate, forest, dark</td></tr>
-<tr><td><code>world/biomes/desert</code><br><small>Red Sand Desert</small></td><td>red_sand / red_sand</td><td>amp 0.24, flat 0.56</td><td>desert, dry</td></tr>
-<tr><td><code>world/biomes/frozen_peaks</code><br><small>Frozen Peaks</small></td><td>snow / stone</td><td>amp 0.82, flat 0.02</td><td>cold, mountain, frozen, snowy</td></tr>
-<tr><td><code>world/biomes/jungle</code><br><small>Jungle</small></td><td>grass / dirt</td><td>amp 0.50, flat 0.20</td><td>jungle, tropical, wet</td></tr>
-<tr><td><code>world/biomes/jungle_edge</code><br><small>Jungle Edge</small></td><td>grass / dirt</td><td>amp 0.34, flat 0.34</td><td>jungle, tropical, transition</td></tr>
-<tr><td><code>world/biomes/kelp_forest</code><br><small>Kelp Forest Shelf</small></td><td>stone / deepslate</td><td>amp 0.14, flat 0.76</td><td>ocean, aquatic, kelp</td></tr>
-<tr><td><code>world/biomes/meadow</code><br><small>Flowering Meadow</small></td><td>grass / dirt</td><td>amp 0.18, flat 0.66</td><td>temperate, plains, meadow</td></tr>
-<tr><td><code>world/biomes/mountain_meadow</code><br><small>Mountain Meadow</small></td><td>grass / dirt</td><td>amp 0.38, flat 0.34</td><td>mountain, meadow, temperate</td></tr>
-<tr><td><code>world/biomes/ocean</code><br><small>Open Ocean Basin</small></td><td>stone / deepslate</td><td>amp 0.16, flat 0.80</td><td>ocean, aquatic</td></tr>
-<tr><td><code>world/biomes/plains</code><br><small>Open Plains</small></td><td>grass / dirt</td><td>amp 0.15, flat 0.72</td><td>temperate, plains</td></tr>
-<tr><td><code>world/biomes/savanna</code><br><small>Savanna</small></td><td>grass / coarse_dirt</td><td>amp 0.14, flat 0.74</td><td>savanna, dry, warm</td></tr>
-<tr><td><code>world/biomes/snowy_plains</code><br><small>Snowy Plains</small></td><td>snow / powder_snow</td><td>amp 0.12, flat 0.76</td><td>cold, snowy, plains</td></tr>
-<tr><td><code>world/biomes/snowy_taiga</code><br><small>Snowy Taiga</small></td><td>snow / dirt</td><td>amp 0.32, flat 0.40</td><td>cold, forest, taiga, snowy</td></tr>
-<tr><td><code>world/biomes/stony_shore</code><br><small>Stony Shore</small></td><td>stone / andesite</td><td>amp 0.12, flat 0.66</td><td>coastal, rocky</td></tr>
-<tr><td><code>world/biomes/swamp</code><br><small>Swamp</small></td><td>podzol / dirt</td><td>amp 0.07, flat 0.88</td><td>swamp, wet, temperate</td></tr>
-<tr><td><code>world/biomes/temperate_forest</code><br><small>Temperate Forest</small></td><td>grass / dirt</td><td>amp 0.36, flat 0.36</td><td>temperate, forest</td></tr>
-<tr><td><code>world/biomes/tundra</code><br><small>Wind-Cut Tundra</small></td><td>snow / dirt</td><td>amp 0.18, flat 0.68</td><td>cold, snowy, tundra</td></tr>
-<tr><td><code>world/biomes/warm_reef</code><br><small>Warm Reef Shelf</small></td><td>stone / deepslate</td><td>amp 0.16, flat 0.70</td><td>ocean, aquatic, reef</td></tr>
-<tr><td><code>world/biomes/wetland</code><br><small>Reed Wetland</small></td><td>podzol / dirt</td><td>amp 0.08, flat 0.86</td><td>wet, swamp, coastal</td></tr>
+<tr><td><code>world/biomes/alpine</code><br><small>Alpine Heights</small></td><td>snow / stone</td><td>amp 0.72, flat 0.06</td><td>cold, mountain, alpine, rocky, elevation, mineral_rich</td></tr>
+<tr><td><code>world/biomes/badlands</code><br><small>Badlands</small></td><td>red_sand / coarse_dirt</td><td>amp 0.44, flat 0.26</td><td>desert, dry, badlands, rocky, mineral_rich, plateau, rare_ores</td></tr>
+<tr><td><code>world/biomes/beach</code><br><small>Sandy Beach</small></td><td>red_sand / red_sand</td><td>amp 0.05, flat 0.90</td><td>coastal, beach, sandy, warm_edge, transition, ocean_gate</td></tr>
+<tr><td><code>world/biomes/birch_forest</code><br><small>Birch Forest</small></td><td>grass / dirt</td><td>amp 0.25, flat 0.44</td><td>temperate, forest, birch, bright, airy, open_canopy</td></tr>
+<tr><td><code>world/biomes/dark_forest</code><br><small>Dark Forest</small></td><td>podzol / dirt</td><td>amp 0.28, flat 0.40</td><td>temperate, forest, dark, dense, shadowed, hostile_night, mushroom</td></tr>
+<tr><td><code>world/biomes/desert</code><br><small>Red Sand Desert</small></td><td>red_sand / red_sand</td><td>amp 0.24, flat 0.56</td><td>desert, dry, harsh, arid, sandy, challenge</td></tr>
+<tr><td><code>world/biomes/frozen_peaks</code><br><small>Frozen Peaks</small></td><td>snow / stone</td><td>amp 0.82, flat 0.02</td><td>cold, mountain, frozen, snowy, extreme, elevation, inhospitable</td></tr>
+<tr><td><code>world/biomes/jungle</code><br><small>Jungle</small></td><td>grass / dirt</td><td>amp 0.50, flat 0.20</td><td>jungle, tropical, wet, dense, loot_rich, hot, dangerous</td></tr>
+<tr><td><code>world/biomes/jungle_edge</code><br><small>Jungle Edge</small></td><td>grass / dirt</td><td>amp 0.34, flat 0.34</td><td>jungle, tropical, transition, wet, edge, temperate</td></tr>
+<tr><td><code>world/biomes/kelp_forest</code><br><small>Kelp Forest Shelf</small></td><td>stone / deepslate</td><td>amp 0.14, flat 0.76</td><td>ocean, aquatic, kelp, cold, deep_shelf, filter_light</td></tr>
+<tr><td><code>world/biomes/meadow</code><br><small>Flowering Meadow</small></td><td>grass / dirt</td><td>amp 0.18, flat 0.66</td><td>temperate, plains, meadow, bloom, colorful, soft, pastoral, floral</td></tr>
+<tr><td><code>world/biomes/mountain_meadow</code><br><small>Mountain Meadow</small></td><td>grass / dirt</td><td>amp 0.38, flat 0.34</td><td>mountain, meadow, temperate, deferred, v1_1</td></tr>
+<tr><td><code>world/biomes/ocean</code><br><small>Open Ocean Basin</small></td><td>stone / deepslate</td><td>amp 0.16, flat 0.80</td><td>ocean, aquatic, deep, dark_water, abyssal</td></tr>
+<tr><td><code>world/biomes/plains</code><br><small>Open Plains</small></td><td>grass / dirt</td><td>amp 0.15, flat 0.72</td><td>temperate, plains, starter, soft, build_friendly, open, pastoral</td></tr>
+<tr><td><code>world/biomes/savanna</code><br><small>Savanna</small></td><td>grass / coarse_dirt</td><td>amp 0.14, flat 0.74</td><td>savanna, dry, warm, open, golden, grassland, tropical_edge</td></tr>
+<tr><td><code>world/biomes/snowy_plains</code><br><small>Snowy Plains</small></td><td>snow / powder_snow</td><td>amp 0.12, flat 0.76</td><td>cold, snowy, plains, frozen, open, pristine, survival</td></tr>
+<tr><td><code>world/biomes/snowy_taiga</code><br><small>Snowy Taiga</small></td><td>snow / dirt</td><td>amp 0.32, flat 0.40</td><td>cold, forest, taiga, snowy, spruce, dark_canopy, survival</td></tr>
+<tr><td><code>world/biomes/stony_shore</code><br><small>Stony Shore</small></td><td>stone / andesite</td><td>amp 0.12, flat 0.66</td><td>coastal, rocky, stone, mountain_edge, wave_cut, temperate</td></tr>
+<tr><td><code>world/biomes/swamp</code><br><small>Swamp</small></td><td>podzol / dirt</td><td>amp 0.07, flat 0.88</td><td>temperate, swamp, wet, dark, reeds, murky, mystical</td></tr>
+<tr><td><code>world/biomes/temperate_forest</code><br><small>Temperate Forest</small></td><td>grass / dirt</td><td>amp 0.36, flat 0.36</td><td>temperate, forest, woodland, dappled, shelter, medium</td></tr>
+<tr><td><code>world/biomes/tundra</code><br><small>Wind-Cut Tundra</small></td><td>snow / dirt</td><td>amp 0.18, flat 0.68</td><td>cold, snowy, tundra, windswept, barren, ancient, survival</td></tr>
+<tr><td><code>world/biomes/warm_reef</code><br><small>Warm Reef Shelf</small></td><td>stone / deepslate</td><td>amp 0.16, flat 0.70</td><td>ocean, aquatic, reef, tropical, warm_water, shallow, colorful</td></tr>
+<tr><td><code>world/biomes/wetland</code><br><small>Reed Wetland</small></td><td>podzol / dirt</td><td>amp 0.08, flat 0.86</td><td>wet, swamp, coastal, reeds, temperate, flat, reflective</td></tr>
 </tbody></table></details>
-<details><summary>Vegetation and props (21)</summary><table><thead><tr><th>ID</th><th>Kind</th><th>Density</th><th>Spacing</th><th>Variants</th></tr></thead><tbody>
+<details><summary>Vegetation and props (40)</summary><table><thead><tr><th>ID</th><th>Kind</th><th>Density</th><th>Spacing</th><th>Variants</th></tr></thead><tbody>
 <tr><td><code>world/vegetation/acacia_tree</code></td><td>vegetation</td><td>0.035</td><td>10.0</td><td>0</td></tr>
 <tr><td><code>world/vegetation/alpine_rock_scatter</code></td><td>prop_scatter</td><td>0.070</td><td>3.2</td><td>5</td></tr>
 <tr><td><code>world/vegetation/beach_detail_scatter</code></td><td>prop_scatter</td><td>0.085</td><td>2.4</td><td>5</td></tr>
+<tr><td><code>world/vegetation/birch_forest_scatter</code></td><td>prop_scatter</td><td>0.190</td><td>1.5</td><td>11</td></tr>
 <tr><td><code>world/vegetation/birch_tree</code></td><td>vegetation</td><td>0.055</td><td>7.0</td><td>0</td></tr>
+<tr><td><code>world/vegetation/cave_ceiling_scatter</code></td><td>prop_scatter</td><td>0.150</td><td>2.2</td><td>15</td></tr>
+<tr><td><code>world/vegetation/cave_floor_scatter</code></td><td>prop_scatter</td><td>0.220</td><td>1.6</td><td>14</td></tr>
+<tr><td><code>world/vegetation/dark_forest_ground_scatter</code></td><td>prop_scatter</td><td>0.200</td><td>1.4</td><td>10</td></tr>
 <tr><td><code>world/vegetation/dark_forest_mushroom_scatter</code></td><td>prop_scatter</td><td>0.110</td><td>2.0</td><td>5</td></tr>
 <tr><td><code>world/vegetation/dark_oak_tree</code></td><td>vegetation</td><td>0.082</td><td>8.0</td><td>0</td></tr>
+<tr><td><code>world/vegetation/dead_tree</code></td><td>vegetation</td><td>0.012</td><td>12.0</td><td>0</td></tr>
+<tr><td><code>world/vegetation/dense_spruce_tree</code></td><td>vegetation</td><td>0.060</td><td>6.5</td><td>0</td></tr>
 <tr><td><code>world/vegetation/desert_cactus_scatter</code></td><td>prop_scatter</td><td>0.055</td><td>5.0</td><td>8</td></tr>
 <tr><td><code>world/vegetation/forest_floor_scatter</code></td><td>prop_scatter</td><td>0.160</td><td>1.6</td><td>6</td></tr>
+<tr><td><code>world/vegetation/frozen_peaks_scatter</code></td><td>prop_scatter</td><td>0.030</td><td>6.0</td><td>6</td></tr>
+<tr><td><code>world/vegetation/jungle_edge_scatter</code></td><td>prop_scatter</td><td>0.220</td><td>1.4</td><td>9</td></tr>
 <tr><td><code>world/vegetation/jungle_tree</code></td><td>vegetation</td><td>0.095</td><td>8.0</td><td>0</td></tr>
 <tr><td><code>world/vegetation/jungle_undergrowth_scatter</code></td><td>prop_scatter</td><td>0.340</td><td>1.1</td><td>7</td></tr>
+<tr><td><code>world/vegetation/kelp_forest_detail_scatter</code></td><td>prop_scatter</td><td>0.200</td><td>1.8</td><td>12</td></tr>
+<tr><td><code>world/vegetation/large_oak_tree</code></td><td>vegetation</td><td>0.008</td><td>18.0</td><td>0</td></tr>
 <tr><td><code>world/vegetation/meadow_bloom_scatter</code></td><td>prop_scatter</td><td>0.180</td><td>1.4</td><td>7</td></tr>
 <tr><td><code>world/vegetation/oak_tree</code></td><td>vegetation</td><td>0.045</td><td>8.0</td><td>0</td></tr>
+<tr><td><code>world/vegetation/ocean_floor_scatter</code></td><td>prop_scatter</td><td>0.085</td><td>3.0</td><td>9</td></tr>
 <tr><td><code>world/vegetation/ocean_kelp_scatter</code></td><td>prop_scatter</td><td>0.160</td><td>2.4</td><td>6</td></tr>
+<tr><td><code>world/vegetation/plains_flower_scatter</code></td><td>prop_scatter</td><td>0.140</td><td>1.8</td><td>9</td></tr>
 <tr><td><code>world/vegetation/reef_coral_scatter</code></td><td>prop_scatter</td><td>0.130</td><td>2.8</td><td>6</td></tr>
 <tr><td><code>world/vegetation/savanna_dry_scatter</code></td><td>prop_scatter</td><td>0.160</td><td>2.0</td><td>6</td></tr>
+<tr><td><code>world/vegetation/small_oak_tree</code></td><td>vegetation</td><td>0.028</td><td>5.0</td><td>0</td></tr>
+<tr><td><code>world/vegetation/snowy_plains_scatter</code></td><td>prop_scatter</td><td>0.060</td><td>3.0</td><td>13</td></tr>
+<tr><td><code>world/vegetation/snowy_taiga_scatter</code></td><td>prop_scatter</td><td>0.130</td><td>2.0</td><td>10</td></tr>
 <tr><td><code>world/vegetation/snow_tundra_scatter</code></td><td>prop_scatter</td><td>0.085</td><td>2.3</td><td>6</td></tr>
 <tr><td><code>world/vegetation/spruce_tree</code></td><td>vegetation</td><td>0.070</td><td>7.5</td><td>0</td></tr>
+<tr><td><code>world/vegetation/stony_shore_scatter</code></td><td>prop_scatter</td><td>0.100</td><td>2.6</td><td>7</td></tr>
 <tr><td><code>world/vegetation/surface_rock_scatter</code></td><td>prop_scatter</td><td>0.040</td><td>5.0</td><td>4</td></tr>
+<tr><td><code>world/vegetation/swamp_ground_scatter</code></td><td>prop_scatter</td><td>0.160</td><td>1.8</td><td>10</td></tr>
 <tr><td><code>world/vegetation/swamp_willow_tree</code></td><td>vegetation</td><td>0.032</td><td>10.0</td><td>0</td></tr>
 <tr><td><code>world/vegetation/temperate_grass_scatter</code></td><td>prop_scatter</td><td>0.280</td><td>1.0</td><td>6</td></tr>
+<tr><td><code>world/vegetation/thin_birch_tree</code></td><td>vegetation</td><td>0.055</td><td>5.0</td><td>0</td></tr>
+<tr><td><code>world/vegetation/warm_reef_full_scatter</code></td><td>prop_scatter</td><td>0.180</td><td>2.2</td><td>24</td></tr>
 <tr><td><code>world/vegetation/wetland_reed_scatter</code></td><td>prop_scatter</td><td>0.220</td><td>1.5</td><td>5</td></tr>
 </tbody></table></details>
 <details><summary>Render profiles (4)</summary><table><thead><tr><th>ID</th><th>Class</th><th>Fog</th><th>Water</th><th>Features</th></tr></thead><tbody>
@@ -116,7 +131,7 @@
 </tbody></table></details>
 <details open><summary>Budget notes (1)</summary>
 <ul>
-<li><code>world/planets/default: near LOD 12, far LOD 192, upload 8/frame, feature budget 384</code></li>
+<li><code>world/planets/default: near LOD 12, far LOD 192, upload 8/frame, feature budget 192</code></li>
 </ul>
 </details>
 </section>
@@ -138,7 +153,7 @@
 <details><summary>Loot tables (0)</summary>
 <p class="empty">None.</p>
 </details>
-<details open><summary>Voxels (445)</summary>
+<details open><summary>Voxels (324)</summary>
 <ul>
 <li><code>media/voxel/props/decoration/crystals/floating_diamond.vox</code></li>
 <li><code>media/voxel/props/decoration/crystals/glow_ice_crystal_0.vox</code></li>
@@ -163,37 +178,23 @@
 <li><code>media/voxel/props/decoration/snow_pebbles/snow_pebbles_3.vox</code></li>
 <li><code>media/voxel/props/decoration/snow_pebbles/snow_pebbles_4.vox</code></li>
 <li><code>media/voxel/props/decoration/snow_pebbles/snow_pebbles_5.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/blueberry/blueberry_02.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/blueberry/blueberry_03.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/blueberry/blueberry_04.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/blueberry/blueberry_05.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/blueberry/blueberry_06.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/blueberry/blueberry_07.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/blueberry/blueberry_08.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/blueberry/blueberry_09.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/dead_bush/dead_bush_03.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/dead_bush/dead_bush_04.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/dead_plant/dead_plant_2.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/dead_plant/dead_plant_3.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/lingonberry/lingonberry_02.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/lingonberry/lingonberry_03.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/savanna_bush/savanna_bush_03.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/savanna_bush/savanna_bush_04.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/savanna_bush/savanna_bush_05.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/savanna_bush/savanna_bush_06.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_10.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_11.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_2.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_3.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_4.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_5.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_6.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_7.vox</code></li>
 <li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_8.vox</code></li>
-<li><code>media/voxel/vegetation/bushes/snow_bush/snow_bush_9.vox</code></li>
-<li><code>media/voxel/vegetation/cave/cave_flower_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/cave_flower_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/cave_flower_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/cave_flower_3.vox</code></li>
 <li><code>media/voxel/vegetation/cave/cave_lantern_flower_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/cave_lantern_flower_1.vox</code></li>
@@ -202,67 +203,40 @@
 <li><code>media/voxel/vegetation/cave/cave_lantern_plant_1.vox</code></li>
 <li><code>media/voxel/vegetation/cave/cave_lantern_plant_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/cave_lantern_flower_0.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/cave_lantern_flower_1.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/cave_lantern_flower_2.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/cave_lantern_plant_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/cave_lantern_plant_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/mold_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/mold_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/mold_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/mold_3.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/mold_4.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/mold_5.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/mold_6.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/mushroom_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/mushroom_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/mushroom_2.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/mycel_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/mycel_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/mycel_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/mycel_3.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/orb_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/orb_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/orb_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/orb_3.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/root_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/root_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/root_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/root_3.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/root_4.vox</code></li>
-<li><code>media/voxel/vegetation/cave/ceiling/root_5.vox</code></li>
 <li><code>media/voxel/vegetation/cave/ceiling/root_6.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_long_0.vox</code></li>
-<li><code>media/voxel/vegetation/cave/grass_blue_long_1.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_long_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_long_3.vox</code></li>
-<li><code>media/voxel/vegetation/cave/grass_blue_long_4.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_long_5.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_long_6.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_long_7.vox</code></li>
-<li><code>media/voxel/vegetation/cave/grass_blue_med_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_med_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/grass_blue_med_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_med_3.vox</code></li>
-<li><code>media/voxel/vegetation/cave/grass_blue_short_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_short_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/grass_blue_short_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_short_3.vox</code></li>
 <li><code>media/voxel/vegetation/cave/grass_blue_short_4.vox</code></li>
-<li><code>media/voxel/vegetation/cave/mushroom_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/mushroom_1.vox</code></li>
 <li><code>media/voxel/vegetation/cave/mushroom_10.vox</code></li>
-<li><code>media/voxel/vegetation/cave/mushroom_11.vox</code></li>
 <li><code>media/voxel/vegetation/cave/mushroom_2.vox</code></li>
-<li><code>media/voxel/vegetation/cave/mushroom_3.vox</code></li>
 <li><code>media/voxel/vegetation/cave/mushroom_4.vox</code></li>
 <li><code>media/voxel/vegetation/cave/mushroom_5.vox</code></li>
 <li><code>media/voxel/vegetation/cave/mushroom_6.vox</code></li>
-<li><code>media/voxel/vegetation/cave/mushroom_7.vox</code></li>
 <li><code>media/voxel/vegetation/cave/mushroom_8.vox</code></li>
 <li><code>media/voxel/vegetation/cave/mushroom_9.vox</code></li>
-<li><code>media/voxel/vegetation/cave/spore_reed_0.vox</code></li>
 <li><code>media/voxel/vegetation/cave/spore_reed_1.vox</code></li>
-<li><code>media/voxel/vegetation/cave/spore_reed_2.vox</code></li>
 <li><code>media/voxel/vegetation/cave/spore_reed_3.vox</code></li>
 <li><code>media/voxel/vegetation/crops/carrot/carrot_00.vox</code></li>
 <li><code>media/voxel/vegetation/crops/carrot/carrot_01.vox</code></li>
@@ -344,11 +318,9 @@
 <li><code>media/voxel/vegetation/desert/cacti/large_cactus.vox</code></li>
 <li><code>media/voxel/vegetation/desert/cacti/tall.vox</code></li>
 <li><code>media/voxel/vegetation/desert/cacti/tall2.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/cotton.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_blue_10.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_blue_2.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_blue_4.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/flower_blue_5.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_blue_6.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_blue_7.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_blue_8.vox</code></li>
@@ -357,59 +329,38 @@
 <li><code>media/voxel/vegetation/flowers/flower_pink_3.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_pink_4.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_purple_2.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/flower_purple_3.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/flower_purple_4.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_purple_5.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_purple_6.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_purple_7.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_purple_8.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/flower_red_1.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/flower_red_2.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_red_3.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_red_4.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_red_5.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_white_2.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/flower_white_3.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_white_4.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/flower_white_5.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/jungle_flower_red_1.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/moonbell.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/pyrebloom.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/snow_crocus_1.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_crocus_2.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/snow_crocus_3.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_crocus_4.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_crocus_5.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_forsythia_1.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/snow_forsythia_2.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_forsythia_3.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_forsythia_4.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_forsythia_5.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/snow_forsythia_6.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_forsythia_7.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_forsythia_8.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/snow_rose_0.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_10.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_11.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_2.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_3.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_4.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/snow_rose_5.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_6.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_7.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_8.vox</code></li>
 <li><code>media/voxel/vegetation/flowers/snow_rose_9.vox</code></li>
-<li><code>media/voxel/vegetation/flowers/sunflower_2.vox</code></li>
 <li><code>media/voxel/vegetation/grass/ferns/fern_0.vox</code></li>
-<li><code>media/voxel/vegetation/grass/ferns/ferns_04.vox</code></li>
-<li><code>media/voxel/vegetation/grass/ferns/ferns_05.vox</code></li>
-<li><code>media/voxel/vegetation/grass/ferns/ferns_06.vox</code></li>
-<li><code>media/voxel/vegetation/grass/ferns/ferns_07.vox</code></li>
-<li><code>media/voxel/vegetation/grass/ferns/ferns_08.vox</code></li>
-<li><code>media/voxel/vegetation/grass/ferns/ferns_09.vox</code></li>
 <li><code>media/voxel/vegetation/grass/ferns/ferns_10.vox</code></li>
-<li><code>media/voxel/vegetation/grass/ferns/ferns_11.vox</code></li>
-<li><code>media/voxel/vegetation/grass/ferns/ferns_12.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_large_0.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_large_1.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_large_2.vox</code></li>
@@ -425,7 +376,6 @@
 <li><code>media/voxel/vegetation/grass/grass/grass_savanna_4.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_savanna_5.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_savanna_6.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_savanna_red_0.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_savanna_red_1.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_savanna_red_2.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_savanna_red_3.vox</code></li>
@@ -440,19 +390,13 @@
 <li><code>media/voxel/vegetation/grass/grass/grass_short_5.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_10.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_11.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_snow_2.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_snow_3.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_4.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_5.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_snow_6.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_7.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_8.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_snow_9.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_0.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_1.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_10.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_2.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_3.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_4.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_5.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_6.vox</code></li>
@@ -460,122 +404,74 @@
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_8.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_snow_tall_9.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_taiga_0.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_taiga_1.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_taiga_2.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_taiga_3.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/grass_taiga_4.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_taiga_5.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_taiga_6.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_taiga_7.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_taiga_8.vox</code></li>
 <li><code>media/voxel/vegetation/grass/grass/grass_taiga_9.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/seagrass_2.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/seagrass_3.vox</code></li>
-<li><code>media/voxel/vegetation/grass/grass/seagrass_4.vox</code></li>
-<li><code>media/voxel/vegetation/grass/junglefern/junglefern_03.vox</code></li>
-<li><code>media/voxel/vegetation/grass/junglefern/junglefern_04.vox</code></li>
 <li><code>media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_1.vox</code></li>
 <li><code>media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_2.vox</code></li>
 <li><code>media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_3.vox</code></li>
 <li><code>media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_4.vox</code></li>
 <li><code>media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_5.vox</code></li>
-<li><code>media/voxel/vegetation/grass/leafy_plant/jungle_plant_2.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/jungle_plant_3.vox</code></li>
-<li><code>media/voxel/vegetation/grass/leafy_plant/jungle_plant_4.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_0.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_1.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_2.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_3.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_4.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_02.vox</code></li>
-<li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_03.vox</code></li>
-<li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_04.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_05.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_06.vox</code></li>
-<li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_07.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_08.vox</code></li>
-<li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_09.vox</code></li>
 <li><code>media/voxel/vegetation/grass/leafy_plant/leafy_plant_10.vox</code></li>
 <li><code>media/voxel/vegetation/grass/lianas/liana_1.vox</code></li>
 <li><code>media/voxel/vegetation/grass/reed/reed_3.vox</code></li>
 <li><code>media/voxel/vegetation/grass/reed/reed_4.vox</code></li>
-<li><code>media/voxel/vegetation/mushrooms/mushroom_10.vox</code></li>
-<li><code>media/voxel/vegetation/mushrooms/mushroom_4.vox</code></li>
-<li><code>media/voxel/vegetation/mushrooms/mushroom_5.vox</code></li>
 <li><code>media/voxel/vegetation/mushrooms/mushroom_7.vox</code></li>
-<li><code>media/voxel/vegetation/mushrooms/mushroom_8.vox</code></li>
-<li><code>media/voxel/vegetation/mushrooms/mushroom_9.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/acetabularia_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/acetabularia_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/acetabularia_2.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/caulerpa_lentillifera_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/caulerpa_lentillifera_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/caulerpa_lentillifera_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/caulerpa_lentillifera_3.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/caulerpa_prolifera_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/caulerpa_prolifera_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/caulerpa_prolifera_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/caulerpa_prolifera_3.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/macrocystis_kelp_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/macrocystis_kelp_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/macrocystis_kelp_3.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/nereocystis_kelp_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/nereocystis_kelp_2.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/nereocystis_kelp_3.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/nereocystis_kelp_4.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/nereocystis_kelp_5.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/nereocystis_kelp_6.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/nereocystis_kelp_7.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/nereocystis_kelp_8.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/algae/udotea_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/udotea_1.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/algae/udotea_2.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/blue_ricordea_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/blue_ricordea_3.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/green_brain_coral_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/green_brain_coral_2.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/green_ricordea_1.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/green_ricordea_2.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/green_ricordea_3.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/green_ricordea_4.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_3.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/pink_brain_coral_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/plating_acropora_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/plating_acropora_1.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/plating_acropora_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/plating_acropora_3.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/plating_acropora_4.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/plating_acropora_5.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/plating_acropora_6.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/plating_acropora_7.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/purp_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/purp_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/purple_finger_soft_coral_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/purple_finger_soft_coral_1.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/red_fire_coral_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/red_fire_coral_2.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/red_sea_fan_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/red_sea_fan_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/red_sea_fan_3.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/sea_anemone_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/yellow_fire_coral_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/coral/yellow_gorgonian_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/coral/yellow_gorgonian_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/lillypad_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/lillypad_1.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/lillypad_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/lillypad_3.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/lillypad_4.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/lillypads/temperate_lilypad_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/temperate_lilypad_3.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/temperate_lilypad_4.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/lillypads/temperate_lilypad_5.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/temperate_lilypad_6.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/temperate_lilypad_7.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/lillypads/temperate_lilypad_8.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/temperate_lilypad_9.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/temperate_reeds_2.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/lillypads/temperate_reeds_3.vox</code></li>
@@ -583,8 +479,6 @@
 <li><code>media/voxel/vegetation/underwater/lillypads/temperate_reeds_5.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/underwater_grass/blue_0.vox</code></li>
 <li><code>media/voxel/vegetation/underwater/underwater_grass/blue_1.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/underwater_mud/mud_0.vox</code></li>
-<li><code>media/voxel/vegetation/underwater/underwater_mud/mud_1.vox</code></li>
 </ul>
 </details>
 <details><summary>Shaders (0)</summary>

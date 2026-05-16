@@ -1,6 +1,6 @@
 Object(
     name: "Andesite",
-    tags: ["terrain", "stone"],
+    tags: ["#core:tag/block/terrain", "#core:tag/material/stone"],
 
     block: (
         texture: all("blocks/andesite/all"),
@@ -9,7 +9,12 @@ Object(
         sound: stone,
     ),
 
-    item: ( stack: 99 ),
+    item: (
+        stack: 99,
+        category: block,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     mining: (
         tool: pickaxe,

@@ -9,6 +9,7 @@ use serde::Deserialize;
 use crate::ContentRef;
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RawPackManifest {
     pub format_version: u32,
     pub namespace: String,
@@ -35,6 +36,7 @@ pub enum RawPackKind {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RawPackContentRoots {
     pub definitions: String,
     pub media: String,
@@ -42,6 +44,7 @@ pub struct RawPackContentRoots {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RawPackRules {
     pub identity: RawIdentityMode,
     pub id_style: String,

@@ -1,10 +1,12 @@
 Object(
     name: "Wooden Axe",
-    tags: ["tool", "axe", "tier_0"],
+    tags: ["#core:tag/item/tool", "#core:tag/tool/axe", "#core:tag/tier/0"],
 
     item: (
         stack: 1,
-        icon: "items/tools/wooden_axe",
+        category: tool,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/tools/wooden_axe"),
     ),
 
     tool: (
@@ -15,15 +17,15 @@ Object(
     ),
 
     recipes: [(
-        station: "#station.construction",
+        station: "#core:tag/station/construction",
         kind: shaped((
             pattern: [
                 "LL",
                 "LF",
                 " F",
             ],
-            legend: { "L": "oak_log", "F": "plant_fiber" },
+            legend: { "L": "core:object/trees/oak_log", "F": "core:object/resources/plant_fiber" },
         )),
-        output: (item: "wooden_axe", count: 1),
+        output: (item: "core:object/tools/wooden_axe", count: 1),
     )],
 )

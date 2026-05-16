@@ -1,6 +1,6 @@
 Object(
     name: "Acacia Leaves",
-    tags: ["leaves", "flammable"],
+    tags: ["#core:tag/block/leaves", "#core:tag/material/flammable"],
 
     block: (
         texture: all("blocks/acacia_leaves/all"),
@@ -10,7 +10,12 @@ Object(
         sound: grass,
     ),
 
-    item: ( stack: 99 ),
+    item: (
+        stack: 99,
+        category: block,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     mining: (
         tool: any,

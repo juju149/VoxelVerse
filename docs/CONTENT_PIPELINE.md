@@ -15,8 +15,9 @@ brief -> raw .ron + media -> validate -> compile -> runtime registries -> game
 
 The validators are the gate. Nothing reaches the runtime without passing.
 
-For the strict content-quality rules enforced by Pack Doctor, see
-[`content_rules.md`](content_rules.md).
+For the strict V1 authoring contract enforced by Pack Doctor, see
+[`PACK_V1.md`](PACK_V1.md). If another document disagrees with Pack V1, Pack
+V1 wins.
 
 ---
 

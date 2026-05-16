@@ -1,6 +1,6 @@
 Object(
     name: "Red Sand",
-    tags: ["terrain", "sand"],
+    tags: ["#core:tag/block/terrain", "#core:tag/material/sand"],
 
     block: (
         texture: all("blocks/red_sand/all"),
@@ -9,7 +9,12 @@ Object(
         sound: sand,
     ),
 
-    item: ( stack: 99 ),
+    item: (
+        stack: 99,
+        category: block,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     mining: (
         tool: shovel,

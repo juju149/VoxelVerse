@@ -1,11 +1,13 @@
 // Plant Fiber — harvested from tall grass; used as cord in recipes.
 Object(
     name: "Plant Fiber",
-    tags: ["resource", "natural"],
+    tags: ["#core:tag/item/resource", "#core:tag/worldgen/natural"],
 
     item: (
         stack: 64,
-        icon: "items/resources/plant_fiber",
-        model: "voxel/items/plant_fiber",
+        category: resource,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/resources/plant_fiber"),
+        world_model: "core:voxel_model/items/plant_fiber",
     ),
 )

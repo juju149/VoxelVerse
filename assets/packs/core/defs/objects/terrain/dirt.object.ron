@@ -1,6 +1,6 @@
 Object(
     name: "Dirt",
-    tags: ["terrain", "soil"],
+    tags: ["#core:tag/block/terrain", "#core:tag/material/soil"],
 
     block: (
         texture: all("blocks/dirt/all"),
@@ -9,7 +9,12 @@ Object(
         sound: dirt,
     ),
 
-    item: ( stack: 99 ),
+    item: (
+        stack: 99,
+        category: block,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     mining: (
         tool: shovel,

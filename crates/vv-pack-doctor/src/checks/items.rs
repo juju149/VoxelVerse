@@ -1,7 +1,10 @@
 //! Per-item validation:
-//!   - item.icon paths point at a real PNG under `media/textures/`
-//!   - item.model paths point at a real `.vox` under `media/voxel/`
+//!   - visible inventory items declare an explicit V1 icon strategy
+//!   - texture icons point at a real PNG under `media/textures/`
+//!   - voxel-model item visuals point at a manifest, not a raw `.vox`
 //!   - stack sizes are positive
+
+use vv_content_schema::RawObjectInventoryIcon;
 
 use crate::index::PackIndex;
 use crate::report::{Diagnostic, Report};
@@ -21,33 +24,106 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
             );
         }
 
-        if let Some(icon) = &item.icon {
-            let candidate = format!("media/textures/{}.png", icon);
-            if !index.texture_exists(&candidate) {
-                report.error(
-                    Diagnostic::new(CHECK, format!("item icon '{}' is missing on disk", icon))
-                        .with_path(obj.rel_path.clone())
-                        .with_id(obj.id.clone())
-                        .with_field("item.icon")
-                        .with_suggestion(format!("create {} or fix the path", candidate)),
-                );
-            }
+        if item.visible_in_inventory && item.inventory_icon.is_none() {
+            report.error(
+                Diagnostic::new(
+                    CHECK,
+                    "visible inventory item must declare `inventory_icon`",
+                )
+                .with_path(obj.rel_path.clone())
+                .with_id(obj.id.clone())
+                .with_field("item.inventory_icon")
+                .with_suggestion(
+                    "use texture(\"core:texture/items/...\"), block, voxel_model(...), or auto_generated"
+                        .to_string(),
+                ),
+            );
         }
 
-        if let Some(model) = &item.model {
-            let candidate = format!("media/{}.vox", model);
-            if !index.voxel_exists(&candidate) {
+        if let Some(icon) = &item.inventory_icon {
+            check_icon(obj, icon, index, report);
+        }
+
+        if let Some(model) = &item.world_model {
+            if !index.voxel_model_exists(model) {
                 report.error(
-                    Diagnostic::new(CHECK, format!("item model '{}' is missing on disk", model))
-                        .with_path(obj.rel_path.clone())
-                        .with_id(obj.id.clone())
-                        .with_field("item.model")
-                        .with_suggestion(format!(
-                            "place a .vox file at {} (note: the path starts with `voxel/`)",
-                            candidate
-                        )),
+                    Diagnostic::new(
+                        CHECK,
+                        format!("item world_model '{}' has no voxel model manifest", model),
+                    )
+                    .with_path(obj.rel_path.clone())
+                    .with_id(obj.id.clone())
+                    .with_field("item.world_model")
+                    .with_suggestion(
+                        "create defs/voxel_models/**/<name>.voxel_model.ron and reference it"
+                            .to_string(),
+                    ),
                 );
             }
         }
     }
+}
+
+fn check_icon(
+    obj: &crate::scan::ParsedObject,
+    icon: &RawObjectInventoryIcon,
+    index: &PackIndex<'_>,
+    report: &mut Report,
+) {
+    match icon {
+        RawObjectInventoryIcon::Texture(key) => {
+            let Some(path) = texture_key_to_path(key) else {
+                report.error(
+                    Diagnostic::new(
+                        CHECK,
+                        format!("inventory icon '{}' is not a strict texture reference", key),
+                    )
+                    .with_path(obj.rel_path.clone())
+                    .with_id(obj.id.clone())
+                    .with_field("item.inventory_icon")
+                    .with_suggestion("use `core:texture/items/<path>`".to_string()),
+                );
+                return;
+            };
+            if !index.texture_exists(&path) {
+                report.error(
+                    Diagnostic::new(CHECK, format!("inventory icon '{}' is missing", key))
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field("item.inventory_icon")
+                        .with_suggestion(format!("create {path} or fix the reference")),
+                );
+            }
+        }
+        RawObjectInventoryIcon::Block => {
+            if obj.def.block.is_none() {
+                report.error(
+                    Diagnostic::new(CHECK, "block inventory icon requires a block section")
+                        .with_path(obj.rel_path.clone())
+                        .with_id(obj.id.clone())
+                        .with_field("item.inventory_icon"),
+                );
+            }
+        }
+        RawObjectInventoryIcon::VoxelModel(key) => {
+            if !index.voxel_model_exists(key) {
+                report.error(
+                    Diagnostic::new(
+                        CHECK,
+                        format!("inventory icon voxel model '{}' has no manifest", key),
+                    )
+                    .with_path(obj.rel_path.clone())
+                    .with_id(obj.id.clone())
+                    .with_field("item.inventory_icon"),
+                );
+            }
+        }
+        RawObjectInventoryIcon::AutoGenerated => {}
+    }
+}
+
+fn texture_key_to_path(key: &str) -> Option<String> {
+    let (_, path) = key.split_once(':')?;
+    let rest = path.strip_prefix("texture/")?;
+    Some(format!("media/textures/{rest}.png"))
 }

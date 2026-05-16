@@ -797,7 +797,6 @@ mod tests {
     use vv_pack_loader::PackLoader;
 
     #[test]
-    #[ignore = "core pack is mid-migration; re-enable once object files parse cleanly"]
     fn core_pack_procedural_compiles_from_current_schema() {
         let core_pack_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
         let pack = PackLoader::load_from_dir(&core_pack_dir).expect("core pack");

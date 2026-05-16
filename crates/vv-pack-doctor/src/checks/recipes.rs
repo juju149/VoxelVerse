@@ -148,7 +148,7 @@ fn check_station(
                     .with_id(obj.id.clone())
                     .with_field(format!("{prefix}.station"))
                     .with_suggestion(format!(
-                        "add `station.{name}` to the station's `station_tags`"
+                        "add `#core:tag/station/{name}` to the station's `station_tags`"
                     )),
                 );
             }
@@ -162,7 +162,9 @@ fn check_station(
                 .with_path(obj.rel_path.clone())
                 .with_id(obj.id.clone())
                 .with_field(format!("{prefix}.station"))
-                .with_suggestion("station references must use `#station.<name>`".to_string()),
+                .with_suggestion(
+                    "station references must use `#<namespace>:tag/station/<name>`".to_string(),
+                ),
             );
         }
         None => {
@@ -170,7 +172,7 @@ fn check_station(
                 Diagnostic::new(
                     CHECK,
                     format!(
-                        "recipe.station '{}' is not a tag — expected '#station.<name>'",
+                        "recipe.station '{}' is not a strict V1 tag — expected '#<namespace>:tag/station/<name>'",
                         s
                     ),
                 )

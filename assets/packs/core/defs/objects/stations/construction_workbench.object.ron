@@ -1,7 +1,7 @@
 // Construction Workbench — unlocks all tier-1 tool and building recipes.
 Object(
     name: "Construction Workbench",
-    tags: ["station.construction", "furniture", "wood"],
+    tags: ["#core:tag/station/construction", "#core:tag/block/furniture", "#core:tag/material/wood"],
 
     block: (
         texture: cube(
@@ -14,7 +14,12 @@ Object(
         sound: wood,
     ),
 
-    item: ( stack: 1 ),
+    item: (
+        stack: 1,
+        category: station,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     station: (
         type: workbench,),
@@ -25,8 +30,8 @@ Object(
 
     recipes: [(
         kind: shapeless((
-            ingredients: ["oak_log", "oak_log"],
+            ingredients: ["core:object/trees/oak_log", "core:object/trees/oak_log"],
         )),
-        output: (item: "construction_workbench", count: 1),
+        output: (item: "core:object/stations/construction_workbench", count: 1),
     )],
 )

@@ -15,6 +15,16 @@ fn parse<T: serde::de::DeserializeOwned>(name: &str, src: &str) -> T {
         .unwrap_or_else(|e| panic!("{name} sample failed to parse: {e}"))
 }
 
+fn parse_err<T: serde::de::DeserializeOwned>(src: &str) -> String {
+    match ron::Options::default()
+        .with_default_extension(ron::extensions::Extensions::IMPLICIT_SOME)
+        .from_str::<T>(src)
+    {
+        Ok(_) => panic!("sample should fail to parse"),
+        Err(err) => err.to_string(),
+    }
+}
+
 // ── pack.ron ─────────────────────────────────────────────────────────────────
 
 #[test]
@@ -52,7 +62,12 @@ fn object_block_minimum_parses() {
             texture: all("blocks/dirt/all"),
             hardness: 0.5,
         ),
-        item: (stack: 99),
+        item: (
+            stack: 99,
+            category: block,
+            visible_in_inventory: true,
+            inventory_icon: block,
+        ),
     )"##;
     let o: RawObjectDef = parse("object block", strip_wrapper(src));
     assert_eq!(o.format_version, 1);
@@ -71,25 +86,55 @@ fn object_uses_default_format_version_when_omitted() {
     assert_eq!(o.format_version, OBJECT_FORMAT_VERSION);
 }
 
+#[test]
+fn object_rejects_legacy_item_icon_field() {
+    let src = r##"Object(
+        name: "Legacy Icon",
+        item: (
+            stack: 1,
+            category: resource,
+            visible_in_inventory: true,
+            icon: "items/legacy",
+        ),
+    )"##;
+    let err = parse_err::<RawObjectDef>(strip_wrapper(src));
+    assert!(err.contains("Unexpected field named `icon`"), "{err}");
+}
+
+#[test]
+fn object_rejects_unknown_fields() {
+    let src = r##"Object(
+        name: "Rabbit",
+        spawn: (density: 0.1),
+    )"##;
+    let err = parse_err::<RawObjectDef>(strip_wrapper(src));
+    assert!(err.contains("Unexpected field named `spawn`"), "{err}");
+}
+
 // ── object.ron — recipes Vec + RawObjectRecipeKind enum ──────────────────────
 
 #[test]
 fn object_with_two_recipes_parses() {
     let src = r##"Object(
         name: "Torch",
-        item: (stack: 64),
+        item: (
+            stack: 64,
+            category: utility,
+            visible_in_inventory: true,
+            inventory_icon: texture("core:texture/items/utility/torch"),
+        ),
         recipes: [
             (
-                station: Some("#station.construction"),
+                station: Some("#core:tag/station/construction"),
                 kind: shaped((
                     pattern: ["C", "S"],
-                    legend: { "C": "coal", "S": "stick" },
+                legend: { "C": "core:object/resources/coal", "S": "core:object/resources/stick" },
                 )),
                 output: (item: "torch", count: 4),
             ),
             (
                 station: None,
-                kind: shapeless((ingredients: ["resin", "stick"])),
+                kind: shapeless((ingredients: ["core:object/resources/resin", "core:object/resources/stick"])),
                 output: (item: "torch", count: 2),
             ),
         ],
@@ -114,11 +159,16 @@ fn object_with_two_recipes_parses() {
 fn object_processing_recipe_parses() {
     let src = r##"Object(
         name: "Iron Ingot",
-        item: (stack: 64),
+        item: (
+            stack: 64,
+            category: resource,
+            visible_in_inventory: true,
+            inventory_icon: texture("core:texture/items/resources/iron_ingot"),
+        ),
         recipes: [(
-            station: Some("#station.smelting"),
+            station: Some("#core:tag/station/furnace"),
             kind: processing((
-                inputs: [(item: "iron_ore_chunk", count: 1, chance: 1.0)],
+                inputs: [(item: "core:object/resources/iron_ore_chunk", count: 1, chance: 1.0)],
                 duration_seconds: 8.0,
             )),
             output: (item: "iron_ingot", count: 1),
@@ -138,16 +188,21 @@ fn object_processing_recipe_parses() {
 
 #[test]
 fn object_station_with_tags_parses() {
-    let src = r#"Object(
+    let src = r##"Object(
         name: "Construction Workbench",
         block: (texture: all("blocks/workbench/all")),
-        item: (stack: 1),
+        item: (
+            stack: 1,
+            category: station,
+            visible_in_inventory: true,
+            inventory_icon: block,
+        ),
         station: (
             type: workbench,
-            station_tags: ["station.construction", "station.tool"],
+            station_tags: ["#core:tag/station/construction", "#core:tag/station/tool"],
             slots: Some(9),
         ),
-    )"#;
+    )"##;
     let o: RawObjectDef = parse("station tags", strip_wrapper(src));
     let s = o.station.expect("station");
     assert_eq!(s.station_tags.len(), 2);

@@ -1,10 +1,12 @@
 Object(
     name: "Mushroom",
-    tags: ["resource", "food_ingredient", "plant"],
+    tags: ["#core:tag/item/resource", "#core:tag/item/food_ingredient", "#core:tag/worldgen/plant"],
 
     item: (
         stack: 64,
-        icon: "items/misc/mushroom",
-        model: "voxel/items/mushroom",
+        category: resource,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/misc/mushroom"),
+        world_model: "core:voxel_model/items/mushroom",
     ),
 )

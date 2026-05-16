@@ -1,7 +1,7 @@
 // Torch - cheap placeable light for early exploration and building.
 Object(
     name: "Torch",
-    tags: ["decorative", "light_source", "tier_0"],
+    tags: ["#core:tag/item/decorative", "#core:tag/block/light_source", "#core:tag/tier/0"],
 
     block: (
         texture: all("blocks/torch/all"),
@@ -14,7 +14,9 @@ Object(
 
     item: (
         stack: 64,
-        icon: "items/utility/torch",
+        category: utility,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/utility/torch"),
     ),
 
     light: (
@@ -29,8 +31,8 @@ Object(
 
     recipes: [(
         kind: shapeless((
-            ingredients: ["oak_log", "coal"],
+            ingredients: ["core:object/trees/oak_log", "core:object/resources/coal"],
         )),
-        output: (item: "torch", count: 4),
+        output: (item: "core:object/utility/torch", count: 4),
     )],
 )

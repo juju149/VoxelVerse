@@ -8,7 +8,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::index::PackIndex;
+use crate::index::{normalize_tag_key, PackIndex};
 use crate::report::{Diagnostic, Report};
 
 const CHECK: &str = "stations";
@@ -16,17 +16,19 @@ const CHECK: &str = "stations";
 pub fn run(index: &PackIndex<'_>, report: &mut Report) {
     let mut owners: BTreeMap<String, Vec<&crate::scan::ParsedObject>> = BTreeMap::new();
     for obj in &index.scan.objects {
-        // Prefer the explicit `station.station_tags` list; fall back to any
-        // `station.*` entries on the object-level `tags:` for compatibility.
         if let Some(station) = &obj.def.station {
             for tag in &station.station_tags {
-                if let Some(rest) = tag.strip_prefix("station.") {
+                if let Some(rest) = normalize_tag_key(tag).and_then(|t| {
+                    t.strip_prefix("station/").map(str::to_string)
+                }) {
                     owners.entry(rest.to_string()).or_default().push(obj);
                 }
             }
         }
         for tag in &obj.def.tags {
-            if let Some(rest) = tag.strip_prefix("station.") {
+            if let Some(rest) = normalize_tag_key(tag).and_then(|t| {
+                t.strip_prefix("station/").map(str::to_string)
+            }) {
                 owners.entry(rest.to_string()).or_default().push(obj);
             }
         }
@@ -54,7 +56,7 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
                     Diagnostic::new(
                         CHECK,
                         format!(
-                            "object carries 'station.{}' but has no `station: (...)` section",
+                            "object carries '#core:tag/station/{}' but has no `station: (...)` section",
                             station
                         ),
                     )
@@ -62,7 +64,7 @@ pub fn run(index: &PackIndex<'_>, report: &mut Report) {
                     .with_id(obj.id.clone())
                     .with_field("station")
                     .with_suggestion(format!(
-                        "add a `station: (type: ...)` section or remove the `station.{}` tag",
+                        "add a `station: (type: ...)` section or remove the station tag '{}'",
                         station
                     )),
                 );

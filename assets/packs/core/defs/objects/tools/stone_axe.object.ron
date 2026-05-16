@@ -1,11 +1,13 @@
 Object(
     name: "Stone Axe",
-    tags: ["tool", "axe", "tier_1"],
+    tags: ["#core:tag/item/tool", "#core:tag/tool/axe", "#core:tag/tier/1"],
 
     item: (
         stack: 1,
-        icon: "items/tools/stone_axe",
-        model: "voxel/equipment/tools/axe_stone",
+        category: tool,
+        visible_in_inventory: true,
+        inventory_icon: texture("core:texture/items/tools/stone_axe"),
+        world_model: "core:voxel_model/equipment/tools/axe_stone",
     ),
 
     tool: (
@@ -16,15 +18,15 @@ Object(
     ),
 
     recipes: [(
-        station: "#station.construction",
+        station: "#core:tag/station/construction",
         kind: shaped((
             pattern: [
                 "SS",
                 "SF",
                 " F",
             ],
-            legend: { "S": "stone", "F": "plant_fiber" },
+            legend: { "S": "core:object/terrain/stone", "F": "core:object/resources/plant_fiber" },
         )),
-        output: (item: "stone_axe", count: 1),
+        output: (item: "core:object/tools/stone_axe", count: 1),
     )],
 )

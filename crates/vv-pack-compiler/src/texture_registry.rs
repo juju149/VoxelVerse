@@ -307,7 +307,6 @@ mod tests {
     use vv_pack_loader::PackLoader;
 
     #[test]
-    #[ignore = "core pack is mid-migration; re-enable once object files parse cleanly"]
     fn core_pack_texture_registry_loads_grass_top_material() {
         let pack_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs");
         let pack = PackLoader::load_from_dir(&pack_root.join("core")).expect("core pack");
@@ -319,7 +318,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "core pack is mid-migration; re-enable once object files parse cleanly"]
     fn average_albedo_color_reads_decoded_material_texture() {
         let pack_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs");
         let pack = PackLoader::load_from_dir(&pack_root.join("core")).expect("core pack");
@@ -328,7 +326,7 @@ mod tests {
 
         let grass = objects
             .blocks
-            .lookup_default("core:block/terrain/grass")
+            .lookup_default("core:object/terrain/grass")
             .expect("grass block");
         let grass_top = objects.blocks.visual(grass).layers.top;
         let color = textures.average_albedo_color(grass_top);

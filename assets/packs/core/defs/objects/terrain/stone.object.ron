@@ -1,7 +1,7 @@
 // Smooth Stone — basic crust block, mined with a pickaxe.
 Object(
     name: "Stone",
-    tags: ["terrain", "stone"],
+    tags: ["#core:tag/block/terrain", "#core:tag/material/stone"],
 
     block: (
         texture: all("blocks/smooth_stone/all"),
@@ -10,7 +10,12 @@ Object(
         sound: stone,
     ),
 
-    item: ( stack: 99 ),
+    item: (
+        stack: 99,
+        category: block,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     mining: (
         tool: pickaxe,

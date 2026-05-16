@@ -1,31 +1,22 @@
 {
   "pack": "assets/packs/core",
-  "health_score": 99,
+  "health_score": 100,
   "summary": {
     "errors": 0,
-    "warnings": 1,
-    "blocks": 34,
-    "items": 49,
+    "warnings": 0,
+    "blocks": 35,
+    "items": 53,
     "materials": 0,
-    "textures": 159,
-    "recipes": 0,
+    "textures": 162,
+    "recipes": 15,
     "loot_tables": 1,
     "voxels": 542,
     "shader_modules": 45,
     "techniques": 23,
-    "world_files": 94
+    "world_files": 113
   },
   "errors": [],
-  "warnings": [
-    {
-      "check": "filesystem",
-      "message": "empty directory: defs/objects/liquids",
-      "path": "defs/objects/liquids",
-      "id": null,
-      "field": null,
-      "suggestion": "remove the empty directory or fill it with content"
-    }
-  ],
+  "warnings": [],
   "unused": {
     "textures": [
       "media/textures/blocks/grass_block/grass_block_top_albedo.png"
@@ -58,37 +49,23 @@
       "media/voxel/props/decoration/snow_pebbles/snow_pebbles_3.vox",
       "media/voxel/props/decoration/snow_pebbles/snow_pebbles_4.vox",
       "media/voxel/props/decoration/snow_pebbles/snow_pebbles_5.vox",
-      "media/voxel/vegetation/bushes/blueberry/blueberry_02.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_03.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_04.vox",
-      "media/voxel/vegetation/bushes/blueberry/blueberry_05.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_06.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_07.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_08.vox",
       "media/voxel/vegetation/bushes/blueberry/blueberry_09.vox",
-      "media/voxel/vegetation/bushes/dead_bush/dead_bush_03.vox",
       "media/voxel/vegetation/bushes/dead_bush/dead_bush_04.vox",
-      "media/voxel/vegetation/bushes/dead_plant/dead_plant_2.vox",
-      "media/voxel/vegetation/bushes/dead_plant/dead_plant_3.vox",
-      "media/voxel/vegetation/bushes/lingonberry/lingonberry_02.vox",
       "media/voxel/vegetation/bushes/lingonberry/lingonberry_03.vox",
       "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_03.vox",
       "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_04.vox",
       "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_05.vox",
       "media/voxel/vegetation/bushes/savanna_bush/savanna_bush_06.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_10.vox",
-      "media/voxel/vegetation/bushes/snow_bush/snow_bush_11.vox",
-      "media/voxel/vegetation/bushes/snow_bush/snow_bush_2.vox",
-      "media/voxel/vegetation/bushes/snow_bush/snow_bush_3.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_4.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_5.vox",
-      "media/voxel/vegetation/bushes/snow_bush/snow_bush_6.vox",
-      "media/voxel/vegetation/bushes/snow_bush/snow_bush_7.vox",
       "media/voxel/vegetation/bushes/snow_bush/snow_bush_8.vox",
-      "media/voxel/vegetation/bushes/snow_bush/snow_bush_9.vox",
-      "media/voxel/vegetation/cave/cave_flower_0.vox",
       "media/voxel/vegetation/cave/cave_flower_1.vox",
-      "media/voxel/vegetation/cave/cave_flower_2.vox",
       "media/voxel/vegetation/cave/cave_flower_3.vox",
       "media/voxel/vegetation/cave/cave_lantern_flower_0.vox",
       "media/voxel/vegetation/cave/cave_lantern_flower_1.vox",
@@ -97,67 +74,40 @@
       "media/voxel/vegetation/cave/cave_lantern_plant_1.vox",
       "media/voxel/vegetation/cave/cave_lantern_plant_2.vox",
       "media/voxel/vegetation/cave/ceiling/cave_lantern_flower_0.vox",
-      "media/voxel/vegetation/cave/ceiling/cave_lantern_flower_1.vox",
       "media/voxel/vegetation/cave/ceiling/cave_lantern_flower_2.vox",
-      "media/voxel/vegetation/cave/ceiling/cave_lantern_plant_0.vox",
       "media/voxel/vegetation/cave/ceiling/cave_lantern_plant_1.vox",
-      "media/voxel/vegetation/cave/ceiling/mold_0.vox",
       "media/voxel/vegetation/cave/ceiling/mold_1.vox",
-      "media/voxel/vegetation/cave/ceiling/mold_2.vox",
       "media/voxel/vegetation/cave/ceiling/mold_3.vox",
-      "media/voxel/vegetation/cave/ceiling/mold_4.vox",
       "media/voxel/vegetation/cave/ceiling/mold_5.vox",
-      "media/voxel/vegetation/cave/ceiling/mold_6.vox",
-      "media/voxel/vegetation/cave/ceiling/mushroom_0.vox",
       "media/voxel/vegetation/cave/ceiling/mushroom_1.vox",
-      "media/voxel/vegetation/cave/ceiling/mushroom_2.vox",
-      "media/voxel/vegetation/cave/ceiling/mycel_0.vox",
       "media/voxel/vegetation/cave/ceiling/mycel_1.vox",
-      "media/voxel/vegetation/cave/ceiling/mycel_2.vox",
       "media/voxel/vegetation/cave/ceiling/mycel_3.vox",
-      "media/voxel/vegetation/cave/ceiling/orb_0.vox",
       "media/voxel/vegetation/cave/ceiling/orb_1.vox",
-      "media/voxel/vegetation/cave/ceiling/orb_2.vox",
       "media/voxel/vegetation/cave/ceiling/orb_3.vox",
-      "media/voxel/vegetation/cave/ceiling/root_0.vox",
       "media/voxel/vegetation/cave/ceiling/root_1.vox",
-      "media/voxel/vegetation/cave/ceiling/root_2.vox",
       "media/voxel/vegetation/cave/ceiling/root_3.vox",
       "media/voxel/vegetation/cave/ceiling/root_4.vox",
-      "media/voxel/vegetation/cave/ceiling/root_5.vox",
       "media/voxel/vegetation/cave/ceiling/root_6.vox",
       "media/voxel/vegetation/cave/grass_blue_long_0.vox",
-      "media/voxel/vegetation/cave/grass_blue_long_1.vox",
       "media/voxel/vegetation/cave/grass_blue_long_2.vox",
       "media/voxel/vegetation/cave/grass_blue_long_3.vox",
-      "media/voxel/vegetation/cave/grass_blue_long_4.vox",
       "media/voxel/vegetation/cave/grass_blue_long_5.vox",
       "media/voxel/vegetation/cave/grass_blue_long_6.vox",
       "media/voxel/vegetation/cave/grass_blue_long_7.vox",
-      "media/voxel/vegetation/cave/grass_blue_med_0.vox",
       "media/voxel/vegetation/cave/grass_blue_med_1.vox",
-      "media/voxel/vegetation/cave/grass_blue_med_2.vox",
       "media/voxel/vegetation/cave/grass_blue_med_3.vox",
-      "media/voxel/vegetation/cave/grass_blue_short_0.vox",
       "media/voxel/vegetation/cave/grass_blue_short_1.vox",
-      "media/voxel/vegetation/cave/grass_blue_short_2.vox",
       "media/voxel/vegetation/cave/grass_blue_short_3.vox",
       "media/voxel/vegetation/cave/grass_blue_short_4.vox",
-      "media/voxel/vegetation/cave/mushroom_0.vox",
       "media/voxel/vegetation/cave/mushroom_1.vox",
       "media/voxel/vegetation/cave/mushroom_10.vox",
-      "media/voxel/vegetation/cave/mushroom_11.vox",
       "media/voxel/vegetation/cave/mushroom_2.vox",
-      "media/voxel/vegetation/cave/mushroom_3.vox",
       "media/voxel/vegetation/cave/mushroom_4.vox",
       "media/voxel/vegetation/cave/mushroom_5.vox",
       "media/voxel/vegetation/cave/mushroom_6.vox",
-      "media/voxel/vegetation/cave/mushroom_7.vox",
       "media/voxel/vegetation/cave/mushroom_8.vox",
       "media/voxel/vegetation/cave/mushroom_9.vox",
-      "media/voxel/vegetation/cave/spore_reed_0.vox",
       "media/voxel/vegetation/cave/spore_reed_1.vox",
-      "media/voxel/vegetation/cave/spore_reed_2.vox",
       "media/voxel/vegetation/cave/spore_reed_3.vox",
       "media/voxel/vegetation/crops/carrot/carrot_00.vox",
       "media/voxel/vegetation/crops/carrot/carrot_01.vox",
@@ -239,11 +189,9 @@
       "media/voxel/vegetation/desert/cacti/large_cactus.vox",
       "media/voxel/vegetation/desert/cacti/tall.vox",
       "media/voxel/vegetation/desert/cacti/tall2.vox",
-      "media/voxel/vegetation/flowers/cotton.vox",
       "media/voxel/vegetation/flowers/flower_blue_10.vox",
       "media/voxel/vegetation/flowers/flower_blue_2.vox",
       "media/voxel/vegetation/flowers/flower_blue_4.vox",
-      "media/voxel/vegetation/flowers/flower_blue_5.vox",
       "media/voxel/vegetation/flowers/flower_blue_6.vox",
       "media/voxel/vegetation/flowers/flower_blue_7.vox",
       "media/voxel/vegetation/flowers/flower_blue_8.vox",
@@ -252,59 +200,38 @@
       "media/voxel/vegetation/flowers/flower_pink_3.vox",
       "media/voxel/vegetation/flowers/flower_pink_4.vox",
       "media/voxel/vegetation/flowers/flower_purple_2.vox",
-      "media/voxel/vegetation/flowers/flower_purple_3.vox",
-      "media/voxel/vegetation/flowers/flower_purple_4.vox",
       "media/voxel/vegetation/flowers/flower_purple_5.vox",
       "media/voxel/vegetation/flowers/flower_purple_6.vox",
       "media/voxel/vegetation/flowers/flower_purple_7.vox",
       "media/voxel/vegetation/flowers/flower_purple_8.vox",
-      "media/voxel/vegetation/flowers/flower_red_1.vox",
-      "media/voxel/vegetation/flowers/flower_red_2.vox",
       "media/voxel/vegetation/flowers/flower_red_3.vox",
       "media/voxel/vegetation/flowers/flower_red_4.vox",
       "media/voxel/vegetation/flowers/flower_red_5.vox",
       "media/voxel/vegetation/flowers/flower_white_2.vox",
-      "media/voxel/vegetation/flowers/flower_white_3.vox",
       "media/voxel/vegetation/flowers/flower_white_4.vox",
       "media/voxel/vegetation/flowers/flower_white_5.vox",
       "media/voxel/vegetation/flowers/jungle_flower_red_1.vox",
-      "media/voxel/vegetation/flowers/moonbell.vox",
       "media/voxel/vegetation/flowers/pyrebloom.vox",
-      "media/voxel/vegetation/flowers/snow_crocus_1.vox",
       "media/voxel/vegetation/flowers/snow_crocus_2.vox",
-      "media/voxel/vegetation/flowers/snow_crocus_3.vox",
       "media/voxel/vegetation/flowers/snow_crocus_4.vox",
       "media/voxel/vegetation/flowers/snow_crocus_5.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_1.vox",
-      "media/voxel/vegetation/flowers/snow_forsythia_2.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_3.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_4.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_5.vox",
-      "media/voxel/vegetation/flowers/snow_forsythia_6.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_7.vox",
       "media/voxel/vegetation/flowers/snow_forsythia_8.vox",
-      "media/voxel/vegetation/flowers/snow_rose_0.vox",
       "media/voxel/vegetation/flowers/snow_rose_10.vox",
       "media/voxel/vegetation/flowers/snow_rose_11.vox",
       "media/voxel/vegetation/flowers/snow_rose_2.vox",
       "media/voxel/vegetation/flowers/snow_rose_3.vox",
       "media/voxel/vegetation/flowers/snow_rose_4.vox",
-      "media/voxel/vegetation/flowers/snow_rose_5.vox",
       "media/voxel/vegetation/flowers/snow_rose_6.vox",
       "media/voxel/vegetation/flowers/snow_rose_7.vox",
       "media/voxel/vegetation/flowers/snow_rose_8.vox",
       "media/voxel/vegetation/flowers/snow_rose_9.vox",
-      "media/voxel/vegetation/flowers/sunflower_2.vox",
       "media/voxel/vegetation/grass/ferns/fern_0.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_04.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_05.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_06.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_07.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_08.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_09.vox",
       "media/voxel/vegetation/grass/ferns/ferns_10.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_11.vox",
-      "media/voxel/vegetation/grass/ferns/ferns_12.vox",
       "media/voxel/vegetation/grass/grass/grass_large_0.vox",
       "media/voxel/vegetation/grass/grass/grass_large_1.vox",
       "media/voxel/vegetation/grass/grass/grass_large_2.vox",
@@ -320,7 +247,6 @@
       "media/voxel/vegetation/grass/grass/grass_savanna_4.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_5.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_6.vox",
-      "media/voxel/vegetation/grass/grass/grass_savanna_red_0.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_red_1.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_red_2.vox",
       "media/voxel/vegetation/grass/grass/grass_savanna_red_3.vox",
@@ -335,19 +261,13 @@
       "media/voxel/vegetation/grass/grass/grass_short_5.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_10.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_11.vox",
-      "media/voxel/vegetation/grass/grass/grass_snow_2.vox",
-      "media/voxel/vegetation/grass/grass/grass_snow_3.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_4.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_5.vox",
-      "media/voxel/vegetation/grass/grass/grass_snow_6.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_7.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_8.vox",
-      "media/voxel/vegetation/grass/grass/grass_snow_9.vox",
-      "media/voxel/vegetation/grass/grass/grass_snow_tall_0.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_tall_1.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_tall_10.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_tall_2.vox",
-      "media/voxel/vegetation/grass/grass/grass_snow_tall_3.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_tall_4.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_tall_5.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_tall_6.vox",
@@ -355,131 +275,81 @@
       "media/voxel/vegetation/grass/grass/grass_snow_tall_8.vox",
       "media/voxel/vegetation/grass/grass/grass_snow_tall_9.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_0.vox",
-      "media/voxel/vegetation/grass/grass/grass_taiga_1.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_2.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_3.vox",
-      "media/voxel/vegetation/grass/grass/grass_taiga_4.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_5.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_6.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_7.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_8.vox",
       "media/voxel/vegetation/grass/grass/grass_taiga_9.vox",
-      "media/voxel/vegetation/grass/grass/seagrass_2.vox",
-      "media/voxel/vegetation/grass/grass/seagrass_3.vox",
-      "media/voxel/vegetation/grass/grass/seagrass_4.vox",
-      "media/voxel/vegetation/grass/junglefern/junglefern_03.vox",
-      "media/voxel/vegetation/grass/junglefern/junglefern_04.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_1.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_2.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_3.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_4.vox",
       "media/voxel/vegetation/grass/jungleredgrass/jungle_grass_red_5.vox",
-      "media/voxel/vegetation/grass/leafy_plant/jungle_plant_2.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_3.vox",
-      "media/voxel/vegetation/grass/leafy_plant/jungle_plant_4.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_0.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_1.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_2.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_3.vox",
       "media/voxel/vegetation/grass/leafy_plant/jungle_plant_ceiling_4.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_02.vox",
-      "media/voxel/vegetation/grass/leafy_plant/leafy_plant_03.vox",
-      "media/voxel/vegetation/grass/leafy_plant/leafy_plant_04.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_05.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_06.vox",
-      "media/voxel/vegetation/grass/leafy_plant/leafy_plant_07.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_08.vox",
-      "media/voxel/vegetation/grass/leafy_plant/leafy_plant_09.vox",
       "media/voxel/vegetation/grass/leafy_plant/leafy_plant_10.vox",
       "media/voxel/vegetation/grass/lianas/liana_1.vox",
       "media/voxel/vegetation/grass/reed/reed_3.vox",
       "media/voxel/vegetation/grass/reed/reed_4.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_10.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_4.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_5.vox",
       "media/voxel/vegetation/mushrooms/mushroom_7.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_8.vox",
-      "media/voxel/vegetation/mushrooms/mushroom_9.vox",
-      "media/voxel/vegetation/underwater/algae/acetabularia_0.vox",
       "media/voxel/vegetation/underwater/algae/acetabularia_1.vox",
-      "media/voxel/vegetation/underwater/algae/acetabularia_2.vox",
-      "media/voxel/vegetation/underwater/algae/caulerpa_lentillifera_0.vox",
       "media/voxel/vegetation/underwater/algae/caulerpa_lentillifera_1.vox",
-      "media/voxel/vegetation/underwater/algae/caulerpa_lentillifera_2.vox",
       "media/voxel/vegetation/underwater/algae/caulerpa_lentillifera_3.vox",
-      "media/voxel/vegetation/underwater/algae/caulerpa_prolifera_0.vox",
       "media/voxel/vegetation/underwater/algae/caulerpa_prolifera_1.vox",
-      "media/voxel/vegetation/underwater/algae/caulerpa_prolifera_2.vox",
       "media/voxel/vegetation/underwater/algae/caulerpa_prolifera_3.vox",
       "media/voxel/vegetation/underwater/algae/macrocystis_kelp_1.vox",
-      "media/voxel/vegetation/underwater/algae/macrocystis_kelp_2.vox",
       "media/voxel/vegetation/underwater/algae/macrocystis_kelp_3.vox",
-      "media/voxel/vegetation/underwater/algae/nereocystis_kelp_0.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_2.vox",
-      "media/voxel/vegetation/underwater/algae/nereocystis_kelp_3.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_4.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_5.vox",
-      "media/voxel/vegetation/underwater/algae/nereocystis_kelp_6.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_7.vox",
       "media/voxel/vegetation/underwater/algae/nereocystis_kelp_8.vox",
-      "media/voxel/vegetation/underwater/algae/udotea_0.vox",
       "media/voxel/vegetation/underwater/algae/udotea_1.vox",
       "media/voxel/vegetation/underwater/algae/udotea_2.vox",
-      "media/voxel/vegetation/underwater/coral/blue_ricordea_2.vox",
       "media/voxel/vegetation/underwater/coral/blue_ricordea_3.vox",
       "media/voxel/vegetation/underwater/coral/green_brain_coral_1.vox",
-      "media/voxel/vegetation/underwater/coral/green_brain_coral_2.vox",
-      "media/voxel/vegetation/underwater/coral/green_ricordea_1.vox",
       "media/voxel/vegetation/underwater/coral/green_ricordea_2.vox",
-      "media/voxel/vegetation/underwater/coral/green_ricordea_3.vox",
       "media/voxel/vegetation/underwater/coral/green_ricordea_4.vox",
-      "media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_0.vox",
       "media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_1.vox",
-      "media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_2.vox",
       "media/voxel/vegetation/underwater/coral/pink_birdsnest_coral_3.vox",
-      "media/voxel/vegetation/underwater/coral/pink_brain_coral_1.vox",
-      "media/voxel/vegetation/underwater/coral/plating_acropora_0.vox",
       "media/voxel/vegetation/underwater/coral/plating_acropora_1.vox",
       "media/voxel/vegetation/underwater/coral/plating_acropora_2.vox",
       "media/voxel/vegetation/underwater/coral/plating_acropora_3.vox",
-      "media/voxel/vegetation/underwater/coral/plating_acropora_4.vox",
       "media/voxel/vegetation/underwater/coral/plating_acropora_5.vox",
       "media/voxel/vegetation/underwater/coral/plating_acropora_6.vox",
       "media/voxel/vegetation/underwater/coral/plating_acropora_7.vox",
       "media/voxel/vegetation/underwater/coral/purp_0.vox",
       "media/voxel/vegetation/underwater/coral/purp_1.vox",
-      "media/voxel/vegetation/underwater/coral/purple_finger_soft_coral_0.vox",
       "media/voxel/vegetation/underwater/coral/purple_finger_soft_coral_1.vox",
       "media/voxel/vegetation/underwater/coral/red_fire_coral_1.vox",
-      "media/voxel/vegetation/underwater/coral/red_fire_coral_2.vox",
-      "media/voxel/vegetation/underwater/coral/red_sea_fan_1.vox",
-      "media/voxel/vegetation/underwater/coral/red_sea_fan_2.vox",
       "media/voxel/vegetation/underwater/coral/red_sea_fan_3.vox",
-      "media/voxel/vegetation/underwater/coral/sea_anemone_1.vox",
-      "media/voxel/vegetation/underwater/coral/yellow_fire_coral_0.vox",
       "media/voxel/vegetation/underwater/coral/yellow_gorgonian_1.vox",
-      "media/voxel/vegetation/underwater/coral/yellow_gorgonian_2.vox",
       "media/voxel/vegetation/underwater/lillypads/lillypad_0.vox",
       "media/voxel/vegetation/underwater/lillypads/lillypad_1.vox",
       "media/voxel/vegetation/underwater/lillypads/lillypad_2.vox",
       "media/voxel/vegetation/underwater/lillypads/lillypad_3.vox",
       "media/voxel/vegetation/underwater/lillypads/lillypad_4.vox",
-      "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_2.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_3.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_4.vox",
-      "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_5.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_6.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_7.vox",
-      "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_8.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_lilypad_9.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_reeds_2.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_reeds_3.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_reeds_4.vox",
       "media/voxel/vegetation/underwater/lillypads/temperate_reeds_5.vox",
       "media/voxel/vegetation/underwater/underwater_grass/blue_0.vox",
-      "media/voxel/vegetation/underwater/underwater_grass/blue_1.vox",
-      "media/voxel/vegetation/underwater/underwater_mud/mud_0.vox",
-      "media/voxel/vegetation/underwater/underwater_mud/mud_1.vox"
+      "media/voxel/vegetation/underwater/underwater_grass/blue_1.vox"
     ],
     "shaders": []
   },
@@ -495,8 +365,8 @@
       "planet_profiles": 1,
       "biome_sets": 1,
       "biomes": 23,
-      "vegetation_rules": 7,
-      "prop_scatters": 14,
+      "vegetation_rules": 12,
+      "prop_scatters": 28,
       "ore_rules": 2,
       "cave_rules": 1,
       "render_profiles": 4
@@ -509,9 +379,9 @@
         "far_surface_lod_radius": 192,
         "upload_budget_chunks_per_frame": 8,
         "region_cell_voxels": 64,
-        "feature_budget_per_chunk": 384,
+        "feature_budget_per_chunk": 192,
         "vegetation_refs": 7,
-        "prop_scatter_refs": 14,
+        "prop_scatter_refs": 28,
         "ore_refs": 2,
         "cave_refs": 1
       }
@@ -534,7 +404,11 @@
         "flatness": 0.0600,
         "tags": [
           "cold",
-          "mountain"
+          "mountain",
+          "alpine",
+          "rocky",
+          "elevation",
+          "mineral_rich"
         ]
       },
       {
@@ -547,7 +421,11 @@
         "tags": [
           "desert",
           "dry",
-          "badlands"
+          "badlands",
+          "rocky",
+          "mineral_rich",
+          "plateau",
+          "rare_ores"
         ]
       },
       {
@@ -558,8 +436,12 @@
         "amplitude": 0.0500,
         "flatness": 0.9000,
         "tags": [
+          "coastal",
           "beach",
-          "coastal"
+          "sandy",
+          "warm_edge",
+          "transition",
+          "ocean_gate"
         ]
       },
       {
@@ -572,7 +454,10 @@
         "tags": [
           "temperate",
           "forest",
-          "birch"
+          "birch",
+          "bright",
+          "airy",
+          "open_canopy"
         ]
       },
       {
@@ -585,7 +470,11 @@
         "tags": [
           "temperate",
           "forest",
-          "dark"
+          "dark",
+          "dense",
+          "shadowed",
+          "hostile_night",
+          "mushroom"
         ]
       },
       {
@@ -597,7 +486,11 @@
         "flatness": 0.5600,
         "tags": [
           "desert",
-          "dry"
+          "dry",
+          "harsh",
+          "arid",
+          "sandy",
+          "challenge"
         ]
       },
       {
@@ -611,7 +504,10 @@
           "cold",
           "mountain",
           "frozen",
-          "snowy"
+          "snowy",
+          "extreme",
+          "elevation",
+          "inhospitable"
         ]
       },
       {
@@ -624,7 +520,11 @@
         "tags": [
           "jungle",
           "tropical",
-          "wet"
+          "wet",
+          "dense",
+          "loot_rich",
+          "hot",
+          "dangerous"
         ]
       },
       {
@@ -637,7 +537,10 @@
         "tags": [
           "jungle",
           "tropical",
-          "transition"
+          "transition",
+          "wet",
+          "edge",
+          "temperate"
         ]
       },
       {
@@ -650,7 +553,10 @@
         "tags": [
           "ocean",
           "aquatic",
-          "kelp"
+          "kelp",
+          "cold",
+          "deep_shelf",
+          "filter_light"
         ]
       },
       {
@@ -663,7 +569,12 @@
         "tags": [
           "temperate",
           "plains",
-          "meadow"
+          "meadow",
+          "bloom",
+          "colorful",
+          "soft",
+          "pastoral",
+          "floral"
         ]
       },
       {
@@ -676,7 +587,9 @@
         "tags": [
           "mountain",
           "meadow",
-          "temperate"
+          "temperate",
+          "deferred",
+          "v1_1"
         ]
       },
       {
@@ -688,7 +601,10 @@
         "flatness": 0.8000,
         "tags": [
           "ocean",
-          "aquatic"
+          "aquatic",
+          "deep",
+          "dark_water",
+          "abyssal"
         ]
       },
       {
@@ -700,7 +616,12 @@
         "flatness": 0.7200,
         "tags": [
           "temperate",
-          "plains"
+          "plains",
+          "starter",
+          "soft",
+          "build_friendly",
+          "open",
+          "pastoral"
         ]
       },
       {
@@ -713,7 +634,11 @@
         "tags": [
           "savanna",
           "dry",
-          "warm"
+          "warm",
+          "open",
+          "golden",
+          "grassland",
+          "tropical_edge"
         ]
       },
       {
@@ -726,7 +651,11 @@
         "tags": [
           "cold",
           "snowy",
-          "plains"
+          "plains",
+          "frozen",
+          "open",
+          "pristine",
+          "survival"
         ]
       },
       {
@@ -740,7 +669,10 @@
           "cold",
           "forest",
           "taiga",
-          "snowy"
+          "snowy",
+          "spruce",
+          "dark_canopy",
+          "survival"
         ]
       },
       {
@@ -752,7 +684,11 @@
         "flatness": 0.6600,
         "tags": [
           "coastal",
-          "rocky"
+          "rocky",
+          "stone",
+          "mountain_edge",
+          "wave_cut",
+          "temperate"
         ]
       },
       {
@@ -763,9 +699,13 @@
         "amplitude": 0.0700,
         "flatness": 0.8800,
         "tags": [
+          "temperate",
           "swamp",
           "wet",
-          "temperate"
+          "dark",
+          "reeds",
+          "murky",
+          "mystical"
         ]
       },
       {
@@ -777,7 +717,11 @@
         "flatness": 0.3600,
         "tags": [
           "temperate",
-          "forest"
+          "forest",
+          "woodland",
+          "dappled",
+          "shelter",
+          "medium"
         ]
       },
       {
@@ -790,7 +734,11 @@
         "tags": [
           "cold",
           "snowy",
-          "tundra"
+          "tundra",
+          "windswept",
+          "barren",
+          "ancient",
+          "survival"
         ]
       },
       {
@@ -803,7 +751,11 @@
         "tags": [
           "ocean",
           "aquatic",
-          "reef"
+          "reef",
+          "tropical",
+          "warm_water",
+          "shallow",
+          "colorful"
         ]
       },
       {
@@ -816,7 +768,11 @@
         "tags": [
           "wet",
           "swamp",
-          "coastal"
+          "coastal",
+          "reeds",
+          "temperate",
+          "flat",
+          "reflective"
         ]
       }
     ],
@@ -843,11 +799,39 @@
         "variant_count": 5
       },
       {
+        "id": "world/vegetation/birch_forest_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1900,
+        "min_spacing_voxels": 1.5000,
+        "variant_count": 11
+      },
+      {
         "id": "world/vegetation/birch_tree",
         "kind": "vegetation",
         "density": 0.0550,
         "min_spacing_voxels": 7.0000,
         "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/cave_ceiling_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1500,
+        "min_spacing_voxels": 2.2000,
+        "variant_count": 15
+      },
+      {
+        "id": "world/vegetation/cave_floor_scatter",
+        "kind": "prop_scatter",
+        "density": 0.2200,
+        "min_spacing_voxels": 1.6000,
+        "variant_count": 14
+      },
+      {
+        "id": "world/vegetation/dark_forest_ground_scatter",
+        "kind": "prop_scatter",
+        "density": 0.2000,
+        "min_spacing_voxels": 1.4000,
+        "variant_count": 10
       },
       {
         "id": "world/vegetation/dark_forest_mushroom_scatter",
@@ -861,6 +845,20 @@
         "kind": "vegetation",
         "density": 0.0820,
         "min_spacing_voxels": 8.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/dead_tree",
+        "kind": "vegetation",
+        "density": 0.0120,
+        "min_spacing_voxels": 12.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/dense_spruce_tree",
+        "kind": "vegetation",
+        "density": 0.0600,
+        "min_spacing_voxels": 6.5000,
         "variant_count": 0
       },
       {
@@ -878,6 +876,20 @@
         "variant_count": 6
       },
       {
+        "id": "world/vegetation/frozen_peaks_scatter",
+        "kind": "prop_scatter",
+        "density": 0.0300,
+        "min_spacing_voxels": 6.0000,
+        "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/jungle_edge_scatter",
+        "kind": "prop_scatter",
+        "density": 0.2200,
+        "min_spacing_voxels": 1.4000,
+        "variant_count": 9
+      },
+      {
         "id": "world/vegetation/jungle_tree",
         "kind": "vegetation",
         "density": 0.0950,
@@ -890,6 +902,20 @@
         "density": 0.3400,
         "min_spacing_voxels": 1.1000,
         "variant_count": 7
+      },
+      {
+        "id": "world/vegetation/kelp_forest_detail_scatter",
+        "kind": "prop_scatter",
+        "density": 0.2000,
+        "min_spacing_voxels": 1.8000,
+        "variant_count": 12
+      },
+      {
+        "id": "world/vegetation/large_oak_tree",
+        "kind": "vegetation",
+        "density": 0.0080,
+        "min_spacing_voxels": 18.0000,
+        "variant_count": 0
       },
       {
         "id": "world/vegetation/meadow_bloom_scatter",
@@ -906,11 +932,25 @@
         "variant_count": 0
       },
       {
+        "id": "world/vegetation/ocean_floor_scatter",
+        "kind": "prop_scatter",
+        "density": 0.0850,
+        "min_spacing_voxels": 3.0000,
+        "variant_count": 9
+      },
+      {
         "id": "world/vegetation/ocean_kelp_scatter",
         "kind": "prop_scatter",
         "density": 0.1600,
         "min_spacing_voxels": 2.4000,
         "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/plains_flower_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1400,
+        "min_spacing_voxels": 1.8000,
+        "variant_count": 9
       },
       {
         "id": "world/vegetation/reef_coral_scatter",
@@ -927,6 +967,27 @@
         "variant_count": 6
       },
       {
+        "id": "world/vegetation/small_oak_tree",
+        "kind": "vegetation",
+        "density": 0.0280,
+        "min_spacing_voxels": 5.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/snowy_plains_scatter",
+        "kind": "prop_scatter",
+        "density": 0.0600,
+        "min_spacing_voxels": 3.0000,
+        "variant_count": 13
+      },
+      {
+        "id": "world/vegetation/snowy_taiga_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1300,
+        "min_spacing_voxels": 2.0000,
+        "variant_count": 10
+      },
+      {
         "id": "world/vegetation/snow_tundra_scatter",
         "kind": "prop_scatter",
         "density": 0.0850,
@@ -941,11 +1002,25 @@
         "variant_count": 0
       },
       {
+        "id": "world/vegetation/stony_shore_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1000,
+        "min_spacing_voxels": 2.6000,
+        "variant_count": 7
+      },
+      {
         "id": "world/vegetation/surface_rock_scatter",
         "kind": "prop_scatter",
         "density": 0.0400,
         "min_spacing_voxels": 5.0000,
         "variant_count": 4
+      },
+      {
+        "id": "world/vegetation/swamp_ground_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1600,
+        "min_spacing_voxels": 1.8000,
+        "variant_count": 10
       },
       {
         "id": "world/vegetation/swamp_willow_tree",
@@ -960,6 +1035,20 @@
         "density": 0.2800,
         "min_spacing_voxels": 1.0000,
         "variant_count": 6
+      },
+      {
+        "id": "world/vegetation/thin_birch_tree",
+        "kind": "vegetation",
+        "density": 0.0550,
+        "min_spacing_voxels": 5.0000,
+        "variant_count": 0
+      },
+      {
+        "id": "world/vegetation/warm_reef_full_scatter",
+        "kind": "prop_scatter",
+        "density": 0.1800,
+        "min_spacing_voxels": 2.2000,
+        "variant_count": 24
       },
       {
         "id": "world/vegetation/wetland_reed_scatter",
@@ -1027,7 +1116,7 @@
       }
     ],
     "budget_notes": [
-      "world/planets/default: near LOD 12, far LOD 192, upload 8/frame, feature budget 384"
+      "world/planets/default: near LOD 12, far LOD 192, upload 8/frame, feature budget 192"
     ]
   },
   "progression": {

@@ -1,6 +1,6 @@
 Object(
     name: "Spruce Log",
-    tags: ["log", "wood", "flammable"],
+    tags: ["#core:tag/block/log", "#core:tag/material/wood", "#core:tag/material/flammable"],
 
     block: (
         shape: column,
@@ -13,7 +13,12 @@ Object(
         sound: wood,
     ),
 
-    item: ( stack: 99 ),
+    item: (
+        stack: 99,
+        category: block,
+        visible_in_inventory: true,
+        inventory_icon: block,
+    ),
 
     fuel: ( duration: 300 ),
 
