@@ -23,8 +23,10 @@ Object(
         tool: axe,
     ),
 
-    recipe: (
-        shapeless: [oak_log, oak_log],
+    recipes: [(
+        kind: shapeless((
+            ingredients: ["oak_log", "oak_log"],
+        )),
         output: (item: "construction_workbench", count: 1),
-    ),
+    )],
 )

@@ -23,9 +23,17 @@ Object(
         tool: axe,
     ),
 
-    recipe: (
+    recipes: [(
         station: "#station.construction",
-        shapeless: [oak_log, oak_log, plant_fiber, plant_fiber, plant_fiber],
+        kind: shapeless((
+            ingredients: [
+                "oak_log",
+                "oak_log",
+                "plant_fiber",
+                "plant_fiber",
+                "plant_fiber",
+            ],
+        )),
         output: (item: "armor_workbench", count: 1),
-    ),
+    )],
 )

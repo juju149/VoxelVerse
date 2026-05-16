@@ -9,6 +9,7 @@ pub mod progression;
 pub mod recipes;
 pub mod references;
 pub mod render;
+pub mod source_contract;
 pub mod stations;
 pub mod tags;
 pub mod textures;

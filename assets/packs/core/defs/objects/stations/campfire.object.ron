@@ -28,9 +28,11 @@ Object(
         drops: [(item: "coal", count: 2)],
     ),
 
-    recipe: (
+    recipes: [(
         station: "#station.construction",
-        shapeless: [oak_log, oak_log, coal],
+        kind: shapeless((
+            ingredients: ["oak_log", "oak_log", "coal"],
+        )),
         output: (item: "campfire", count: 1),
-    ),
+    )],
 )

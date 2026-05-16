@@ -65,45 +65,31 @@ impl PackLoader {
         let namespace = namespace_from_dir(pack_dir)?;
         let defs = pack_dir.join("defs");
 
-        // Support both the old `defs/worldgen/` layout and the new `defs/world/` layout.
-        // Each sub-directory is tried in order; the first that exists wins.
-        let root_old = defs.join("worldgen");
-        let root_new = defs.join("world");
+        let root = defs.join("world");
 
-        // Helper: pick the directory that exists, or fall back to the other.
-        let pick = |old_sub: &str, new_sub: &str| -> PathBuf {
-            let old = root_old.join(old_sub);
-            let new = root_new.join(new_sub);
-            if new.exists() {
-                new
-            } else {
-                old
-            }
-        };
-
-        if !root_old.exists() && !root_new.exists() {
+        if !root.exists() {
             return Ok(RawProceduralPack::default());
         }
 
         Ok(RawProceduralPack {
-            planets: load_typed_tree(&pick("planet_profiles", "planets"), &defs, &namespace)?,
-            fields: load_typed_tree(&pick("noise_fields", "noise"), &defs, &namespace)?,
-            climates: load_typed_tree(&pick("climate_profiles", "climate"), &defs, &namespace)?,
-            biome_sets: load_typed_tree(&pick("biome_sets", "biome_sets"), &defs, &namespace)?,
-            biomes: load_typed_tree(&pick("biomes", "biomes"), &defs, &namespace)?,
-            terrain_layers: load_typed_tree(&pick("terrain_layers", "terrain"), &defs, &namespace)?,
-            ores: load_typed_tree(&pick("ores", "ores"), &defs, &namespace)?,
-            caves: load_typed_tree(&pick("caves", "caves"), &defs, &namespace)?,
+            planets: load_typed_tree(&root.join("planets"), &defs, &namespace)?,
+            fields: load_typed_tree(&root.join("noise"), &defs, &namespace)?,
+            climates: load_typed_tree(&root.join("climate"), &defs, &namespace)?,
+            biome_sets: load_typed_tree(&root.join("biome_sets"), &defs, &namespace)?,
+            biomes: load_typed_tree(&root.join("biomes"), &defs, &namespace)?,
+            terrain_layers: load_typed_tree(&root.join("terrain_layers"), &defs, &namespace)?,
+            ores: load_typed_tree(&root.join("ores"), &defs, &namespace)?,
+            caves: load_typed_tree(&root.join("caves"), &defs, &namespace)?,
             vegetation: load_typed_tree_filtered(
-                &pick("vegetation", "vegetation"),
+                &root.join("vegetation"),
                 &defs,
                 &namespace,
                 Some(".vegetation."),
             )?,
-            structures: load_typed_tree(&pick("structures", "structures"), &defs, &namespace)?,
-            fauna: load_typed_tree(&pick("spawns", "spawns"), &defs, &namespace)?,
+            structures: load_typed_tree(&root.join("structures"), &defs, &namespace)?,
+            fauna: load_typed_tree(&root.join("fauna").join("spawns"), &defs, &namespace)?,
             vox_prop_scatters: load_typed_tree_filtered(
-                &pick("prop_scatters", "vegetation"),
+                &root.join("vegetation"),
                 &defs,
                 &namespace,
                 Some(".prop_scatter."),
@@ -211,6 +197,9 @@ fn collect_ron_files(
         let entry = entry.map_err(|e| format!("Dir entry error in {}: {}", dir.display(), e))?;
         let path = entry.path();
         if path.is_dir() {
+            if is_private_dir(&path) {
+                continue;
+            }
             collect_ron_files(&path, out, suffix_filter)?;
         } else {
             let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
@@ -245,8 +234,7 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
     let dirs = &parts[1..parts.len() - 1];
     let id_path = match root {
         "objects" => join_domain("object", dirs, &stem),
-        "worldgen" => derive_world_key(dirs, &stem, false)?,
-        "world" => derive_world_key(dirs, &stem, true)?,
+        "world" => derive_world_key(dirs, &stem)?,
         other => {
             return Err(format!(
                 "Unknown definition root '{}': {}",
@@ -259,44 +247,34 @@ fn derive_key(namespace: &str, defs_root: &Path, path: &Path) -> Result<String, 
     Ok(format!("{}:{}", namespace, id_path))
 }
 
-fn derive_world_key(dirs: &[String], stem: &str, new_layout: bool) -> Result<String, String> {
+fn derive_world_key(dirs: &[String], stem: &str) -> Result<String, String> {
     let Some(kind) = dirs.first().map(String::as_str) else {
         return Err(format!("Worldgen definition '{}' has no category", stem));
     };
     let domain = match kind {
-        // Old layout sub-dirs
         "biomes" => "biome",
         "biome_sets" => "biome_set",
         "caves" => "cave",
-        "climate_profiles" => "climate", // old name
-        "noise_fields" => "field",       // old name
-        "ores" => "ore",
-        "planet_profiles" => "planet_profile", // old name
-        "spawns" => "spawn",
-        "structures" => "structure",
-        "terrain_layers" => "terrain_layers", // old name
-        "vegetation" => "vegetation",
-        "visual_details" => {
-            return Err(
-                "'visual_details' directory is obsolete; rename to 'prop_scatters'".to_string(),
-            )
-        }
-        "prop_scatters" => "prop_scatter",
-        // New layout sub-dirs (defs/world/)
         "climate" => "climate",
         "noise" => "field",
+        "ores" => "ore",
         "planets" => "planet_profile",
-        "terrain" => "terrain_layers",
+        "structures" => "structure",
+        "terrain_layers" => "terrain_layers",
+        "vegetation" => "vegetation",
         "props" => "prop_collection",
+        "fauna" => "spawn",
         other => {
-            if new_layout {
-                // Unknown sub-dir in new layout — skip gracefully.
-                return Ok(format!("world/{}/{}", other, stem));
-            }
-            return Err(format!("Unknown worldgen category '{}'", other));
+            return Ok(format!("world/{}/{}", other, stem));
         }
     };
     Ok(format!("{}/{}", domain, stem))
+}
+
+fn is_private_dir(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|name| name.starts_with('_'))
 }
 
 fn strip_def_suffix(file_name: &str) -> String {

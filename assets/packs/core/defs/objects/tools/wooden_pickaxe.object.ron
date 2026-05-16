@@ -5,7 +5,6 @@ Object(
     item: (
         stack: 1,
         icon: "items/tools/wooden_pickaxe",
-        model: "voxel/equipment/tools/pickaxe_wood",
     ),
 
     tool: (

@@ -23,9 +23,17 @@ Object(
         tool: pickaxe,
     ),
 
-    recipe: (
+    recipes: [(
         station: "#station.construction",
-        shapeless: [stone, stone, stone, oak_log, oak_log],
+        kind: shapeless((
+            ingredients: [
+                "stone",
+                "stone",
+                "stone",
+                "oak_log",
+                "oak_log",
+            ],
+        )),
         output: (item: "weapon_workbench", count: 1),
-    ),
+    )],
 )

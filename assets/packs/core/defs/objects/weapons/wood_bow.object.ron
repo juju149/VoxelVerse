@@ -17,14 +17,16 @@ Object(
         ammo: "arrow",
     ),
 
-    recipe: (
+    recipes: [(
         station: "#station.weapon",
-        shaped: [
-            " SF",
-            "S F",
-            " SF",
-        ],
-        legend: { S: plant_fiber, F: oak_log },
+        kind: shaped((
+            pattern: [
+                " SF",
+                "S F",
+                " SF",
+            ],
+            legend: { "S": "plant_fiber", "F": "oak_log" },
+        )),
         output: (item: "wood_bow", count: 1),
-    ),
+    )],
 )

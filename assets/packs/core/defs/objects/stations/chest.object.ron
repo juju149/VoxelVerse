@@ -26,14 +26,16 @@ Object(
         tool: axe,
     ),
 
-    recipe: (
+    recipes: [(
         station: "#station.construction",
-        shaped: [
-            "LLL",
-            "L L",
-            "LLL",
-        ],
-        legend: { L: oak_log },
+        kind: shaped((
+            pattern: [
+                "LLL",
+                "L L",
+                "LLL",
+            ],
+            legend: { "L": "oak_log" },
+        )),
         output: (item: "chest", count: 1),
-    ),
+    )],
 )

@@ -9,10 +9,12 @@ Object(
         model: "voxel/items/iron_ingot",
     ),
 
-    recipe: (
+    recipes: [(
         station: "#station.furnace",
-        inputs: [(item: "iron_ore_chunk", count: 1)],
+        kind: processing((
+            inputs: [(item: "iron_ore_chunk", count: 1)],
+            duration_seconds: 10.0,
+        )),
         output: (item: "iron_ingot", count: 1),
-        duration: 10.0,
-    ),
+    )],
 )

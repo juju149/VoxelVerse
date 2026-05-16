@@ -19,6 +19,8 @@ const FORBIDDEN_LEGACY: &[&str] = &[
     "items",
     "voxel",
     "pack.toml",
+    "defs/world/terrain",
+    "media/_review",
 ];
 
 pub fn run(scan: &PackScan, report: &mut Report) {
@@ -55,7 +57,42 @@ pub fn run(scan: &PackScan, report: &mut Report) {
             );
         }
     }
+    check_private_dirs(&scan.pack_root, &scan.pack_root, report);
     check_empty_dirs(&scan.pack_root, &scan.pack_root, report);
+}
+
+fn check_private_dirs(pack_root: &Path, dir: &Path, report: &mut Report) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let rel = path
+            .strip_prefix(pack_root)
+            .map(|p| p.to_string_lossy().replace('\\', "/"))
+            .unwrap_or_else(|_| path.to_string_lossy().to_string());
+        if name.starts_with('_') {
+            report.error(
+                Diagnostic::new(
+                    CHECK,
+                    format!(
+                        "private review/import directory is inside the stable pack: {}",
+                        rel
+                    ),
+                )
+                .with_path(rel.clone())
+                .with_suggestion(
+                    "move review/import assets outside assets/packs/<namespace>".to_string(),
+                ),
+            );
+            continue;
+        }
+        check_private_dirs(pack_root, &path, report);
+    }
 }
 
 fn check_empty_dirs(pack_root: &Path, dir: &Path, report: &mut Report) {
@@ -65,6 +102,13 @@ fn check_empty_dirs(pack_root: &Path, dir: &Path, report: &mut Report) {
         .unwrap_or_else(|_| dir.to_string_lossy().to_string());
 
     if rel.starts_with("source") || rel == "generated/reports" || rel.starts_with("target") {
+        return;
+    }
+    if dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|name| name.starts_with('_'))
+    {
         return;
     }
 

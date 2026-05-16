@@ -268,6 +268,9 @@ fn walk(base: &Path, dir: &Path, ext: &str, out: &mut Vec<PathBuf>, skip: &[&str
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
+            if is_private_dir(&path) {
+                continue;
+            }
             let rel = pack_relative(base, &path);
             if skip
                 .iter()
@@ -385,8 +388,15 @@ fn classify_world_path(rel: &str) -> WorldCategory {
         "planets" => WorldCategory::Planets,
         "props" => WorldCategory::Props,
         "structures" => WorldCategory::Structures,
-        "terrain" => WorldCategory::Terrain,
+        "terrain_layers" => WorldCategory::Terrain,
         "vegetation" => WorldCategory::Vegetation,
+        "fauna" => WorldCategory::Other,
         _ => WorldCategory::Other,
     }
+}
+
+fn is_private_dir(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|name| name.starts_with('_'))
 }

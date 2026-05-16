@@ -27,14 +27,16 @@ Object(
         tier: 0,
     ),
 
-    recipe: (
+    recipes: [(
         station: "#station.construction",
-        shaped: [
-            "SSS",
-            "S S",
-            "SSS",
-        ],
-        legend: { S: stone },
+        kind: shaped((
+            pattern: [
+                "SSS",
+                "S S",
+                "SSS",
+            ],
+            legend: { "S": "stone" },
+        )),
         output: (item: "furnace", count: 1),
-    ),
+    )],
 )

@@ -15,14 +15,16 @@ Object(
         durability: 132,
     ),
 
-    recipe: (
+    recipes: [(
         station: "#station.construction",
-        shaped: [
-            "SS",
-            "SF",
-            " F",
-        ],
-        legend: { S: stone, F: plant_fiber },
+        kind: shaped((
+            pattern: [
+                "SS",
+                "SF",
+                " F",
+            ],
+            legend: { "S": "stone", "F": "plant_fiber" },
+        )),
         output: (item: "stone_axe", count: 1),
-    ),
+    )],
 )

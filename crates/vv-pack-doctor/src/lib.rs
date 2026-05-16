@@ -32,6 +32,7 @@ pub fn run(pack_root: &Path) -> Result<Report, String> {
     checks::parse::run(&scan, &mut report);
     checks::filesystem::run(&scan, &mut report);
     checks::naming::run(&scan, &mut report);
+    checks::source_contract::run(&scan, &mut report);
     checks::paths::run(&index, &mut report);
 
     checks::blocks::run(&index, &mut report);

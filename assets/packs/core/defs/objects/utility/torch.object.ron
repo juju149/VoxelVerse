@@ -27,8 +27,10 @@ Object(
         tool: any,
     ),
 
-    recipe: (
-        shapeless: [oak_log, coal],
+    recipes: [(
+        kind: shapeless((
+            ingredients: ["oak_log", "coal"],
+        )),
         output: (item: "torch", count: 4),
-    ),
+    )],
 )
