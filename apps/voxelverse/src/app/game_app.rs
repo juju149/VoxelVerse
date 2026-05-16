@@ -3,12 +3,11 @@ use crate::app::cursor::{grab_cursor, sync_cursor_mode};
 use crate::app::event_router::{route_device_event, route_window_event};
 use crate::app::frame_driver::tick_game_frame;
 use crate::app::golden_scene::{golden_scene_enabled, GoldenScene};
-use crate::ui::InventoryUiState;
+use crate::app::runtime_state::GameRuntime;
 use std::sync::Arc;
 use std::time::Instant;
 use vv_audio::AudioEngine;
-use vv_gameplay::{Console, Controller, Hotbar, Inventory, MiningState, Player};
-use vv_pack_compiler::{LootRegistry, RecipeRegistry, TagRegistry};
+use vv_gameplay::{Console, Player};
 use vv_render::{Renderer, StreamingView};
 use vv_world::{PlanetData, PlanetDataSources, VoxModelRegistry};
 use winit::event::{DeviceEvent, WindowEvent};
@@ -18,22 +17,9 @@ use winit::window::{Window, WindowId};
 pub(super) struct GameApp<'a> {
     pub(super) renderer: Renderer<'a>,
     pub(super) audio: AudioEngine,
-    pub(super) controller: Controller,
-    pub(super) player: Player,
-    pub(super) hotbar: Hotbar,
-    pub(super) inventory: Inventory,
-    pub(super) inventory_ui: InventoryUiState,
-    pub(super) mining: MiningState,
-    pub(super) mining_button_held: bool,
-    pub(super) shift_held: bool,
-    pub(super) loot: Arc<LootRegistry>,
-    pub(super) tags: Arc<TagRegistry>,
-    pub(super) recipes: Arc<RecipeRegistry>,
-    pub(super) planet: PlanetData,
-    pub(super) console: Console,
+    pub(super) runtime: GameRuntime,
     cursor_grabbed: bool,
     last_time: Instant,
-    pub(super) first_scene_snapshot_logged: bool,
 }
 
 impl<'a> GameApp<'a> {
@@ -119,22 +105,9 @@ impl<'a> GameApp<'a> {
         Self {
             renderer,
             audio,
-            controller: Controller::new(),
-            player,
-            hotbar: Hotbar::new(),
-            inventory: Inventory::new(),
-            inventory_ui: InventoryUiState::new(),
-            mining: MiningState::default(),
-            mining_button_held: false,
-            shift_held: false,
-            loot,
-            tags,
-            recipes,
-            planet,
-            console: create_console(),
+            runtime: GameRuntime::new(player, planet, loot, tags, recipes, create_console()),
             cursor_grabbed: false,
             last_time: Instant::now(),
-            first_scene_snapshot_logged: false,
         }
     }
 
@@ -161,8 +134,8 @@ impl<'a> GameApp<'a> {
 
         sync_cursor_mode(
             self.renderer.window,
-            self.controller.first_person,
-            self.console.is_open || self.inventory_ui.is_open,
+            self.runtime.gameplay.controller.first_person,
+            self.runtime.ui.console.is_open || self.runtime.ui.inventory.is_open,
             &mut self.cursor_grabbed,
         );
         tick_game_frame(self, dt);

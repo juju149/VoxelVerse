@@ -1,11 +1,8 @@
 use crate::app::cursor::{grab_cursor, release_cursor};
-use crate::app::feedback_router::{route_feedback, sound_kind, AppFeedback};
 use crate::app::game_app::GameApp;
+use crate::app::gameplay_actions::{place_block, PlaceBlockContext};
 use crate::app::inventory_events::handle_inventory_window_event;
-use vv_gameplay::{
-    BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, Console, Hotbar,
-    HotbarNotice, PlanetResize, PlanetResizeIntent, Player,
-};
+use vv_gameplay::{Console, Hotbar, PlanetResize, PlanetResizeIntent, Player};
 use vv_render::Renderer;
 use vv_world::PlanetData;
 use winit::event::{DeviceEvent, ElementState, MouseButton, MouseScrollDelta, WindowEvent};
@@ -14,8 +11,8 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 pub(super) fn route_device_event(app: &mut GameApp<'_>, event: DeviceEvent) {
     if let DeviceEvent::MouseMotion { delta } = event {
-        if !app.console.is_open && !app.inventory_ui.is_open {
-            app.controller.process_mouse_motion(delta);
+        if !app.runtime.ui.console.is_open && !app.runtime.ui.inventory.is_open {
+            app.runtime.gameplay.controller.process_mouse_motion(delta);
         }
     }
 }
@@ -25,35 +22,42 @@ pub(super) fn route_window_event(
     event: WindowEvent,
     target: &EventLoopWindowTarget<()>,
 ) {
-    if handle_console_event(&event, &mut app.console, &mut app.player) {
+    if handle_console_event(
+        &event,
+        &mut app.runtime.ui.console,
+        &mut app.runtime.gameplay.player,
+    ) {
         return;
     }
 
-    if app.console.is_open {
+    if app.runtime.ui.console.is_open {
         handle_console_window_event(app, event, target);
         return;
     }
 
-    if app.inventory_ui.is_open {
+    if app.runtime.ui.inventory.is_open {
         handle_inventory_window_event(
             event,
             target,
             &mut app.renderer,
-            &mut app.controller,
-            &app.player,
-            &app.planet,
-            &mut app.hotbar,
-            &mut app.inventory,
-            &mut app.inventory_ui,
-            &app.recipes,
-            &app.tags,
-            &mut app.shift_held,
-            &app.console,
+            &mut app.runtime.gameplay.controller,
+            &app.runtime.gameplay.player,
+            &app.runtime.planet,
+            &mut app.runtime.gameplay.hotbar,
+            &mut app.runtime.gameplay.inventory,
+            &mut app.runtime.ui.inventory,
+            &app.runtime.content.recipes,
+            &app.runtime.content.tags,
+            &mut app.runtime.ui.shift_held,
+            &app.runtime.ui.console,
         );
         return;
     }
 
-    app.controller.process_events(&event, &app.player);
+    app.runtime
+        .gameplay
+        .controller
+        .process_events(&event, &app.runtime.gameplay.player);
     handle_game_window_event(app, event, target);
 }
 
@@ -105,14 +109,14 @@ fn handle_console_window_event(
         WindowEvent::CloseRequested => target.exit(),
         WindowEvent::Resized(size) => app.renderer.resize(size.width, size.height),
         WindowEvent::RedrawRequested => app.renderer.render(
-            &app.controller,
-            &app.player,
-            &app.planet,
-            &app.hotbar,
-            &app.inventory,
-            &app.inventory_ui,
-            &app.recipes,
-            &app.console,
+            &app.runtime.gameplay.controller,
+            &app.runtime.gameplay.player,
+            &app.runtime.planet,
+            &app.runtime.gameplay.hotbar,
+            &app.runtime.gameplay.inventory,
+            &app.runtime.ui.inventory,
+            &app.runtime.content.recipes,
+            &app.runtime.ui.console,
         ),
         _ => {}
     }
@@ -126,28 +130,37 @@ fn handle_game_window_event(
     match event {
         WindowEvent::CloseRequested => target.exit(),
         WindowEvent::Resized(size) => app.renderer.resize(size.width, size.height),
-        WindowEvent::Focused(true) if app.controller.first_person && !app.console.is_open => {
+        WindowEvent::Focused(true)
+            if app.runtime.gameplay.controller.first_person && !app.runtime.ui.console.is_open =>
+        {
             grab_cursor(app.renderer.window);
         }
         WindowEvent::Focused(true) => {}
         WindowEvent::Focused(false) => release_cursor(app.renderer.window),
         WindowEvent::MouseInput { state, button, .. } => match (button, state) {
             (MouseButton::Left, ElementState::Pressed) => {
-                app.mining_button_held = true;
+                app.runtime.gameplay.mining_button_held = true;
             }
             (MouseButton::Left, ElementState::Released) => {
-                app.mining_button_held = false;
+                app.runtime.gameplay.mining_button_held = false;
             }
-            (MouseButton::Right, ElementState::Pressed) => handle_place_action(app),
+            (MouseButton::Right, ElementState::Pressed) => place_block(PlaceBlockContext {
+                renderer: &mut app.renderer,
+                audio: &mut app.audio,
+                controller: &mut app.runtime.gameplay.controller,
+                player: &app.runtime.gameplay.player,
+                planet: &mut app.runtime.planet,
+                hotbar: &mut app.runtime.gameplay.hotbar,
+            }),
             _ => {}
         },
-        WindowEvent::MouseWheel { delta, .. } if app.controller.first_person => {
-            handle_hotbar_scroll(delta, &mut app.hotbar);
+        WindowEvent::MouseWheel { delta, .. } if app.runtime.gameplay.controller.first_person => {
+            handle_hotbar_scroll(delta, &mut app.runtime.gameplay.hotbar);
         }
         WindowEvent::KeyboardInput { event, .. } if event.state == ElementState::Pressed => {
             if let PhysicalKey::Code(KeyCode::KeyE) = event.physical_key {
-                app.inventory_ui.toggle();
-                if app.inventory_ui.is_open {
+                app.runtime.ui.inventory.toggle();
+                if app.runtime.ui.inventory.is_open {
                     release_cursor(app.renderer.window);
                 }
                 app.renderer.window.request_redraw();
@@ -156,82 +169,22 @@ fn handle_game_window_event(
             handle_pressed_key(
                 event.physical_key,
                 &mut app.renderer,
-                &mut app.player,
-                &mut app.planet,
-                &mut app.hotbar,
+                &mut app.runtime.gameplay.player,
+                &mut app.runtime.planet,
+                &mut app.runtime.gameplay.hotbar,
             );
         }
         WindowEvent::RedrawRequested => app.renderer.render(
-            &app.controller,
-            &app.player,
-            &app.planet,
-            &app.hotbar,
-            &app.inventory,
-            &app.inventory_ui,
-            &app.recipes,
-            &app.console,
+            &app.runtime.gameplay.controller,
+            &app.runtime.gameplay.player,
+            &app.runtime.planet,
+            &app.runtime.gameplay.hotbar,
+            &app.runtime.gameplay.inventory,
+            &app.runtime.ui.inventory,
+            &app.runtime.content.recipes,
+            &app.runtime.ui.console,
         ),
         _ => {}
-    }
-}
-
-fn handle_place_action(app: &mut GameApp<'_>) {
-    let selected = app.hotbar.selected_item_id();
-    let active_voxel = match selected.and_then(|id| app.planet.resolve_item_voxel(id)) {
-        Some(voxel) => Some(voxel),
-        None => {
-            if selected.is_none() {
-                app.hotbar.show_notice(HotbarNotice::EmptySlot);
-            } else {
-                app.hotbar.show_notice(HotbarNotice::InvalidPlacement);
-            }
-            app.renderer.window.request_redraw();
-            return;
-        }
-    };
-
-    let ray = app.controller.view_ray(
-        &app.player,
-        app.renderer.config.width as f32,
-        app.renderer.config.height as f32,
-    );
-    let placement = BlockSelection::trace(
-        ray,
-        app.controller.interaction_reach(),
-        &app.planet,
-        BlockSelectionMode::Placement,
-    )
-    .map(|(id, _)| id);
-    if placement.is_none() {
-        app.hotbar.show_notice(HotbarNotice::InvalidPlacement);
-        app.renderer.window.request_redraw();
-        return;
-    }
-
-    if let Some(action) = BlockInteraction::resolve(
-        BlockActionIntent::Place,
-        app.controller.cursor_id,
-        placement,
-        active_voxel,
-    ) {
-        let edit = BlockInteraction::apply(action, &mut app.planet);
-        let changed = !edit.dirty_chunks.is_empty();
-        if changed {
-            app.hotbar.consume_selected();
-            let sound_kind = active_voxel
-                .and_then(|voxel| app.planet.content.block(voxel))
-                .map(|block| sound_kind(block.sound_kind))
-                .unwrap_or_default();
-            route_feedback(
-                &mut app.renderer,
-                &mut app.audio,
-                AppFeedback::BlockPlace { sound_kind },
-            );
-            app.renderer.refresh_dirty_chunks(edit.dirty_chunks);
-            app.renderer.window.request_redraw();
-        }
-    } else if app.controller.cursor_id.is_none() && app.controller.first_person {
-        grab_cursor(app.renderer.window);
     }
 }
 
