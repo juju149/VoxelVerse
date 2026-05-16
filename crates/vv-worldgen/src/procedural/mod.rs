@@ -107,6 +107,16 @@ pub enum FeatureStamp {
     },
 }
 
+/// How a prop is oriented relative to its anchor voxel.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PropOrientation {
+    /// Sits on a solid block, oriented radially outward (normal above-ground).
+    #[default]
+    Floor,
+    /// Hangs from a solid block above, oriented radially inward (cave ceiling).
+    Ceiling,
+}
+
 /// A vox prop instance to be rendered above the terrain surface.
 /// Props are not in the voxel grid — they are rendered separately.
 #[derive(Clone, Debug)]
@@ -114,12 +124,16 @@ pub struct PropStamp {
     pub face: u8,
     pub u: u32,
     pub v: u32,
-    /// Layer index of the surface block (prop sits at layer + 1).
+    /// Layer index of the anchor solid block.
+    /// For `Floor` props the prop sits at `surface_layer + 1`;
+    /// for `Ceiling` props it hangs below at `surface_layer - 1`.
     pub surface_layer: u32,
     /// Content ref to a .vox asset, e.g. `"core:voxel/vegetation/flowers/flower_blue_1"`.
     pub model_key: String,
     /// Quarter-turn rotation around the radial axis (0–3).
     pub rotation: u8,
+    /// Placement orientation — floor (default) or ceiling.
+    pub orientation: PropOrientation,
 }
 
 /// Procedural terrain — chunks are generated on demand, never pre-baked.
@@ -282,8 +296,52 @@ impl ProceduralPlanetTerrain {
     }
 
     pub fn get_biome_id(&self, face: u8, u: u32, v: u32) -> u8 {
-        let (u_h, v_h) = self.surface_coords(u, v);
-        let (_, b) = self.ensure_cell(face, u_h, v_h);
+        // Smooth domain warp for organic biome boundaries.
+        // Each field-cell corner has a random offset; we bilinearly interpolate
+        // the 4 surrounding corners so the warp is continuous and nearby voxels
+        // receive similar displacements.  Maximum displacement ≈ WARP_CELLS
+        // field cells (~30 voxels), enough to dissolve the visible grid without
+        // making distant biome shapes unrecognisable.
+        const WARP_CELLS: f32 = 3.0;
+
+        let hres = self.field_res as f64;
+        let vres = self.voxel_res as f64;
+
+        // Continuous field-coordinate of this voxel [0, field_res).
+        let uf = (u as f64 * hres / vres) as f32;
+        let vf = (v as f64 * hres / vres) as f32;
+
+        let u0 = uf.floor() as u32;
+        let v0 = vf.floor() as u32;
+        let fu = uf - uf.floor(); // sub-cell fraction [0, 1)
+        let fv = vf - vf.floor();
+
+        // Per-corner random offset in field-cell units, deterministic by hash.
+        let corner_warp = |cu: u32, cv: u32| -> (f32, f32) {
+            let cu = cu.min(self.field_res - 1);
+            let cv = cv.min(self.field_res - 1);
+            let h0 = hash4(face, cu, cv, 0x9E3779B9) as f32 / u32::MAX as f32;
+            let h1 = hash4(face, cu, cv, 0x6C62272E) as f32 / u32::MAX as f32;
+            ((h0 * 2.0 - 1.0) * WARP_CELLS, (h1 * 2.0 - 1.0) * WARP_CELLS)
+        };
+
+        let (du00, dv00) = corner_warp(u0, v0);
+        let (du10, dv10) = corner_warp(u0 + 1, v0);
+        let (du01, dv01) = corner_warp(u0, v0 + 1);
+        let (du11, dv11) = corner_warp(u0 + 1, v0 + 1);
+
+        // Bilinear interpolation of the four warp vectors.
+        let w00 = (1.0 - fu) * (1.0 - fv);
+        let w10 = fu * (1.0 - fv);
+        let w01 = (1.0 - fu) * fv;
+        let w11 = fu * fv;
+        let du = du00 * w00 + du10 * w10 + du01 * w01 + du11 * w11;
+        let dv = dv00 * w00 + dv10 * w10 + dv01 * w01 + dv11 * w11;
+
+        let u_w = (uf + du).clamp(0.0, (self.field_res - 1) as f32) as u32;
+        let v_w = (vf + dv).clamp(0.0, (self.field_res - 1) as f32) as u32;
+
+        let (_, b) = self.ensure_cell(face, u_w, v_w);
         b
     }
 
@@ -340,7 +398,50 @@ impl ProceduralPlanetTerrain {
             return VoxelId::AIR;
         }
         let surface = self.surface_sample(coord.face, coord.u, coord.v);
-        let depth_from_surface = surface.height as i32 - coord.layer as i32;
+
+        // ── Micro-detail: two-octave height perturbation for organic surface ──────
+        // Bilinearly-interpolated per-corner hashes create smooth bumps at the
+        // voxel level without extra noise field lookups.  This fills in the
+        // ~10-voxel gap between field-cell resolution and single-voxel scale.
+        let micro_offset = {
+            // Octave 1: 4-voxel cells, ±2 voxels (fine surface texture).
+            let detail = {
+                const S: u32 = 4;
+                let cu = coord.u / S;
+                let cv = coord.v / S;
+                let fu = (coord.u % S) as f32 / S as f32;
+                let fv = (coord.v % S) as f32 / S as f32;
+                let c = |cu: u32, cv: u32| -> f32 {
+                    hash4(coord.face, cu, cv, 0xC3A5B1D7) as f32 / u32::MAX as f32 * 4.0 - 2.0
+                };
+                let su = fu * fu * (3.0 - 2.0 * fu);
+                let sv = fv * fv * (3.0 - 2.0 * fv);
+                c(cu, cv) * (1.0 - su) * (1.0 - sv)
+                    + c(cu + 1, cv) * su * (1.0 - sv)
+                    + c(cu, cv + 1) * (1.0 - su) * sv
+                    + c(cu + 1, cv + 1) * su * sv
+            };
+            // Octave 2: 16-voxel cells, ±3 voxels (medium rocky features).
+            let broad = {
+                const S: u32 = 16;
+                let cu = coord.u / S;
+                let cv = coord.v / S;
+                let fu = (coord.u % S) as f32 / S as f32;
+                let fv = (coord.v % S) as f32 / S as f32;
+                let c = |cu: u32, cv: u32| -> f32 {
+                    hash4(coord.face, cu, cv, 0x7B4F2E91) as f32 / u32::MAX as f32 * 6.0 - 3.0
+                };
+                let su = fu * fu * (3.0 - 2.0 * fu);
+                let sv = fv * fv * (3.0 - 2.0 * fv);
+                c(cu, cv) * (1.0 - su) * (1.0 - sv)
+                    + c(cu + 1, cv) * su * (1.0 - sv)
+                    + c(cu, cv + 1) * (1.0 - su) * sv
+                    + c(cu + 1, cv + 1) * su * sv
+            };
+            (detail + broad).round() as i32
+        };
+
+        let depth_from_surface = surface.height as i32 - coord.layer as i32 + micro_offset;
         let dir = CoordSystem::get_direction(coord.face, coord.u, coord.v, self.voxel_res);
         let ctx = GeneratedVoxelContext {
             face: coord.face,
@@ -450,6 +551,10 @@ impl ProceduralPlanetTerrain {
                 break;
             }
             let scatter = &self.registry.vox_prop_scatters[*scatter_idx];
+            // Cave scatters are handled by CaveDecorationBakery — skip here.
+            if scatter.placement.cave_surface != vv_pack_compiler::CaveSurface::TopSurface {
+                continue;
+            }
             crate::placement::for_each_candidate(
                 &scatter.placement,
                 key.face,
@@ -499,6 +604,7 @@ impl ProceduralPlanetTerrain {
                             surface_layer: surface.height,
                             model_key: variant.model_key.clone(),
                             rotation,
+                            orientation: PropOrientation::Floor,
                         });
                         emitted_at.push((candidate.pu, candidate.pv));
                         self.stats.record_prop();
@@ -506,6 +612,10 @@ impl ProceduralPlanetTerrain {
                 },
             );
         }
+
+        // Append cave floor / ceiling props (subsurface column scanning).
+        let mut cave = crate::cave_decoration::cave_props_for_chunk(self, key);
+        props.append(&mut cave);
 
         props
     }
@@ -598,6 +708,13 @@ impl ProceduralPlanetTerrain {
     pub fn density_scale(&self) -> f32 {
         let voxel_m = self.planet().base.voxel_size_meters.max(0.0001);
         (voxel_m / WORLD_SCALE_BASELINE_METERS).powi(2)
+    }
+
+    /// The planet profile used to build this terrain (voxel resolution,
+    /// surface layer, core layers, etc.).  Required by callers that invoke
+    /// `voxel_at` without owning a copy of the profile.
+    pub fn profile(&self) -> vv_voxel::PlanetProfile {
+        self.profile
     }
 
     pub(super) fn sample_field(&self, field: usize, pos: Vec3) -> f32 {

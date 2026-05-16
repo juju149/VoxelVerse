@@ -13,7 +13,8 @@ use std::collections::{HashMap, HashSet};
 
 use vv_content_schema::{
     RawObjectCount, RawObjectDef, RawObjectRecipeKind, RawObjectRecipeSection, RawObjectRenderMode,
-    RawObjectShape, RawObjectTexture, RawObjectTint, RawObjectToolKind, RawObjectWeaponKind,
+    RawObjectShape, RawObjectSoundKind, RawObjectTexture, RawObjectTint, RawObjectToolKind,
+    RawObjectWeaponKind,
 };
 use vv_voxel::VoxelId;
 
@@ -21,7 +22,8 @@ use crate::block_family::{BlockStateValue, CompiledBlockFamily};
 use crate::block_mesh_class::compile_mesh_class;
 use crate::block_registry::{
     BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, CompiledBlock,
-    CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, MaterialTextureSet,
+    CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, CompiledSoundKind,
+    MaterialTextureSet,
 };
 use crate::item_registry::{
     CompiledConsumableData, CompiledFoodData, CompiledIngredientData, CompiledItem,
@@ -230,6 +232,7 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
             drops_key,
             preferred_tool_tag,
             required_tool_tier,
+            sound_kind: compile_sound_kind(block_sec.sound),
             mesh_class,
         });
         families.push(CompiledBlockFamily {
@@ -400,6 +403,18 @@ fn tint_color(tint: RawObjectTint) -> [f32; 3] {
         RawObjectTint::Grass => [0.5, 0.8, 0.3],
         RawObjectTint::Foliage => [0.4, 0.7, 0.2],
         RawObjectTint::Water => [0.2, 0.4, 0.9],
+    }
+}
+
+fn compile_sound_kind(kind: RawObjectSoundKind) -> CompiledSoundKind {
+    match kind {
+        RawObjectSoundKind::None => CompiledSoundKind::None,
+        RawObjectSoundKind::Grass => CompiledSoundKind::Grass,
+        RawObjectSoundKind::Stone => CompiledSoundKind::Stone,
+        RawObjectSoundKind::Wood => CompiledSoundKind::Wood,
+        RawObjectSoundKind::Sand => CompiledSoundKind::Sand,
+        RawObjectSoundKind::Snow => CompiledSoundKind::Snow,
+        RawObjectSoundKind::Dirt => CompiledSoundKind::Dirt,
     }
 }
 

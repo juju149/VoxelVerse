@@ -130,6 +130,15 @@ pub struct Renderer<'a> {
     cursor_i_buf: wgpu::Buffer,
     cursor_inds: u32,
 
+    block_damage_v_buf: wgpu::Buffer,
+    block_damage_i_buf: wgpu::Buffer,
+    block_damage_inds: u32,
+
+    first_person_v_buf: wgpu::Buffer,
+    first_person_i_buf: wgpu::Buffer,
+    first_person_inds: u32,
+    first_person_animation: hand_animation::HandAnimation,
+
     collision_v_buf: wgpu::Buffer,
     collision_i_buf: wgpu::Buffer,
     collision_inds: u32,
@@ -211,10 +220,13 @@ struct MeshJobResult<K> {
     elapsed_ms: f32,
 }
 
+mod block_damage_overlay;
 mod cloud_renderer;
 mod debug_draw;
+mod first_person_item;
 mod fog_renderer;
 mod gpu_scene;
+mod hand_animation;
 mod inventory;
 mod inventory_components;
 mod inventory_geometry;
@@ -230,6 +242,8 @@ mod sky_renderer;
 mod terrain_renderer;
 mod ui_renderer;
 mod world_streamer;
+
+pub use first_person_item::PlayerActionFeedback;
 
 impl<'a> Renderer<'a> {
     pub fn resize(&mut self, width: u32, height: u32) {

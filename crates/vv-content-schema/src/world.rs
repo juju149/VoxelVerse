@@ -321,6 +321,20 @@ pub struct RawCaveCarveDef {
     pub air_block: ContentRef,
 }
 
+/// Where in cave geometry a prop scatter should be placed.
+/// `top_surface` (default) keeps all existing above-ground placements unchanged.
+#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RawCaveSurface {
+    /// Normal above-ground top-surface placement (default).
+    #[default]
+    TopSurface,
+    /// Solid block directly below cave air — floors and ledges.
+    CaveFloor,
+    /// Solid block directly above cave air — ceilings and overhangs.
+    CaveCeiling,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawFeaturePlacementDef {
     #[serde(default)]
@@ -379,6 +393,10 @@ pub struct RawFeaturePlacementDef {
     /// Default 1.0 for organic placement.
     #[serde(default = "default_rotation_variance")]
     pub rotation_variance: f32,
+    /// Which cave surface this scatter targets.  Defaults to `top_surface`
+    /// so all existing placements are unaffected.
+    #[serde(default)]
+    pub cave_surface: RawCaveSurface,
 }
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Eq)]

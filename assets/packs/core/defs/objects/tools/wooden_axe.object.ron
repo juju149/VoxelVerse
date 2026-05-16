@@ -1,0 +1,30 @@
+Object(
+    name: "Wooden Axe",
+    tags: ["tool", "axe", "tier_0"],
+
+    item: (
+        stack: 1,
+        icon: "items/tools/wooden_axe",
+        model: "voxel/equipment/tools/axe_wood",
+    ),
+
+    tool: (
+        type: axe,
+        tier: 0,
+        speed: 2.0,
+        durability: 59,
+    ),
+
+    recipes: [(
+        station: "#station.construction",
+        kind: shaped((
+            pattern: [
+                "LL",
+                "LF",
+                " F",
+            ],
+            legend: { "L": "oak_log", "F": "plant_fiber" },
+        )),
+        output: (item: "wooden_axe", count: 1),
+    )],
+)

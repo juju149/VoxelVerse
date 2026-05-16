@@ -120,8 +120,7 @@ impl TreeShape {
             (0..n_arms)
                 .map(|i| {
                     let angle = hash01(face, pu, pv, 0x200 + i) * TAU;
-                    let length =
-                        veg.root_radius * (0.60 + hash01(face, pu, pv, 0x300 + i) * 0.40);
+                    let length = veg.root_radius * (0.60 + hash01(face, pu, pv, 0x300 + i) * 0.40);
                     (angle, length)
                 })
                 .collect()
@@ -304,7 +303,15 @@ impl TreeShape {
             let base_layer = (self.plant_height + 1) as i32;
             let cx = self.trunk_pivot.x;
             let cz = self.trunk_pivot.z;
-            stamp_root_arms(cx, cz, base_layer, &self.root_arms, self.trunk_seed, self.trunk_block, emit);
+            stamp_root_arms(
+                cx,
+                cz,
+                base_layer,
+                &self.root_arms,
+                self.trunk_seed,
+                self.trunk_block,
+                emit,
+            );
         }
     }
 
@@ -404,7 +411,11 @@ fn stamp_root_arms(
     for (ai, &(angle, length)) in arms.iter().enumerate() {
         let steps = length.ceil() as i32;
         for s in 0..=steps {
-            let t = if steps > 0 { s as f32 / steps as f32 } else { 0.0 };
+            let t = if steps > 0 {
+                s as f32 / steps as f32
+            } else {
+                0.0
+            };
             let d = angle.cos() * (s as f32);
             let e = angle.sin() * (s as f32);
             // Taper from 1.4 at base to 0.5 at tip.
@@ -414,9 +425,7 @@ fn stamp_root_arms(
                 cz + e,
                 base_layer,
                 r,
-                seed
-                    ^ (ai as u32).wrapping_mul(17)
-                    ^ (s as u32).wrapping_mul(31),
+                seed ^ (ai as u32).wrapping_mul(17) ^ (s as u32).wrapping_mul(31),
                 block,
                 emit,
             );
@@ -429,7 +438,11 @@ fn root_arm_contains(u: i32, v: i32, cx: f32, cz: f32, arms: &[(f32, f32)], seed
     for (ai, &(angle, length)) in arms.iter().enumerate() {
         let steps = length.ceil() as i32;
         for s in 0..=steps {
-            let t = if steps > 0 { s as f32 / steps as f32 } else { 0.0 };
+            let t = if steps > 0 {
+                s as f32 / steps as f32
+            } else {
+                0.0
+            };
             let d = angle.cos() * (s as f32);
             let e = angle.sin() * (s as f32);
             let r = ((1.0 - t) * 1.4 + 0.5).max(0.5);
@@ -439,9 +452,7 @@ fn root_arm_contains(u: i32, v: i32, cx: f32, cz: f32, arms: &[(f32, f32)], seed
                 cx + d,
                 cz + e,
                 r,
-                seed
-                    ^ (ai as u32).wrapping_mul(17)
-                    ^ (s as u32).wrapping_mul(31),
+                seed ^ (ai as u32).wrapping_mul(17) ^ (s as u32).wrapping_mul(31),
             ) {
                 return true;
             }

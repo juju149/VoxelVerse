@@ -156,6 +156,11 @@ impl ItemRegistry {
         Self { items, key_to_id }
     }
 
+    #[doc(hidden)]
+    pub fn from_items_for_tests(items: Vec<CompiledItem>) -> Self {
+        Self::new(items)
+    }
+
     /// Returns `None` for unknown keys.
     pub fn lookup(&self, key: &str) -> Option<ItemId> {
         self.key_to_id.get(key).copied()

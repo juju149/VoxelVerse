@@ -279,6 +279,18 @@ pub struct CompiledCave {
     pub fill_below_sea: Option<VoxelId>,
 }
 
+/// Where in cave geometry a compiled placement targets its props.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CaveSurface {
+    /// Normal above-ground placement (default).
+    #[default]
+    TopSurface,
+    /// Solid block directly below cave air — floors and ledges.
+    CaveFloor,
+    /// Solid block directly above cave air — ceilings and overhangs.
+    CaveCeiling,
+}
+
 #[derive(Clone, Debug)]
 pub struct CompiledFeaturePlacement {
     pub surface_blocks: Vec<VoxelId>,
@@ -309,6 +321,8 @@ pub struct CompiledFeaturePlacement {
     pub scale_variance: (f32, f32),
     /// 0..1 — fraction of 2π randomised per instance.
     pub rotation_variance: f32,
+    /// Which cave surface this placement targets.
+    pub cave_surface: CaveSurface,
 }
 
 impl CompiledFeaturePlacement {

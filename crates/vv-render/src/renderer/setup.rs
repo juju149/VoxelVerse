@@ -634,6 +634,32 @@ impl<'a> Renderer<'a> {
             mapped_at_creation: false,
         });
 
+        let block_damage_v_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Block Damage Overlay V"),
+            size: 256 * 1024,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let block_damage_i_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Block Damage Overlay I"),
+            size: 64 * 1024,
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let first_person_v_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("First Person Item V"),
+            size: 16 * 1024,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let first_person_i_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("First Person Item I"),
+            size: 8 * 1024,
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let collision_v_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Collision V"),
             size: 65536,
@@ -747,6 +773,13 @@ impl<'a> Renderer<'a> {
             cursor_v_buf,
             cursor_i_buf,
             cursor_inds: 0,
+            block_damage_v_buf,
+            block_damage_i_buf,
+            block_damage_inds: 0,
+            first_person_v_buf,
+            first_person_i_buf,
+            first_person_inds: 0,
+            first_person_animation: super::hand_animation::HandAnimation::new(),
             animator: LodAnimator::new(),
             local_layout,
             load_queue: Vec::new(),

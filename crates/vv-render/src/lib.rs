@@ -14,5 +14,5 @@ pub use atmosphere::{AtmosphereConfig, PlanetAtmospherePreset};
 pub use lod_streaming::{LodSplitCurve, LodStreamingConfig, StreamingView};
 pub use quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 pub use render_graph::{RenderPassId, ShaderPath};
-pub use renderer::Renderer;
+pub use renderer::{PlayerActionFeedback, Renderer};
 pub use types::Vertex;

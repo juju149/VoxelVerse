@@ -1,0 +1,30 @@
+Object(
+    name: "Wooden Shovel",
+    tags: ["tool", "shovel", "tier_0"],
+
+    item: (
+        stack: 1,
+        icon: "items/tools/wooden_shovel",
+        model: "voxel/equipment/tools/shovel_wood",
+    ),
+
+    tool: (
+        type: shovel,
+        tier: 0,
+        speed: 2.0,
+        durability: 59,
+    ),
+
+    recipes: [(
+        station: "#station.construction",
+        kind: shaped((
+            pattern: [
+                " L ",
+                " F ",
+                " F ",
+            ],
+            legend: { "L": "oak_log", "F": "plant_fiber" },
+        )),
+        output: (item: "wooden_shovel", count: 1),
+    )],
+)

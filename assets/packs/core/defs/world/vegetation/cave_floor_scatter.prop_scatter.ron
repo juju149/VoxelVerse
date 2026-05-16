@@ -13,6 +13,7 @@ PropScatter(
         altitude_range: Some((-360.0, -8.0)),
         scale_variance: Some((0.78, 1.28)),
         rotation_variance: 1.0,
+        cave_surface: cave_floor,
     ),
     variants: [
         // Blue cave grasses — fills the floor

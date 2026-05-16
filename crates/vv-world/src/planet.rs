@@ -1,5 +1,6 @@
 use crate::{
-    BrokenPropLayer, PlanetProfile, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime, WorldTime,
+    BlockDamageLayer, BlockDamageResult, BrokenPropLayer, PlanetProfile, TerrainVisualPalette,
+    VoxModelRegistry, VoxelRuntime, WorldTime,
 };
 use std::sync::Arc;
 use vv_math::CoordSystem;
@@ -53,6 +54,8 @@ pub struct PlanetData {
     pub prop_models: Arc<VoxModelRegistry>,
     /// Mutable set of prop columns the player has explicitly destroyed.
     pub broken_props: BrokenPropLayer,
+    /// Persistent per-voxel damage used by gameplay and rendered as cracks.
+    pub block_damage: BlockDamageLayer,
     /// Surface-chunk key of the player's current position (updated each frame
     /// before rayon workers start).  Used by the mesher's prop LOD gate to skip
     /// prop geometry in chunks beyond `PROP_LOD_CHUNK_RADIUS`.
@@ -124,6 +127,7 @@ impl PlanetData {
             world_time: WorldTime::new(1_200.0, 0.15),
             prop_models,
             broken_props: BrokenPropLayer::new(),
+            block_damage: BlockDamageLayer::new(),
             player_surface_key: None,
             seed: profile.seed,
             planet_def,
@@ -140,6 +144,7 @@ impl PlanetData {
         }
 
         self.voxels.clear();
+        self.block_damage.clear_all();
         self.planet_def = self.planet_def.with_resolution(self.resolution);
         self.planet_def.seed = self.seed;
         self.profile = self.planet_def.to_planet_profile();
@@ -195,6 +200,7 @@ impl PlanetData {
     }
 
     pub fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult {
+        self.block_damage.clear(coord);
         let generated = self.generated_voxel(coord);
         let override_voxel = (voxel != generated).then_some(voxel);
         self.voxels.set_override(coord, override_voxel);
@@ -202,6 +208,28 @@ impl PlanetData {
             changed: coord,
             dirty_chunks: Self::dirty_chunks_for_coord(self.resolution, coord),
         }
+    }
+
+    pub fn apply_block_damage(
+        &mut self,
+        coord: VoxelCoord,
+        amount: f32,
+        break_threshold: f32,
+    ) -> BlockDamageResult {
+        let voxel = self.get_voxel(coord);
+        self.block_damage
+            .apply_hit(coord, voxel, amount, break_threshold)
+    }
+
+    pub fn block_damage_fraction(&self, coord: VoxelCoord) -> Option<f32> {
+        let voxel = self.get_voxel(coord);
+        let block = self.content.block(voxel)?;
+        self.block_damage
+            .damage_fraction_for_voxel(coord, voxel, block.hardness.max(1.0))
+    }
+
+    pub fn clear_block_damage(&mut self, coord: VoxelCoord) {
+        self.block_damage.clear(coord);
     }
 
     pub fn exists(&self, coord: VoxelCoord) -> bool {

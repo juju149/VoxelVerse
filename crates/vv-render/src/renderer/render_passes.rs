@@ -542,6 +542,16 @@ impl<'a> Renderer<'a> {
                 main_draw_calls += 1;
             }
 
+            if self.block_damage_inds > 0 {
+                pass.set_pipeline(&self.pipeline_line);
+                pass.set_bind_group(0, &self.global_bind, &[]);
+                pass.set_bind_group(1, &self.local_bind_identity, &[]);
+                pass.set_vertex_buffer(0, self.block_damage_v_buf.slice(..));
+                pass.set_index_buffer(self.block_damage_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..self.block_damage_inds, 0, 0..1);
+                main_draw_calls += 1;
+            }
+
             if self.cursor_inds > 0 {
                 pass.set_pipeline(&self.pipeline_fill);
                 pass.set_bind_group(0, &self.global_bind, &[]);
@@ -592,6 +602,14 @@ impl<'a> Renderer<'a> {
             ui_pass.set_bind_group(0, &self.global_bind_identity, &[]);
             ui_pass.set_bind_group(1, &self.local_bind_identity, &[]);
             ui_pass.set_bind_group(2, &self.atlas_bind, &[]);
+
+            if controller.first_person && self.first_person_inds > 0 {
+                ui_pass.set_vertex_buffer(0, self.first_person_v_buf.slice(..));
+                ui_pass
+                    .set_index_buffer(self.first_person_i_buf.slice(..), wgpu::IndexFormat::Uint32);
+                ui_pass.draw_indexed(0..self.first_person_inds, 0, 0..1);
+                main_draw_calls += 1;
+            }
 
             if self.hotbar_inds > 0 {
                 ui_pass.set_vertex_buffer(0, self.hotbar_v_buf.slice(..));

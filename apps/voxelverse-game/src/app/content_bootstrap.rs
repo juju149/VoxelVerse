@@ -85,12 +85,39 @@ pub fn load_core_content() -> LoadedCoreContent {
     let terrain_visuals = TerrainVisualPalette::from_textures(&compiled_blocks, &texture_registry);
 
     // Build vox asset path index from the registry (content_ref -> relative path).
-    let vox_asset_paths: HashMap<String, String> = pack
+    // Index by both the full qualified key ("core:voxel/...") and the namespace-stripped
+    // form ("voxel/...") so scatter defs that omit the namespace prefix still resolve.
+    let mut vox_asset_paths: HashMap<String, String> = pack
         .voxel_assets
         .iter()
         .flat_map(|reg| reg.assets.iter())
-        .map(|def| (def.id.0.clone(), def.path.clone()))
+        .flat_map(|def| {
+            let path = def.path.clone();
+            let full_id = def.id.0.clone();
+            // Strip "namespace:" prefix to produce a short key variant.
+            let short_id = full_id
+                .splitn(2, ':')
+                .nth(1)
+                .map(|s| (s.to_string(), path.clone()));
+            std::iter::once((full_id, path)).chain(short_id)
+        })
         .collect();
+
+    // Fallback: if no voxel_assets.ron registry exists, auto-scan the media/ directory
+    // for .vox files and build the map from relative paths.  This keeps dev iteration
+    // fast without requiring a manually maintained registry file.
+    if vox_asset_paths.is_empty() {
+        let media_dir = core_pack_dir.join("media");
+        if media_dir.exists() {
+            collect_vox_paths(&media_dir, &media_dir, &mut vox_asset_paths);
+            if !vox_asset_paths.is_empty() {
+                println!(
+                    "[vox] Auto-scanned {} .vox files from media/ (no voxel_assets.ron found).",
+                    vox_asset_paths.len() / 2 // both long and short keys counted
+                );
+            }
+        }
+    }
 
     // Collect only the model keys actually referenced by scatter variant defs so
     // we don't load thousands of character/entity .vox models at startup.
@@ -130,5 +157,38 @@ pub fn load_core_content() -> LoadedCoreContent {
         vox_asset_paths,
         needed_vox_keys,
         core_pack_dir,
+    }
+}
+
+/// Recursively collect all .vox files under `search_dir`, inserting two map
+/// entries for each: a relative path from `media_root` (e.g.
+/// `"voxel/vegetation/grass/grass_short_1"`) and a full relative path from
+/// the pack directory (e.g. `"media/voxel/vegetation/grass/grass_short_1.vox"`).
+fn collect_vox_paths(
+    search_dir: &std::path::Path,
+    media_root: &std::path::Path,
+    out: &mut HashMap<String, String>,
+) {
+    let Ok(entries) = std::fs::read_dir(search_dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_vox_paths(&path, media_root, out);
+        } else if path.extension().map(|e| e == "vox").unwrap_or(false) {
+            if let Ok(rel) = path.strip_prefix(media_root.parent().unwrap_or(media_root)) {
+                // rel = "media/voxel/.../foo.vox"
+                let rel_str = rel.to_string_lossy().replace('\\', "/");
+                // short key: strip leading "media/" and trailing ".vox"
+                let short = rel_str
+                    .strip_prefix("media/")
+                    .unwrap_or(&rel_str)
+                    .trim_end_matches(".vox")
+                    .to_string();
+                out.insert(short.clone(), rel_str.clone());
+                out.insert(rel_str.clone(), rel_str);
+            }
+        }
     }
 }

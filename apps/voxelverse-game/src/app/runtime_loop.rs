@@ -4,15 +4,16 @@ use crate::app::inventory_events::handle_inventory_window_event;
 use crate::ui::InventoryUiState;
 use std::sync::Arc;
 use std::time::Instant;
+use vv_audio::{AudioEngine, SoundEvent, SoundKind};
 use vv_diagnostics::SystemDiagnostics;
 use vv_gameplay::{
     BlockAction, BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode, Console,
-    Controller, Hotbar, HotbarNotice, Inventory, ItemId, MiningProgress, PlanetResize,
-    PlanetResizeIntent, Player, PlayerController,
+    Controller, Hotbar, HotbarNotice, Inventory, ItemId, MiningFeedback, MiningState,
+    MiningStrikeInput, PlanetResize, PlanetResizeIntent, Player, PlayerController,
 };
-use vv_pack_compiler::{LootRegistry, RecipeRegistry};
-use vv_render::{Renderer, StreamingView};
-use vv_world::{PlanetData, VoxModelRegistry};
+use vv_pack_compiler::{CompiledSoundKind, LootRegistry, RecipeRegistry};
+use vv_render::{PlayerActionFeedback, Renderer, StreamingView};
+use vv_world::{BlockDamageResult, PlanetData, VoxModelRegistry};
 use winit::event::{DeviceEvent, ElementState, Event, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::EventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -40,6 +41,7 @@ pub fn run() {
         content.blocks.material_colors(),
         &content.core_pack_dir,
     ));
+    let mut audio = AudioEngine::new(&content.core_pack_dir);
     if let Some(scene) = golden_scene {
         renderer.quality = scene.quality;
         renderer.set_engine_debug_page(true);
@@ -50,7 +52,7 @@ pub fn run() {
     let mut hotbar = Hotbar::new();
     let mut inventory = Inventory::new();
     let mut inventory_ui = InventoryUiState::new();
-    let mut mining = MiningProgress::default();
+    let mut mining = MiningState::default();
     let mut mining_button_held = false;
     // Latest known shift state — updated on every ModifiersChanged event.
     // Used by the inventory's quick-move (shift + left click) shortcut.
@@ -164,6 +166,7 @@ pub fn run() {
                     &mut inventory_ui,
                     &mut mining,
                     &mut mining_button_held,
+                    &mut audio,
                     &console,
                     &recipes,
                 );
@@ -191,6 +194,7 @@ pub fn run() {
                     &mut mining,
                     mining_button_held,
                     &loot,
+                    &mut audio,
                     &mut console,
                     &mut first_scene_snapshot_logged,
                 );
@@ -306,8 +310,9 @@ fn handle_game_window_event(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
     inventory_ui: &mut InventoryUiState,
-    mining: &mut MiningProgress,
+    _mining: &mut MiningState,
     mining_button_held: &mut bool,
+    audio: &mut AudioEngine,
     console: &Console,
     recipes: &RecipeRegistry,
 ) {
@@ -325,10 +330,9 @@ fn handle_game_window_event(
             }
             (MouseButton::Left, ElementState::Released) => {
                 *mining_button_held = false;
-                mining.cancel();
             }
             (MouseButton::Right, ElementState::Pressed) => {
-                handle_place_action(renderer, controller, player, planet, hotbar)
+                handle_place_action(renderer, controller, player, planet, hotbar, audio)
             }
             _ => {}
         },
@@ -366,6 +370,7 @@ fn handle_place_action(
     player: &Player,
     planet: &mut PlanetData,
     hotbar: &mut Hotbar,
+    audio: &mut AudioEngine,
 ) {
     let selected = hotbar.selected_item_id();
     let active_voxel = match selected.and_then(|id| planet.resolve_item_voxel(id)) {
@@ -409,6 +414,12 @@ fn handle_place_action(
         let changed = !edit.dirty_chunks.is_empty();
         if changed {
             hotbar.consume_selected();
+            let sound_kind = active_voxel
+                .and_then(|voxel| planet.content.block(voxel))
+                .map(|block| sound_kind(block.sound_kind))
+                .unwrap_or_default();
+            renderer.notify_player_action(PlayerActionFeedback::Place);
+            audio.play(SoundEvent::BlockPlace { sound_kind });
             renderer.refresh_dirty_chunks(edit.dirty_chunks);
             renderer.window.request_redraw();
         }
@@ -425,39 +436,111 @@ fn tick_mining(
     planet: &mut PlanetData,
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
-    mining: &mut MiningProgress,
+    mining: &mut MiningState,
     loot: &LootRegistry,
+    audio: &mut AudioEngine,
 ) {
     let coord = controller.cursor_id;
     let voxel = coord.map(|coord| planet.get_voxel(coord));
     let block = voxel.and_then(|voxel| planet.content.block(voxel));
-    let outcome = mining.tick(
-        dt,
+    let feedback = mining.tick(MiningStrikeInput {
         coord,
         voxel,
         block,
-        hotbar.selected_item_id(),
-        &planet.items,
-    );
-    let Some(outcome) = outcome else {
-        return;
-    };
+        selected_item: hotbar.selected_item_id(),
+        items: &planet.items,
+        dt,
+        wants_mining: true,
+    });
 
-    let edit = BlockInteraction::apply(BlockAction::Mine(outcome.coord), planet);
+    match feedback {
+        MiningFeedback::None => {}
+        MiningFeedback::Blocked => {
+            hotbar.show_notice(HotbarNotice::ProtectedBlock);
+            renderer.window.request_redraw();
+        }
+        MiningFeedback::Hit {
+            coord,
+            voxel,
+            damage,
+            break_threshold,
+            impact_strength,
+            drops_enabled,
+            ..
+        } => {
+            let sound = planet
+                .content
+                .block(voxel)
+                .map(|block| sound_kind(block.sound_kind))
+                .unwrap_or_default();
+            renderer.notify_player_action(PlayerActionFeedback::Swing {
+                strength: impact_strength,
+            });
+            audio.play(SoundEvent::ToolSwing {
+                strength: impact_strength,
+            });
+            match planet.apply_block_damage(coord, damage, break_threshold) {
+                BlockDamageResult::Unchanged => {}
+                BlockDamageResult::Damaged { .. } => {
+                    renderer.notify_player_action(PlayerActionFeedback::Hit {
+                        strength: impact_strength,
+                    });
+                    audio.play(SoundEvent::MineHit {
+                        sound_kind: sound,
+                        strength: impact_strength,
+                    });
+                    renderer.window.request_redraw();
+                }
+                BlockDamageResult::Broken => {
+                    handle_broken_block(
+                        renderer,
+                        planet,
+                        hotbar,
+                        inventory,
+                        loot,
+                        coord,
+                        voxel,
+                        drops_enabled,
+                    );
+                    renderer.notify_player_action(PlayerActionFeedback::Break {
+                        strength: impact_strength,
+                    });
+                    audio.play(SoundEvent::BlockBreak {
+                        sound_kind: sound,
+                        strength: impact_strength,
+                    });
+                }
+            }
+        }
+        MiningFeedback::Broken { .. } => {}
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn handle_broken_block(
+    renderer: &mut Renderer<'_>,
+    planet: &mut PlanetData,
+    hotbar: &mut Hotbar,
+    inventory: &mut Inventory,
+    loot: &LootRegistry,
+    coord: vv_voxel::VoxelCoord,
+    voxel: vv_voxel::VoxelId,
+    drops_enabled: bool,
+) {
+    let edit = BlockInteraction::apply(BlockAction::Mine(coord), planet);
     if edit.dirty_chunks.is_empty() {
         hotbar.show_notice(HotbarNotice::ProtectedBlock);
         renderer.window.request_redraw();
         return;
     }
 
-    if outcome.drops_enabled {
-        if let Some(block) = planet.content.block(outcome.voxel) {
+    if drops_enabled {
+        if let Some(block) = planet.content.block(voxel) {
             for (item_id, count) in roll_block_drops(&block.drops_key, loot) {
                 add_drop_to_player(item_id, count, planet, hotbar, inventory);
             }
         }
     }
-
     renderer.refresh_dirty_chunks(edit.dirty_chunks);
     renderer.window.request_redraw();
 }
@@ -608,9 +691,10 @@ fn tick_game_frame(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
     inventory_ui: &InventoryUiState,
-    mining: &mut MiningProgress,
+    mining: &mut MiningState,
     mining_button_held: bool,
     loot: &LootRegistry,
+    audio: &mut AudioEngine,
     console: &mut Console,
     first_scene_snapshot_logged: &mut bool,
 ) {
@@ -634,19 +718,21 @@ fn tick_game_frame(
         controller.cursor_id = ray_result.map(|(id, _)| id);
         if mining_button_held {
             tick_mining(
-                dt, renderer, controller, planet, hotbar, inventory, mining, loot,
+                dt, renderer, controller, planet, hotbar, inventory, mining, loot, audio,
             );
-        } else {
-            mining.cancel();
         }
     } else {
         controller.clear_transient_input();
         controller.cursor_id = None;
-        mining.cancel();
         release_cursor(renderer.window);
     }
 
     renderer.update_cursor(planet, controller.cursor_id);
+    renderer.update_block_damage_overlay(planet, controller.cursor_id);
+    let selected_item = hotbar
+        .selected_item_id()
+        .and_then(|item_id| planet.items.get(item_id));
+    renderer.update_first_person_item(dt, selected_item);
     let width = renderer.config.width as f32;
     let height = renderer.config.height as f32;
     let view_ray = controller.view_ray(player, width, height);
@@ -664,4 +750,16 @@ fn tick_game_frame(
         *first_scene_snapshot_logged = true;
     }
     renderer.window.request_redraw();
+}
+
+fn sound_kind(kind: CompiledSoundKind) -> SoundKind {
+    match kind {
+        CompiledSoundKind::None => SoundKind::None,
+        CompiledSoundKind::Grass => SoundKind::Grass,
+        CompiledSoundKind::Stone => SoundKind::Stone,
+        CompiledSoundKind::Wood => SoundKind::Wood,
+        CompiledSoundKind::Sand => SoundKind::Sand,
+        CompiledSoundKind::Snow => SoundKind::Snow,
+        CompiledSoundKind::Dirt => SoundKind::Dirt,
+    }
 }

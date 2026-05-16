@@ -39,6 +39,11 @@ impl BlockModelId {
     pub(crate) fn from_raw(id: u32) -> Self {
         Self(id)
     }
+
+    #[doc(hidden)]
+    pub fn for_tests(id: u32) -> Self {
+        Self(id)
+    }
 }
 
 /// Compiled mesh kind, retained on the model for future state transforms
@@ -69,6 +74,18 @@ pub enum CompiledMeshClass {
     Foliage,
     Emissive,
     Invisible,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CompiledSoundKind {
+    #[default]
+    None,
+    Grass,
+    Stone,
+    Wood,
+    Sand,
+    Snow,
+    Dirt,
 }
 
 #[derive(Clone, Debug)]
@@ -192,6 +209,8 @@ pub struct CompiledBlock {
     pub preferred_tool_tag: Option<String>,
     /// Minimum tool tier required for reliable drops.
     pub required_tool_tier: u32,
+    /// Logical block sound category compiled from data.
+    pub sound_kind: CompiledSoundKind,
     /// Renderer/mesher routing class. This decides batching strategy; it is
     /// content-owned, not inferred from concrete block names at runtime.
     pub mesh_class: CompiledMeshClass,

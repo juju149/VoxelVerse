@@ -19,7 +19,7 @@ pub use crafting::{can_craft_recipe, craft_recipe, quick_craft_recipe_indices, C
 pub use hotbar::{Hotbar, HotbarNotice, HotbarSlot, HOTBAR_SLOT_COUNT};
 pub use inventory::{Inventory, SlotRef, INVENTORY_COLS, INVENTORY_ROWS, INVENTORY_SIZE};
 pub use item_stack::{ItemId, ItemStack};
-pub use mining::{MiningOutcome, MiningProgress};
+pub use mining::{MiningFeedback, MiningState, MiningStrike, MiningStrikeInput};
 pub use planet_resize::{PlanetResize, PlanetResizeIntent};
 pub use player::{Player, PlayerInput};
 pub use player_controller::PlayerController;

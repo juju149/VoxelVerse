@@ -1,3 +1,4 @@
+mod block_damage;
 mod broken_props;
 mod planet;
 mod runtime;
@@ -8,6 +9,7 @@ mod world_time;
 // Re-export PlanetProfile from vv-voxel so downstream crates can use vv_world::PlanetProfile.
 pub use vv_voxel::PlanetProfile;
 
+pub use block_damage::{BlockDamage, BlockDamageLayer, BlockDamageResult};
 pub use broken_props::BrokenPropLayer;
 pub use planet::{PlanetData, VoxelEditResult, VoxelRead};
 pub use runtime::VoxelRuntime;

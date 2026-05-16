@@ -6,6 +6,7 @@ members = [
     "crates/vv-math",
     "crates/vv-pack-compiler",
     "crates/vv-pack-doctor",
+    "crates/vv-audio",
     "crates/vv-pack-loader",
     "crates/vv-voxel",
     "crates/vv-worldgen",
@@ -31,6 +32,7 @@ png = "0.17"
 pollster = "0.3"
 rayon = "1.8"
 ron = "0.8"
+rodio = { version = "0.17", default-features = false, features = ["vorbis"] }
 serde = { version = "1", features = ["derive"] }
 sysinfo = "0.30"
 wgpu = "0.19"

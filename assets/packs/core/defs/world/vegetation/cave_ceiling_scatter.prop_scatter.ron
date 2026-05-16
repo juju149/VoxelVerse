@@ -14,6 +14,7 @@ PropScatter(
         altitude_range: Some((-360.0, -8.0)),
         scale_variance: Some((0.76, 1.32)),
         rotation_variance: 1.0,
+        cave_surface: cave_ceiling,
     ),
     variants: [
         // Molds — cover large ceiling areas

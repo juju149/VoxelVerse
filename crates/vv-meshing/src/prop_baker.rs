@@ -16,7 +16,7 @@
 use super::{CpuMesh, CpuVertex, VERTEX_COLOR_MATERIAL_SENTINEL};
 use vv_math::CoordSystem;
 use vv_world::{PlanetProfile, VoxModel, VoxModelRegistry};
-use vv_worldgen::procedural::PropStamp;
+use vv_worldgen::procedural::{PropOrientation, PropStamp};
 
 /// Maximum visible faces a single prop may contribute to a chunk mesh.
 /// A grass blade has ~10-20, a mushroom ~50.  Hard-capping prevents a single
@@ -41,6 +41,7 @@ pub struct PropInstance {
     pub u: u32,
     pub v: u32,
     pub surface_layer: u32,
+    pub orientation: PropOrientation,
 }
 
 #[derive(Clone, Debug)]
@@ -64,6 +65,7 @@ pub fn collect_prop_instance_batches(stamps: &[PropStamp]) -> Vec<PropInstanceBa
             u: stamp.u,
             v: stamp.v,
             surface_layer: stamp.surface_layer,
+            orientation: stamp.orientation,
         };
         if let Some(batch) = batches.iter_mut().find(|batch| batch.key == key) {
             batch.instances.push(instance);
@@ -142,7 +144,12 @@ fn bake_instance(
 
     let base_u = instance.u as f32;
     let base_v = instance.v as f32;
-    let base_l = instance.surface_layer as f32 + 1.0;
+    // Floor: prop base sits one layer above the solid anchor.
+    // Ceiling: prop base hangs one layer below the solid anchor (grows inward).
+    let (base_l, layer_dir) = match instance.orientation {
+        PropOrientation::Floor => (instance.surface_layer as f32 + 1.0, 1.0_f32),
+        PropOrientation::Ceiling => (instance.surface_layer as f32 - 1.0, -1.0_f32),
+    };
 
     // Rotation helpers — quarter-turn around the radial (+Z in model space) axis.
     let cx = model.size_x as f32 * 0.5;
@@ -175,7 +182,7 @@ fn bake_instance(
             let (rx, ry) = rotate(mx, my);
             let wu = base_u + rx * inv_max_xy;
             let wv = base_v + ry * inv_max_xy;
-            let wl = base_l + mz * scale_z;
+            let wl = base_l + mz * scale_z * layer_dir;
             corners[i] = CoordSystem::get_vertex_pos_f32(instance.face, wu, wv, wl, profile);
         }
 
@@ -212,7 +219,7 @@ fn bake_instance(
 #[cfg(test)]
 mod tests {
     use super::collect_prop_instance_batches;
-    use vv_worldgen::procedural::PropStamp;
+    use vv_worldgen::procedural::{PropOrientation, PropStamp};
 
     fn stamp(model_key: &str, rotation: u8, u: u32) -> PropStamp {
         PropStamp {
@@ -222,6 +229,7 @@ mod tests {
             surface_layer: 10,
             model_key: model_key.to_string(),
             rotation,
+            orientation: PropOrientation::Floor,
         }
     }
 

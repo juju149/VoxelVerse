@@ -18,7 +18,7 @@ pub use block_family::{BlockStateValue, CompiledBlockFamily, MAX_VARIANTS_PER_FA
 pub use block_registry::{
     BlockMaterialLayers, BlockModelId, BlockModelRegistry, BlockRegistry, CompiledBlock,
     CompiledBlockModel, CompiledBlockVisual, CompiledCollision, CompiledMesh, CompiledMeshClass,
-    MaterialTextureSet,
+    CompiledSoundKind, MaterialTextureSet,
 };
 pub use compiler::ContentCompiler;
 pub use content_index::ContentIndex;

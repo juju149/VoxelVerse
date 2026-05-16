@@ -15,6 +15,7 @@ vv-physics = { path = "../../crates/vv-physics" }
 vv-meshing = { path = "../../crates/vv-meshing" }
 vv-render = { path = "../../crates/vv-render" }
 vv-gameplay = { path = "../../crates/vv-gameplay" }
+vv-audio = { path = "../../crates/vv-audio" }
 
 bytemuck.workspace = true
 dot_vox.workspace = true

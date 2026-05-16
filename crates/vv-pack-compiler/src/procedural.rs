@@ -1,5 +1,5 @@
 use crate::{
-    BlockRegistry, CompiledBiomeColorTint, CompiledBiomeSelector, CompiledBiomeSet,
+    BlockRegistry, CaveSurface, CompiledBiomeColorTint, CompiledBiomeSelector, CompiledBiomeSet,
     CompiledBiomeSurface, CompiledBiomeTerrain, CompiledCave, CompiledCaveCarver, CompiledClimate,
     CompiledClimateAxis, CompiledCurve, CompiledFauna, CompiledFeaturePlacement,
     CompiledHeightCurve, CompiledNoiseField, CompiledNoiseKind, CompiledNoiseRemap, CompiledOre,
@@ -418,6 +418,7 @@ fn compile_vegetation(
             .unwrap_or(0.0),
         scale_variance,
         rotation_variance: finite(def.rotation_variance, 1.0).clamp(0.0, 1.0),
+        cave_surface: CaveSurface::TopSurface,
     };
     Some(CompiledVegetation {
         key: key.to_string(),
@@ -633,6 +634,11 @@ fn compile_placement(
             .unwrap_or(0.0),
         scale_variance,
         rotation_variance: finite(def.rotation_variance, 1.0).clamp(0.0, 1.0),
+        cave_surface: match def.cave_surface {
+            RawCaveSurface::TopSurface => CaveSurface::TopSurface,
+            RawCaveSurface::CaveFloor => CaveSurface::CaveFloor,
+            RawCaveSurface::CaveCeiling => CaveSurface::CaveCeiling,
+        },
     })
 }
 
