@@ -1,0 +1,15 @@
+Object(
+    name: "Water",
+    tags: ["water", "fluid"],
+
+    block: (
+        texture: none,
+        render: translucent,
+        solid: false,
+        replaceable: true,
+        hardness: -1.0,
+        sound: none,
+        tint: water,
+        mesh_class: water,
+    ),
+)

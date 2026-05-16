@@ -717,6 +717,15 @@ impl ProceduralPlanetTerrain {
         self.profile
     }
 
+    pub fn sea_level_layer(&self) -> u32 {
+        let level = self.profile.surface_layer as i32 + self.planet().sea_level_offset;
+        level.clamp(0, self.profile.resolution.saturating_sub(1) as i32) as u32
+    }
+
+    pub fn water_block(&self) -> Option<VoxelId> {
+        self.planet().water_block
+    }
+
     pub(super) fn sample_field(&self, field: usize, pos: Vec3) -> f32 {
         noise_sampler::sample_noise_field(&self.registry, &self.noise_generators, field, pos, 0)
     }

@@ -110,6 +110,8 @@ pub struct RawSphericalVoxelPlanetDef {
     pub edge_rounding_radius_voxels: f32,
     pub core_layers: u32,
     pub sea_level_offset: i32,
+    #[serde(default)]
+    pub water_block: Option<ContentRef>,
     pub max_terrain_offset: i32,
 }
 

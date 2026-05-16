@@ -5,10 +5,12 @@ use super::{
 use glam::Vec3;
 use std::sync::OnceLock;
 use vv_math::CoordSystem;
-use vv_pack_compiler::CompiledMesh;
+use vv_pack_compiler::{CompiledMesh, CompiledMeshClass};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use vv_world::PlanetData;
 use vv_worldgen::ChunkFeatureMap;
+
+const PROP_LOD_CHUNK_RADIUS: u32 = 5;
 
 /// Read-only voxel accessor used during meshing.
 ///
@@ -37,6 +39,9 @@ impl<'a> ChunkAccessor<'a> {
         }
         let surface_h = self.data.terrain.get_height(coord.face, coord.u, coord.v);
         if coord.layer > surface_h {
+            if coord.layer <= self.data.terrain.sea_level_layer() {
+                return self.data.terrain.water_block().unwrap_or(VoxelId::AIR);
+            }
             return self.features.get(coord).unwrap_or(VoxelId::AIR);
         }
         self.data.get_voxel(coord)
@@ -48,6 +53,14 @@ impl<'a> ChunkAccessor<'a> {
 
     pub(super) fn is_opaque_cube(&self, coord: VoxelCoord) -> bool {
         self.data.content.is_opaque_cube(self.voxel_id(coord))
+    }
+
+    pub(super) fn hides_face_between(&self, current: VoxelId, neighbor: VoxelCoord) -> bool {
+        let other = self.voxel_id(neighbor);
+        if self.data.content.is_opaque_cube(other) {
+            return true;
+        }
+        current == other && self.data.content.mesh_class(current) == CompiledMeshClass::Water
     }
 
     pub(super) fn uses_greedy_opaque_meshing(&self, coord: VoxelCoord) -> bool {
@@ -96,6 +109,21 @@ impl CandidateBuffer {
 }
 
 impl MeshGen {
+    pub fn should_bake_props_for_chunk(
+        key: SurfaceChunkKey,
+        player_key: Option<SurfaceChunkKey>,
+    ) -> bool {
+        let Some(player_key) = player_key else {
+            return true;
+        };
+        if key.face != player_key.face {
+            return false;
+        }
+
+        key.u_idx.abs_diff(player_key.u_idx) <= PROP_LOD_CHUNK_RADIUS
+            && key.v_idx.abs_diff(player_key.v_idx) <= PROP_LOD_CHUNK_RADIUS
+    }
+
     fn add_modified_candidates(id: VoxelCoord, candidates: &mut CandidateBuffer, res: u32) {
         candidates.push(id);
         if id.layer + 1 < res {
@@ -188,6 +216,18 @@ impl MeshGen {
                         });
                     }
                 }
+
+                if let Some(water) = data.terrain.water_block() {
+                    let sea = data.terrain.sea_level_layer();
+                    if water != VoxelId::AIR && h < sea {
+                        candidates.push(VoxelCoord {
+                            face: key.face,
+                            layer: sea,
+                            u,
+                            v,
+                        });
+                    }
+                }
             }
         }
 
@@ -260,12 +300,7 @@ impl MeshGen {
         // Append .vox prop geometry (grass, flowers, mushrooms, …).
         // Props are NOT in the voxel grid — query the terrain procedural layer.
         // Filter out columns where the prop or its support block was broken by the player.
-        //
-        // No LOD gate — all loaded chunks receive full prop geometry.
-        // Performance is bounded by the jittered-grid (~113 candidates/chunk)
-        // and the per-chunk quad cap (MAX_QUADS_PER_CHUNK) already baked into
-        // the baker, so culling by distance is not needed.
-        {
+        if Self::should_bake_props_for_chunk(key, data.player_surface_key) {
             let stamps = data.terrain.props_for_chunk(key);
             if !stamps.is_empty() {
                 let alive_stamps: Vec<_> = stamps
@@ -289,6 +324,7 @@ impl MeshGen {
         idx: &mut u32,
     ) {
         let voxel_id = accessor.voxel_id(id);
+
         let model = accessor.data.content.model_of(voxel_id);
         match &model.mesh {
             CompiledMesh::Cube { .. } | CompiledMesh::CubeColumn { .. } => {
@@ -312,6 +348,7 @@ impl MeshGen {
     ) {
         let data = accessor.data;
         let res = data.resolution;
+        let voxel_id = accessor.voxel_id(id);
 
         // Neighbour cube-occlusion check (cross-plane neighbours never occlude).
         let check = |d_face: u8, d_layer: i32, d_u: i32, d_v: i32| -> bool {
@@ -319,12 +356,15 @@ impl MeshGen {
             let u = id.u as i32 + d_u;
             let v = id.v as i32 + d_v;
             if l >= 0 && u >= 0 && u < res as i32 && v >= 0 && v < res as i32 {
-                return accessor.is_opaque_cube(VoxelCoord {
-                    face: d_face,
-                    layer: l as u32,
-                    u: u as u32,
-                    v: v as u32,
-                });
+                return accessor.hides_face_between(
+                    voxel_id,
+                    VoxelCoord {
+                        face: d_face,
+                        layer: l as u32,
+                        u: u as u32,
+                        v: v as u32,
+                    },
+                );
             }
             l < 0 // Core is solid
         };
@@ -361,7 +401,6 @@ impl MeshGen {
             light_val = 1.0;
         }
 
-        let voxel_id = accessor.voxel_id(id);
         let visual = data.content.visual(voxel_id);
         let mut fallback_color = data.content.color(voxel_id);
 
@@ -610,7 +649,7 @@ impl MeshGen {
 mod tests {
     use super::{CandidateBuffer, MeshGen, QuadFace};
     use glam::Vec3;
-    use vv_voxel::VoxelCoord;
+    use vv_voxel::{SurfaceChunkKey, VoxelCoord};
 
     fn coord(layer: u32, u: u32, v: u32) -> VoxelCoord {
         VoxelCoord {
@@ -619,6 +658,33 @@ mod tests {
             u,
             v,
         }
+    }
+
+    fn chunk(face: u8, u_idx: u32, v_idx: u32) -> SurfaceChunkKey {
+        SurfaceChunkKey { face, u_idx, v_idx }
+    }
+
+    #[test]
+    fn prop_lod_keeps_only_near_same_face_chunks() {
+        let player = Some(chunk(2, 10, 10));
+
+        assert!(MeshGen::should_bake_props_for_chunk(
+            chunk(2, 15, 10),
+            player
+        ));
+        assert!(!MeshGen::should_bake_props_for_chunk(
+            chunk(2, 16, 10),
+            player
+        ));
+        assert!(!MeshGen::should_bake_props_for_chunk(
+            chunk(3, 10, 10),
+            player
+        ));
+    }
+
+    #[test]
+    fn prop_lod_defaults_to_baking_when_player_key_is_unknown() {
+        assert!(MeshGen::should_bake_props_for_chunk(chunk(5, 80, 80), None));
     }
 
     #[test]

@@ -49,8 +49,8 @@ pub(super) fn build_first_person_item_mesh(
         &mut verts,
         &mut inds,
         RectSpec {
-            center: transform([0.67, -0.62], pose),
-            size: [0.22 * pose.scale, 0.34 * pose.scale],
+            center: transform([0.78, -0.78], pose),
+            size: [0.12 * pose.scale, 0.23 * pose.scale],
             rotation: pose.rotation - 0.18,
             color: [0.72, 0.50, 0.34],
         },
@@ -73,8 +73,8 @@ fn draw_tool(verts: &mut Vec<Vertex>, inds: &mut Vec<u32>, pose: HandPose) {
         verts,
         inds,
         RectSpec {
-            center: transform([0.53, -0.52], pose),
-            size: [0.055 * pose.scale, 0.48 * pose.scale],
+            center: transform([0.68, -0.68], pose),
+            size: [0.035 * pose.scale, 0.36 * pose.scale],
             rotation: rot,
             color: [0.42, 0.27, 0.15],
         },
@@ -83,8 +83,8 @@ fn draw_tool(verts: &mut Vec<Vertex>, inds: &mut Vec<u32>, pose: HandPose) {
         verts,
         inds,
         RectSpec {
-            center: transform([0.43, -0.26], pose),
-            size: [0.26 * pose.scale, 0.08 * pose.scale],
+            center: transform([0.61, -0.49], pose),
+            size: [0.18 * pose.scale, 0.055 * pose.scale],
             rotation: rot,
             color: [0.58, 0.62, 0.64],
         },
@@ -96,8 +96,8 @@ fn draw_block_placeholder(verts: &mut Vec<Vertex>, inds: &mut Vec<u32>, pose: Ha
         verts,
         inds,
         RectSpec {
-            center: transform([0.50, -0.44], pose),
-            size: [0.19 * pose.scale, 0.19 * pose.scale],
+            center: transform([0.69, -0.66], pose),
+            size: [0.13 * pose.scale, 0.13 * pose.scale],
             rotation: pose.rotation - 0.2,
             color: [0.42, 0.56, 0.36],
         },

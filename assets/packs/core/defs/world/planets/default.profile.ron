@@ -8,6 +8,7 @@ PlanetProfile(
         edge_rounding_radius_voxels: 0.16,
         core_layers: 6,
         sea_level_offset: -6,
+        water_block: "water",
         max_terrain_offset: 260,
     )),
     climate: "earthlike",
@@ -61,6 +62,6 @@ PlanetProfile(
         far_surface_lod_radius: 192,
         upload_budget_chunks_per_frame: 8,
         region_cell_voxels: 64,
-        feature_budget_per_chunk: 384,
+        feature_budget_per_chunk: 192,
     ),
 )

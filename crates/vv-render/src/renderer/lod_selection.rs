@@ -17,6 +17,7 @@ impl<'a> Renderer<'a> {
 
         let res = planet.resolution;
         let player_id = CoordSystem::pos_to_id(view.player_pos, planet.profile);
+        let previous_player_chunk_pos = self.player_chunk_pos;
         let player_surface_key = player_id.map(|id| SurfaceChunkKey {
             face: id.face,
             u_idx: id.u / CHUNK_SIZE,
@@ -27,6 +28,7 @@ impl<'a> Renderer<'a> {
         self.player_chunk_pos = player_surface_key;
 
         if should_rebuild_required {
+            self.refresh_prop_lod_chunks(previous_player_chunk_pos, player_surface_key);
             let selection_started = std::time::Instant::now();
             self.rebuild_required_sets(view, planet, player_id, res);
             self.lod_selection_ms = selection_started.elapsed().as_secs_f32() * 1000.0;
@@ -198,6 +200,27 @@ impl<'a> Renderer<'a> {
             let db = voxel_priority(*b, view, planet);
             db.partial_cmp(&da).unwrap_or(std::cmp::Ordering::Equal)
         });
+    }
+
+    fn refresh_prop_lod_chunks(
+        &mut self,
+        previous_player_key: Option<SurfaceChunkKey>,
+        current_player_key: Option<SurfaceChunkKey>,
+    ) {
+        if previous_player_key == current_player_key {
+            return;
+        }
+
+        let changed: Vec<SurfaceChunkKey> = self
+            .chunks
+            .keys()
+            .copied()
+            .filter(|key| {
+                MeshGen::should_bake_props_for_chunk(*key, previous_player_key)
+                    != MeshGen::should_bake_props_for_chunk(*key, current_player_key)
+            })
+            .collect();
+        self.dirty_chunks.extend(changed);
     }
 
     fn process_quadtree(

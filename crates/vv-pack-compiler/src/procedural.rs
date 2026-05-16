@@ -113,6 +113,7 @@ impl ContentCompiler {
                     &structure_map,
                     &fauna_map,
                     &scatter_map,
+                    blocks,
                     &mut errors,
                 )
             })
@@ -524,6 +525,7 @@ fn compile_planet(
     structure_map: &HashMap<String, usize>,
     fauna_map: &HashMap<String, usize>,
     scatter_map: &HashMap<String, usize>,
+    blocks: &BlockRegistry,
     errors: &mut Vec<String>,
 ) -> Option<CompiledProceduralPlanet> {
     let RawPlanetShapeDef::SphericalVoxelPlanet(shape) = &def.shape;
@@ -557,6 +559,10 @@ fn compile_planet(
             spawn_clearance_layers: 8.0,
         },
         sea_level_offset: shape.sea_level_offset,
+        water_block: shape
+            .water_block
+            .as_ref()
+            .and_then(|block| resolve_block(blocks, key, block, errors)),
         climate: resolve(climate_map, "climate", key, &def.climate, errors)?,
         biome_set: resolve(biome_set_map, "biome set", key, &def.biome_set, errors)?,
         terrain_layers: resolve(

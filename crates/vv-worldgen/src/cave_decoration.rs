@@ -31,7 +31,7 @@
 //! costs < 2 ms per chunk on a modern CPU, well within the async budget.
 
 use crate::placement::for_each_candidate;
-use crate::procedural::{PropOrientation, PropStamp, ProceduralPlanetTerrain};
+use crate::procedural::{ProceduralPlanetTerrain, PropOrientation, PropStamp};
 use vv_pack_compiler::{CaveSurface, CompiledVoxPropScatter};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 
@@ -131,9 +131,7 @@ pub(crate) fn cave_props_for_chunk(
                         if let Some(variant) =
                             scatter.pick_variant(candidate.seed ^ layer ^ 0xF100_F)
                         {
-                            let rotation = ((candidate.rotation
-                                / std::f32::consts::TAU
-                                * 4.0)
+                            let rotation = ((candidate.rotation / std::f32::consts::TAU * 4.0)
                                 .rem_euclid(4.0) as u8)
                                 & 3;
                             props.push(PropStamp {
@@ -206,10 +204,9 @@ pub(crate) fn cave_props_for_chunk(
                             if let Some(variant) =
                                 scatter.pick_variant(candidate.seed ^ layer ^ 0xCEE1_CAFE)
                             {
-                                let rotation = ((candidate.rotation
-                                    / std::f32::consts::TAU
-                                    * 4.0)
-                                    .rem_euclid(4.0) as u8)
+                                let rotation = ((candidate.rotation / std::f32::consts::TAU * 4.0)
+                                    .rem_euclid(4.0)
+                                    as u8)
                                     & 3;
                                 props.push(PropStamp {
                                     face: key.face,

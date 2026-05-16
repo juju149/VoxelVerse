@@ -502,6 +502,7 @@ pub struct CompiledProceduralPlanet {
     pub key: String,
     pub base: CompiledPlanet,
     pub sea_level_offset: i32,
+    pub water_block: Option<VoxelId>,
     pub climate: usize,
     pub biome_set: usize,
     pub terrain_layers: usize,

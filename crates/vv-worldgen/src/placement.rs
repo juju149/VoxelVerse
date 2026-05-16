@@ -185,7 +185,7 @@ pub fn hash01(h: u32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vv_pack_compiler::CompiledFeaturePlacement;
+    use vv_pack_compiler::{CaveSurface, CompiledFeaturePlacement};
     use vv_voxel::VoxelId;
 
     fn dummy_placement(min_spacing: f32, jitter: f32) -> CompiledFeaturePlacement {
@@ -205,6 +205,7 @@ mod tests {
             slope_min: 0.0,
             scale_variance: (1.0, 1.0),
             rotation_variance: 1.0,
+            cave_surface: CaveSurface::TopSurface,
         }
     }
 

@@ -16,24 +16,21 @@ pub struct PlanetProfile {
 }
 
 impl PlanetProfile {
-    #[cfg(test)]
     const DEFAULT_SEED: u32 = 1;
-    #[cfg(test)]
     const DEFAULT_VOXEL_SIZE_METERS: f32 = 1.0;
-    #[cfg(test)]
     const DEFAULT_INNER_RADIUS_FRACTION: f32 = 0.18;
 
-    #[cfg(test)]
+    #[doc(hidden)]
     pub fn new(resolution: u32) -> Self {
         Self::with_seed(resolution, Self::DEFAULT_SEED)
     }
 
-    #[cfg(test)]
+    #[doc(hidden)]
     pub fn with_seed(resolution: u32, seed: u32) -> Self {
         Self::with_seed_and_voxel_size(resolution, seed, Self::DEFAULT_VOXEL_SIZE_METERS)
     }
 
-    #[cfg(test)]
+    #[doc(hidden)]
     pub fn with_seed_and_voxel_size(resolution: u32, seed: u32, voxel_size_meters: f32) -> Self {
         let resolution = resolution.max(8);
         let surface_layer = resolution / 2;
@@ -106,7 +103,6 @@ impl PlanetProfile {
     }
 }
 
-#[cfg(test)]
 pub(crate) fn radii_from_layers(
     surface_layer: u32,
     voxel_size_meters: f32,

@@ -119,6 +119,7 @@ mod tests {
     fn hit_recoil_affects_pose() {
         let mut animation = HandAnimation::new();
         animation.hit_recoil(1.0);
+        animation.update(0.08);
 
         assert!(animation.pose().offset[1] > 0.0);
     }

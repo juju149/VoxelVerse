@@ -46,6 +46,12 @@ impl ProceduralPlanetTerrain {
     }
 
     pub(super) fn resolve_above_surface_voxel(&self, ctx: &GeneratedVoxelContext) -> VoxelId {
+        if ctx.layer <= self.sea_level_layer() {
+            if let Some(water) = self.water_block() {
+                return water;
+            }
+        }
+
         // Walk every vegetation entry; the first tree that claims this voxel wins.
         for veg_idx in &self.planet().vegetation_sets {
             let veg = &self.registry.vegetation[*veg_idx];
