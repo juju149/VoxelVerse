@@ -2277,6 +2277,14 @@ name = "vv-voxel"
 version = "0.1.0"
 
 [[package]]
+name = "vv-weather"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "vv-content-schema",
+]
+
+[[package]]
 name = "vv-world"
 version = "0.1.0"
 dependencies = [

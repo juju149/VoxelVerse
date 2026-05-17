@@ -15,6 +15,7 @@ members = [
     "crates/vv-meshing",
     "crates/vv-render",
     "crates/vv-gameplay",
+    "crates/vv-weather",
 ]
 exclude = ["apps/voxelverse-studio/src-tauri"]
 resolver = "2"

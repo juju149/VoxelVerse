@@ -1,0 +1,9 @@
+[package]
+name = "vv-weather"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vv-content-schema = { path = "../vv-content-schema" }
+
+glam.workspace = true
