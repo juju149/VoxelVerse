@@ -2226,6 +2226,7 @@ dependencies = [
 name = "vv-pack-compiler"
 version = "0.1.0"
 dependencies = [
+ "naga",
  "png",
  "vv-content-schema",
  "vv-pack-loader",
@@ -2240,6 +2241,7 @@ dependencies = [
  "ron",
  "serde",
  "vv-content-schema",
+ "vv-pack-compiler",
  "vv-pack-loader",
 ]
 

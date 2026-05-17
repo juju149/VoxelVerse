@@ -11,6 +11,7 @@ mod planet_registry;
 mod procedural;
 mod procedural_registry;
 mod recipe_registry;
+pub mod shader;
 mod tag_registry;
 mod texture_registry;
 

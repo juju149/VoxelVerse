@@ -8,4 +8,5 @@ vv-content-schema = { path = "../vv-content-schema" }
 vv-pack-loader = { path = "../vv-pack-loader" }
 vv-voxel = { path = "../vv-voxel" }
 
+naga = { version = "0.19", features = ["wgsl-in"] }
 png.workspace = true

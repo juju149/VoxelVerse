@@ -12,6 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 vv-content-schema = { path = "../vv-content-schema" }
+vv-pack-compiler = { path = "../vv-pack-compiler" }
 vv-pack-loader = { path = "../vv-pack-loader" }
 ron = { workspace = true }
 serde = { workspace = true }

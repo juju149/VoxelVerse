@@ -1,11 +1,20 @@
 //! Render shader-library validation.
 //!
 //! Render pipelines are Rust-owned. The pack only supplies WGSL source under
-//! `render/shaders`, so Pack Doctor validates paths, includes and conventions
-//! instead of parsing render `.ron` manifests.
+//! `render/shaders`, so Pack Doctor validates paths and conventions instead
+//! of parsing render `.ron` manifests.
+//!
+//! Include expansion and resolution go through `vv_pack_compiler::shader`,
+//! the same module the renderer uses at runtime. Each pass shader is then
+//! naga-parsed so a broken pack fails Pack Doctor *before* it could ever
+//! crash `device.create_shader_module`.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Component, Path, PathBuf};
+use std::path::Path;
+
+use vv_pack_compiler::shader::{
+    self, EnumeratedShader, PackShaderRoot, ShaderResolver,
+};
 
 use crate::index::PackIndex;
 use crate::report::{Diagnostic, RenderProfileSummary, Report};
@@ -14,30 +23,32 @@ use crate::scan::PackScan;
 const CHECK: &str = "render";
 const MAX_SHADER_LINES: usize = 420;
 
+/// Engine-required shader files (paths relative to `render/shaders/`).
+/// Mirrors `vv_render::pipeline::graph::ShaderPath::REQUIRED`. Keep in sync.
 const EXPECTED_SHADERS: &[&str] = &[
-    "render/shaders/passes/terrain/terrain.vert.wgsl",
-    "render/shaders/passes/terrain/terrain.frag.wgsl",
-    "render/shaders/passes/terrain/terrain_depth.vert.wgsl",
-    "render/shaders/passes/sky/sky.vert.wgsl",
-    "render/shaders/passes/sky/sky.frag.wgsl",
-    "render/shaders/passes/clouds/clouds.vert.wgsl",
-    "render/shaders/passes/clouds/clouds.frag.wgsl",
-    "render/shaders/passes/atmosphere/volumetric_fog.vert.wgsl",
-    "render/shaders/passes/atmosphere/volumetric_fog.frag.wgsl",
-    "render/shaders/passes/water/water.vert.wgsl",
-    "render/shaders/passes/water/water.frag.wgsl",
-    "render/shaders/passes/foliage/foliage.vert.wgsl",
-    "render/shaders/passes/foliage/foliage.frag.wgsl",
-    "render/shaders/passes/post/fullscreen.vert.wgsl",
-    "render/shaders/passes/post/final_composite.frag.wgsl",
-    "render/shaders/passes/post/fxaa.frag.wgsl",
-    "render/shaders/passes/post/bloom_downsample.frag.wgsl",
-    "render/shaders/passes/post/bloom_upsample.frag.wgsl",
-    "render/shaders/passes/ui/ui.vert.wgsl",
-    "render/shaders/passes/ui/ui.frag.wgsl",
-    "render/shaders/passes/debug/normals.frag.wgsl",
-    "render/shaders/passes/debug/depth.frag.wgsl",
-    "render/shaders/passes/debug/lighting.frag.wgsl",
+    "passes/terrain/terrain.vert.wgsl",
+    "passes/terrain/terrain.frag.wgsl",
+    "passes/terrain/terrain_depth.vert.wgsl",
+    "passes/sky/sky.vert.wgsl",
+    "passes/sky/sky.frag.wgsl",
+    "passes/clouds/clouds.vert.wgsl",
+    "passes/clouds/clouds.frag.wgsl",
+    "passes/atmosphere/volumetric_fog.vert.wgsl",
+    "passes/atmosphere/volumetric_fog.frag.wgsl",
+    "passes/water/water.vert.wgsl",
+    "passes/water/water.frag.wgsl",
+    "passes/foliage/foliage.vert.wgsl",
+    "passes/foliage/foliage.frag.wgsl",
+    "passes/post/fullscreen.vert.wgsl",
+    "passes/post/final_composite.frag.wgsl",
+    "passes/post/fxaa.frag.wgsl",
+    "passes/post/bloom_downsample.frag.wgsl",
+    "passes/post/bloom_upsample.frag.wgsl",
+    "passes/ui/ui.vert.wgsl",
+    "passes/ui/ui.frag.wgsl",
+    "passes/debug/normals.frag.wgsl",
+    "passes/debug/depth.frag.wgsl",
+    "passes/debug/lighting.frag.wgsl",
 ];
 
 const REQUIRED_INCLUDE_DIRS: &[&str] = &[
@@ -49,6 +60,7 @@ const REQUIRED_INCLUDE_DIRS: &[&str] = &[
 pub fn run(_index: &PackIndex<'_>, _report: &mut Report) {}
 
 pub fn validate(scan: &PackScan, report: &mut Report) {
+    // 1. Hard structural rules that don't need the resolver.
     for ron in &scan.render.ron_files {
         report.error(
             Diagnostic::new(
@@ -60,24 +72,6 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
         );
     }
 
-    let shader_paths: BTreeSet<String> = scan
-        .render
-        .wgsl_files
-        .iter()
-        .map(|file| file.rel_path.clone())
-        .collect();
-
-    for expected in EXPECTED_SHADERS {
-        if !shader_paths.contains(*expected) {
-            report.error(
-                Diagnostic::new(CHECK, format!("expected shader is missing: {expected}"))
-                    .with_path((*expected).to_string())
-                    .with_suggestion("create the WGSL file or update vv-render::render_graph"),
-            );
-            report.missing.shaders.push((*expected).to_string());
-        }
-    }
-
     for dir in REQUIRED_INCLUDE_DIRS {
         if !scan.pack_root.join(dir).is_dir() {
             report.error(
@@ -87,9 +81,6 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
         }
     }
 
-    check_duplicate_names(scan, report);
-
-    let mut include_references = BTreeSet::new();
     for file in &scan.render.wgsl_files {
         if !file.rel_path.starts_with("render/shaders/") {
             report.error(
@@ -97,33 +88,120 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
                     .with_path(file.rel_path.clone()),
             );
         }
-        check_wgsl_source(
-            scan,
-            report,
-            &file.rel_path,
-            &file.abs_path,
-            &mut include_references,
-        );
     }
 
-    for file in &scan.render.wgsl_files {
-        let is_include = file.rel_path.starts_with("render/shaders/include/");
-        if is_include && !include_references.contains(&file.rel_path) {
+    check_duplicate_names(scan, report);
+    check_oversized_files(scan, report);
+
+    // 2. Build the resolver as a single-pack stack and validate every shader
+    //    through the same include-expansion path the renderer uses.
+    let pack_stack = vec![PackShaderRoot::new("pack", scan.pack_root.clone())];
+    let mut resolver = match ShaderResolver::new(&pack_stack) {
+        Ok(r) => r,
+        Err(e) => {
+            // No shader root at all: nothing more to do, but still finalize
+            // the render-profile section so downstream report shape stays
+            // stable.
+            report.error(
+                Diagnostic::new(CHECK, format!("cannot build shader resolver: {e}"))
+                    .with_path("render/shaders".to_string()),
+            );
+            finalize_profiles(report);
+            return;
+        }
+    };
+
+    let enumerated = match resolver.enumerate_wgsl() {
+        Ok(list) => list,
+        Err(e) => {
+            report.error(
+                Diagnostic::new(CHECK, format!("cannot enumerate shaders: {e}"))
+                    .with_path("render/shaders".to_string()),
+            );
+            finalize_profiles(report);
+            return;
+        }
+    };
+
+    let enumerated_paths: BTreeSet<String> = enumerated
+        .iter()
+        .map(|e| rel_as_str(&e.relative_path))
+        .collect();
+
+    for expected in EXPECTED_SHADERS {
+        if !enumerated_paths.contains(*expected) {
+            let full = format!("render/shaders/{expected}");
+            report.error(
+                Diagnostic::new(CHECK, format!("expected shader is missing: {full}"))
+                    .with_path(full.clone())
+                    .with_suggestion("create the WGSL file or update vv-render::pipeline::graph"),
+            );
+            report.missing.shaders.push(full);
+        }
+    }
+
+    // 3. Expand + naga-parse every non-include shader (passes / features /
+    //    debug). Includes are implicitly validated because expansion inlines
+    //    them; if an include is broken, the expanded source naga-parse fails.
+    for entry in &enumerated {
+        let rel_str = rel_as_str(&entry.relative_path);
+        if is_include(&rel_str) {
+            continue;
+        }
+        validate_shader(&mut resolver, entry, report);
+    }
+
+    // 4. Includes that no pass ever pulled in are dead weight. After every
+    //    pass has been expanded, the resolver's resolved-paths set is the
+    //    closure of every file the engine would have touched at runtime.
+    let reached: BTreeSet<String> = resolver
+        .resolved_paths()
+        .into_iter()
+        .map(|p| rel_as_str(&p))
+        .collect();
+    for entry in &enumerated {
+        let rel_str = rel_as_str(&entry.relative_path);
+        if !is_include(&rel_str) {
+            continue;
+        }
+        if !reached.contains(&rel_str) {
             report.warn(
                 Diagnostic::new(CHECK, "shader include is not referenced by any pass")
-                    .with_path(file.rel_path.clone())
+                    .with_path(format!("render/shaders/{rel_str}"))
                     .with_suggestion("remove it or include it from a pass shader"),
             );
         }
     }
 
-    for expected in EXPECTED_SHADERS {
-        if !shader_paths.contains(*expected) {
-            continue;
-        }
-        report.unused.shaders.retain(|path| path != expected);
+    // 5. Override report: surface every pack-shadowed file. With a single
+    //    pack in the stack this is always empty, but we keep the hook so
+    //    multi-pack runs naturally produce diagnostics.
+    for ov in resolver.override_report().overrides {
+        report.warn(
+            Diagnostic::new(
+                CHECK,
+                format!(
+                    "shader overridden by '{}' (shadowed: [{}])",
+                    ov.winner,
+                    ov.shadowed.join(", ")
+                ),
+            )
+            .with_path(format!("render/shaders/{}", rel_as_str(&ov.relative_path))),
+        );
     }
 
+    // 6. Drop expected shaders from the unused list (they are intentionally
+    //    referenced by the engine even if the pack doesn't see a code path).
+    let expected_full: BTreeSet<String> = EXPECTED_SHADERS
+        .iter()
+        .map(|p| format!("render/shaders/{p}"))
+        .collect();
+    report.unused.shaders.retain(|path| !expected_full.contains(path));
+
+    finalize_profiles(report);
+}
+
+fn finalize_profiles(report: &mut Report) {
     report.planet.render_profiles = vec![
         profile_summary("potato", "Potato", false, "cheap", 0),
         profile_summary("balanced", "Balanced", true, "clean", 3),
@@ -133,20 +211,27 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
     report.planet.counts.render_profiles = report.planet.render_profiles.len();
 }
 
-fn profile_summary(
-    id: &str,
-    label: &str,
-    fog: bool,
-    water: &str,
-    enabled_features: usize,
-) -> RenderProfileSummary {
-    RenderProfileSummary {
-        id: format!("vv-render:{id}"),
-        label: label.to_string(),
-        quality_class: id.to_string(),
-        fog,
-        water: water.to_string(),
-        enabled_features,
+fn validate_shader(
+    resolver: &mut ShaderResolver,
+    entry: &EnumeratedShader,
+    report: &mut Report,
+) {
+    let rel_str = rel_as_str(&entry.relative_path);
+    let full = format!("render/shaders/{rel_str}");
+
+    let source = match resolver.expand(&entry.relative_path) {
+        Ok(src) => src,
+        Err(e) => {
+            report.error(
+                Diagnostic::new(CHECK, format!("shader expansion failed: {e}"))
+                    .with_path(full),
+            );
+            return;
+        }
+    };
+
+    if let Err(e) = shader::validate_wgsl(&source, &full) {
+        report.error(Diagnostic::new(CHECK, e).with_path(full));
     }
 }
 
@@ -175,138 +260,54 @@ fn check_duplicate_names(scan: &PackScan, report: &mut Report) {
     }
 }
 
-fn check_wgsl_source(
-    scan: &PackScan,
-    report: &mut Report,
-    rel_path: &str,
-    abs_path: &Path,
-    include_references: &mut BTreeSet<String>,
-) {
-    let Ok(source) = std::fs::read_to_string(abs_path) else {
-        report.error(
-            Diagnostic::new(CHECK, "cannot read WGSL source").with_path(rel_path.to_string()),
-        );
-        return;
-    };
-    if source.trim().is_empty() {
-        report
-            .error(Diagnostic::new(CHECK, "WGSL source is empty").with_path(rel_path.to_string()));
-    }
-    let line_count = source.lines().count();
-    if line_count > MAX_SHADER_LINES {
-        report.warn(
-            Diagnostic::new(
-                CHECK,
-                format!("WGSL source has {line_count} lines; split shared code into includes"),
-            )
-            .with_path(rel_path.to_string()),
-        );
-    }
-    for (open, close, name) in [
-        ('{', '}', "braces"),
-        ('(', ')', "parentheses"),
-        ('[', ']', "brackets"),
-    ] {
-        if !balanced_delimiters(&source, open, close) {
-            report.error(
-                Diagnostic::new(CHECK, format!("WGSL source has unbalanced {name}"))
-                    .with_path(rel_path.to_string()),
-            );
-        }
-    }
-
-    let base_dir = Path::new(rel_path)
-        .parent()
-        .unwrap_or_else(|| Path::new("render/shaders"));
-    for (line_index, line) in source.lines().enumerate() {
-        let Some(include) = parse_include(line) else {
+fn check_oversized_files(scan: &PackScan, report: &mut Report) {
+    for file in &scan.render.wgsl_files {
+        let Ok(metadata) = std::fs::metadata(&file.abs_path) else {
             continue;
         };
-        let include_rel = match resolve_include(base_dir, include) {
-            Ok(path) => path,
-            Err(error) => {
-                report.error(
-                    Diagnostic::new(CHECK, error)
-                        .with_path(rel_path.to_string())
-                        .with_field(format!("line {}", line_index + 1)),
-                );
-                continue;
-            }
-        };
-        let include_rel = include_rel.to_string_lossy().replace('\\', "/");
-        if !include_rel.starts_with("render/shaders/include/")
-            && !include_rel.starts_with("render/shaders/passes/")
-        {
+        if metadata.len() == 0 {
             report.error(
+                Diagnostic::new(CHECK, "WGSL source is empty").with_path(file.rel_path.clone()),
+            );
+            continue;
+        }
+        let Ok(source) = std::fs::read_to_string(&file.abs_path) else {
+            continue;
+        };
+        let lines = source.lines().count();
+        if lines > MAX_SHADER_LINES {
+            report.warn(
                 Diagnostic::new(
                     CHECK,
-                    format!("include points outside allowed include tree: {include}"),
+                    format!("WGSL source has {lines} lines; split shared code into includes"),
                 )
-                .with_path(rel_path.to_string())
-                .with_field(format!("line {}", line_index + 1)),
+                .with_path(file.rel_path.clone()),
             );
         }
-        if !scan.pack_root.join(&include_rel).is_file() {
-            report.error(
-                Diagnostic::new(CHECK, format!("include target is missing: {include_rel}"))
-                    .with_path(rel_path.to_string())
-                    .with_field(format!("line {}", line_index + 1)),
-            );
-        }
-        include_references.insert(include_rel);
     }
 }
 
-fn parse_include(line: &str) -> Option<&str> {
-    let rest = line.trim().strip_prefix("#include")?.trim();
-    rest.strip_prefix('"')?
-        .split_once('"')
-        .map(|(path, _)| path)
+fn profile_summary(
+    id: &str,
+    label: &str,
+    fog: bool,
+    water: &str,
+    enabled_features: usize,
+) -> RenderProfileSummary {
+    RenderProfileSummary {
+        id: format!("vv-render:{id}"),
+        label: label.to_string(),
+        quality_class: id.to_string(),
+        fog,
+        water: water.to_string(),
+        enabled_features,
+    }
 }
 
-fn resolve_include(base_dir: &Path, include: &str) -> Result<PathBuf, String> {
-    let include_path = Path::new(include);
-    if include_path.is_absolute() {
-        return Err(format!("absolute include path is forbidden: {include}"));
-    }
-    let mut joined = if include.starts_with("include/") || include.starts_with("passes/") {
-        PathBuf::from("render/shaders").join(include)
-    } else if include.starts_with("render/") {
-        PathBuf::from(include)
-    } else {
-        base_dir.join(include)
-    };
-    let mut normalized = PathBuf::new();
-    for component in joined.components() {
-        match component {
-            Component::Normal(part) => normalized.push(part),
-            Component::CurDir => {}
-            Component::ParentDir => {
-                if !normalized.pop() {
-                    return Err(format!("include escapes shader root: {include}"));
-                }
-            }
-            other => return Err(format!("unsupported include path component {other:?}")),
-        }
-    }
-    joined = normalized;
-    if !joined.starts_with("render/shaders/") {
-        return Err(format!("include escapes render/shaders: {include}"));
-    }
-    Ok(joined)
+fn rel_as_str(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
 }
 
-fn balanced_delimiters(source: &str, open: char, close: char) -> bool {
-    let mut depth = 0i32;
-    for c in source.chars() {
-        if c == open {
-            depth += 1;
-        } else if c == close {
-            depth -= 1;
-            if depth < 0 {
-                return false;
-            }
-        }
-    }
-    depth == 0
+fn is_include(rel: &str) -> bool {
+    rel.starts_with("include/")
 }

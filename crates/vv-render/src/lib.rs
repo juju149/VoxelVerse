@@ -18,7 +18,7 @@ pub use pipeline::graph::{RenderPassId, ShaderPath};
 pub use quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 pub use render_budget::RenderBudgetConfig;
 pub use renderer::{PlayerActionFeedback, Renderer};
-pub use shader::library::{PackShaderRoot, ShaderOverride, ShaderOverrideReport};
+pub use vv_pack_compiler::shader::{PackShaderRoot, ShaderOverride, ShaderOverrideReport};
 pub use snapshot::{
     RenderCamera, RenderConsoleSnapshot, RenderCraftIngredient, RenderCraftRecipe,
     RenderCraftSnapshot, RenderDebugFlags, RenderFrameSnapshot, RenderHeldStack,
