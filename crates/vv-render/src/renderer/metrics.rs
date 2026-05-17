@@ -35,7 +35,7 @@ impl<'a> Renderer<'a> {
             stats.pending_lods,
             stats.uploads_this_frame,
             stats.draw_calls + stats.shadow_draw_calls,
-            self.frame_stats.frame_time_ms(),
+            self.frame_metrics.frame_stats.frame_time_ms(),
             stats.gpu_memory_label(),
         );
     }
@@ -49,21 +49,7 @@ impl<'a> Renderer<'a> {
             gpu_indices += mesh.num_inds as usize;
         }
 
-        let meshing_avg_ms = if self.completed_mesh_count == 0 {
-            0.0
-        } else {
-            self.completed_mesh_time_sum_ms / self.completed_mesh_count as f32
-        };
-        let voxel_meshing_avg_ms = if self.completed_voxel_mesh_count == 0 {
-            0.0
-        } else {
-            self.completed_voxel_mesh_time_sum_ms / self.completed_voxel_mesh_count as f32
-        };
-        let lod_meshing_avg_ms = if self.completed_lod_mesh_count == 0 {
-            0.0
-        } else {
-            self.completed_lod_mesh_time_sum_ms / self.completed_lod_mesh_count as f32
-        };
+        let metrics = &self.frame_metrics;
 
         RenderStats {
             visible_chunks,
@@ -75,24 +61,24 @@ impl<'a> Renderer<'a> {
             pending_lods: self.pending_lods.len(),
             gpu_vertices,
             gpu_indices,
-            draw_calls: self.last_draw_calls,
-            shadow_draw_calls: self.last_shadow_draw_calls,
+            draw_calls: metrics.draw_calls,
+            shadow_draw_calls: metrics.shadow_draw_calls,
             // job/timing fields are zero-filled here; the caller may override them
             mesh_jobs_in_flight: self.pending_chunks.len(),
             lod_jobs_in_flight: self.pending_lods.len(),
             uploads_this_frame: self.scheduler_stats.uploaded_voxel
                 + self.scheduler_stats.uploaded_lod,
-            update_view_ms: self.update_view_ms,
-            lod_selection_ms: self.lod_selection_ms,
-            meshing_avg_ms,
-            meshing_max_ms: self.completed_mesh_time_max_ms,
-            voxel_meshing_avg_ms,
-            voxel_meshing_max_ms: self.completed_voxel_mesh_time_max_ms,
-            lod_meshing_avg_ms,
-            lod_meshing_max_ms: self.completed_lod_mesh_time_max_ms,
-            gpu_upload_ms: self.gpu_upload_ms,
-            terrain_draw_ms: self.last_terrain_draw_ms,
-            render_world_ms: self.last_render_ms,
+            update_view_ms: metrics.update_view_ms,
+            lod_selection_ms: metrics.lod_selection_ms,
+            meshing_avg_ms: metrics.all_mesh.average_ms(),
+            meshing_max_ms: metrics.all_mesh.max_ms,
+            voxel_meshing_avg_ms: metrics.voxel_mesh.average_ms(),
+            voxel_meshing_max_ms: metrics.voxel_mesh.max_ms,
+            lod_meshing_avg_ms: metrics.lod_mesh.average_ms(),
+            lod_meshing_max_ms: metrics.lod_mesh.max_ms,
+            gpu_upload_ms: metrics.gpu_upload_ms,
+            terrain_draw_ms: metrics.terrain_draw_ms,
+            render_world_ms: metrics.render_ms,
             render_ui_ms: 0.0,
         }
     }

@@ -27,6 +27,7 @@ Object(
 
     mining: (
         tool: any,
+        drops: [(item: "core:object/utility/torch")],
     ),
 
     recipes: [(

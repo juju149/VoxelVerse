@@ -111,6 +111,19 @@ fn object_rejects_unknown_fields() {
     assert!(err.contains("Unexpected field named `spawn`"), "{err}");
 }
 
+#[test]
+fn object_mining_requires_explicit_drops() {
+    let src = r##"Object(
+        name: "Stone",
+        block: (texture: all("blocks/stone/all")),
+        mining: (
+            tool: pickaxe,
+        ),
+    )"##;
+    let err = parse_err::<RawObjectDef>(strip_wrapper(src));
+    assert!(err.contains("Unexpected missing field `drops`"), "{err}");
+}
+
 // ── object.ron — recipes Vec + RawObjectRecipeKind enum ──────────────────────
 
 #[test]

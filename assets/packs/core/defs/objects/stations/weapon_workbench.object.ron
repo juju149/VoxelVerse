@@ -26,6 +26,7 @@ Object(
 
     mining: (
         tool: pickaxe,
+        drops: [(item: "core:object/stations/weapon_workbench")],
     ),
 
     recipes: [(

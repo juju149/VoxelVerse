@@ -1,17 +1,10 @@
 use crate::HotbarNotice;
 use vv_voxel::SurfaceChunkKey;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum BlockSoundKind {
-    #[default]
-    None,
-    Grass,
-    Stone,
-    Wood,
-    Sand,
-    Snow,
-    Dirt,
-}
+/// Sound-material classification for a block. Re-exports the compiled-pack
+/// form so gameplay, pack-compiler and audio agree on a single enum instead
+/// of maintaining parallel copies.
+pub type BlockSoundKind = vv_pack_compiler::CompiledSoundKind;
 
 #[derive(Debug, Clone, Copy)]
 pub enum GameFeedbackEvent {

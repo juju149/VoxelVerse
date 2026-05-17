@@ -516,7 +516,7 @@ impl<'a> Renderer<'a> {
                 main_draw_calls += 1;
             }
         }
-        self.last_terrain_draw_ms = terrain_draw_started.elapsed().as_secs_f32() * 1000.0;
+        self.frame_metrics.terrain_draw_ms = terrain_draw_started.elapsed().as_secs_f32() * 1000.0;
 
         // --- PASS 5: VOLUMETRIC FOG VEIL ---
         if render_passes.volumetric_fog {
@@ -533,16 +533,16 @@ impl<'a> Renderer<'a> {
 
         main_draw_calls += self.render_ui_mesh_pass(&mut enc, &view, camera.is_first_person);
 
-        self.last_draw_calls = main_draw_calls;
-        self.last_shadow_draw_calls = shadow_draw_calls;
+        self.frame_metrics.draw_calls = main_draw_calls;
+        self.frame_metrics.shadow_draw_calls = shadow_draw_calls;
 
-        self.frame_stats.tick();
+        self.frame_metrics.frame_stats.tick();
 
         self.render_text_pass(&mut enc, &view, frame, rendered_chunks, rendered_lods);
 
         self.queue.submit(std::iter::once(enc.finish()));
         out.present();
         self.text_atlas.trim();
-        self.last_render_ms = render_started.elapsed().as_secs_f32() * 1000.0;
+        self.frame_metrics.render_ms = render_started.elapsed().as_secs_f32() * 1000.0;
     }
 }

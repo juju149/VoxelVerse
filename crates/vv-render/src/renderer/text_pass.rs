@@ -123,7 +123,7 @@ impl<'a> Renderer<'a> {
     fn push_frame_stats_text(&self, pending: &mut Vec<PendingText>) {
         pending.push(PendingText {
             slot: TextSlot::FPS,
-            text: format!("FPS: {}", self.frame_stats.fps()),
+            text: format!("FPS: {}", self.frame_metrics.frame_stats.fps()),
             size: 20.0,
             color: [0, 255, 0],
             left: self.config.width as f32 - 120.0,
@@ -156,7 +156,7 @@ impl<'a> Renderer<'a> {
             .map(|id| format!("f{} l{} u{} v{}", id.face, id.layer, id.u, id.v));
         let info = stats.debug_overlay(
             status,
-            self.frame_stats.frame_time_ms(),
+            self.frame_metrics.frame_stats.frame_time_ms(),
             frame.camera.player_pos.to_array(),
             target,
         );

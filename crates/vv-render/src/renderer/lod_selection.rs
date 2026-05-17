@@ -35,7 +35,8 @@ impl<'a> Renderer<'a> {
             self.refresh_prop_lod_chunks(previous_player_chunk_pos, player_surface_key);
             let selection_started = std::time::Instant::now();
             self.rebuild_required_sets(view, planet, player_id, res);
-            self.lod_selection_ms = selection_started.elapsed().as_secs_f32() * 1000.0;
+            self.frame_metrics.lod_selection_ms =
+                selection_started.elapsed().as_secs_f32() * 1000.0;
         }
 
         self.receive_lod_meshes();
@@ -50,7 +51,7 @@ impl<'a> Renderer<'a> {
         self.process_load_queue(view.player_pos, planet);
         self.scheduler_stats.pending_voxel = self.pending_chunks.len();
         self.scheduler_stats.pending_lod = self.pending_lods.len();
-        self.update_view_ms = update_started.elapsed().as_secs_f32() * 1000.0;
+        self.frame_metrics.update_view_ms = update_started.elapsed().as_secs_f32() * 1000.0;
     }
 
     fn receive_lod_meshes(&mut self) {
@@ -135,7 +136,8 @@ impl<'a> Renderer<'a> {
             let snapshot = planet.snapshot();
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
-                let mesh = MeshGen::generate_lod_mesh(key, &snapshot);
+                let input = snapshot.prepare_lod_mesh_input(key);
+                let mesh = MeshGen::generate_lod_mesh(&input);
                 let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
                 let _ = tx.send(MeshJobResult {
                     key,

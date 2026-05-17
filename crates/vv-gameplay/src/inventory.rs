@@ -68,6 +68,19 @@ impl Inventory {
         true
     }
 
+    pub fn available_capacity(&self, item_id: ItemId, max_stack: u32) -> u32 {
+        self.slots
+            .iter()
+            .map(|slot| match slot {
+                Some(slot) if slot.item_id == item_id && slot.quantity < max_stack => {
+                    max_stack - slot.quantity
+                }
+                None => max_stack,
+                _ => 0,
+            })
+            .sum()
+    }
+
     /// Stack same-item slots into single entries and sort by ItemId.
     pub fn sort(&mut self) {
         let mut totals: HashMap<ItemId, u32> = HashMap::new();

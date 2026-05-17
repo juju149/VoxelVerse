@@ -1,9 +1,9 @@
 use crate::{
     BlockAction, BlockActionIntent, BlockInteraction, BlockSelection, BlockSelectionMode,
-    BlockSoundKind, Controller, CursorCapture, GameActionResult, GameFeedbackEvent, Hotbar,
-    HotbarNotice, Inventory, MiningFeedback, MiningState, MiningStrikeInput, Player,
+    Controller, CursorCapture, GameActionResult, GameFeedbackEvent, Hotbar, HotbarNotice,
+    Inventory, MiningFeedback, MiningState, MiningStrikeInput, Player,
 };
-use vv_pack_compiler::{CompiledSoundKind, ItemId, LootRegistry};
+use vv_pack_compiler::{ItemId, LootRegistry};
 use vv_world::{BlockDamageResult, PlanetData};
 
 pub struct PlaceBlockContext<'a> {
@@ -78,7 +78,7 @@ pub fn place_block(ctx: PlaceBlockContext<'_>) -> GameActionResult {
             ctx.hotbar.consume_selected();
             let sound_kind = active_voxel
                 .and_then(|voxel| ctx.planet.block(voxel))
-                .map(|block| block_sound(block.sound_kind))
+                .map(|block| block.sound_kind)
                 .unwrap_or_default();
             result.push_feedback(GameFeedbackEvent::BlockPlace { sound_kind });
             result.push_dirty_chunks(edit.dirty_chunks);
@@ -125,7 +125,7 @@ pub fn mine_block(ctx: MineBlockContext<'_>, dt: f32) -> GameActionResult {
             let sound_kind = ctx
                 .planet
                 .block(voxel)
-                .map(|block| block_sound(block.sound_kind))
+                .map(|block| block.sound_kind)
                 .unwrap_or_default();
             result.push_feedback(GameFeedbackEvent::ToolSwing {
                 strength: impact_strength,
@@ -168,6 +168,20 @@ pub fn mine_block(ctx: MineBlockContext<'_>, dt: f32) -> GameActionResult {
 
 fn break_block(ctx: BreakBlockContext<'_>) -> GameActionResult {
     let mut result = GameActionResult::none();
+    let drops = if ctx.drops_enabled {
+        ctx.planet
+            .block(ctx.voxel)
+            .map(|block| roll_block_drops(&block.drops_key, ctx.loot))
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    if !can_collect_drops(&drops, ctx.planet, ctx.hotbar, ctx.inventory) {
+        result.push_hotbar_notice(HotbarNotice::Full);
+        result.push_redraw();
+        return result;
+    }
+
     let edit = BlockInteraction::apply(BlockAction::Mine(ctx.coord), ctx.planet);
     if edit.dirty_chunks.is_empty() {
         result.push_hotbar_notice(HotbarNotice::ProtectedBlock);
@@ -175,34 +189,56 @@ fn break_block(ctx: BreakBlockContext<'_>) -> GameActionResult {
         return result;
     }
 
-    if ctx.drops_enabled {
-        if let Some(block) = ctx.planet.block(ctx.voxel) {
-            let mut inventory_full = false;
-            for (item_id, count) in roll_block_drops(&block.drops_key, ctx.loot) {
-                if collect_drop(item_id, count, ctx.planet, ctx.hotbar, ctx.inventory) {
-                    inventory_full = true;
-                }
-            }
-            if inventory_full {
-                result.push_hotbar_notice(HotbarNotice::Full);
-            }
-        }
+    for (item_id, count) in drops {
+        let max_stack = max_stack_for_item(item_id, ctx.planet);
+        let collected = collect_drop(item_id, count, max_stack, ctx.hotbar, ctx.inventory);
+        debug_assert!(collected, "drop capacity was checked before breaking block");
     }
     result.push_dirty_chunks(edit.dirty_chunks);
     result.push_redraw();
     result
 }
 
+fn can_collect_drops(
+    drops: &[(ItemId, u32)],
+    planet: &PlanetData,
+    hotbar: &Hotbar,
+    inventory: &Inventory,
+) -> bool {
+    let mut hotbar = hotbar.clone();
+    let mut inventory = inventory.clone();
+    drops.iter().all(|(item_id, count)| {
+        collect_drop(
+            *item_id,
+            *count,
+            max_stack_for_item(*item_id, planet),
+            &mut hotbar,
+            &mut inventory,
+        )
+    })
+}
+
 fn collect_drop(
     item_id: ItemId,
     count: u32,
-    planet: &PlanetData,
+    max_stack: u32,
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
 ) -> bool {
-    let item = planet.item(item_id);
-    let max_stack = item.map(|i| i.stack_size.0).unwrap_or(99);
-    !hotbar.add(item_id, count, max_stack) && !inventory.add(item_id, count, max_stack)
+    if hotbar
+        .available_capacity(item_id, max_stack)
+        .saturating_add(inventory.available_capacity(item_id, max_stack))
+        < count
+    {
+        return false;
+    }
+
+    let to_hotbar = count.min(hotbar.available_capacity(item_id, max_stack));
+    if to_hotbar > 0 && !hotbar.add(item_id, to_hotbar, max_stack) {
+        return false;
+    }
+    let remaining = count - to_hotbar;
+    remaining == 0 || inventory.add(item_id, remaining, max_stack)
 }
 
 fn roll_block_drops(drops_key: &str, loot: &LootRegistry) -> Vec<(ItemId, u32)> {
@@ -212,14 +248,69 @@ fn roll_block_drops(drops_key: &str, loot: &LootRegistry) -> Vec<(ItemId, u32)> 
     }
 }
 
-fn block_sound(kind: CompiledSoundKind) -> BlockSoundKind {
-    match kind {
-        CompiledSoundKind::None => BlockSoundKind::None,
-        CompiledSoundKind::Grass => BlockSoundKind::Grass,
-        CompiledSoundKind::Stone => BlockSoundKind::Stone,
-        CompiledSoundKind::Wood => BlockSoundKind::Wood,
-        CompiledSoundKind::Sand => BlockSoundKind::Sand,
-        CompiledSoundKind::Snow => BlockSoundKind::Snow,
-        CompiledSoundKind::Dirt => BlockSoundKind::Dirt,
+fn max_stack_for_item(item_id: ItemId, planet: &PlanetData) -> u32 {
+    planet.item(item_id).map(|i| i.stack_size.0).unwrap_or(99)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::collect_drop;
+    use crate::{Hotbar, Inventory, ItemStack, HOTBAR_SLOT_COUNT, INVENTORY_SIZE};
+    use vv_pack_compiler::ItemId;
+
+    const MAX_STACK: u32 = 99;
+
+    fn id(raw: u32) -> ItemId {
+        ItemId::from_raw(raw)
+    }
+
+    #[test]
+    fn collecting_drop_splits_between_hotbar_and_inventory() {
+        let mut hotbar = Hotbar::new();
+        let mut inventory = Inventory::new();
+        assert!(hotbar.add(id(1), 98, MAX_STACK));
+        for index in 1..HOTBAR_SLOT_COUNT {
+            assert!(hotbar.add(id(index as u32 + 10), MAX_STACK, MAX_STACK));
+        }
+
+        assert!(collect_drop(
+            id(1),
+            3,
+            MAX_STACK,
+            &mut hotbar,
+            &mut inventory
+        ));
+
+        assert_eq!(hotbar.slots()[0].unwrap().quantity, 99);
+        assert_eq!(inventory.slot(0).unwrap().item_id, id(1));
+        assert_eq!(inventory.slot(0).unwrap().quantity, 2);
+    }
+
+    #[test]
+    fn collecting_drop_rejects_full_storage_without_partial_mutation() {
+        let mut hotbar = Hotbar::new();
+        let mut inventory = Inventory::new();
+        for index in 0..HOTBAR_SLOT_COUNT {
+            assert!(hotbar.add(id(index as u32 + 10), MAX_STACK, MAX_STACK));
+        }
+        for index in 0..INVENTORY_SIZE {
+            assert!(inventory.set(
+                index,
+                Some(ItemStack::new(id(index as u32 + 100), MAX_STACK))
+            ));
+        }
+        let hotbar_before = *hotbar.slots();
+        let inventory_before = *inventory.slots();
+
+        assert!(!collect_drop(
+            id(1),
+            1,
+            MAX_STACK,
+            &mut hotbar,
+            &mut inventory
+        ));
+
+        assert_eq!(*hotbar.slots(), hotbar_before);
+        assert_eq!(*inventory.slots(), inventory_before);
     }
 }

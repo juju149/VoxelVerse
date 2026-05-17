@@ -8,6 +8,7 @@ vv-voxel = { path = "../vv-voxel" }
 vv-math = { path = "../vv-math" }
 vv-worldgen = { path = "../vv-worldgen" }
 vv-pack-compiler = { path = "../vv-pack-compiler" }
+vv-meshing = { path = "../vv-meshing" }
 
 dot_vox.workspace = true
 glam.workspace = true

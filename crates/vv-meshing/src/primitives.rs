@@ -1,12 +1,16 @@
 use super::{CpuMesh, CpuVertex, MeshGen};
 use glam::Vec3;
-use vv_pack_compiler::TerrainPalette;
+
+/// Color constants used by debug and primitive meshes.
+mod palette {
+    pub const PLAYER: [f32; 3] = [0.0, 0.5, 1.0];
+}
 
 impl MeshGen {
     pub fn generate_cylinder(radius: f32, height: f32, segments: u32) -> CpuMesh {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
-        let color = TerrainPalette::PLAYER;
+        let color = palette::PLAYER;
 
         for i in 0..=segments {
             let theta = (i as f32 / segments as f32) * std::f32::consts::TAU;
@@ -77,7 +81,7 @@ impl MeshGen {
     /// Generates a simple 2D crosshair for the center of the screen.
     pub fn generate_crosshair() -> CpuMesh {
         let s = 0.02; // size relative to screen (2%)
-        let color = TerrainPalette::UI_WHITE;
+        let color = [1.0_f32, 1.0, 1.0];
         let normal = [0.0, 0.0, 1.0];
 
         let verts = vec![

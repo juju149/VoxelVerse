@@ -12,7 +12,6 @@ use bytemuck::{Pod, Zeroable};
 use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{Receiver, Sender};
-use vv_diagnostics::FrameStats;
 use vv_math::Frustum;
 use vv_meshing::{CpuMesh, VoxelMeshingConfig};
 use vv_meshing::{MeshScheduler, SchedulerStats};
@@ -20,6 +19,7 @@ use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord};
 use vv_world::PlanetData;
 use winit::window::Window;
 
+use frame_metrics::FrameMetrics;
 use gpu_scene::GpuScene;
 
 // --- UNIFORMS ---
@@ -162,24 +162,7 @@ pub struct Renderer<'a> {
 
     scheduler: MeshScheduler,
     scheduler_stats: SchedulerStats,
-    completed_mesh_time_sum_ms: f32,
-    completed_mesh_time_max_ms: f32,
-    completed_mesh_count: usize,
-    completed_voxel_mesh_time_sum_ms: f32,
-    completed_voxel_mesh_time_max_ms: f32,
-    completed_voxel_mesh_count: usize,
-    completed_lod_mesh_time_sum_ms: f32,
-    completed_lod_mesh_time_max_ms: f32,
-    completed_lod_mesh_count: usize,
-    update_view_ms: f32,
-    lod_selection_ms: f32,
-    gpu_upload_ms: f32,
-    last_terrain_draw_ms: f32,
-    last_render_ms: f32,
-    last_draw_calls: usize,
-    last_shadow_draw_calls: usize,
-
-    frame_stats: FrameStats,
+    frame_metrics: FrameMetrics,
     engine_debug_page: bool,
 
     // --- QUALITY ---
@@ -242,6 +225,7 @@ mod collision_debug_renderer;
 mod debug_draw;
 mod first_person_item;
 mod fog_renderer;
+mod frame_metrics;
 mod gpu_scene;
 mod hand_animation;
 mod inventory;
@@ -298,38 +282,14 @@ impl<'a> Renderer<'a> {
 
     fn reset_streaming_frame_stats(&mut self) {
         self.scheduler_stats = SchedulerStats::default();
-        self.completed_mesh_time_sum_ms = 0.0;
-        self.completed_mesh_time_max_ms = 0.0;
-        self.completed_mesh_count = 0;
-        self.completed_voxel_mesh_time_sum_ms = 0.0;
-        self.completed_voxel_mesh_time_max_ms = 0.0;
-        self.completed_voxel_mesh_count = 0;
-        self.completed_lod_mesh_time_sum_ms = 0.0;
-        self.completed_lod_mesh_time_max_ms = 0.0;
-        self.completed_lod_mesh_count = 0;
-        self.update_view_ms = 0.0;
-        self.lod_selection_ms = 0.0;
-        self.gpu_upload_ms = 0.0;
-    }
-
-    fn record_mesh_time(&mut self, elapsed_ms: f32) {
-        self.completed_mesh_time_sum_ms += elapsed_ms;
-        self.completed_mesh_time_max_ms = self.completed_mesh_time_max_ms.max(elapsed_ms);
-        self.completed_mesh_count += 1;
+        self.frame_metrics.reset_streaming();
     }
 
     fn record_voxel_mesh_time(&mut self, elapsed_ms: f32) {
-        self.record_mesh_time(elapsed_ms);
-        self.completed_voxel_mesh_time_sum_ms += elapsed_ms;
-        self.completed_voxel_mesh_time_max_ms =
-            self.completed_voxel_mesh_time_max_ms.max(elapsed_ms);
-        self.completed_voxel_mesh_count += 1;
+        self.frame_metrics.record_voxel_mesh_time(elapsed_ms);
     }
 
     fn record_lod_mesh_time(&mut self, elapsed_ms: f32) {
-        self.record_mesh_time(elapsed_ms);
-        self.completed_lod_mesh_time_sum_ms += elapsed_ms;
-        self.completed_lod_mesh_time_max_ms = self.completed_lod_mesh_time_max_ms.max(elapsed_ms);
-        self.completed_lod_mesh_count += 1;
+        self.frame_metrics.record_lod_mesh_time(elapsed_ms);
     }
 }

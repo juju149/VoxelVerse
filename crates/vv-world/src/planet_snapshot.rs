@@ -9,7 +9,7 @@
 //! pays the copy-on-write cost when a worker is still holding the previous
 //! version.
 
-use crate::{BrokenPropLayer, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime};
+use crate::{BrokenPropLayer, PlanetData, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime};
 use std::sync::Arc;
 use vv_pack_compiler::BlockRegistry;
 use vv_voxel::{PlanetProfile, SurfaceChunkKey, VoxelCoord, VoxelId};
@@ -62,5 +62,34 @@ impl PlanetSnapshot {
         self.voxels
             .iter_column_overrides(key.face, key.u_idx, key.v_idx)
             .filter(move |(coord, _)| coord.u < self.resolution && coord.v < self.resolution)
+    }
+}
+
+impl PlanetData {
+    /// Build a cheap read-only snapshot for off-thread mesh workers.
+    /// Every field is either an `Arc` clone (refcount bump) or a `Copy` value.
+    pub fn snapshot(&self) -> PlanetSnapshot {
+        PlanetSnapshot {
+            voxels: Arc::clone(&self.voxels),
+            broken_props: Arc::clone(&self.broken_props),
+            content: Arc::clone(&self.content),
+            terrain_visuals: Arc::clone(&self.terrain_visuals),
+            prop_models: Arc::clone(&self.prop_models),
+            terrain: self.terrain.clone(),
+            profile: self.profile,
+            resolution: self.resolution,
+            has_core: self.has_core,
+            core_voxel: self.block_ids.core,
+            player_surface_key: self.player_surface_key,
+        }
+    }
+
+    pub fn snapshot_with_player_surface_key(
+        &self,
+        player_surface_key: Option<SurfaceChunkKey>,
+    ) -> PlanetSnapshot {
+        let mut snapshot = self.snapshot();
+        snapshot.player_surface_key = player_surface_key;
+        snapshot
     }
 }

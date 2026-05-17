@@ -1,4 +1,4 @@
-use super::{GlobalUniform, GpuScene, LocalUniform, Renderer};
+use super::{FrameMetrics, GlobalUniform, GpuScene, LocalUniform, Renderer};
 use crate::atmosphere::AtmosphereConfig;
 use crate::lod_animation::LodAnimator;
 use crate::perf_profile::{PerfProfile, PerfTier};
@@ -9,7 +9,7 @@ use crate::texture_atlas::TextureAtlas;
 use crate::types::Vertex;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
-use vv_diagnostics::{FrameStats, SystemDiagnostics};
+use vv_diagnostics::SystemDiagnostics;
 use vv_meshing::MeshGen;
 use vv_meshing::{MeshScheduler, SchedulerStats};
 use vv_pack_compiler::shader::PackShaderRoot;
@@ -494,26 +494,9 @@ impl<'a> Renderer<'a> {
             pending_lods: HashSet::new(),
             scheduler: MeshScheduler::new(perf.render_budget.mesh_scheduler),
             scheduler_stats: SchedulerStats::default(),
+            frame_metrics: FrameMetrics::new(),
             hotbar_cache_signature: None,
             block_damage_cache_signature: None,
-            completed_mesh_time_sum_ms: 0.0,
-            completed_mesh_time_max_ms: 0.0,
-            completed_mesh_count: 0,
-            completed_voxel_mesh_time_sum_ms: 0.0,
-            completed_voxel_mesh_time_max_ms: 0.0,
-            completed_voxel_mesh_count: 0,
-            completed_lod_mesh_time_sum_ms: 0.0,
-            completed_lod_mesh_time_max_ms: 0.0,
-            completed_lod_mesh_count: 0,
-            update_view_ms: 0.0,
-            lod_selection_ms: 0.0,
-            gpu_upload_ms: 0.0,
-            last_terrain_draw_ms: 0.0,
-            last_render_ms: 0.0,
-            last_draw_calls: 0,
-            last_shadow_draw_calls: 0,
-
-            frame_stats: FrameStats::new(),
             engine_debug_page: false,
             quality: perf.quality,
             shadow_map_size: perf.shadow_map_size,

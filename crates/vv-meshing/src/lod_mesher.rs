@@ -2,241 +2,102 @@
 //!
 //! Each LOD tile is divided into LOD_GRID_RES × LOD_GRID_RES "macro-voxels".
 //! One macro-voxel covers `tile_size / LOD_GRID_RES` base voxels per side, so
-//! the macro size doubles every LOD level (2, 4, 8, 16, 32… base voxels) — the
-//! progression the engine needs to keep the cubic voxel aesthetic continuous
-//! from the player all the way to the planet horizon.
+//! the macro size doubles every LOD level (2, 4, 8, 16, 32... base voxels).
 //!
-//! For each macro cell we emit:
-//!   * a top quad at the cell's height (max of its four corner samples), and
-//!   * up to four vertical side walls down to each neighbour's height (or a
-//!     fixed skirt depth when the neighbour belongs to a different LOD tile).
-//!
-//! Vertex colours are baked from the same biome / surface block tables the
-//! voxel mesher uses, so distant terrain reads as the same material seen up
-//! close — no texture sampling is performed (the LOD mesh stays on the
-//! `VERTEX_COLOR_MATERIAL_SENTINEL` material).
+//! The mesher receives a `LodMeshInput` with all heights and colors already
+//! computed by the world layer.  No world references remain here.
 
 use super::{CpuMesh, CpuVertex, MeshGen, VERTEX_COLOR_MATERIAL_SENTINEL};
+use crate::lod_input::{LodCellColors, LodMeshInput};
 use glam::Vec3;
-use vv_pack_compiler::TerrainPalette;
-use vv_voxel::{LodKey, CHUNK_SIZE};
-use vv_world::{PlanetGeometry, PlanetSnapshot};
+use vv_math::CoordSystem;
+use vv_voxel::CHUNK_SIZE;
 
-/// Cells per side per LOD tile.  Equal to `CHUNK_SIZE` so the macro-voxel size
-/// matches one base voxel chunk at the smallest LOD level and doubles cleanly
-/// from there.
 const LOD_GRID_RES: u32 = CHUNK_SIZE;
-
-/// Distant LOD walls exist to close geometry, not to draw a chunk grid.
-/// Keep them almost surface-colored and shade them with radial normals.
-const LOD_WALL_SURFACE_MIX: f32 = 0.82;
 const LOD_WALL_SHADE_SCALE: f32 = 0.995;
 
 impl MeshGen {
-    pub fn generate_lod_mesh(key: LodKey, data: &PlanetSnapshot) -> CpuMesh {
+    pub fn generate_lod_mesh(input: &LodMeshInput) -> CpuMesh {
+        let key = input.key;
         let n = LOD_GRID_RES;
-        // Base-voxel size of one macro cell.  `key.size` is the tile width in
-        // base voxels; `step` divides it into `n` cells.  Clamped to at least 1
-        // to keep things well-defined for tiles smaller than the grid (which
-        // the quadtree never emits today but the guard costs nothing).
         let step = (key.size / n).max(1);
-        let res = data.resolution;
-
-        // Sample heights at the (n+1) × (n+1) cell corners.  Cells later read
-        // four corners and take the max so the top sits on the upper envelope
-        // of the heightfield — prevents the LOD from punching below real
-        // terrain when ground rises steeply between samples.
-        let corner_side = (n + 1) as usize;
-        let mut h_corners = Vec::with_capacity(corner_side * corner_side);
-        for cj in 0..=n {
-            for ci in 0..=n {
-                let u = (key.x + ci * step).min(res.saturating_sub(1));
-                let v = (key.y + cj * step).min(res.saturating_sub(1));
-                h_corners.push(data.terrain.terrain_surface_layer(key.face, u, v));
-            }
-        }
-        let cell_h = |i: u32, j: u32| -> u32 {
-            let c00 = h_corners[(j as usize) * corner_side + i as usize];
-            let c10 = h_corners[(j as usize) * corner_side + (i + 1) as usize];
-            let c01 = h_corners[((j + 1) as usize) * corner_side + i as usize];
-            let c11 = h_corners[((j + 1) as usize) * corner_side + (i + 1) as usize];
-            c00.max(c10).max(c01).max(c11)
-        };
-
-        let mut heights = vec![0u32; (n * n) as usize];
-        let mut water_cells = vec![false; (n * n) as usize];
-        let water_color = lod_water_color(data);
-        let sea_level = data.terrain.sea_level_layer();
-
-        let sample_cell_display_height = |u0: u32, u1: u32, v0: u32, v1: u32| -> u32 {
-            let max_index = res.saturating_sub(1);
-            let u0 = u0.min(max_index);
-            let u1 = u1.min(max_index);
-            let v0 = v0.min(max_index);
-            let v1 = v1.min(max_index);
-
-            let terrain_height = data
-                .terrain
-                .terrain_surface_layer(key.face, u0, v0)
-                .max(data.terrain.terrain_surface_layer(key.face, u1, v0))
-                .max(data.terrain.terrain_surface_layer(key.face, u0, v1))
-                .max(data.terrain.terrain_surface_layer(key.face, u1, v1));
-
-            let is_water = water_color.is_some() && terrain_height < sea_level;
-            lod_display_height(terrain_height, sea_level, is_water)
-        };
-        for j in 0..n {
-            for i in 0..n {
-                let terrain_height = cell_h(i, j);
-                let is_water = water_color.is_some() && terrain_height < sea_level;
-                let idx = (j * n + i) as usize;
-                heights[idx] = lod_display_height(terrain_height, sea_level, is_water);
-                water_cells[idx] = is_water;
-            }
-        }
-
-        // Skirt depth (layers) at tile boundary so neighbouring LOD tiles at
-        // different resolutions never reveal a gap underneath.
-        let radius = data.profile.surface_radius;
-        let tile_phys = (key.size as f32 / res as f32) * radius;
-        let skirt_layers =
-            ((tile_phys * 0.10) / data.profile.layer_height.max(1e-3)).clamp(4.0, 800.0) as u32;
+        let grid_res = input.grid.resolution;
 
         let mut verts: Vec<CpuVertex> = Vec::with_capacity(((n * n) * 5 * 4) as usize / 4);
         let mut inds: Vec<u32> = Vec::with_capacity(((n * n) * 5 * 6) as usize / 4);
 
+        let vp = |u: u32, v: u32, layer: u32| -> Vec3 {
+            let u = u.min(grid_res.saturating_sub(1));
+            let v = v.min(grid_res.saturating_sub(1));
+            CoordSystem::get_vertex_pos(key.face, u, v, layer, input.grid)
+        };
+
         for cj in 0..n {
             for ci in 0..n {
                 let cell_idx = (cj * n + ci) as usize;
-                let h = heights[cell_idx];
-                let is_water = water_cells[cell_idx];
+                let h = input.cell_heights[cell_idx];
+                let LodCellColors { top: top_color, wall: wall_color, .. } =
+                    input.cell_colors[cell_idx];
 
-                // Cell extent on the planet grid (in base voxels).  Clamped to
-                // the planet resolution so edge cells fall back onto the same
-                // boundary sample, matching what `cell_h` saw.
-                let u0 = (key.x + ci * step).min(res);
-                let u1 = (key.x + (ci + 1) * step).min(res);
-                let v0 = (key.y + cj * step).min(res);
-                let v1 = (key.y + (cj + 1) * step).min(res);
+                let u0 = (key.x + ci * step).min(grid_res);
+                let u1 = (key.x + (ci + 1) * step).min(grid_res);
+                let v0 = (key.y + cj * step).min(grid_res);
+                let v1 = (key.y + (cj + 1) * step).min(grid_res);
 
-                // Mid-sample drives colour / biome lookup.  Clamped to a valid
-                // grid index.
-                let mid_u = (u0 + (u1 - u0) / 2).min(res.saturating_sub(1));
-                let mid_v = (v0 + (v1 - v0) / 2).min(res.saturating_sub(1));
-
-                let p_bl = PlanetGeometry::get_vertex_pos(key.face, u0, v0, h, data.profile);
-                let p_br = PlanetGeometry::get_vertex_pos(key.face, u1, v0, h, data.profile);
-                let p_tr = PlanetGeometry::get_vertex_pos(key.face, u1, v1, h, data.profile);
-                let p_tl = PlanetGeometry::get_vertex_pos(key.face, u0, v1, h, data.profile);
+                let p_bl = vp(u0, v0, h);
+                let p_br = vp(u1, v0, h);
+                let p_tr = vp(u1, v1, h);
+                let p_tl = vp(u0, v1, h);
 
                 let cell_center = (p_bl + p_br + p_tr + p_tl) * 0.25;
                 let radial = cell_center.normalize_or_zero();
-                let slope = 1.0_f32; // top face is by construction radial-aligned at LOD scale
-                let top_color = if is_water {
-                    water_color.unwrap_or([0.08, 0.30, 0.62])
-                } else {
-                    lod_surface_color(key.face, mid_u, mid_v, h, slope, data)
-                };
-                let wall_color = if is_water {
-                    scale_color(top_color, LOD_WALL_SHADE_SCALE)
-                } else {
-                    let terrain_wall = lod_wall_color(key.face, mid_u, mid_v, h, data);
-                    scale_color(
-                        mix(terrain_wall, top_color, LOD_WALL_SURFACE_MIX),
-                        LOD_WALL_SHADE_SCALE,
-                    )
-                };
 
-                push_quad(
-                    &mut verts,
-                    &mut inds,
-                    [p_bl, p_br, p_tr, p_tl],
-                    radial.to_array(),
-                    top_color,
-                );
+                push_quad(&mut verts, &mut inds, [p_bl, p_br, p_tr, p_tl], radial.to_array(), top_color);
+
+                let wall_c = scale_color(wall_color, LOD_WALL_SHADE_SCALE);
 
                 let mut emit_wall = |bl: Vec3, br: Vec3, tr: Vec3, tl: Vec3| {
-                    // LOD walls close height gaps but should shade like the planet surface.
-                    // Geometric side normals made every tiny height step read as a black grid.
-                    push_quad(
-                        &mut verts,
-                        &mut inds,
-                        [bl, br, tr, tl],
-                        radial.to_array(),
-                        wall_color,
-                    );
+                    push_quad(&mut verts, &mut inds, [bl, br, tr, tl], radial.to_array(), wall_c);
                 };
 
-                // -U wall (at u = u0)
+                // -U wall
                 let nh = if ci == 0 {
-                    if u0 > 0 {
-                        sample_cell_display_height(u0.saturating_sub(step), u0, v0, v1)
-                    } else {
-                        h.saturating_sub(skirt_layers)
-                    }
+                    h.saturating_sub(input.skirt_layers)
                 } else {
-                    heights[(cj * n + ci - 1) as usize]
+                    input.cell_heights[(cj * n + ci - 1) as usize]
                 };
                 if nh < h {
-                    let bl = PlanetGeometry::get_vertex_pos(key.face, u0, v0, nh, data.profile);
-                    let br = PlanetGeometry::get_vertex_pos(key.face, u0, v1, nh, data.profile);
-                    let tr = PlanetGeometry::get_vertex_pos(key.face, u0, v1, h, data.profile);
-                    let tl = PlanetGeometry::get_vertex_pos(key.face, u0, v0, h, data.profile);
-                    emit_wall(bl, br, tr, tl);
+                    emit_wall(vp(u0, v0, nh), vp(u0, v1, nh), vp(u0, v1, h), vp(u0, v0, h));
                 }
 
-                // +U wall (at u = u1)
+                // +U wall
                 let nh = if ci == n - 1 {
-                    if u1 < res {
-                        sample_cell_display_height(u1, (u1 + step).min(res), v0, v1)
-                    } else {
-                        h.saturating_sub(skirt_layers)
-                    }
+                    h.saturating_sub(input.skirt_layers)
                 } else {
-                    heights[(cj * n + ci + 1) as usize]
+                    input.cell_heights[(cj * n + ci + 1) as usize]
                 };
                 if nh < h {
-                    let bl = PlanetGeometry::get_vertex_pos(key.face, u1, v1, nh, data.profile);
-                    let br = PlanetGeometry::get_vertex_pos(key.face, u1, v0, nh, data.profile);
-                    let tr = PlanetGeometry::get_vertex_pos(key.face, u1, v0, h, data.profile);
-                    let tl = PlanetGeometry::get_vertex_pos(key.face, u1, v1, h, data.profile);
-                    emit_wall(bl, br, tr, tl);
+                    emit_wall(vp(u1, v1, nh), vp(u1, v0, nh), vp(u1, v0, h), vp(u1, v1, h));
                 }
 
-                // -V wall (at v = v0)
+                // -V wall
                 let nh = if cj == 0 {
-                    if v0 > 0 {
-                        sample_cell_display_height(u0, u1, v0.saturating_sub(step), v0)
-                    } else {
-                        h.saturating_sub(skirt_layers)
-                    }
+                    h.saturating_sub(input.skirt_layers)
                 } else {
-                    heights[((cj - 1) * n + ci) as usize]
+                    input.cell_heights[((cj - 1) * n + ci) as usize]
                 };
                 if nh < h {
-                    let bl = PlanetGeometry::get_vertex_pos(key.face, u1, v0, nh, data.profile);
-                    let br = PlanetGeometry::get_vertex_pos(key.face, u0, v0, nh, data.profile);
-                    let tr = PlanetGeometry::get_vertex_pos(key.face, u0, v0, h, data.profile);
-                    let tl = PlanetGeometry::get_vertex_pos(key.face, u1, v0, h, data.profile);
-                    emit_wall(bl, br, tr, tl);
+                    emit_wall(vp(u1, v0, nh), vp(u0, v0, nh), vp(u0, v0, h), vp(u1, v0, h));
                 }
 
-                // +V wall (at v = v1)
+                // +V wall
                 let nh = if cj == n - 1 {
-                    if v1 < res {
-                        sample_cell_display_height(u0, u1, v1, (v1 + step).min(res))
-                    } else {
-                        h.saturating_sub(skirt_layers)
-                    }
+                    h.saturating_sub(input.skirt_layers)
                 } else {
-                    heights[((cj + 1) * n + ci) as usize]
+                    input.cell_heights[((cj + 1) * n + ci) as usize]
                 };
                 if nh < h {
-                    let bl = PlanetGeometry::get_vertex_pos(key.face, u0, v1, nh, data.profile);
-                    let br = PlanetGeometry::get_vertex_pos(key.face, u1, v1, nh, data.profile);
-                    let tr = PlanetGeometry::get_vertex_pos(key.face, u1, v1, h, data.profile);
-                    let tl = PlanetGeometry::get_vertex_pos(key.face, u0, v1, h, data.profile);
-                    emit_wall(bl, br, tr, tl);
+                    emit_wall(vp(u0, v1, nh), vp(u1, v1, nh), vp(u1, v1, h), vp(u0, v1, h));
                 }
             }
         }
@@ -266,121 +127,6 @@ fn push_quad(
     inds.extend_from_slice(&[base, base + 2, base + 1, base + 3, base + 2, base]);
 }
 
-fn lod_display_height(terrain_height: u32, sea_level: u32, has_water: bool) -> u32 {
-    if has_water {
-        sea_level
-    } else {
-        terrain_height
-    }
-}
-
-fn lod_water_color(data: &PlanetSnapshot) -> Option<[f32; 3]> {
-    let water = data.terrain.water_block()?;
-    if water == vv_voxel::VoxelId::AIR {
-        return None;
-    }
-    Some(data.terrain_visuals.block_color(water))
-}
-
-fn lod_surface_color(
-    face: u8,
-    u: u32,
-    v: u32,
-    height: u32,
-    slope: f32,
-    data: &PlanetSnapshot,
-) -> [f32; 3] {
-    if data.has_core && height < data.profile.core_layers {
-        return TerrainPalette::LOD_CORE;
-    }
-    let res = data.resolution;
-    let u = u.min(res.saturating_sub(1));
-    let v = v.min(res.saturating_sub(1));
-    let biome = data
-        .terrain
-        .registry()
-        .biome(data.terrain.get_biome_id(face, u, v) as usize);
-    let (surface_block, subsurface_block) = data.terrain.lod_surface_blocks(face, u, v);
-    let surface_color = data.terrain_visuals.block_color(surface_block);
-    let subsurface_color = data.terrain_visuals.block_color(subsurface_block);
-
-    let steepness = (1.0 - slope).clamp(0.0, 1.0);
-    let height_norm = if data.profile.max_terrain_offset == 0 {
-        0.0
-    } else {
-        ((height as f32 - data.profile.surface_layer as f32)
-            / data.profile.max_terrain_offset as f32)
-            .clamp(0.0, 1.0)
-    };
-
-    let is_mountain = has_biome_tag(biome, "mountain");
-    let is_frozen = has_biome_tag(biome, "frozen");
-    let is_cold = has_biome_tag(biome, "cold");
-    let is_dry = has_biome_tag(biome, "dry") || has_biome_tag(biome, "desert");
-
-    let biome_ground = if is_frozen || is_dry {
-        surface_color
-    } else {
-        mix(surface_color, biome.color_tint.grass, 0.22)
-    };
-
-    let mut color = mix(
-        biome_ground,
-        subsurface_color,
-        smoothstep(0.16, 0.48, steepness),
-    );
-
-    if is_mountain {
-        let rock = mix(subsurface_color, surface_color, 0.25);
-        let snowline = if is_cold { 0.42 } else { 0.68 };
-        let snow_amount = smoothstep(snowline, 0.95, height_norm) * (1.0 - steepness * 0.55);
-        let rock_amount = smoothstep(0.28, 0.72, steepness);
-        color = mix(color, rock, rock_amount);
-        color = mix(color, surface_color, snow_amount);
-    }
-
-    let variation = 0.94 + hash01(face, u, v) * 0.12;
-    scale_color(color, variation)
-}
-
-fn lod_wall_color(face: u8, u: u32, v: u32, height: u32, data: &PlanetSnapshot) -> [f32; 3] {
-    if data.has_core && height < data.profile.core_layers {
-        return TerrainPalette::LOD_CORE;
-    }
-
-    let res = data.resolution;
-    let u = u.min(res.saturating_sub(1));
-    let v = v.min(res.saturating_sub(1));
-    let (surface, subsurface) = data.terrain.lod_surface_blocks(face, u, v);
-    let surface_color = data.terrain_visuals.block_color(surface);
-    let subsurface_color = data.terrain_visuals.block_color(subsurface);
-
-    mix(subsurface_color, surface_color, 0.35)
-}
-
-fn has_biome_tag(biome: &vv_pack_compiler::CompiledProceduralBiome, needle: &str) -> bool {
-    biome
-        .vegetation_tags
-        .iter()
-        .chain(biome.fauna_tags.iter())
-        .chain(std::iter::once(&biome.key))
-        .any(|tag| tag.rsplit('/').next().is_some_and(|last| last == needle))
-}
-
-fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
-    let t = ((x - edge0) / (edge1 - edge0).max(0.0001)).clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
-
-fn mix(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
-    let t = t.clamp(0.0, 1.0);
-    [
-        a[0] + (b[0] - a[0]) * t,
-        a[1] + (b[1] - a[1]) * t,
-        a[2] + (b[2] - a[2]) * t,
-    ]
-}
-
 fn scale_color(color: [f32; 3], scale: f32) -> [f32; 3] {
     [
         (color[0] * scale).clamp(0.0, 1.0),
@@ -389,48 +135,20 @@ fn scale_color(color: [f32; 3], scale: f32) -> [f32; 3] {
     ]
 }
 
-fn hash01(face: u8, u: u32, v: u32) -> f32 {
-    let mut x = u
-        .wrapping_mul(2_654_435_761)
-        .wrapping_add(v.wrapping_mul(805_459_861))
-        .wrapping_add((face as u32).wrapping_mul(97_531));
-    x ^= x >> 16;
-    x = x.wrapping_mul(0x7FEB_352D);
-    x ^= x >> 15;
-    x = x.wrapping_mul(0x846C_A68B);
-    x ^= x >> 16;
-    x as f32 / u32::MAX as f32
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{lod_display_height, push_quad};
+    use super::push_quad;
     use glam::Vec3;
-
-    #[test]
-    fn lod_display_height_uses_sea_level_for_water_cells() {
-        assert_eq!(lod_display_height(90, 100, true), 100);
-        assert_eq!(lod_display_height(120, 100, false), 120);
-    }
 
     #[test]
     fn lod_quads_are_emitted_with_both_windings() {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
-
         push_quad(
-            &mut verts,
-            &mut inds,
-            [
-                Vec3::new(0.0, 0.0, 0.0),
-                Vec3::new(1.0, 0.0, 0.0),
-                Vec3::new(1.0, 1.0, 0.0),
-                Vec3::new(0.0, 1.0, 0.0),
-            ],
-            [0.0, 0.0, 1.0],
-            [1.0, 1.0, 1.0],
+            &mut verts, &mut inds,
+            [Vec3::new(0.,0.,0.), Vec3::new(1.,0.,0.), Vec3::new(1.,1.,0.), Vec3::new(0.,1.,0.)],
+            [0., 0., 1.], [1., 1., 1.],
         );
-
         assert_eq!(verts.len(), 4);
         assert_eq!(inds, [0, 1, 2, 2, 3, 0, 0, 2, 1, 3, 2, 0]);
     }

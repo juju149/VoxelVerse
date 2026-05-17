@@ -77,7 +77,7 @@ impl<'a> Renderer<'a> {
             },
         );
         self.animator.start_spawn(AnyKey::Lod(key));
-        self.gpu_upload_ms += upload_started.elapsed().as_secs_f32() * 1000.0;
+        self.frame_metrics.gpu_upload_ms += upload_started.elapsed().as_secs_f32() * 1000.0;
     }
 
     pub(super) fn process_load_queue(&mut self, _player_pos: Vec3, planet: &PlanetData) {
@@ -137,7 +137,8 @@ impl<'a> Renderer<'a> {
             let meshing = self.meshing;
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
-                let mesh = MeshGen::build_chunk(key, &snapshot, meshing);
+                let input = snapshot.prepare_chunk_mesh_input(key, meshing);
+                let mesh = MeshGen::build_chunk(&input, meshing);
                 let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
                 let _ = tx.send(MeshJobResult {
                     key,
@@ -176,7 +177,8 @@ impl<'a> Renderer<'a> {
             let meshing = self.meshing;
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
-                let mesh = MeshGen::build_chunk(key, &snapshot, meshing);
+                let input = snapshot.prepare_chunk_mesh_input(key, meshing);
+                let mesh = MeshGen::build_chunk(&input, meshing);
                 let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
                 let _ = tx.send(MeshJobResult {
                     key,
@@ -288,7 +290,7 @@ impl<'a> Renderer<'a> {
         if !is_update {
             self.animator.start_spawn(AnyKey::Voxel(key));
         }
-        self.gpu_upload_ms += upload_started.elapsed().as_secs_f32() * 1000.0;
+        self.frame_metrics.gpu_upload_ms += upload_started.elapsed().as_secs_f32() * 1000.0;
     }
 
     pub fn log_memory(&self, planet: &PlanetData) {

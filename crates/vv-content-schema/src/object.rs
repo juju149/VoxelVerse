@@ -341,8 +341,7 @@ pub struct RawObjectMining {
     pub tool: RawObjectToolKind,
     #[serde(default)]
     pub tier: u32,
-    #[serde(default)]
-    pub drops: Option<Vec<RawObjectDropEntry>>,
+    pub drops: Vec<RawObjectDropEntry>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]

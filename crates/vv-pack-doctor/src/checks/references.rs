@@ -36,43 +36,33 @@ fn check_object(obj: &ParsedObject, index: &PackIndex<'_>, report: &mut Report) 
     } = &obj.def;
 
     if let Some(mining) = mining {
-        if let Some(drops) = &mining.drops {
-            for (i, drop) in drops.iter().enumerate() {
-                if drop.item == "self" {
-                    continue;
-                }
-                check_strict_object_ref(
-                    &drop.item,
-                    obj,
-                    report,
-                    &format!("mining.drops[{i}].item"),
-                );
-                if index.resolve_object(&drop.item).is_none() {
-                    report.error(
-                        Diagnostic::new(
-                            CHECK,
-                            format!(
-                                "mining drop #{} references unknown item '{}'",
-                                i + 1,
-                                drop.item
-                            ),
-                        )
-                        .with_path(obj.rel_path.clone())
-                        .with_id(obj.id.clone())
-                        .with_field(format!("mining.drops[{i}].item"))
-                        .with_suggestion(format!(
-                            "create defs/objects/.../{}.object.ron or fix the spelling",
+        for (i, drop) in mining.drops.iter().enumerate() {
+            check_strict_object_ref(&drop.item, obj, report, &format!("mining.drops[{i}].item"));
+            if index.resolve_object(&drop.item).is_none() {
+                report.error(
+                    Diagnostic::new(
+                        CHECK,
+                        format!(
+                            "mining drop #{} references unknown item '{}'",
+                            i + 1,
                             drop.item
-                        )),
-                    );
-                }
-                check_count(
-                    &drop.count,
-                    obj,
-                    report,
-                    &format!("mining.drops[{i}].count"),
+                        ),
+                    )
+                    .with_path(obj.rel_path.clone())
+                    .with_id(obj.id.clone())
+                    .with_field(format!("mining.drops[{i}].item"))
+                    .with_suggestion(format!(
+                        "create defs/objects/.../{}.object.ron or fix the spelling",
+                        drop.item
+                    )),
                 );
             }
+            check_count(
+                &drop.count,
+                obj,
+                report,
+                &format!("mining.drops[{i}].count"),
+            );
         }
     }
 

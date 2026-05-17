@@ -26,6 +26,7 @@ Object(
 
     mining: (
         tool: axe,
+        drops: [(item: "core:object/stations/armor_workbench")],
     ),
 
     recipes: [(

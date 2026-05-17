@@ -13,6 +13,7 @@ vv-pack-compiler = { path = "../vv-pack-compiler" }
 vv-diagnostics = { path = "../vv-diagnostics" }
 vv-weather = { path = "../vv-weather" }
 vv-celestial = { path = "../vv-celestial" }
+vv-physics = { path = "../vv-physics" }
 
 bytemuck.workspace = true
 glam.workspace = true

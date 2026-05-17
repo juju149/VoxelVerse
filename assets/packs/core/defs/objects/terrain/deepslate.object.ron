@@ -23,5 +23,6 @@ Object(
     mining: (
         tool: pickaxe,
         tier: 1,
+        drops: [(item: "core:object/terrain/deepslate")],
     ),
 )

@@ -328,37 +328,23 @@ fn compile_loot_from_objects(raw: &[(String, RawObjectDef)], items: &ItemRegistr
             continue;
         };
 
-        let entries: Vec<CompiledLootEntry> = match &mining.drops {
-            None => {
-                // Self-drop: use the item with the same key as this object.
-                if let Some(item_id) = items.lookup(key) {
-                    vec![CompiledLootEntry {
-                        item_id,
-                        count_min: 1,
-                        count_max: 1,
-                        chance: 1.0,
-                    }]
-                } else {
-                    Vec::new()
-                }
-            }
-            Some(list) => list
-                .iter()
-                .filter_map(|e| {
-                    let item_id = resolve_item_id(&e.item, items)?;
-                    let (count_min, count_max) = match e.count {
-                        RawObjectCount::Fixed(n) => (n, n),
-                        RawObjectCount::Range(a, b) => (a, b),
-                    };
-                    Some(CompiledLootEntry {
-                        item_id,
-                        count_min,
-                        count_max,
-                        chance: e.chance,
-                    })
+        let entries: Vec<CompiledLootEntry> = mining
+            .drops
+            .iter()
+            .filter_map(|e| {
+                let item_id = resolve_item_id(&e.item, items)?;
+                let (count_min, count_max) = match e.count {
+                    RawObjectCount::Fixed(n) => (n, n),
+                    RawObjectCount::Range(a, b) => (a, b),
+                };
+                Some(CompiledLootEntry {
+                    item_id,
+                    count_min,
+                    count_max,
+                    chance: e.chance,
                 })
-                .collect(),
-        };
+            })
+            .collect();
 
         tables.push(CompiledLootTable {
             id: LootTableId::from_raw(idx),

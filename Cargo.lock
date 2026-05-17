@@ -2157,6 +2157,7 @@ version = "0.1.0"
 dependencies = [
  "glam",
  "rodio",
+ "vv-pack-compiler",
  "vv-weather",
 ]
 
@@ -2213,11 +2214,7 @@ dependencies = [
  "glam",
  "rayon",
  "vv-math",
- "vv-pack-compiler",
- "vv-physics",
  "vv-voxel",
- "vv-world",
- "vv-worldgen",
 ]
 
 [[package]]
@@ -2280,6 +2277,7 @@ dependencies = [
  "vv-math",
  "vv-meshing",
  "vv-pack-compiler",
+ "vv-physics",
  "vv-voxel",
  "vv-weather",
  "vv-world",
@@ -2307,6 +2305,7 @@ dependencies = [
  "dot_vox",
  "glam",
  "vv-math",
+ "vv-meshing",
  "vv-pack-compiler",
  "vv-voxel",
  "vv-worldgen",

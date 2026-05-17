@@ -24,5 +24,6 @@ Object(
 
     mining: (
         tool: axe,
+        drops: [(item: "core:object/trees/oak_log")],
     ),
 )

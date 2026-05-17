@@ -3,7 +3,7 @@ mod sound_bank;
 mod sound_event;
 mod weather_mixer;
 
-pub use audio_engine::AudioEngine;
+pub use audio_engine::{AudioDiagnostics, AudioEngine, SoundChannel};
 pub use sound_bank::SoundBank;
 pub use sound_event::{SoundEvent, SoundKind};
 pub use weather_mixer::{

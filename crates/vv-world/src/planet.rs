@@ -1,20 +1,17 @@
 use crate::{
-    BlockDamageLayer, BlockDamageResult, BrokenPropLayer, PlanetGeometry, PlanetProfile,
-    PlanetSnapshot, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime, WorldTime,
+    BlockDamageLayer, BrokenPropLayer, PlanetProfile, TerrainVisualPalette, VoxModelRegistry,
+    VoxelRuntime, WorldTime,
 };
 use std::sync::Arc;
-use vv_pack_compiler::{
-    BlockRegistry, CompiledBlock, CompiledBlockVisual, CompiledItem, CompiledPlanet, ItemId,
-    ItemRegistry, ProceduralRegistry,
-};
+use vv_pack_compiler::{BlockRegistry, CompiledPlanet, ItemRegistry, ProceduralRegistry};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use vv_worldgen::{bake_for_chunk, ChunkFeatureMap, ProceduralPlanetTerrain};
+use vv_worldgen::ProceduralPlanetTerrain;
 
 /// Cached runtime block ID for the planet core (deep underground).
 /// Surface/subsurface blocks come from the biome registry.
 #[derive(Clone, Copy)]
-struct PlanetBlockIds {
-    core: VoxelId,
+pub(crate) struct PlanetBlockIds {
+    pub(crate) core: VoxelId,
 }
 
 impl PlanetBlockIds {
@@ -49,25 +46,25 @@ pub trait VoxelRead {
 
 #[derive(Clone)]
 pub struct PlanetData {
-    voxels: Arc<VoxelRuntime>,
-    content: Arc<BlockRegistry>,
-    items: Arc<ItemRegistry>,
-    terrain_visuals: Arc<TerrainVisualPalette>,
-    procedural: Arc<ProceduralRegistry>,
-    procedural_planet_index: usize,
-    profile: PlanetProfile,
-    resolution: u32,
-    has_core: bool,
-    terrain: ProceduralPlanetTerrain,
-    world_time: WorldTime,
-    prop_models: Arc<VoxModelRegistry>,
-    broken_props: Arc<BrokenPropLayer>,
-    block_damage: BlockDamageLayer,
-    player_surface_key: Option<SurfaceChunkKey>,
-    block_ids: PlanetBlockIds,
-    planet_def: CompiledPlanet,
+    pub(crate) voxels: Arc<VoxelRuntime>,
+    pub(crate) content: Arc<BlockRegistry>,
+    pub(crate) items: Arc<ItemRegistry>,
+    pub(crate) terrain_visuals: Arc<TerrainVisualPalette>,
+    pub(crate) procedural: Arc<ProceduralRegistry>,
+    pub(crate) procedural_planet_index: usize,
+    pub(crate) profile: PlanetProfile,
+    pub(crate) resolution: u32,
+    pub(crate) has_core: bool,
+    pub(crate) terrain: ProceduralPlanetTerrain,
+    pub(crate) world_time: WorldTime,
+    pub(crate) prop_models: Arc<VoxModelRegistry>,
+    pub(crate) broken_props: Arc<BrokenPropLayer>,
+    pub(crate) block_damage: BlockDamageLayer,
+    pub(crate) player_surface_key: Option<SurfaceChunkKey>,
+    pub(crate) block_ids: PlanetBlockIds,
+    pub(crate) planet_def: CompiledPlanet,
     /// Seed stored so resize can regenerate terrain with the same seed.
-    seed: u32,
+    pub(crate) seed: u32,
 }
 
 impl PlanetData {
@@ -142,220 +139,7 @@ impl PlanetData {
         }
     }
 
-    pub fn resolution(&self) -> u32 {
-        self.resolution
-    }
-
-    pub fn profile(&self) -> PlanetProfile {
-        self.profile
-    }
-
-    pub fn world_time(&self) -> WorldTime {
-        self.world_time
-    }
-
-    pub fn tick_world_time(&mut self, dt_seconds: f32) {
-        self.world_time.tick(dt_seconds);
-    }
-
-    pub fn set_day_length_seconds(&mut self, seconds: f32) {
-        self.world_time.set_day_length_seconds(seconds);
-    }
-
-    pub fn set_day_phase(&mut self, phase: f32) {
-        self.world_time.set_day_phase(phase);
-    }
-
-    pub fn set_fixed_elapsed_seconds(&mut self, elapsed_seconds: f32) {
-        self.world_time.set_fixed_elapsed_seconds(elapsed_seconds);
-    }
-
-    pub fn block(&self, id: VoxelId) -> Option<&CompiledBlock> {
-        self.content.block(id)
-    }
-
-    pub fn block_color(&self, id: VoxelId) -> [f32; 3] {
-        self.content.color(id)
-    }
-
-    pub fn block_visual(&self, id: VoxelId) -> &CompiledBlockVisual {
-        self.content.visual(id)
-    }
-
-    pub fn item(&self, id: ItemId) -> Option<&CompiledItem> {
-        self.items.get(id)
-    }
-
-    pub fn items(&self) -> &ItemRegistry {
-        &self.items
-    }
-
-    pub fn edge_rounding_radius_voxels(&self) -> f32 {
-        self.profile.edge_rounding_radius_voxels
-    }
-
-    pub fn block_damage_revision(&self) -> u64 {
-        self.block_damage.revision()
-    }
-
-    pub fn damaged_block_coords(&self) -> impl Iterator<Item = VoxelCoord> + '_ {
-        self.block_damage.iter().map(|(coord, _)| coord)
-    }
-
-    pub fn surface_height(&self, face: u8, u: u32, v: u32) -> u32 {
-        self.terrain.get_height(face, u, v)
-    }
-
-    pub fn terrain_surface_layer(&self, face: u8, u: u32, v: u32) -> u32 {
-        self.terrain.terrain_surface_layer(face, u, v)
-    }
-
-    pub fn snapshot_with_player_surface_key(
-        &self,
-        player_surface_key: Option<SurfaceChunkKey>,
-    ) -> PlanetSnapshot {
-        let mut snapshot = self.snapshot();
-        snapshot.player_surface_key = player_surface_key;
-        snapshot
-    }
-
-    pub fn resize(&mut self, increase: bool) {
-        if increase {
-            let new_res = (self.resolution as f32 * 1.2) as u32;
-            self.resolution = new_res.max(self.resolution + 1).min(16384);
-        } else {
-            let new_res = (self.resolution as f32 / 1.2) as u32;
-            self.resolution = new_res.max(8);
-        }
-
-        Arc::make_mut(&mut self.voxels).clear();
-        self.block_damage.clear_all();
-        self.planet_def = self.planet_def.with_resolution(self.resolution);
-        self.planet_def.seed = self.seed;
-        self.profile = self.planet_def.to_planet_profile();
-        self.resolution = self.profile.resolution;
-
-        println!("Regenerating terrain for resolution {}…", self.resolution);
-        self.terrain = ProceduralPlanetTerrain::new(
-            self.profile,
-            self.procedural.clone(),
-            self.procedural_planet_index,
-        );
-    }
-
-    pub fn place_block(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult {
-        self.set_voxel(coord, voxel)
-    }
-
-    pub fn remove_block(&mut self, coord: VoxelCoord) -> VoxelEditResult {
-        if self.has_core && coord.layer < self.profile.core_layers {
-            return VoxelEditResult {
-                changed: coord,
-                dirty_chunks: Vec::new(),
-            };
-        }
-
-        // If a prop is sitting directly above the broken block, destroy it too.
-        // Props sit at `surface_layer + 1`, so a prop whose surface_layer == coord.layer
-        // is supported by this block.
-        Arc::make_mut(&mut self.broken_props).break_prop(coord.face, coord.u, coord.v);
-
-        self.set_voxel(coord, VoxelId::AIR)
-    }
-
-    pub fn get_voxel(&self, coord: VoxelCoord) -> VoxelId {
-        self.voxels
-            .get_override(coord)
-            .unwrap_or_else(|| self.generated_voxel(coord))
-    }
-
-    /// Resolve an `ItemId` to the `VoxelId` it places, if the item is a
-    /// block-placement item. Returns `None` for tools, food, weapons, etc.
-    ///
-    /// This is the canonical bridge between the item inventory and the voxel
-    /// world: the renderer and placement logic use this to display or place
-    /// block-item stacks.
-    pub fn resolve_item_voxel(&self, item_id: vv_pack_compiler::ItemId) -> Option<VoxelId> {
-        use vv_pack_compiler::CompiledItemGameplay;
-        let item = self.items.get(item_id)?;
-        match &item.gameplay {
-            CompiledItemGameplay::PlaceBlock { block_key } => self.content.lookup(block_key),
-            _ => None,
-        }
-    }
-
-    pub fn set_voxel(&mut self, coord: VoxelCoord, voxel: VoxelId) -> VoxelEditResult {
-        self.block_damage.clear(coord);
-        let generated = self.generated_voxel(coord);
-        let override_voxel = (voxel != generated).then_some(voxel);
-        Arc::make_mut(&mut self.voxels).set_override(coord, override_voxel);
-        VoxelEditResult {
-            changed: coord,
-            dirty_chunks: Self::dirty_chunks_for_coord(self.resolution, coord),
-        }
-    }
-
-    /// Build a cheap read-only snapshot for off-thread mesh workers.
-    /// Every field is either an `Arc` clone (refcount bump) or a `Copy` value.
-    pub fn snapshot(&self) -> PlanetSnapshot {
-        PlanetSnapshot {
-            voxels: Arc::clone(&self.voxels),
-            broken_props: Arc::clone(&self.broken_props),
-            content: Arc::clone(&self.content),
-            terrain_visuals: Arc::clone(&self.terrain_visuals),
-            prop_models: Arc::clone(&self.prop_models),
-            terrain: self.terrain.clone(),
-            profile: self.profile,
-            resolution: self.resolution,
-            has_core: self.has_core,
-            core_voxel: self.block_ids.core,
-            player_surface_key: self.player_surface_key,
-        }
-    }
-
-    pub fn apply_block_damage(
-        &mut self,
-        coord: VoxelCoord,
-        amount: f32,
-        break_threshold: f32,
-    ) -> BlockDamageResult {
-        let voxel = self.get_voxel(coord);
-        self.block_damage
-            .apply_hit(coord, voxel, amount, break_threshold)
-    }
-
-    pub fn block_damage_fraction(&self, coord: VoxelCoord) -> Option<f32> {
-        let voxel = self.get_voxel(coord);
-        let block = self.content.block(voxel)?;
-        self.block_damage
-            .damage_fraction_for_voxel(coord, voxel, block.hardness.max(1.0))
-    }
-
-    pub fn clear_block_damage(&mut self, coord: VoxelCoord) {
-        self.block_damage.clear(coord);
-    }
-
-    pub fn exists(&self, coord: VoxelCoord) -> bool {
-        self.content.is_solid(self.get_voxel(coord))
-    }
-
-    /// Bake a full chunk's tree + visual-detail voxels into a sparse map.
-    /// The mesher uses this so it never has to re-scan tree neighbourhoods
-    /// at the per-voxel level.
-    pub fn bake_chunk_features(&self, key: SurfaceChunkKey, margin: u32) -> ChunkFeatureMap {
-        bake_for_chunk(&self.terrain, key.face, key.u_idx, key.v_idx, margin)
-    }
-
-    pub fn modified_voxels_in_chunk_column(
-        &self,
-        key: SurfaceChunkKey,
-    ) -> impl Iterator<Item = (VoxelCoord, VoxelId)> + '_ {
-        self.voxels
-            .iter_column_overrides(key.face, key.u_idx, key.v_idx)
-            .filter(move |(coord, _)| coord.u < self.resolution && coord.v < self.resolution)
-    }
-
-    fn generated_voxel(&self, coord: VoxelCoord) -> VoxelId {
+    pub(crate) fn generated_voxel(&self, coord: VoxelCoord) -> VoxelId {
         if coord.layer >= self.resolution
             || coord.u >= self.resolution
             || coord.v >= self.resolution
@@ -370,7 +154,10 @@ impl PlanetData {
         }
     }
 
-    fn dirty_chunks_for_coord(resolution: u32, coord: VoxelCoord) -> Vec<SurfaceChunkKey> {
+    pub(crate) fn dirty_chunks_for_coord(
+        resolution: u32,
+        coord: VoxelCoord,
+    ) -> Vec<SurfaceChunkKey> {
         if coord.u >= resolution || coord.v >= resolution {
             return Vec::new();
         }
@@ -416,20 +203,6 @@ impl PlanetData {
         keys.sort_by_key(|k| (k.face, k.u_idx, k.v_idx));
         keys.dedup_by_key(|k| (k.face, k.u_idx, k.v_idx));
         keys
-    }
-
-    pub fn surface_radius(&self, face: u8, u: u32, v: u32) -> f32 {
-        let h = self.terrain.get_height(face, u, v);
-        self.profile.layer_radius(h + 1)
-    }
-
-    pub fn spawn_position(&self) -> glam::Vec3 {
-        // Face 4 = equatorial +Z face.  At center: dir.y ≈ 0 → latitude ≈ 0
-        // → temperature ≈ 1.0 → tropical biome.  Face 0 is the +Y pole.
-        let u = self.resolution / 2;
-        let v = self.resolution / 2;
-        let dir = PlanetGeometry::get_direction(4, u, v, self.resolution);
-        dir * (self.surface_radius(4, u, v) + self.profile.spawn_clearance())
     }
 }
 

@@ -1,6 +1,6 @@
 use glam::{Quat, Vec3};
 use vv_voxel::VoxelCoord;
-use vv_world::{PlanetData, PlanetGeometry};
+use vv_world::{PlanetGeometry, VoxelRead};
 
 pub struct Physics;
 impl Physics {
@@ -20,7 +20,7 @@ impl Physics {
         (rotation_diff * rotation).normalize()
     }
 
-    pub fn is_solid(pos: Vec3, planet: &PlanetData) -> bool {
+    pub fn is_solid<W: VoxelRead + ?Sized>(pos: Vec3, planet: &W) -> bool {
         let res = planet.resolution();
         let profile = planet.profile();
 
@@ -101,7 +101,7 @@ impl Physics {
         }
     }
 
-    pub fn check_collision(pos: Vec3, planet: &PlanetData) -> bool {
+    pub fn check_collision<W: VoxelRead + ?Sized>(pos: Vec3, planet: &W) -> bool {
         let up = pos.normalize();
 
         let checks = [
@@ -134,11 +134,11 @@ impl Physics {
         false
     }
 
-    pub fn solve_movement(
+    pub fn solve_movement<W: VoxelRead + ?Sized>(
         start_pos: Vec3,
         velocity: Vec3,
         dt: f32,
-        planet: &PlanetData,
+        planet: &W,
         flying: bool,
     ) -> (Vec3, Vec3, bool) {
         if flying {

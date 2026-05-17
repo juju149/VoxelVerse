@@ -17,7 +17,7 @@ impl HotbarNotice {
     pub fn text(self) -> &'static str {
         match self {
             HotbarNotice::EmptySlot => "Case vide",
-            HotbarNotice::Full => "Hotbar pleine",
+            HotbarNotice::Full => "Inventaire plein",
             HotbarNotice::InvalidPlacement => "Placement impossible",
             HotbarNotice::ProtectedBlock => "Bloc protege",
         }
@@ -97,10 +97,20 @@ impl Hotbar {
     }
 
     pub fn can_accept(&self, item_id: ItemId, max_stack: u32) -> bool {
-        self.slots.iter().any(|slot| match slot {
-            Some(slot) => slot.item_id == item_id && slot.quantity < max_stack,
-            None => true,
-        })
+        self.available_capacity(item_id, max_stack) > 0
+    }
+
+    pub fn available_capacity(&self, item_id: ItemId, max_stack: u32) -> u32 {
+        self.slots
+            .iter()
+            .map(|slot| match slot {
+                Some(slot) if slot.item_id == item_id && slot.quantity < max_stack => {
+                    max_stack - slot.quantity
+                }
+                None => max_stack,
+                _ => 0,
+            })
+            .sum()
     }
 
     /// Add `count` items of `item_id` to the hotbar. Stacks into existing
