@@ -4,11 +4,10 @@ use crate::lod_animation::LodAnimator;
 use crate::perf_profile::{PerfProfile, PerfTier};
 use crate::pipeline::factory::{create_post_bind_group, PipelineBindGroupLayouts};
 use crate::pipeline::registry::RenderPipelineRegistry;
-use crate::shader::library::ShaderLibrary;
+use crate::shader::library::{PackShaderRoot, ShaderLibrary};
 use crate::texture_atlas::TextureAtlas;
 use crate::types::Vertex;
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
 use std::sync::mpsc::channel;
 use vv_diagnostics::{FrameStats, SystemDiagnostics};
 use vv_meshing::MeshGen;
@@ -19,7 +18,11 @@ use wgpu::PresentMode;
 use winit::window::Window;
 
 impl<'a> Renderer<'a> {
-    pub async fn new(window: &'a Window, textures: &TextureRegistry, core_pack_dir: &Path) -> Self {
+    pub async fn new(
+        window: &'a Window,
+        textures: &TextureRegistry,
+        pack_stack: &[PackShaderRoot],
+    ) -> Self {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window).unwrap();
 
@@ -92,13 +95,26 @@ impl<'a> Renderer<'a> {
         surface.configure(&device, &config);
 
         let text_resources = Self::create_text_resources(&device, &queue, config.format);
-        let shader_library = ShaderLibrary::load(core_pack_dir).unwrap_or_else(|e| {
-            panic!(
-                "Failed to load render shader library from {}: {}",
-                core_pack_dir.display(),
-                e
-            )
-        });
+        let (shader_library, override_report) = ShaderLibrary::load_stack(pack_stack)
+            .unwrap_or_else(|e| {
+                let stack = pack_stack
+                    .iter()
+                    .map(|p| format!("{}@{}", p.name, p.root.display()))
+                    .collect::<Vec<_>>()
+                    .join(" | ");
+                panic!("Failed to load render shader library from stack [{stack}]: {e}")
+            });
+        if !override_report.is_empty() {
+            println!("[render/shader] pack overrides:");
+            for o in &override_report.overrides {
+                println!(
+                    "  {} -> winner={} shadowed=[{}]",
+                    o.relative_path.display(),
+                    o.winner,
+                    o.shadowed.join(", ")
+                );
+            }
+        }
 
         let shadow_map = Self::create_shadow_map(&device, perf.shadow_map_size);
         let pipeline_layouts = PipelineBindGroupLayouts::create(&device);

@@ -45,10 +45,14 @@ impl<'a> GameApp<'a> {
 
         grab_cursor(window);
 
+        let pack_stack = vec![vv_render::PackShaderRoot::new(
+            "core",
+            content.core_pack_dir.clone(),
+        )];
         let mut renderer = pollster::block_on(Renderer::new(
             window,
             &content.textures,
-            &content.core_pack_dir,
+            &pack_stack,
         ));
         let audio = AudioEngine::new(&content.core_pack_dir);
         if let Some(scene) = golden_scene {

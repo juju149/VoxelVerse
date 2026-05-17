@@ -180,8 +180,9 @@ mod tests {
     #[test]
     fn active_shaders_are_valid_wgsl() {
         let core_pack = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
-        let lib =
-            crate::shader::library::ShaderLibrary::load(&core_pack).expect("shader library loads");
+        let stack = vec![crate::shader::library::PackShaderRoot::new("core", core_pack)];
+        let (lib, _report) = crate::shader::library::ShaderLibrary::load_stack(&stack)
+            .expect("shader library loads");
         for &shader in ShaderPath::ACTIVE_IN_PASS {
             let source = lib.source(shader).expect("shader in library");
             naga::front::wgsl::parse_str(source)
