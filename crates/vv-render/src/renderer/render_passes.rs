@@ -36,9 +36,9 @@ impl<'a> Renderer<'a> {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         let surface_radius = planet.profile.surface_radius;
-        let mut atmosphere = self
-            .atmosphere
-            .evaluate(surface_radius, planet.world_time, self.quality);
+        let mut atmosphere =
+            self.atmosphere
+                .evaluate(surface_radius, planet.world_time, self.quality);
         if let Some(weather) = frame.weather {
             atmosphere.apply_weather(weather);
         }

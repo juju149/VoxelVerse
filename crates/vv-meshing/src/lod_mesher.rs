@@ -28,6 +28,11 @@ use vv_world::PlanetSnapshot;
 /// from there.
 const LOD_GRID_RES: u32 = CHUNK_SIZE;
 
+/// Distant LOD walls exist to close geometry, not to draw a chunk grid.
+/// Keep them almost surface-colored and shade them with radial normals.
+const LOD_WALL_SURFACE_MIX: f32 = 0.82;
+const LOD_WALL_SHADE_SCALE: f32 = 0.995;
+
 impl MeshGen {
     pub fn generate_lod_mesh(key: LodKey, data: &PlanetSnapshot) -> CpuMesh {
         let n = LOD_GRID_RES;
@@ -63,6 +68,24 @@ impl MeshGen {
         let mut water_cells = vec![false; (n * n) as usize];
         let water_color = lod_water_color(data);
         let sea_level = data.terrain.sea_level_layer();
+
+        let sample_cell_display_height = |u0: u32, u1: u32, v0: u32, v1: u32| -> u32 {
+            let max_index = res.saturating_sub(1);
+            let u0 = u0.min(max_index);
+            let u1 = u1.min(max_index);
+            let v0 = v0.min(max_index);
+            let v1 = v1.min(max_index);
+
+            let terrain_height = data
+                .terrain
+                .terrain_surface_layer(key.face, u0, v0)
+                .max(data.terrain.terrain_surface_layer(key.face, u1, v0))
+                .max(data.terrain.terrain_surface_layer(key.face, u0, v1))
+                .max(data.terrain.terrain_surface_layer(key.face, u1, v1));
+
+            let is_water = water_color.is_some() && terrain_height < sea_level;
+            lod_display_height(terrain_height, sea_level, is_water)
+        };
         for j in 0..n {
             for i in 0..n {
                 let terrain_height = cell_h(i, j);
@@ -116,9 +139,13 @@ impl MeshGen {
                     lod_surface_color(key.face, mid_u, mid_v, h, slope, data)
                 };
                 let wall_color = if is_water {
-                    scale_color(top_color, 0.78)
+                    scale_color(top_color, LOD_WALL_SHADE_SCALE)
                 } else {
-                    lod_wall_color(key.face, mid_u, mid_v, h, data)
+                    let terrain_wall = lod_wall_color(key.face, mid_u, mid_v, h, data);
+                    scale_color(
+                        mix(terrain_wall, top_color, LOD_WALL_SURFACE_MIX),
+                        LOD_WALL_SHADE_SCALE,
+                    )
                 };
 
                 push_quad(
@@ -130,25 +157,24 @@ impl MeshGen {
                 );
 
                 let mut emit_wall = |bl: Vec3, br: Vec3, tr: Vec3, tl: Vec3| {
-                    let edge1 = br - bl;
-                    let edge2 = tl - bl;
-                    let mut nrm = edge1.cross(edge2).normalize_or_zero();
-                    let outward_hint = ((bl + br + tr + tl) * 0.25) - cell_center;
-                    if nrm.dot(outward_hint) < 0.0 {
-                        nrm = -nrm;
-                    }
+                    // LOD walls close height gaps but should shade like the planet surface.
+                    // Geometric side normals made every tiny height step read as a black grid.
                     push_quad(
                         &mut verts,
                         &mut inds,
                         [bl, br, tr, tl],
-                        nrm.to_array(),
+                        radial.to_array(),
                         wall_color,
                     );
                 };
 
                 // -U wall (at u = u0)
                 let nh = if ci == 0 {
-                    h.saturating_sub(skirt_layers)
+                    if u0 > 0 {
+                        sample_cell_display_height(u0.saturating_sub(step), u0, v0, v1)
+                    } else {
+                        h.saturating_sub(skirt_layers)
+                    }
                 } else {
                     heights[(cj * n + ci - 1) as usize]
                 };
@@ -162,7 +188,11 @@ impl MeshGen {
 
                 // +U wall (at u = u1)
                 let nh = if ci == n - 1 {
-                    h.saturating_sub(skirt_layers)
+                    if u1 < res {
+                        sample_cell_display_height(u1, (u1 + step).min(res), v0, v1)
+                    } else {
+                        h.saturating_sub(skirt_layers)
+                    }
                 } else {
                     heights[(cj * n + ci + 1) as usize]
                 };
@@ -176,7 +206,11 @@ impl MeshGen {
 
                 // -V wall (at v = v0)
                 let nh = if cj == 0 {
-                    h.saturating_sub(skirt_layers)
+                    if v0 > 0 {
+                        sample_cell_display_height(u0, u1, v0.saturating_sub(step), v0)
+                    } else {
+                        h.saturating_sub(skirt_layers)
+                    }
                 } else {
                     heights[((cj - 1) * n + ci) as usize]
                 };
@@ -190,7 +224,11 @@ impl MeshGen {
 
                 // +V wall (at v = v1)
                 let nh = if cj == n - 1 {
-                    h.saturating_sub(skirt_layers)
+                    if v1 < res {
+                        sample_cell_display_height(u0, u1, v1, (v1 + step).min(res))
+                    } else {
+                        h.saturating_sub(skirt_layers)
+                    }
                 } else {
                     heights[((cj + 1) * n + ci) as usize]
                 };
@@ -312,14 +350,15 @@ fn lod_wall_color(face: u8, u: u32, v: u32, height: u32, data: &PlanetSnapshot) 
     if data.has_core && height < data.profile.core_layers {
         return TerrainPalette::LOD_CORE;
     }
+
     let res = data.resolution;
     let u = u.min(res.saturating_sub(1));
     let v = v.min(res.saturating_sub(1));
-    let (_surface, subsurface) = data.terrain.lod_surface_blocks(face, u, v);
-    let base = data.terrain_visuals.block_color(subsurface);
-    // Walls are vertical → faked AO + slight darkening so steps read as cliffs
-    // rather than blending into the top face.
-    scale_color(base, 0.7)
+    let (surface, subsurface) = data.terrain.lod_surface_blocks(face, u, v);
+    let surface_color = data.terrain_visuals.block_color(surface);
+    let subsurface_color = data.terrain_visuals.block_color(subsurface);
+
+    mix(subsurface_color, surface_color, 0.35)
 }
 
 fn has_biome_tag(biome: &vv_pack_compiler::CompiledProceduralBiome, needle: &str) -> bool {
