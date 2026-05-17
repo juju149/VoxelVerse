@@ -1,0 +1,24 @@
+WeatherProfile(
+    name: "Blizzard",
+    rarity: 0.04,
+    biome_bias: { "polar_ice": 2.0, "alpine": 1.4, "desert": 0.0, "savanna": 0.0 },
+    cloud_coverage: 0.98,
+    cloud_density_mul: 1.30,
+    cloud_speed_mul: 2.20,
+    cloud_tint: (0.78, 0.82, 0.90),
+    fog_multiplier: 1.45,
+    fog_tint: (0.86, 0.92, 1.00),
+    precipitation: (
+        kind: snow,
+        intensity: 0.95,
+        wind_drift: 0.85,
+        splash_density: 0.0,
+    ),
+    wind: (
+        base_speed: 14.0, gust_speed: 26.0, gust_interval_s: 3.5,
+        direction_drift_per_s: 0.04,
+    ),
+    post_fx: ( exposure_mul: 0.90, saturation_mul: 0.70, contrast_add: 0.04 ),
+    transitions: ( fade_in_s: 14.0, fade_out_s: 20.0,
+                   min_duration_s: 90.0, max_duration_s: 300.0 ),
+)

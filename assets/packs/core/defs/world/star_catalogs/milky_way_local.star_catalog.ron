@@ -1,0 +1,16 @@
+StarCatalog(
+    name: "Milky Way (local)",
+    seed: 3226499301,
+    star_count: 8000,
+    magnitude_range: (-1.5, 6.0),
+    spectral_distribution: [
+        ( class: O, weight: 0.0001 ),
+        ( class: B, weight: 0.001 ),
+        ( class: A, weight: 0.01 ),
+        ( class: F, weight: 0.03 ),
+        ( class: G, weight: 0.08 ),
+        ( class: K, weight: 0.13 ),
+        ( class: M, weight: 0.76 ),
+    ],
+    nebulae: [],
+)

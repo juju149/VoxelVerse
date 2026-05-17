@@ -20,6 +20,8 @@
 //! └── generated.rs  — generated/registries/**
 //! ```
 
+mod biome_ambience;
+mod celestial;
 mod common;
 mod generated;
 mod media;
@@ -29,8 +31,11 @@ mod skeleton;
 mod sound;
 mod version;
 mod voxel_model;
+mod weather;
 mod world;
 
+pub use biome_ambience::*;
+pub use celestial::*;
 pub use common::ContentRef;
 pub use generated::*;
 pub use media::{
@@ -43,4 +48,5 @@ pub use skeleton::*;
 pub use sound::*;
 pub use version::*;
 pub use voxel_model::*;
+pub use weather::*;
 pub use world::*;

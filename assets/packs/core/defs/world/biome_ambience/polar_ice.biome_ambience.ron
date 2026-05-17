@@ -1,0 +1,19 @@
+BiomeAmbience(
+    name: "Polar Ice",
+    fog_tint_mul: (0.92, 0.96, 1.05),
+    sky_horizon_tint: (0.86, 0.94, 1.00),
+    ambient_dust_density: 0.0,
+    post_fx: ( saturation_mul: 0.78, exposure_mul: 0.94, contrast_add: 0.02 ),
+    allowed_weather: [
+        "core:weather/clear",
+        "core:weather/overcast",
+        "core:weather/blizzard",
+    ],
+    weather_weights: { "blizzard": 1.6, "clear": 0.7 },
+    aurora: (
+        latitude_threshold: 0.78,
+        color_a: (0.10, 0.92, 0.55),
+        color_b: (0.38, 0.42, 0.95),
+        intensity: 1.0,
+    ),
+)

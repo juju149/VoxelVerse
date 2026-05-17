@@ -1,0 +1,21 @@
+WeatherProfile(
+    name: "Light Rain",
+    rarity: 0.12,
+    biome_bias: { "desert": 0.0, "savanna": 0.6 },
+    cloud_coverage: 0.85,
+    cloud_density_mul: 1.20,
+    cloud_speed_mul: 1.30,
+    cloud_tint: (0.55, 0.58, 0.62),
+    fog_multiplier: 1.10,
+    fog_tint: (0.60, 0.63, 0.68),
+    precipitation: (
+        kind: rain,
+        intensity: 0.4,
+        wind_drift: 0.3,
+        splash_density: 0.5,
+    ),
+    wind: ( base_speed: 7.0, gust_speed: 12.0, gust_interval_s: 8.0 ),
+    post_fx: ( exposure_mul: 0.88, saturation_mul: 0.88, contrast_add: 0.03 ),
+    transitions: ( fade_in_s: 10.0, fade_out_s: 14.0,
+                   min_duration_s: 60.0, max_duration_s: 240.0 ),
+)

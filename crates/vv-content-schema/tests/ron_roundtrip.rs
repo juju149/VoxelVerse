@@ -266,6 +266,182 @@ fn skeleton_parses() {
     assert_eq!(s.slots.len(), 1);
 }
 
+// ── weather.ron — clear + storm + minimal ────────────────────────────────────
+
+#[test]
+fn weather_clear_parses() {
+    let src = r#"WeatherProfile(
+        display_name: "Clear Sky",
+        rarity: 0.6,
+        cloud_coverage: 0.18,
+        cloud_density_mul: 0.7,
+        wind: ( base_speed: 3.0, gust_speed: 6.0, gust_interval_s: 12.0 ),
+    )"#;
+    let p: RawWeatherProfileDef = parse("weather clear", strip_wrapper(src));
+    assert!((p.rarity - 0.6).abs() < 1e-5);
+    assert!(p.precipitation.is_none());
+    assert!(p.lightning.is_none());
+    assert!((p.transitions.fade_in_s - 8.0).abs() < 1e-5);
+}
+
+#[test]
+fn weather_thunderstorm_full_parses() {
+    let src = r#"WeatherProfile(
+        display_name: "Thunderstorm",
+        rarity: 0.05,
+        biome_bias: { "savanna": 1.5, "tundra": 0.0 },
+        cloud_coverage: 0.95,
+        cloud_density_mul: 1.4,
+        cloud_speed_mul: 2.6,
+        cloud_tint: (0.18, 0.18, 0.22),
+        fog_multiplier: 1.2,
+        fog_tint: (0.32, 0.32, 0.36),
+        precipitation: (
+            kind: rain,
+            intensity: 0.85,
+            wind_drift: 0.6,
+            splash_density: 0.7,
+        ),
+        wind: (
+            base_speed: 12.0, gust_speed: 22.0, gust_interval_s: 4.5,
+            direction_drift_per_s: 0.05,
+        ),
+        lightning: (
+            strikes_per_minute: 2.0,
+            flash_intensity: 4.0,
+            thunder_delay_per_km: 3.0,
+        ),
+        post_fx: ( exposure_mul: 0.78, saturation_mul: 0.85, contrast_add: 0.05 ),
+        transitions: ( fade_in_s: 8.0, fade_out_s: 12.0,
+                       min_duration_s: 60.0, max_duration_s: 240.0 ),
+    )"#;
+    let p: RawWeatherProfileDef = parse("weather storm", strip_wrapper(src));
+    assert_eq!(
+        p.precipitation.as_ref().unwrap().kind,
+        RawPrecipitationKind::Rain
+    );
+    assert!(p.lightning.is_some());
+    assert_eq!(p.biome_bias.len(), 2);
+    assert!((p.cloud_speed_mul - 2.6).abs() < 1e-5);
+}
+
+// ── biome ambience ───────────────────────────────────────────────────────────
+
+#[test]
+fn biome_ambience_polar_parses() {
+    let src = r#"BiomeAmbience(
+        display_name: "Polar Ice",
+        fog_tint_mul: (0.92, 0.96, 1.05),
+        sky_horizon_tint: (0.86, 0.94, 1.0),
+        ambient_particles: ( kind: "core:vfx/snow_drift", intensity: 0.2 ),
+        post_fx: ( saturation_mul: 0.78, exposure_mul: 0.94, contrast_add: 0.02 ),
+        allowed_weather: [
+            "core:weather/clear",
+            "core:weather/light_snow",
+            "core:weather/blizzard",
+        ],
+        weather_weights: { "blizzard": 1.6, "aurora_calm": 1.2 },
+        aurora: (
+            latitude_threshold: 0.78,
+            color_a: (0.10, 0.92, 0.55),
+            color_b: (0.38, 0.42, 0.95),
+            intensity: 1.0,
+        ),
+    )"#;
+    let a: RawBiomeAmbienceDef = parse("biome ambience", strip_wrapper(src));
+    assert_eq!(a.allowed_weather.len(), 3);
+    assert!(a.aurora.is_some());
+    assert!((a.fog_tint_mul.2 - 1.05).abs() < 1e-5);
+}
+
+#[test]
+fn biome_ambience_minimal_parses() {
+    let src = r#"BiomeAmbience(
+        display_name: "Plains",
+    )"#;
+    let a: RawBiomeAmbienceDef = parse("biome ambience min", strip_wrapper(src));
+    assert!(a.aurora.is_none());
+    assert!(a.allowed_weather.is_empty());
+    assert!((a.fog_tint_mul.0 - 1.0).abs() < 1e-5);
+}
+
+// ── celestial body + star catalog ────────────────────────────────────────────
+
+#[test]
+fn celestial_sun_parses() {
+    let src = r#"CelestialBody(
+        display_name: "Sol Primary",
+        kind: star,
+        voxel_model: "core:voxel/celestial/sol",
+        radius_m: 6.96e8,
+        spin: ( axis: (0.0, 1.0, 0.0), period_s: 2160000.0 ),
+        surface: (
+            emissive_color: (1.0, 0.92, 0.78),
+            emissive_intensity: 8.0,
+            corona: ( inner: (1.0, 0.9, 0.6), outer: (1.0, 0.5, 0.2), radius_mul: 4.0 ),
+        ),
+        lod_billboard_distance_m: 1.0e8,
+    )"#;
+    let b: RawCelestialBodyDef = parse("celestial sun", strip_wrapper(src));
+    assert_eq!(b.kind, RawCelestialKind::Star);
+    assert!(b.orbit.is_none());
+    assert!(b.surface.corona.is_some());
+    assert!(b.visible_from_surface);
+}
+
+#[test]
+fn celestial_moon_with_orbit_parses() {
+    let src = r#"CelestialBody(
+        display_name: "Luna",
+        kind: moon,
+        radius_m: 1.737e6,
+        orbit: (
+            parent: "core:celestial/terra",
+            semi_major_axis_m: 3.844e8,
+            period_s: 2360592.0,
+        ),
+        spin: ( axis: (0.0, 1.0, 0.0), period_s: 2360592.0 ),
+        surface: ( emissive_color: (0.6, 0.6, 0.62) ),
+    )"#;
+    let b: RawCelestialBodyDef = parse("celestial moon", strip_wrapper(src));
+    let o = b.orbit.expect("orbit");
+    assert!((o.semi_major_axis_m - 3.844e8).abs() < 1.0);
+    assert!(o.eccentricity.abs() < 1e-9);
+}
+
+#[test]
+fn star_catalog_parses() {
+    let src = r#"StarCatalog(
+        display_name: "Milky Way (local)",
+        seed: 3_226_499_301,
+        star_count: 8000,
+        magnitude_range: (-1.5, 6.0),
+        spectral_distribution: [
+            ( class: O, weight: 0.0001 ),
+            ( class: B, weight: 0.001 ),
+            ( class: A, weight: 0.01 ),
+            ( class: F, weight: 0.03 ),
+            ( class: G, weight: 0.08 ),
+            ( class: K, weight: 0.13 ),
+            ( class: M, weight: 0.76 ),
+        ],
+        milky_way: (
+            density_texture: "core:texture/celestial/milky_way_density",
+            tint: (0.85, 0.88, 1.0),
+            intensity: 0.6,
+        ),
+        nebulae: [
+            ( name: "Orion", center_lonlat: (1.42, -0.10), radius_rad: 0.08,
+              color: (0.55, 0.45, 0.95), intensity: 0.3 ),
+        ],
+    )"#;
+    let c: RawStarCatalogDef = parse("star catalog", strip_wrapper(src));
+    assert_eq!(c.star_count, 8000);
+    assert_eq!(c.spectral_distribution.len(), 7);
+    assert!(c.milky_way.is_some());
+    assert_eq!(c.nebulae.len(), 1);
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 fn strip_wrapper(text: &str) -> &str {

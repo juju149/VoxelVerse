@@ -1,0 +1,29 @@
+WeatherProfile(
+    name: "Thunderstorm",
+    rarity: 0.04,
+    biome_bias: { "desert": 0.2, "savanna": 1.4, "polar_ice": 0.0 },
+    cloud_coverage: 0.95,
+    cloud_density_mul: 1.45,
+    cloud_speed_mul: 2.40,
+    cloud_tint: (0.18, 0.19, 0.22),
+    fog_multiplier: 1.25,
+    fog_tint: (0.30, 0.32, 0.36),
+    precipitation: (
+        kind: rain,
+        intensity: 0.85,
+        wind_drift: 0.6,
+        splash_density: 0.75,
+    ),
+    wind: (
+        base_speed: 12.0, gust_speed: 22.0, gust_interval_s: 4.5,
+        direction_drift_per_s: 0.05,
+    ),
+    lightning: (
+        strikes_per_minute: 2.0,
+        flash_intensity: 4.0,
+        thunder_delay_per_km: 3.0,
+    ),
+    post_fx: ( exposure_mul: 0.78, saturation_mul: 0.82, contrast_add: 0.06 ),
+    transitions: ( fade_in_s: 8.0, fade_out_s: 14.0,
+                   min_duration_s: 60.0, max_duration_s: 200.0 ),
+)

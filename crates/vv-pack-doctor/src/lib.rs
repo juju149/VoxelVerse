@@ -47,6 +47,7 @@ pub fn run(pack_root: &Path) -> Result<Report, String> {
     checks::voxel::run(&index, &mut report);
     checks::render::validate(&scan, &mut report);
     checks::worldgen::run(&index, &mut report);
+    checks::weather_cosmos::run(&scan, &mut report);
 
     checks::progression::run(&scan, &mut report);
 

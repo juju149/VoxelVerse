@@ -1,0 +1,11 @@
+WeatherProfile(
+    name: "Clear",
+    rarity: 0.55,
+    cloud_coverage: 0.18,
+    cloud_density_mul: 0.7,
+    cloud_speed_mul: 1.0,
+    fog_multiplier: 0.95,
+    wind: ( base_speed: 3.0, gust_speed: 6.0, gust_interval_s: 14.0 ),
+    transitions: ( fade_in_s: 10.0, fade_out_s: 10.0,
+                   min_duration_s: 90.0, max_duration_s: 360.0 ),
+)

@@ -14,4 +14,5 @@ pub mod stations;
 pub mod tags;
 pub mod textures;
 pub mod voxel;
+pub mod weather_cosmos;
 pub mod worldgen;

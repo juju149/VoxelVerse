@@ -21,6 +21,10 @@ pub struct RawProceduralPack {
     pub structures: Vec<(String, RawStructureDef)>,
     pub fauna: Vec<(String, RawFaunaDef)>,
     pub vox_prop_scatters: Vec<(String, RawVoxPropScatterDef)>,
+    pub weather: Vec<(String, RawWeatherProfileDef)>,
+    pub biome_ambience: Vec<(String, RawBiomeAmbienceDef)>,
+    pub celestial_bodies: Vec<(String, RawCelestialBodyDef)>,
+    pub star_catalogs: Vec<(String, RawStarCatalogDef)>,
 }
 
 pub struct PackLoader;
@@ -94,6 +98,15 @@ impl PackLoader {
                 &namespace,
                 Some(".prop_scatter."),
             )?,
+            weather: load_typed_tree(&root.join("weather"), &defs, &namespace)?,
+            biome_ambience: load_typed_tree(&root.join("biome_ambience"), &defs, &namespace)?,
+            celestial_bodies: load_typed_tree_filtered(
+                &root.join("celestial"),
+                &defs,
+                &namespace,
+                Some(".celestial."),
+            )?,
+            star_catalogs: load_typed_tree(&root.join("star_catalogs"), &defs, &namespace)?,
         })
     }
 }
@@ -264,6 +277,10 @@ fn derive_world_key(dirs: &[String], stem: &str) -> Result<String, String> {
         "vegetation" => "vegetation",
         "props" => "prop_collection",
         "fauna" => "spawn",
+        "weather" => "weather",
+        "biome_ambience" => "biome_ambience",
+        "celestial" => "celestial",
+        "star_catalogs" => "star_catalog",
         other => {
             return Ok(format!("world/{}/{}", other, stem));
         }
@@ -322,5 +339,22 @@ mod tests {
         );
         assert!(!procedural.fields.is_empty(), "must have noise fields");
         assert!(!procedural.biomes.is_empty(), "must have biomes");
+        assert!(
+            procedural.weather.len() >= 5,
+            "weather pack must ship at least 5 profiles, got {}",
+            procedural.weather.len()
+        );
+        assert!(
+            !procedural.biome_ambience.is_empty(),
+            "must have at least one biome ambience entry"
+        );
+        assert!(
+            !procedural.celestial_bodies.is_empty(),
+            "must have at least one celestial body (the local sun)"
+        );
+        assert!(
+            !procedural.star_catalogs.is_empty(),
+            "must have at least one star catalog"
+        );
     }
 }

@@ -1,0 +1,13 @@
+WeatherProfile(
+    name: "Overcast",
+    rarity: 0.25,
+    cloud_coverage: 0.80,
+    cloud_density_mul: 1.15,
+    cloud_speed_mul: 1.20,
+    cloud_tint: (0.78, 0.80, 0.84),
+    fog_multiplier: 1.05,
+    wind: ( base_speed: 6.0, gust_speed: 11.0, gust_interval_s: 9.0 ),
+    post_fx: ( exposure_mul: 0.94, saturation_mul: 0.92, contrast_add: 0.02 ),
+    transitions: ( fade_in_s: 12.0, fade_out_s: 12.0,
+                   min_duration_s: 90.0, max_duration_s: 300.0 ),
+)
