@@ -4,6 +4,7 @@ pub mod perf_profile;
 pub mod quality;
 mod render_budget;
 mod render_graph;
+mod render_schedule;
 mod renderer;
 mod shader_library;
 pub mod snapshot;

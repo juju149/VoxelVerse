@@ -1,6 +1,7 @@
 use super::terrain_renderer::TerrainRenderer;
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::lod_animation::AnyKey;
+use crate::render_schedule::{RenderFramePasses, RenderScheduleInputs};
 use crate::snapshot::RenderFrameSnapshot;
 use crate::types::ChunkMesh;
 use std::collections::HashMap;
@@ -196,15 +197,15 @@ impl<'a> Renderer<'a> {
             None => ([0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]),
         };
 
-        let render_celestial_pass = celestial_params[0] > 0.001
-            || celestial_params[1] > 0.001
-            || celestial_params[2] > 0.001
-            || celestial_params[3] > 0.0
-            || celestial_moon[3] > 0.0;
-        let render_clouds_pass = atmosphere.cloud_density > 0.001;
-        let render_volumetric_fog_pass =
-            self.quality.volumetric_fog && atmosphere.volumetric_fog_strength > 0.001;
-        let render_precipitation_pass = weather_params[0] > 0.001;
+        let render_passes = RenderFramePasses::from_inputs(RenderScheduleInputs {
+            clouds_enabled: self.quality.volumetric_clouds,
+            cloud_density: atmosphere.cloud_density,
+            volumetric_fog_enabled: self.quality.volumetric_fog,
+            volumetric_fog_strength: atmosphere.volumetric_fog_strength,
+            precipitation_intensity: weather_params[0],
+            celestial_params,
+            celestial_moon,
+        });
 
         let global_uniform = |view_proj: glam::Mat4| GlobalUniform {
             view_proj: view_proj.to_cols_array(),
@@ -378,16 +379,13 @@ impl<'a> Renderer<'a> {
         // Stars + moon + aurora additive overlay between sky and clouds so
         // clouds occlude them naturally. Self-skips when no celestial state
         // is supplied (every input is zero).
-        if render_celestial_pass {
+        if render_passes.celestial {
             self.render_celestial(&mut enc);
         }
 
         // --- PASS 3: CLOUDS ---
-        // Skip when no cloud density is active (quality flag off or coverage = 0).
-        if atmosphere.cloud_density > 0.001 {
-            if render_clouds_pass {
-                self.render_clouds(&mut enc);
-            }
+        if render_passes.clouds {
+            self.render_clouds(&mut enc);
         }
 
         // --- PASS 4: MAIN RENDER ---
@@ -528,25 +526,13 @@ impl<'a> Renderer<'a> {
         self.last_terrain_draw_ms = terrain_draw_started.elapsed().as_secs_f32() * 1000.0;
 
         // --- PASS 5: VOLUMETRIC FOG VEIL ---
-        // Skip when the fog shader itself returns 0 (vv_fog_veil_alpha is
-        // disabled) or when the quality profile has volumetric fog off.
-        if atmosphere.volumetric_fog_strength > 0.0 {
-            if render_volumetric_fog_pass {
-                self.render_volumetric_fog(&mut enc);
-            }
+        if render_passes.volumetric_fog {
+            self.render_volumetric_fog(&mut enc);
         }
 
-        // --- PASS 5b: PRECIPITATION (Phase 3.B) ---
-        // Skip entirely when there is no active precipitation — saves one
-        // fullscreen triangle dispatch on clear weather frames.
-        let precip_intensity = frame
-            .weather
-            .map(|w| w.precipitation.intensity)
-            .unwrap_or(0.0);
-        if precip_intensity > 0.001 {
-            if render_precipitation_pass {
-                self.render_precipitation(&mut enc);
-            }
+        // --- PASS 5b: PRECIPITATION ---
+        if render_passes.precipitation {
+            self.render_precipitation(&mut enc);
         }
 
         // --- PASS 6: FINAL COMPOSITE ---
