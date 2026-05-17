@@ -1,5 +1,5 @@
 use super::Renderer;
-use crate::render_pipeline_factory::DEPTH_FORMAT;
+use crate::pipeline::factory::DEPTH_FORMAT;
 use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 
 pub(super) struct TextResources {

@@ -3,9 +3,9 @@
 use crate::atmosphere::AtmosphereConfig;
 use crate::lod_animation::LodAnimator;
 use crate::quality::QualitySettings;
-use crate::render_pipeline_desc::PipelineId;
-use crate::render_pipeline_factory::{create_post_bind_group, PipelineBindGroupLayouts};
-use crate::render_pipeline_registry::RenderPipelineRegistry;
+use crate::pipeline::desc::PipelineId;
+use crate::pipeline::factory::{create_post_bind_group, PipelineBindGroupLayouts};
+use crate::pipeline::registry::RenderPipelineRegistry;
 use crate::types::ChunkMesh;
 use crate::world_streaming::{StreamingView, WorldStreamingConfig};
 use bytemuck::{Pod, Zeroable};

@@ -1,8 +1,8 @@
 use super::terrain_renderer::TerrainRenderer;
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::lod_animation::AnyKey;
-use crate::render_pipeline_desc::PipelineId;
-use crate::render_schedule::{RenderFramePasses, RenderScheduleInputs};
+use crate::pipeline::desc::PipelineId;
+use crate::pipeline::schedule::{RenderFramePasses, RenderScheduleInputs};
 use crate::snapshot::RenderFrameSnapshot;
 use crate::types::ChunkMesh;
 use std::collections::HashMap;

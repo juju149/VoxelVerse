@@ -6,7 +6,7 @@
 //! not create wgpu pipelines yet; it defines the stable vocabulary used by the
 //! next phase to build a PipelineRegistry.
 
-use crate::render_graph::{RenderPassId, ShaderPath};
+use crate::pipeline::graph::{RenderPassId, ShaderPath};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum PipelineId {

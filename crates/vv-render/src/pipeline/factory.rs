@@ -4,13 +4,13 @@
 
 use std::collections::HashMap;
 
-use crate::render_graph::ShaderPath;
-use crate::render_pipeline_desc::{
+use crate::pipeline::graph::ShaderPath;
+use crate::pipeline::desc::{
     BindGroupSlot, BlendMode, CullMode, DepthMode, PipelineKind, PolygonMode, PrimitiveTopology,
     RenderPipelineDesc, RenderTargetKind, VertexLayoutId,
 };
-use crate::shader_contract::vertex_location;
-use crate::shader_library::ShaderLibrary;
+use crate::shader::abi::vertex_location;
+use crate::shader::library::ShaderLibrary;
 use crate::types::Vertex;
 
 pub(crate) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
@@ -467,7 +467,7 @@ pub(crate) fn validate_factory_mapping(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render_pipeline_desc::{
+    use crate::pipeline::desc::{
         pipeline_desc, BlendMode, DepthMode, PipelineId, RenderTargetKind, VertexLayoutId,
         PIPELINE_DESCS,
     };

@@ -1,5 +1,5 @@
 use super::Renderer;
-use crate::render_pipeline_desc::PipelineId;
+use crate::pipeline::desc::PipelineId;
 use crate::types::Vertex;
 use vv_meshing::MeshGen;
 use vv_world::PlanetData;

@@ -9,7 +9,7 @@
 //! costs near nothing without a `CelestialState` snapshot.
 
 use super::Renderer;
-use crate::render_pipeline_desc::PipelineId;
+use crate::pipeline::desc::PipelineId;
 
 impl<'a> Renderer<'a> {
     pub(super) fn render_celestial(&self, enc: &mut wgpu::CommandEncoder) {

@@ -4,12 +4,12 @@
 
 use std::collections::HashMap;
 
-use crate::render_graph::{RenderPassId, ShaderPath};
-use crate::render_pipeline_desc::{PipelineId, RenderPipelineDesc, PIPELINE_DESCS};
-use crate::render_pipeline_factory::{
+use crate::pipeline::graph::{RenderPassId, ShaderPath};
+use crate::pipeline::desc::{PipelineId, RenderPipelineDesc, PIPELINE_DESCS};
+use crate::pipeline::factory::{
     create_render_pipeline, create_shader_modules, PipelineBindGroupLayouts,
 };
-use crate::shader_library::ShaderLibrary;
+use crate::shader::library::ShaderLibrary;
 
 pub(crate) struct RenderPipelineRegistry {
     pipelines: HashMap<PipelineId, wgpu::RenderPipeline>,
@@ -69,7 +69,7 @@ pub(crate) fn pipeline_descriptors() -> &'static [RenderPipelineDesc] {
 
 #[cfg(test)]
 pub(crate) fn pipeline_descriptor(id: PipelineId) -> &'static RenderPipelineDesc {
-    crate::render_pipeline_desc::pipeline_desc(id)
+    crate::pipeline::desc::pipeline_desc(id)
 }
 
 pub(crate) fn pipeline_descriptors_for_pass(
@@ -156,7 +156,7 @@ fn validate_pipeline_shader_coverage() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::render_pipeline_desc::{
+    use crate::pipeline::desc::{
         BlendMode, DepthMode, PipelineKind, RenderTargetKind, VertexLayoutId,
     };
 

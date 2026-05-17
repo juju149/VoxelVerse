@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 
-use crate::render_graph::ShaderPath;
+use crate::pipeline::graph::ShaderPath;
 
 pub(crate) struct ShaderLibrary {
     root: PathBuf,
