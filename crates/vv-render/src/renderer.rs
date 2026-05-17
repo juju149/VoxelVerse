@@ -2,9 +2,9 @@
 
 use crate::atmosphere::AtmosphereConfig;
 use crate::lod_animation::LodAnimator;
-use crate::lod_streaming::{LodStreamingConfig, StreamingView};
 use crate::quality::QualitySettings;
 use crate::types::ChunkMesh;
+use crate::world_streaming::{StreamingView, WorldStreamingConfig};
 use bytemuck::{Pod, Zeroable};
 use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 use std::collections::{HashMap, HashSet};
@@ -198,7 +198,7 @@ pub struct Renderer<'a> {
     /// Edge length of the shadow depth texture, in pixels.  Read by the main
     /// render pass for texel-snapping the sun view matrix.
     pub shadow_map_size: u32,
-    pub lod_streaming: LodStreamingConfig,
+    pub world_streaming: WorldStreamingConfig,
     pub meshing: VoxelMeshingConfig,
     pub atmosphere: AtmosphereConfig,
 

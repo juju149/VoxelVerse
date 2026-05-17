@@ -8,9 +8,8 @@
 //! # Domain Warp
 //! Three independent noise samples (at offset positions in world space) are
 //! used for the X, Y, Z displacement axes so there is no directional
-//! correlation between axes.  One-sample warp (the old approach, using
-//! `warp * [1, 0.73, 1.37]`) creates banding because all three axes share
-//! the same underlying warp pattern.
+//! correlation between axes. One-sample warp creates banding because all
+//! three axes share the same underlying warp pattern.
 
 use crate::noise::{NoiseGenerator, NoiseSettings, NoiseType};
 use glam::Vec3;
@@ -67,13 +66,12 @@ pub(super) fn sample_noise_field(
         CompiledNoiseKind::Simplex | CompiledNoiseKind::OpenSimplex2S => NoiseType::OpenSimplex2S,
         // Ridged and Cellular use the spectral ridged multifractal.
         CompiledNoiseKind::Ridged | CompiledNoiseKind::Cellular => NoiseType::RidgedMulti,
-        // Perlin kept for explicit opt-in (legacy packs).
+        // Perlin remains an explicit low-cost noise kind.
         _ => NoiseType::Perlin,
     };
     let settings = NoiseSettings {
         noise_type,
         frequency: field.frequency,
-        amplitude: field.amplitude,
         octaves: field.octaves,
         persistence: field.persistence,
         lacunarity: field.lacunarity,

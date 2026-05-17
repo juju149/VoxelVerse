@@ -420,10 +420,8 @@ pub enum RawVegetationPlacementKind {
     ProceduralTree,
 }
 
-/// A vegetation entry — describes a procedurally-generated tree or plant.
-/// Fields from the old `stamp` and `placement` sub-structs are now flat for
-/// compact authoring.  Nested forms (`stamp: (...)`, `placement: (...)`) are
-/// still accepted for backwards compatibility via an ignored outer wrapper.
+/// A vegetation entry describing a procedurally-generated tree or plant.
+/// Stamp and placement fields are flat for compact V1 authoring.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RawVegetationDef {
     #[serde(alias = "name")]

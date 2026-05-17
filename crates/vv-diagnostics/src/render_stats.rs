@@ -6,7 +6,6 @@ const INDEX_BYTES: usize = 4;
 /// Per-frame counters collected by the renderer and exposed to the diagnostics overlay.
 /// All fields represent the state at the end of the most recent frame.
 #[derive(Clone, Copy, Debug, Default)]
-#[allow(dead_code)] // timing fields written now, read by overlay once wired
 pub struct RenderStats {
     // --- geometry counters ---
     pub visible_chunks: usize,

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::CompiledPlanet;
 use vv_content_schema::{RawCurve, RawHeightCurveDef, RawNoiseKind, RawTreeShapeKind};
 use vv_voxel::VoxelId;

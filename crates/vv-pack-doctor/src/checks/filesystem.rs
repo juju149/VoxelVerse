@@ -1,4 +1,4 @@
-//! Filesystem-level checks: required pack layout, legacy paths, empty dirs.
+//! Filesystem-level checks: required pack layout, forbidden paths, empty dirs.
 
 use std::path::Path;
 
@@ -11,7 +11,7 @@ const REQUIRED_DIRS: &[&str] = &["defs", "media", "media/textures", "media/voxel
 
 const REQUIRED_FILES: &[&str] = &["pack.ron", "README.md"];
 
-const FORBIDDEN_LEGACY: &[&str] = &[
+const FORBIDDEN_PRE_V1_PATHS: &[&str] = &[
     "legacy_imports",
     "blocks",
     "worldgen",
@@ -44,16 +44,19 @@ pub fn run(scan: &PackScan, report: &mut Report) {
             );
         }
     }
-    for legacy in FORBIDDEN_LEGACY {
-        let path = scan.pack_root.join(legacy);
+    for forbidden in FORBIDDEN_PRE_V1_PATHS {
+        let path = scan.pack_root.join(forbidden);
         if path.exists() {
             report.error(
-                Diagnostic::new(CHECK, format!("legacy path still exists: {}", legacy))
-                    .with_path((*legacy).to_string())
-                    .with_suggestion(format!(
-                        "remove {} — the new layout is defs/ + media/ + render/",
-                        legacy
-                    )),
+                Diagnostic::new(
+                    CHECK,
+                    format!("forbidden pre-V1 path exists: {}", forbidden),
+                )
+                .with_path((*forbidden).to_string())
+                .with_suggestion(format!(
+                    "remove {} — the V1 layout is defs/ + media/ + render/",
+                    forbidden
+                )),
             );
         }
     }

@@ -18,8 +18,6 @@
 //!
 //! Anything outside this module sees only the public API on
 //! `ProceduralPlanetTerrain` plus the helper types re-exported below.
-#![allow(dead_code)]
-
 mod biome_select;
 mod climate;
 mod feature_eval;

@@ -7,7 +7,7 @@
 //! player never sees a void.
 
 use super::Renderer;
-use crate::lod_streaming::StreamingView;
+use crate::world_streaming::StreamingView;
 use std::time::{Duration, Instant};
 use vv_world::PlanetData;
 

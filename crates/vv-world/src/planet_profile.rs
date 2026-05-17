@@ -80,7 +80,6 @@ impl PlanetProfile {
     /// let resolution = PlanetProfile::procedural_resolution(0x4242_1234);
     /// assert!(resolution >= 10_000 && resolution <= 2_000_000);
     /// ```
-    #[allow(dead_code)]
     pub fn procedural_resolution(seed: u32) -> u32 {
         // Two LCG rounds to spread seed bits.
         let s = seed

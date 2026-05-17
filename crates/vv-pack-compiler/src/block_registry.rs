@@ -184,8 +184,7 @@ pub struct CompiledBlock {
     /// share this key; their `state` distinguishes them.
     pub family_key: String,
     /// State assignment for this variant. Empty for stateless blocks.
-    /// Reserved for future block-state interaction (doors, slabs, etc.).
-    #[allow(dead_code)]
+    /// State value for interaction systems that inspect block variants.
     pub state: BlockStateValue,
     /// Human-readable name for UI and diagnostics.
     pub display_name: String,

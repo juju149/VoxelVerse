@@ -1,7 +1,7 @@
 use super::{MeshJobResult, QuadContext, QuadNode, Renderer};
 use crate::lod_animation::AnyKey;
-use crate::lod_streaming::StreamingView;
 use crate::types::Vertex;
+use crate::world_streaming::StreamingView;
 use glam::Vec3;
 use std::collections::HashSet;
 use vv_math::CoordSystem;
@@ -18,7 +18,7 @@ impl<'a> Renderer<'a> {
         let update_started = std::time::Instant::now();
         self.reset_streaming_frame_stats();
         self.animator
-            .set_fade_duration(self.lod_streaming.lod_transition_time);
+            .set_fade_duration(self.world_streaming.lod_transition_time);
 
         let res = planet.resolution;
         let player_id = CoordSystem::pos_to_id(view.player_pos, planet.profile);
@@ -195,8 +195,8 @@ impl<'a> Renderer<'a> {
         }
 
         enforce_streaming_budget(
-            self.lod_streaming.max_visible_voxel_chunks,
-            self.lod_streaming.max_visible_lod_tiles,
+            self.world_streaming.max_visible_voxel_chunks,
+            self.world_streaming.max_visible_lod_tiles,
             view,
             planet,
             &mut required_voxels,
@@ -282,9 +282,9 @@ impl<'a> Renderer<'a> {
             (size as f32 * planet.profile.layer_radius(h)) / planet.resolution as f32;
         let node_size_chunks = (size / CHUNK_SIZE).max(1);
         let split_distance = self
-            .lod_streaming
+            .world_streaming
             .split_distance(node_radius_world, node_size_chunks);
-        let hysteresis = self.lod_streaming.lod_hysteresis.clamp(0.0, 0.45);
+        let hysteresis = self.world_streaming.lod_hysteresis.clamp(0.0, 0.45);
         let was_split = node_was_split(node, context.previous_voxels, context.previous_lods);
         let split_threshold = if was_split {
             split_distance * (1.0 + hysteresis)

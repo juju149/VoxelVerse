@@ -1,7 +1,7 @@
 use super::{LocalUniform, MeshJobResult, Renderer};
 use crate::lod_animation::AnyKey;
-use crate::lod_streaming::StreamingView;
 use crate::types::{ChunkMesh, Vertex};
+use crate::world_streaming::StreamingView;
 use glam::Vec3;
 use vv_meshing::{CpuMesh, MeshGen, UploadBudgetState};
 use vv_voxel::{LodKey, SurfaceChunkKey};

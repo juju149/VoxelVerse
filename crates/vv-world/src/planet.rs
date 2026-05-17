@@ -38,7 +38,6 @@ pub struct PlanetDataSources {
     pub prop_models: Arc<VoxModelRegistry>,
 }
 
-#[allow(dead_code)]
 pub trait VoxelRead {
     fn resolution(&self) -> u32;
     fn profile(&self) -> PlanetProfile;
@@ -76,7 +75,6 @@ pub struct PlanetData {
 }
 
 impl PlanetData {
-    #[allow(dead_code)]
     pub fn new(
         planet_def: CompiledPlanet,
         registry: Arc<BlockRegistry>,

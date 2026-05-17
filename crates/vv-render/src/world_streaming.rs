@@ -2,7 +2,7 @@ use glam::Vec3;
 use vv_voxel::VoxelCoord;
 
 #[derive(Clone, Copy, Debug)]
-pub struct LodStreamingConfig {
+pub struct WorldStreamingConfig {
     pub lod_near_radius: f32,
     pub lod_split_curve: LodSplitCurve,
     pub lod_hysteresis: f32,
@@ -27,7 +27,7 @@ pub struct StreamingView {
     pub cursor_id: Option<VoxelCoord>,
 }
 
-impl LodStreamingConfig {
+impl WorldStreamingConfig {
     pub fn split_factor(self, node_size_chunks: u32) -> f32 {
         match node_size_chunks {
             0 | 1 => self.lod_split_curve.voxel_factor,
@@ -43,7 +43,7 @@ impl LodStreamingConfig {
     }
 }
 
-impl Default for LodStreamingConfig {
+impl Default for WorldStreamingConfig {
     fn default() -> Self {
         Self {
             lod_near_radius: 96.0,
@@ -63,11 +63,11 @@ impl Default for LodStreamingConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::{LodSplitCurve, LodStreamingConfig};
+    use super::{LodSplitCurve, WorldStreamingConfig};
 
     #[test]
     fn split_distance_uses_curve_and_near_floor() {
-        let config = LodStreamingConfig {
+        let config = WorldStreamingConfig {
             lod_near_radius: 50.0,
             lod_split_curve: LodSplitCurve {
                 far_factor: 2.0,
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn default_streaming_budget_is_bounded() {
-        let config = LodStreamingConfig::default();
+        let config = WorldStreamingConfig::default();
         assert!(config.max_visible_voxel_chunks > 0);
         assert!(config.max_visible_lod_tiles > config.max_visible_voxel_chunks);
         assert!(config.lod_hysteresis > 0.0);

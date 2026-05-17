@@ -6,8 +6,9 @@
 //! The user can force a tier with the `VV_PERF=low|medium|high|ultra` env
 //! variable; otherwise we fall back to [`PerfTier::detect`].
 
-use crate::lod_streaming::{LodSplitCurve, LodStreamingConfig};
 use crate::quality::{PcfQuality, QualitySettings, RenderQualityProfile};
+use crate::world_streaming::{LodSplitCurve, WorldStreamingConfig};
+use crate::RenderBudgetConfig;
 use std::str::FromStr;
 use vv_meshing::{SchedulerBudget, VoxelMeshingConfig};
 
@@ -100,9 +101,9 @@ pub struct PerfProfile {
     pub tier: PerfTier,
     /// Edge length (and width) of the square shadow depth texture.
     pub shadow_map_size: u32,
-    pub lod_streaming: LodStreamingConfig,
+    pub world_streaming: WorldStreamingConfig,
     pub quality: QualitySettings,
-    pub scheduler: SchedulerBudget,
+    pub render_budget: RenderBudgetConfig,
     pub meshing: VoxelMeshingConfig,
 }
 
@@ -112,7 +113,7 @@ impl PerfProfile {
             PerfTier::Low => Self {
                 tier,
                 shadow_map_size: 1024,
-                lod_streaming: LodStreamingConfig {
+                world_streaming: WorldStreamingConfig {
                     lod_near_radius: 64.0,
                     lod_split_curve: LodSplitCurve {
                         far_factor: 2.2,
@@ -136,15 +137,17 @@ impl PerfProfile {
                     bloom: false,
                     cloud_steps: 0,
                 },
-                scheduler: SchedulerBudget {
-                    upload_voxel: 3,
-                    dispatch_voxel: 3,
-                    max_pending_voxel: 16,
-                    upload_lod: 5,
-                    dispatch_lod: 6,
-                    max_pending_lod: 16,
-                    upload_bytes_per_frame: 6 * 1024 * 1024,
-                    upload_time_budget_ms: 3.5,
+                render_budget: RenderBudgetConfig {
+                    mesh_scheduler: SchedulerBudget {
+                        upload_voxel: 3,
+                        dispatch_voxel: 3,
+                        max_pending_voxel: 16,
+                        upload_lod: 5,
+                        dispatch_lod: 6,
+                        max_pending_lod: 16,
+                        upload_bytes_per_frame: 6 * 1024 * 1024,
+                        upload_time_budget_ms: 3.5,
+                    },
                 },
                 meshing: VoxelMeshingConfig {
                     prop_lod_chunk_radius: 3,
@@ -156,7 +159,7 @@ impl PerfProfile {
             PerfTier::Medium => Self {
                 tier,
                 shadow_map_size: 2048,
-                lod_streaming: LodStreamingConfig {
+                world_streaming: WorldStreamingConfig {
                     lod_near_radius: 88.0,
                     lod_split_curve: LodSplitCurve {
                         far_factor: 3.2,
@@ -180,7 +183,7 @@ impl PerfProfile {
                     bloom: false,
                     cloud_steps: 6,
                 },
-                scheduler: SchedulerBudget::default(),
+                render_budget: RenderBudgetConfig::default(),
                 meshing: VoxelMeshingConfig {
                     prop_lod_chunk_radius: 4,
                     cliff_fill_depth: 18,
@@ -191,7 +194,7 @@ impl PerfProfile {
             PerfTier::High => Self {
                 tier,
                 shadow_map_size: 4096,
-                lod_streaming: LodStreamingConfig {
+                world_streaming: WorldStreamingConfig {
                     lod_near_radius: 112.0,
                     lod_split_curve: LodSplitCurve {
                         far_factor: 4.0,
@@ -215,22 +218,24 @@ impl PerfProfile {
                     bloom: true,
                     cloud_steps: 10,
                 },
-                scheduler: SchedulerBudget {
-                    upload_voxel: 10,
-                    dispatch_voxel: 10,
-                    max_pending_voxel: 64,
-                    upload_lod: 14,
-                    dispatch_lod: 16,
-                    max_pending_lod: 40,
-                    upload_bytes_per_frame: 20 * 1024 * 1024,
-                    upload_time_budget_ms: 6.0,
+                render_budget: RenderBudgetConfig {
+                    mesh_scheduler: SchedulerBudget {
+                        upload_voxel: 10,
+                        dispatch_voxel: 10,
+                        max_pending_voxel: 64,
+                        upload_lod: 14,
+                        dispatch_lod: 16,
+                        max_pending_lod: 40,
+                        upload_bytes_per_frame: 20 * 1024 * 1024,
+                        upload_time_budget_ms: 6.0,
+                    },
                 },
                 meshing: VoxelMeshingConfig::default(),
             },
             PerfTier::Ultra => Self {
                 tier,
                 shadow_map_size: 4096,
-                lod_streaming: LodStreamingConfig {
+                world_streaming: WorldStreamingConfig {
                     lod_near_radius: 144.0,
                     lod_split_curve: LodSplitCurve {
                         far_factor: 5.0,
@@ -254,15 +259,17 @@ impl PerfProfile {
                     bloom: true,
                     cloud_steps: 14,
                 },
-                scheduler: SchedulerBudget {
-                    upload_voxel: 14,
-                    dispatch_voxel: 12,
-                    max_pending_voxel: 96,
-                    upload_lod: 18,
-                    dispatch_lod: 22,
-                    max_pending_lod: 56,
-                    upload_bytes_per_frame: 28 * 1024 * 1024,
-                    upload_time_budget_ms: 7.0,
+                render_budget: RenderBudgetConfig {
+                    mesh_scheduler: SchedulerBudget {
+                        upload_voxel: 14,
+                        dispatch_voxel: 12,
+                        max_pending_voxel: 96,
+                        upload_lod: 18,
+                        dispatch_lod: 22,
+                        max_pending_lod: 56,
+                        upload_bytes_per_frame: 28 * 1024 * 1024,
+                        upload_time_budget_ms: 7.0,
+                    },
                 },
                 meshing: VoxelMeshingConfig {
                     prop_lod_chunk_radius: 6,
@@ -281,23 +288,23 @@ impl PerfProfile {
             self.tier.label(),
             self.quality.profile,
             self.shadow_map_size,
-            self.lod_streaming.lod_near_radius,
-            self.lod_streaming.lod_hysteresis,
-            self.lod_streaming.lod_transition_time,
-            self.lod_streaming.max_visible_voxel_chunks,
-            self.lod_streaming.max_visible_lod_tiles,
+            self.world_streaming.lod_near_radius,
+            self.world_streaming.lod_hysteresis,
+            self.world_streaming.lod_transition_time,
+            self.world_streaming.max_visible_voxel_chunks,
+            self.world_streaming.max_visible_lod_tiles,
             self.quality.pcf,
             self.quality.triplanar_grain,
             self.quality.volumetric_fog,
             self.quality.volumetric_clouds,
             self.quality.fxaa,
             self.quality.bloom,
-            self.scheduler.dispatch_voxel,
-            self.scheduler.upload_voxel,
-            self.scheduler.max_pending_voxel,
-            self.scheduler.dispatch_lod,
-            self.scheduler.upload_lod,
-            self.scheduler.max_pending_lod,
+            self.render_budget.mesh_scheduler.dispatch_voxel,
+            self.render_budget.mesh_scheduler.upload_voxel,
+            self.render_budget.mesh_scheduler.max_pending_voxel,
+            self.render_budget.mesh_scheduler.dispatch_lod,
+            self.render_budget.mesh_scheduler.upload_lod,
+            self.render_budget.mesh_scheduler.max_pending_lod,
             self.meshing.prop_lod_chunk_radius,
             self.meshing.cliff_fill_depth,
             self.meshing.max_prop_quads_per_chunk,

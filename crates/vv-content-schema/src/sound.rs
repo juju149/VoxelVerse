@@ -1,12 +1,12 @@
 //! Sound event definitions.
 //!
-//! Sprint 0 scope: typed registry only. The runtime audio engine is **not yet
-//! implemented** — these defs exist so `ContentRef`s like `core:sound/step/grass`
-//! resolve to a real, addressable asset rather than dangling.
+//! Typed registry definitions for logical audio events. These defs ensure
+//! `ContentRef`s like `core:sound/step/grass` resolve to a real, addressable
+//! asset rather than dangling.
 //!
 //! A sound event represents a logical sound (e.g. "footstep on grass"). At play
 //! time, the runtime will pick one variant and apply random pitch/volume in the
-//! configured ranges. For now, `variants` may be empty; clips are optional.
+//! configured ranges. `variants` may be empty; clips are optional.
 
 use crate::ContentRef;
 use serde::Deserialize;
@@ -23,7 +23,7 @@ pub struct RawSoundEventDef {
     #[serde(default = "default_one")]
     pub default_pitch: f32,
     /// Possible audio variants picked at play time. May be empty during
-    /// Sprint 0 (no runtime audio yet).
+    /// authoring phases where a logical event exists before recorded audio.
     #[serde(default)]
     pub variants: Vec<RawSoundVariant>,
 }

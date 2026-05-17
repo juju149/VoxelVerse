@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::ContentRef;
 
-/// Alias kept for legacy compatibility — a texture is just another content ref.
+/// Semantic alias for authored texture references.
 pub type TextureRef = ContentRef;
 
 /// PBR-lite material slot triplet.

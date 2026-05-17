@@ -78,7 +78,6 @@ pub struct CpuMesh {
 }
 
 impl CpuMesh {
-    #[allow(dead_code)] // used by tests and future callers
     pub fn new(vertices: Vec<CpuVertex>, indices: Vec<u32>) -> Self {
         let bounds = MeshBounds::from_vertices(&vertices);
         Self {

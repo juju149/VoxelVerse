@@ -18,7 +18,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
                 report.error(
                     Diagnostic::new(
                         CHECK,
-                        "legacy `recipe:` field is forbidden; use `recipes: [(kind: ...)]`",
+                        "`recipe:` field is forbidden; use `recipes: [(kind: ...)]`",
                     )
                     .with_path(rel.clone())
                     .with_field(format!("line {}", line_idx + 1))
@@ -30,7 +30,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
             }
             if trimmed.contains("#station.") {
                 report.error(
-                    Diagnostic::new(CHECK, "legacy station tag syntax is forbidden in V1")
+                    Diagnostic::new(CHECK, "station tag shorthand is forbidden in V1")
                         .with_path(rel.clone())
                         .with_field(format!("line {}", line_idx + 1))
                         .with_suggestion(
@@ -41,7 +41,7 @@ pub fn run(scan: &PackScan, report: &mut Report) {
             }
             if trimmed.starts_with("icon:") {
                 report.error(
-                    Diagnostic::new(CHECK, "legacy `item.icon` field is forbidden in V1")
+                    Diagnostic::new(CHECK, "`item.icon` field is forbidden in V1")
                         .with_path(rel.clone())
                         .with_field(format!("line {}", line_idx + 1))
                         .with_suggestion(

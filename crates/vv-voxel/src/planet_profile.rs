@@ -63,7 +63,6 @@ impl PlanetProfile {
         }
     }
 
-    #[allow(dead_code)]
     pub fn procedural_resolution(seed: u32) -> u32 {
         let s = seed
             .wrapping_mul(1_664_525)

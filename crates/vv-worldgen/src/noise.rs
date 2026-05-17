@@ -2,7 +2,7 @@
 //!
 //! # Primary noise: OpenSimplex2S (3D simplex)
 //! Tetrahedral lattice — no grid-aligned directional artifacts, smooth C²
-//! continuity.  Replaces the old Perlin implementation as the engine default.
+//! continuity. OpenSimplex2S is the engine default.
 //!
 //! # Ridged Multifractal (Musgrave 1994)
 //! Spectral weighting so fine octave detail appears on ridgelines and fades
@@ -30,15 +30,12 @@ const GRAD3: [(f32, f32, f32); 12] = [
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[allow(dead_code)]
 pub enum NoiseType {
-    /// Classic Perlin — kept for backward compatibility only.  Grid artifacts possible.
+    /// Classic Perlin. Grid artifacts possible; OpenSimplex2S is preferred.
     Perlin,
     /// OpenSimplex2S — 3D simplex on a tetrahedral lattice.
     /// Primary noise for all terrain in VoxelVerse.  No directional artifacts.
     OpenSimplex2S,
-    /// Simple ridge fold `1 − |2v−1|` using OpenSimplex2S base.
-    Ridged,
     /// Ridged multifractal (Musgrave 1994).
     /// Spectral weights make fine detail appear on ridges only.
     /// Best for mountain chains, cliff faces, and eroded terrain.
@@ -46,11 +43,9 @@ pub enum NoiseType {
 }
 
 #[derive(Clone, Copy, Debug)]
-#[allow(dead_code)]
 pub struct NoiseSettings {
     pub noise_type: NoiseType,
     pub frequency: f32,
-    pub amplitude: f32,
     pub octaves: u32,
     pub persistence: f32,
     pub lacunarity: f32,
@@ -117,11 +112,6 @@ impl NoiseGenerator {
             NoiseType::Perlin => (self.perlin(p) + 1.0) * 0.5,
             NoiseType::OpenSimplex2S => {
                 (self.simplex3d(p.x, p.y, p.z).clamp(-1.0, 1.0) + 1.0) * 0.5
-            }
-            NoiseType::Ridged => {
-                // Simple fold using simplex base — fast approximation.
-                let v = (self.simplex3d(p.x, p.y, p.z).clamp(-1.0, 1.0) + 1.0) * 0.5;
-                1.0 - (2.0 * v - 1.0).abs()
             }
             NoiseType::RidgedMulti => unreachable!("dispatched before compute_base"),
         }
@@ -262,7 +252,7 @@ impl NoiseGenerator {
         (result / amp_sum.max(0.001)).clamp(0.0, 1.0)
     }
 
-    // ── Legacy Perlin ─────────────────────────────────────────────────────────
+    // ── Perlin ───────────────────────────────────────────────────────────────
 
     fn perlin(&self, pos: Vec3) -> f32 {
         let x = pos.x.floor();

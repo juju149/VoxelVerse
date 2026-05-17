@@ -87,14 +87,14 @@ fn object_uses_default_format_version_when_omitted() {
 }
 
 #[test]
-fn object_rejects_legacy_item_icon_field() {
+fn object_rejects_removed_item_icon_field() {
     let src = r##"Object(
-        name: "Legacy Icon",
+        name: "Removed Icon",
         item: (
             stack: 1,
             category: resource,
             visible_in_inventory: true,
-            icon: "items/legacy",
+            icon: "items/removed",
         ),
     )"##;
     let err = parse_err::<RawObjectDef>(strip_wrapper(src));
