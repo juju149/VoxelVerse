@@ -12,9 +12,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use vv_pack_compiler::shader::{
-    self, EnumeratedShader, PackShaderRoot, ShaderResolver,
-};
+use vv_pack_compiler::shader::{self, EnumeratedShader, PackShaderRoot, ShaderResolver};
 
 use crate::index::PackIndex;
 use crate::report::{Diagnostic, RenderProfileSummary, Report};
@@ -196,7 +194,10 @@ pub fn validate(scan: &PackScan, report: &mut Report) {
         .iter()
         .map(|p| format!("render/shaders/{p}"))
         .collect();
-    report.unused.shaders.retain(|path| !expected_full.contains(path));
+    report
+        .unused
+        .shaders
+        .retain(|path| !expected_full.contains(path));
 
     finalize_profiles(report);
 }
@@ -211,11 +212,7 @@ fn finalize_profiles(report: &mut Report) {
     report.planet.counts.render_profiles = report.planet.render_profiles.len();
 }
 
-fn validate_shader(
-    resolver: &mut ShaderResolver,
-    entry: &EnumeratedShader,
-    report: &mut Report,
-) {
+fn validate_shader(resolver: &mut ShaderResolver, entry: &EnumeratedShader, report: &mut Report) {
     let rel_str = rel_as_str(&entry.relative_path);
     let full = format!("render/shaders/{rel_str}");
 
@@ -223,8 +220,7 @@ fn validate_shader(
         Ok(src) => src,
         Err(e) => {
             report.error(
-                Diagnostic::new(CHECK, format!("shader expansion failed: {e}"))
-                    .with_path(full),
+                Diagnostic::new(CHECK, format!("shader expansion failed: {e}")).with_path(full),
             );
             return;
         }

@@ -120,8 +120,11 @@ pub fn compile_render_features(
             return (registry, errors);
         }
     };
-    let allowed_packs: Vec<String> =
-        resolver.pack_names().iter().map(|s| s.to_string()).collect();
+    let allowed_packs: Vec<String> = resolver
+        .pack_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
 
     for input in features {
         match compile_one_feature(input, &allowed_packs, &mut resolver) {
@@ -346,10 +349,7 @@ fn validate_shader_exists_and_entry(
             e.emit_to_string(&source)
         ))
     })?;
-    let found = module
-        .entry_points
-        .iter()
-        .find(|ep| ep.name == entry_point);
+    let found = module.entry_points.iter().find(|ep| ep.name == entry_point);
     match found {
         None => {
             let available = module
@@ -648,7 +648,8 @@ fn fs_main() -> @location(0) vec4<f32> {
         let pack = make_pack_with_fullscreen_post();
         // Replace the manifest with one whose entry-point name is wrong.
         write_file(
-            &pack.root
+            &pack
+                .root
                 .join("defs/render/features/example.render_feature.ron"),
             r#"(
                 format_version: 1,
@@ -669,9 +670,9 @@ fn fs_main() -> @location(0) vec4<f32> {
         let (registry, errors) = compile_pack_render_features(&stack, &pack.root);
         assert!(registry.features.is_empty());
         assert!(
-            errors
-                .iter()
-                .any(|e| e.message.contains("does not export entry point 'does_not_exist'")),
+            errors.iter().any(|e| e
+                .message
+                .contains("does not export entry point 'does_not_exist'")),
             "unexpected errors: {errors:#?}"
         );
     }
@@ -680,7 +681,8 @@ fn fs_main() -> @location(0) vec4<f32> {
     fn unknown_namespace_in_shader_ref_is_rejected() {
         let pack = make_pack_with_fullscreen_post();
         write_file(
-            &pack.root
+            &pack
+                .root
                 .join("defs/render/features/example.render_feature.ron"),
             r#"(
                 format_version: 1,
@@ -699,9 +701,9 @@ fn fs_main() -> @location(0) vec4<f32> {
         let stack = pack_stack(&pack.root);
         let (_registry, errors) = compile_pack_render_features(&stack, &pack.root);
         assert!(
-            errors
-                .iter()
-                .any(|e| e.message.contains("namespace 'ghost' is not in the pack stack")),
+            errors.iter().any(|e| e
+                .message
+                .contains("namespace 'ghost' is not in the pack stack")),
             "unexpected errors: {errors:#?}"
         );
     }
@@ -710,7 +712,8 @@ fn fs_main() -> @location(0) vec4<f32> {
     fn profile_referencing_unknown_feature_is_rejected() {
         let pack = make_pack_with_fullscreen_post();
         write_file(
-            &pack.root
+            &pack
+                .root
                 .join("defs/render/profiles/cinematic.render_profile.ron"),
             r#"(
                 format_version: 1,
@@ -722,9 +725,9 @@ fn fs_main() -> @location(0) vec4<f32> {
         let stack = pack_stack(&pack.root);
         let (_registry, errors) = compile_pack_render_features(&stack, &pack.root);
         assert!(
-            errors
-                .iter()
-                .any(|e| e.message.contains("references unknown feature 'Ghost Feature'")),
+            errors.iter().any(|e| e
+                .message
+                .contains("references unknown feature 'Ghost Feature'")),
             "unexpected errors: {errors:#?}"
         );
     }
@@ -733,7 +736,8 @@ fn fs_main() -> @location(0) vec4<f32> {
     fn invalid_kind_target_combo_is_rejected() {
         let pack = make_pack_with_fullscreen_post();
         write_file(
-            &pack.root
+            &pack
+                .root
                 .join("defs/render/features/example.render_feature.ron"),
             r#"(
                 format_version: 1,

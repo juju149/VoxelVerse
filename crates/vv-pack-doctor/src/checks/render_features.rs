@@ -32,7 +32,10 @@ pub fn run(scan: &PackScan, report: &mut Report) {
 
     if !registry.features.is_empty() || !registry.profiles.is_empty() {
         report.planet.counts.render_features = registry.features.len();
-        report.planet.counts.render_profiles =
-            report.planet.counts.render_profiles.max(registry.profiles.len());
+        report.planet.counts.render_profiles = report
+            .planet
+            .counts
+            .render_profiles
+            .max(registry.profiles.len());
     }
 }

@@ -4,11 +4,11 @@
 
 use std::collections::HashMap;
 
-use crate::pipeline::graph::ShaderPath;
 use crate::pipeline::desc::{
     BindGroupSlot, BlendMode, CullMode, DepthMode, PipelineKind, PolygonMode, PrimitiveTopology,
     RenderPipelineDesc, RenderTargetKind, VertexLayoutId,
 };
+use crate::pipeline::graph::ShaderPath;
 use crate::shader::abi::vertex_location;
 use crate::shader::library::ShaderLibrary;
 use crate::types::Vertex;

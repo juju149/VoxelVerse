@@ -7,7 +7,6 @@ edition.workspace = true
 vv-voxel = { path = "../vv-voxel" }
 vv-math = { path = "../vv-math" }
 vv-world = { path = "../vv-world" }
-vv-worldgen = { path = "../vv-worldgen" }
 vv-physics = { path = "../vv-physics" }
 vv-pack-compiler = { path = "../vv-pack-compiler" }
 

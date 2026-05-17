@@ -157,13 +157,11 @@ impl ShaderResolver {
             }
             let mut stack = vec![pack.shader_root.clone()];
             while let Some(dir) = stack.pop() {
-                let entries = std::fs::read_dir(&dir).map_err(|e| {
-                    format!("cannot read shader dir {}: {}", dir.display(), e)
-                })?;
+                let entries = std::fs::read_dir(&dir)
+                    .map_err(|e| format!("cannot read shader dir {}: {}", dir.display(), e))?;
                 for entry in entries {
-                    let entry = entry.map_err(|e| {
-                        format!("cannot read entry in {}: {}", dir.display(), e)
-                    })?;
+                    let entry = entry
+                        .map_err(|e| format!("cannot read entry in {}: {}", dir.display(), e))?;
                     let path = entry.path();
                     if path.is_dir() {
                         stack.push(path);
@@ -197,9 +195,7 @@ impl ShaderResolver {
     }
 }
 
-fn build_override_report(
-    resolutions: &HashMap<PathBuf, FileResolution>,
-) -> ShaderOverrideReport {
+fn build_override_report(resolutions: &HashMap<PathBuf, FileResolution>) -> ShaderOverrideReport {
     let mut overrides: Vec<ShaderOverride> = resolutions
         .iter()
         .filter(|(_, r)| !r.shadowed.is_empty())
@@ -356,5 +352,10 @@ fn normalize_relative(path: &Path) -> Result<PathBuf, String> {
 pub fn validate_wgsl(source: &str, label: &str) -> Result<(), String> {
     naga::front::wgsl::parse_str(source)
         .map(|_| ())
-        .map_err(|e| format!("WGSL parse failed for {label}:\n{}", e.emit_to_string(source)))
+        .map_err(|e| {
+            format!(
+                "WGSL parse failed for {label}:\n{}",
+                e.emit_to_string(source)
+            )
+        })
 }

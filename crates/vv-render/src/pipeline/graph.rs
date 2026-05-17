@@ -180,7 +180,9 @@ mod tests {
     #[test]
     fn active_shaders_are_valid_wgsl() {
         let core_pack = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
-        let stack = vec![vv_pack_compiler::shader::PackShaderRoot::new("core", core_pack)];
+        let stack = vec![vv_pack_compiler::shader::PackShaderRoot::new(
+            "core", core_pack,
+        )];
         let (lib, _report) = crate::shader::library::ShaderLibrary::load_stack(&stack)
             .expect("shader library loads");
         for &shader in ShaderPath::ACTIVE_IN_PASS {

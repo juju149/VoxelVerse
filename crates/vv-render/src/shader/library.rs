@@ -12,9 +12,7 @@ pub(crate) struct ShaderLibrary {
 impl ShaderLibrary {
     /// Load every engine-required shader from an ordered pack stack via the
     /// shared [`ShaderResolver`].
-    pub fn load_stack(
-        packs: &[PackShaderRoot],
-    ) -> Result<(Self, ShaderOverrideReport), String> {
+    pub fn load_stack(packs: &[PackShaderRoot]) -> Result<(Self, ShaderOverrideReport), String> {
         let mut resolver = ShaderResolver::new(packs)?;
         let mut sources = HashMap::with_capacity(ShaderPath::REQUIRED.len());
         for shader in ShaderPath::REQUIRED {

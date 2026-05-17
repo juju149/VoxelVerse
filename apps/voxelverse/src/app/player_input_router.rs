@@ -1,7 +1,7 @@
 use crate::app::action_result::ActionResult;
-use crate::app::gameplay_actions::place_block;
 use crate::app::input_intent::InputIntent;
 use crate::app::runtime_state::GameRuntime;
+use vv_gameplay::place_block;
 
 /// Dispatch a gameplay `InputIntent` produced from normal (non-UI, non-debug) player input.
 ///
@@ -22,7 +22,9 @@ pub(super) fn dispatch_intent(
             runtime.set_mining_button_held(false);
         }
         InputIntent::PlaceBlock => {
-            result = place_block(runtime.as_place_context(view_width, view_height));
+            result = ActionResult::from_gameplay(place_block(
+                runtime.as_place_context(view_width, view_height),
+            ));
         }
         InputIntent::SelectHotbarSlot(index) => {
             runtime.hotbar_mut().select(index);

@@ -1,16 +1,16 @@
-use crate::app::action_result::{BlockSoundKind, FeedbackEvent};
 use vv_audio::{AudioEngine, SoundEvent, SoundKind};
+use vv_gameplay::{BlockSoundKind, GameFeedbackEvent};
 use vv_render::{PlayerActionFeedback, Renderer};
 
 /// Forward a slice of feedback events produced by an action to the renderer and audio engine.
 pub(super) fn route_feedback_events(
     renderer: &mut Renderer<'_>,
     audio: &mut AudioEngine,
-    events: &[FeedbackEvent],
+    events: &[GameFeedbackEvent],
 ) {
     for event in events {
         match event {
-            FeedbackEvent::ToolSwing { strength } => {
+            GameFeedbackEvent::ToolSwing { strength } => {
                 renderer.notify_player_action(PlayerActionFeedback::Swing {
                     strength: *strength,
                 });
@@ -18,7 +18,7 @@ pub(super) fn route_feedback_events(
                     strength: *strength,
                 });
             }
-            FeedbackEvent::BlockHit {
+            GameFeedbackEvent::BlockHit {
                 sound_kind,
                 strength,
             } => {
@@ -30,7 +30,7 @@ pub(super) fn route_feedback_events(
                     strength: *strength,
                 });
             }
-            FeedbackEvent::BlockBreak {
+            GameFeedbackEvent::BlockBreak {
                 sound_kind,
                 strength,
             } => {
@@ -42,7 +42,7 @@ pub(super) fn route_feedback_events(
                     strength: *strength,
                 });
             }
-            FeedbackEvent::BlockPlace { sound_kind } => {
+            GameFeedbackEvent::BlockPlace { sound_kind } => {
                 renderer.notify_player_action(PlayerActionFeedback::Place);
                 audio.play(SoundEvent::BlockPlace {
                     sound_kind: to_audio_kind(*sound_kind),
@@ -52,7 +52,7 @@ pub(super) fn route_feedback_events(
     }
 }
 
-/// Convert the app-layer `BlockSoundKind` to the audio-crate `SoundKind`.
+/// Convert the gameplay `BlockSoundKind` to the audio-crate `SoundKind`.
 /// This conversion is the only place in the app that depends on both types.
 fn to_audio_kind(kind: BlockSoundKind) -> SoundKind {
     match kind {

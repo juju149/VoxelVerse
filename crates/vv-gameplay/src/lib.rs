@@ -1,3 +1,5 @@
+mod action_result;
+mod block_actions;
 mod block_interaction;
 mod block_selection;
 mod console;
@@ -11,6 +13,8 @@ mod planet_resize;
 mod player;
 mod player_controller;
 
+pub use action_result::{BlockSoundKind, CursorCapture, GameActionResult, GameFeedbackEvent};
+pub use block_actions::{mine_block, place_block, MineBlockContext, PlaceBlockContext};
 pub use block_interaction::{BlockAction, BlockActionIntent, BlockInteraction};
 pub use block_selection::{BlockSelection, BlockSelectionMode};
 pub use console::Console;

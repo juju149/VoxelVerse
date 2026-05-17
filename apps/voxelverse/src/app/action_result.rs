@@ -1,21 +1,7 @@
-use vv_gameplay::{HotbarNotice, PlanetResizeIntent};
+use vv_gameplay::{
+    CursorCapture, GameActionResult, GameFeedbackEvent, HotbarNotice, PlanetResizeIntent,
+};
 use vv_voxel::SurfaceChunkKey;
-
-/// App-layer sound classification.
-///
-/// Mirrors `CompiledSoundKind` but does not depend on any rendering or audio crate.
-/// Converted to an audio-crate type only at the feedback routing boundary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(super) enum BlockSoundKind {
-    #[default]
-    None,
-    Grass,
-    Stone,
-    Wood,
-    Sand,
-    Snow,
-    Dirt,
-}
 
 /// UI-layer events produced by gameplay actions.
 ///
@@ -32,7 +18,7 @@ pub(super) enum UiEvent {
 /// Callers apply commands, forward feedback, and dispatch UI events.
 /// Actions never touch the renderer, audio engine, window, or hotbar UI directly.
 pub(super) struct ActionResult {
-    pub(super) feedback: Vec<FeedbackEvent>,
+    pub(super) feedback: Vec<GameFeedbackEvent>,
     pub(super) commands: Vec<FrameCommand>,
     pub(super) ui_events: Vec<UiEvent>,
 }
@@ -44,6 +30,30 @@ impl ActionResult {
             commands: Vec::new(),
             ui_events: Vec::new(),
         }
+    }
+
+    pub(super) fn from_gameplay(result: GameActionResult) -> Self {
+        let mut action = Self {
+            feedback: result.feedback,
+            commands: Vec::new(),
+            ui_events: result
+                .hotbar_notices
+                .into_iter()
+                .map(UiEvent::HotbarNotice)
+                .collect(),
+        };
+        if result.needs_redraw {
+            action.push_redraw();
+        }
+        if !result.dirty_chunks.is_empty() {
+            action.push_refresh_chunks(result.dirty_chunks);
+        }
+        match result.cursor_capture {
+            Some(CursorCapture::Grab) => action.push_grab_cursor(),
+            Some(CursorCapture::Release) => action.push_release_cursor(),
+            None => {}
+        }
+        action
     }
 
     pub(super) fn push_redraw(&mut self) {
@@ -58,39 +68,11 @@ impl ActionResult {
         self.commands.push(FrameCommand::ReleaseCursor);
     }
 
-    pub(super) fn push_feedback(&mut self, event: FeedbackEvent) {
-        self.feedback.push(event);
-    }
-
-    pub(super) fn push_ui_event(&mut self, event: UiEvent) {
-        self.ui_events.push(event);
-    }
-
     pub(super) fn push_refresh_chunks(&mut self, chunks: Vec<SurfaceChunkKey>) {
         if !chunks.is_empty() {
             self.commands.push(FrameCommand::RefreshDirtyChunks(chunks));
         }
     }
-}
-
-/// Audio and visual feedback that a gameplay action produced.
-/// Processed by the feedback router — not by the action itself.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum FeedbackEvent {
-    ToolSwing {
-        strength: f32,
-    },
-    BlockHit {
-        sound_kind: BlockSoundKind,
-        strength: f32,
-    },
-    BlockBreak {
-        sound_kind: BlockSoundKind,
-        strength: f32,
-    },
-    BlockPlace {
-        sound_kind: BlockSoundKind,
-    },
 }
 
 /// Commands the frame driver applies after each action or tick.

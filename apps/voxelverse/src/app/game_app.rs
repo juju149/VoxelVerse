@@ -49,11 +49,8 @@ impl<'a> GameApp<'a> {
             "core",
             content.core_pack_dir.clone(),
         )];
-        let mut renderer = pollster::block_on(Renderer::new(
-            window,
-            &content.textures,
-            &pack_stack,
-        ));
+        let mut renderer =
+            pollster::block_on(Renderer::new(window, &content.textures, &pack_stack));
         let audio = AudioEngine::new(&content.core_pack_dir);
         if let Some(scene) = golden_scene {
             renderer.quality = scene.quality;

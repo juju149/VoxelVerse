@@ -8,7 +8,6 @@ mod feedback_router;
 mod frame_commands;
 mod frame_driver;
 mod game_app;
-mod gameplay_actions;
 mod golden_scene;
 mod input_accumulator;
 mod input_intent;

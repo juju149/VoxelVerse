@@ -1,8 +1,9 @@
+use crate::app::action_result::ActionResult;
 use crate::app::cursor::release_cursor;
 use crate::app::frame_commands::apply_action_result;
-use crate::app::gameplay_actions::mine_block;
 use crate::app::runtime_state::GameRuntime;
 use vv_audio::AudioEngine;
+use vv_gameplay::mine_block;
 use vv_gameplay::BlockSelection;
 use vv_gameplay::BlockSelectionMode;
 use vv_render::Renderer;
@@ -32,7 +33,7 @@ pub(super) fn tick_player_frame(
         runtime.set_cursor_id(ray_result.map(|(id, _)| id));
 
         if runtime.mining_button_held() {
-            let result = mine_block(runtime.as_mine_context(), dt);
+            let result = ActionResult::from_gameplay(mine_block(runtime.as_mine_context(), dt));
             apply_action_result(result, renderer, audio, runtime);
         }
     } else {

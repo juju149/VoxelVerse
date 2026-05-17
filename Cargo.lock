@@ -2195,7 +2195,6 @@ dependencies = [
  "vv-physics",
  "vv-voxel",
  "vv-world",
- "vv-worldgen",
 ]
 
 [[package]]

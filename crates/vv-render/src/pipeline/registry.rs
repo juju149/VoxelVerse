@@ -4,11 +4,11 @@
 
 use std::collections::HashMap;
 
-use crate::pipeline::graph::{RenderPassId, ShaderPath};
 use crate::pipeline::desc::{PipelineId, RenderPipelineDesc, PIPELINE_DESCS};
 use crate::pipeline::factory::{
     create_render_pipeline, create_shader_modules, PipelineBindGroupLayouts,
 };
+use crate::pipeline::graph::{RenderPassId, ShaderPath};
 use crate::shader::library::ShaderLibrary;
 
 pub(crate) struct RenderPipelineRegistry {

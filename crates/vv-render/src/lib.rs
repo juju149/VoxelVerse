@@ -18,7 +18,6 @@ pub use pipeline::graph::{RenderPassId, ShaderPath};
 pub use quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 pub use render_budget::RenderBudgetConfig;
 pub use renderer::{PlayerActionFeedback, Renderer};
-pub use vv_pack_compiler::shader::{PackShaderRoot, ShaderOverride, ShaderOverrideReport};
 pub use snapshot::{
     RenderCamera, RenderConsoleSnapshot, RenderCraftIngredient, RenderCraftRecipe,
     RenderCraftSnapshot, RenderDebugFlags, RenderFrameSnapshot, RenderHeldStack,
@@ -26,4 +25,5 @@ pub use snapshot::{
     RenderSlotRef, RenderUiSnapshot,
 };
 pub use types::Vertex;
+pub use vv_pack_compiler::shader::{PackShaderRoot, ShaderOverride, ShaderOverrideReport};
 pub use world_streaming::{LodSplitCurve, StreamingView, WorldStreamingConfig};

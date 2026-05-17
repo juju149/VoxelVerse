@@ -1,10 +1,9 @@
 use crate::app::dev_state::DevState;
-use crate::app::gameplay_actions::{MineBlockContext, PlaceBlockContext};
 use crate::ui::InventoryUiState;
 use std::sync::Arc;
 use vv_gameplay::{
-    Console, Controller, ControllerFrameInput, Hotbar, Inventory, MiningState, Player,
-    PlayerController, PlayerInput,
+    Console, Controller, ControllerFrameInput, Hotbar, Inventory, MineBlockContext, MiningState,
+    PlaceBlockContext, Player, PlayerController, PlayerInput,
 };
 use vv_pack_compiler::{LootRegistry, RecipeRegistry, TagRegistry};
 use vv_voxel::VoxelCoord;
