@@ -6,6 +6,7 @@
 //! depth read, early-out in the shader when `intensity == 0`.
 
 use super::Renderer;
+use crate::render_pipeline_desc::PipelineId;
 
 impl<'a> Renderer<'a> {
     pub(super) fn render_precipitation(&self, enc: &mut wgpu::CommandEncoder) {
@@ -23,8 +24,8 @@ impl<'a> Renderer<'a> {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
-        pass.set_pipeline(&self.pipeline_precipitation);
-        pass.set_bind_group(0, &self.sky_global_bind, &[]);
+        pass.set_pipeline(self.pipeline(PipelineId::Precipitation));
+        pass.set_bind_group(0, &self.global_bind, &[]);
         pass.draw(0..3, 0..1);
     }
 }

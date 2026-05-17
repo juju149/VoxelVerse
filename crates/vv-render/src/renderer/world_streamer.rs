@@ -50,7 +50,7 @@ impl<'a> Renderer<'a> {
             });
 
         let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.local_layout,
+            layout: &self.pipeline_layouts.local,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: uniform_buf.as_entire_binding(),
@@ -260,7 +260,7 @@ impl<'a> Renderer<'a> {
             });
 
         let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.local_layout,
+            layout: &self.pipeline_layouts.local,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: uniform_buf.as_entire_binding(),

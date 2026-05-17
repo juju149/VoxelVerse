@@ -3,8 +3,8 @@
 //! Single responsibility: own the values that the shader consumes for its
 //! optional cost paths (shadow PCF kernel size, triplanar grain).  Packed
 //! as a float bitmask written to `global.render_params.y` in the frame
-//! uniform.  The same bits are redundantly stored in `global.cam_pos.w`
-//! for legacy callers — `render_params.y` is the canonical source.
+//! uniform.  The same bits are also stored in `global.cam_pos.w`;
+//! `render_params.y` is the canonical source.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PcfQuality {

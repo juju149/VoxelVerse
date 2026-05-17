@@ -6,9 +6,6 @@
 //! binary layouts, attribute locations, material sentinels and quality bits.
 //! WGSL files must mirror these values through include/interface/*.wgsl.
 
-use crate::renderer::{GlobalUniform, LocalUniform};
-use crate::types::Vertex;
-
 pub(crate) const GLOBAL_UNIFORM_BYTES: usize = 304;
 pub(crate) const LOCAL_UNIFORM_BYTES: usize = 80;
 pub(crate) const VERTEX_BYTES: usize = 48;
@@ -49,6 +46,8 @@ pub(crate) mod quality_bit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::renderer::{GlobalUniform, LocalUniform};
+    use crate::types::Vertex;
     use crate::{PcfQuality, QualitySettings, RenderQualityProfile};
 
     #[test]

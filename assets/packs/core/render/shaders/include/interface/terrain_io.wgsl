@@ -1,3 +1,5 @@
+#include "include/common/constants.wgsl"
+
 struct TerrainVertexIn {
     @location(0) pos: vec3<f32>,
     @location(1) uv: vec2<f32>,

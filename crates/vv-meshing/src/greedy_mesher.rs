@@ -226,8 +226,8 @@ fn emit_quad(
         FaceDir::Top => [p(a0, b0, f), p(a1, b0, f), p(a1, b1, f), p(a0, b1, f)],
         FaceDir::Bottom => [p(a0, b1, f), p(a1, b1, f), p(a1, b0, f), p(a0, b0, f)],
         FaceDir::Front => [p(a0, f, b0), p(a1, f, b0), p(a1, f, b1), p(a0, f, b1)],
-        FaceDir::Back => [p(a0, f, b0), p(a1, f, b0), p(a1, f, b1), p(a0, f, b1)],
-        FaceDir::Left => [p(f, a0, b0), p(f, a1, b0), p(f, a1, b1), p(f, a0, b1)],
+        FaceDir::Back => [p(a1, f, b0), p(a0, f, b0), p(a0, f, b1), p(a1, f, b1)],
+        FaceDir::Left => [p(f, a1, b0), p(f, a0, b0), p(f, a0, b1), p(f, a1, b1)],
         FaceDir::Right => [p(f, a0, b0), p(f, a1, b0), p(f, a1, b1), p(f, a0, b1)],
     };
 
@@ -239,7 +239,7 @@ fn emit_quad(
         QuadFace {
             pos,
             colors: [color; 4],
-            force_radial: matches!(plane.dir, FaceDir::Top | FaceDir::Bottom),
+            force_radial: matches!(plane.dir, FaceDir::Top),
             packed_tex_index: cell.merge.packed_tex_index,
             flip_u: false,
             flip_v: !matches!(plane.dir, FaceDir::Top),

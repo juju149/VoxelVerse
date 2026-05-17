@@ -41,11 +41,8 @@ const EXPECTED_SHADERS: &[&str] = &[
 ];
 
 const REQUIRED_INCLUDE_DIRS: &[&str] = &[
-    "render/shaders/include/math",
-    "render/shaders/include/camera",
-    "render/shaders/include/lighting",
-    "render/shaders/include/atmosphere",
-    "render/shaders/include/material",
+    "render/shaders/include/common",
+    "render/shaders/include/interface",
     "render/shaders/include/voxel",
 ];
 

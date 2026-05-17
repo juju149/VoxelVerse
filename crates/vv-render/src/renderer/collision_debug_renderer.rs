@@ -1,4 +1,5 @@
 use super::Renderer;
+use crate::render_pipeline_desc::PipelineId;
 use crate::types::Vertex;
 use vv_meshing::MeshGen;
 use vv_world::PlanetData;
@@ -35,7 +36,7 @@ impl<'a> Renderer<'a> {
             return 0;
         }
 
-        pass.set_pipeline(&self.pipeline_line);
+        pass.set_pipeline(self.pipeline(PipelineId::DebugLine));
         pass.set_bind_group(0, &self.global_bind, &[]);
         pass.set_bind_group(1, &self.local_bind_identity, &[]);
         pass.set_vertex_buffer(0, self.collision_v_buf.slice(..));

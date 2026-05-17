@@ -189,7 +189,7 @@ pub struct CompiledBlock {
     /// Human-readable name for UI and diagnostics.
     pub display_name: String,
     pub solid: bool,
-    /// RGB color used for voxel rendering until a texture atlas is in place.
+    /// RGB category color used by flat debug geometry and textureless blocks.
     pub color: [f32; 3],
     /// Hits needed to break this block. 0.0 = unbreakable.
     pub hardness: f32,
@@ -228,7 +228,6 @@ pub struct BlockRegistry {
     family_for_voxel: HashMap<VoxelId, usize>,
     family_by_key: HashMap<String, usize>,
     material_sets: Vec<MaterialTextureSet>,
-    material_colors: Vec<[f32; 4]>,
     default_place: VoxelId,
     planet_core: VoxelId,
     models: BlockModelRegistry,
@@ -241,7 +240,6 @@ impl BlockRegistry {
         blocks: Vec<CompiledBlock>,
         families: Vec<CompiledBlockFamily>,
         material_sets: Vec<MaterialTextureSet>,
-        material_colors: Vec<[f32; 4]>,
         default_place: VoxelId,
         planet_core: VoxelId,
         models: BlockModelRegistry,
@@ -263,7 +261,6 @@ impl BlockRegistry {
             family_for_voxel,
             family_by_key,
             material_sets,
-            material_colors,
             default_place,
             planet_core,
             models,
@@ -385,10 +382,6 @@ impl BlockRegistry {
 
     pub fn material_sets(&self) -> &[MaterialTextureSet] {
         &self.material_sets
-    }
-
-    pub fn material_colors(&self) -> &[[f32; 4]] {
-        &self.material_colors
     }
 
     pub fn default_place_voxel(&self) -> VoxelId {

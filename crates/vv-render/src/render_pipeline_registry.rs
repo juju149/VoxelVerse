@@ -1,121 +1,157 @@
 #![allow(dead_code)]
 
-//! Typed registry over declarative render pipeline descriptors.
-//!
-//! This is intentionally not a wgpu pipeline factory yet. It is the validation
-//! and lookup layer between the render graph / schedule and the future concrete
-//! PipelineRegistry that will own wgpu::RenderPipeline objects.
+//! Runtime registry for render pipelines built from declarative descriptors.
+
+use std::collections::HashMap;
 
 use crate::render_graph::{RenderPassId, ShaderPath};
-use crate::render_pipeline_desc::{
-    pipeline_desc, PipelineId, RenderPipelineDesc, PIPELINE_DESCS,
+use crate::render_pipeline_desc::{PipelineId, RenderPipelineDesc, PIPELINE_DESCS};
+use crate::render_pipeline_factory::{
+    create_render_pipeline, create_shader_modules, PipelineBindGroupLayouts,
 };
+use crate::shader_library::ShaderLibrary;
 
 pub(crate) struct RenderPipelineRegistry {
-    descriptors: &'static [RenderPipelineDesc],
+    pipelines: HashMap<PipelineId, wgpu::RenderPipeline>,
+    wireframe_supported: bool,
 }
 
 impl RenderPipelineRegistry {
-    pub(crate) const fn new() -> Self {
+    pub(crate) fn build(
+        device: &wgpu::Device,
+        shader_library: &ShaderLibrary,
+        layouts: &PipelineBindGroupLayouts,
+        swapchain_format: wgpu::TextureFormat,
+        wireframe_supported: bool,
+    ) -> Self {
+        validate_pipeline_descriptors().expect("V1 pipeline descriptors are valid");
+
+        let modules = create_shader_modules(device, shader_library);
+        let mut pipelines = HashMap::with_capacity(PIPELINE_DESCS.len());
+        for desc in PIPELINE_DESCS {
+            if desc.id == PipelineId::TerrainWireDebug && !wireframe_supported {
+                continue;
+            }
+            let pipeline =
+                create_render_pipeline(device, layouts, &modules, desc, swapchain_format);
+            pipelines.insert(desc.id, pipeline);
+        }
+
         Self {
-            descriptors: PIPELINE_DESCS,
+            pipelines,
+            wireframe_supported,
         }
     }
 
-    pub(crate) fn descriptors(&self) -> &'static [RenderPipelineDesc] {
-        self.descriptors
+    pub(crate) fn get(&self, id: PipelineId) -> &wgpu::RenderPipeline {
+        self.pipelines
+            .get(&id)
+            .unwrap_or_else(|| panic!("render pipeline {id:?} was not built"))
     }
 
-    pub(crate) fn get(&self, id: PipelineId) -> &'static RenderPipelineDesc {
-        pipeline_desc(id)
-    }
-
-    pub(crate) fn for_pass(&self, pass: RenderPassId) -> impl Iterator<Item = &'static RenderPipelineDesc> {
-        self.descriptors.iter().filter(move |desc| desc.pass == pass)
-    }
-
-    pub(crate) fn first_for_pass(&self, pass: RenderPassId) -> Option<&'static RenderPipelineDesc> {
-        self.for_pass(pass).next()
-    }
-
-    pub(crate) fn uses_shader(&self, shader: ShaderPath) -> bool {
-        self.descriptors.iter().any(|desc| {
-            desc.vertex == shader || desc.fragment.is_some_and(|fragment| fragment == shader)
-        })
-    }
-
-    pub(crate) fn validate(&self) -> Result<(), String> {
-        self.validate_unique_pipeline_ids()?;
-        self.validate_required_pass_coverage()?;
-        self.validate_pipeline_shader_coverage()?;
-        Ok(())
-    }
-
-    fn validate_unique_pipeline_ids(&self) -> Result<(), String> {
-        for desc in self.descriptors {
-            let count = self
-                .descriptors
-                .iter()
-                .filter(|candidate| candidate.id == desc.id)
-                .count();
-
-            if count != 1 {
-                return Err(format!(
-                    "pipeline id {:?} appears {count} times in PIPELINE_DESCS",
-                    desc.id
-                ));
-            }
+    pub(crate) fn terrain_wire_or_fill(&self) -> &wgpu::RenderPipeline {
+        if self.wireframe_supported {
+            self.get(PipelineId::TerrainWireDebug)
+        } else {
+            self.get(PipelineId::TerrainOpaque)
         }
-
-        Ok(())
     }
 
-    fn validate_required_pass_coverage(&self) -> Result<(), String> {
-        let required_passes = [
-            RenderPassId::ShadowDepth,
-            RenderPassId::Sky,
-            RenderPassId::Celestial,
-            RenderPassId::Clouds,
-            RenderPassId::TerrainOpaque,
-            RenderPassId::VolumetricFog,
-            RenderPassId::Precipitation,
-            RenderPassId::FinalComposite,
-            RenderPassId::Ui,
-        ];
-
-        for pass in required_passes {
-            if self.first_for_pass(pass).is_none() {
-                return Err(format!("render pass {pass:?} has no pipeline descriptor"));
-            }
-        }
-
-        Ok(())
-    }
-
-    fn validate_pipeline_shader_coverage(&self) -> Result<(), String> {
-        for desc in self.descriptors {
-            if !ShaderPath::REQUIRED.contains(&desc.vertex) {
-                return Err(format!(
-                    "pipeline {:?} uses vertex shader {:?}, but it is not in ShaderPath::REQUIRED",
-                    desc.id, desc.vertex
-                ));
-            }
-
-            if let Some(fragment) = desc.fragment {
-                if !ShaderPath::REQUIRED.contains(&fragment) {
-                    return Err(format!(
-                        "pipeline {:?} uses fragment shader {:?}, but it is not in ShaderPath::REQUIRED",
-                        desc.id, fragment
-                    ));
-                }
-            }
-        }
-
-        Ok(())
+    pub(crate) fn wireframe_supported(&self) -> bool {
+        self.wireframe_supported
     }
 }
 
-pub(crate) const RENDER_PIPELINE_REGISTRY: RenderPipelineRegistry = RenderPipelineRegistry::new();
+#[cfg(test)]
+pub(crate) fn pipeline_descriptors() -> &'static [RenderPipelineDesc] {
+    PIPELINE_DESCS
+}
+
+#[cfg(test)]
+pub(crate) fn pipeline_descriptor(id: PipelineId) -> &'static RenderPipelineDesc {
+    crate::render_pipeline_desc::pipeline_desc(id)
+}
+
+pub(crate) fn pipeline_descriptors_for_pass(
+    pass: RenderPassId,
+) -> impl Iterator<Item = &'static RenderPipelineDesc> {
+    PIPELINE_DESCS.iter().filter(move |desc| desc.pass == pass)
+}
+
+pub(crate) fn first_pipeline_descriptor_for_pass(
+    pass: RenderPassId,
+) -> Option<&'static RenderPipelineDesc> {
+    pipeline_descriptors_for_pass(pass).next()
+}
+
+pub(crate) fn validate_pipeline_descriptors() -> Result<(), String> {
+    validate_unique_pipeline_ids()?;
+    validate_required_pass_coverage()?;
+    validate_pipeline_shader_coverage()?;
+    Ok(())
+}
+
+fn validate_unique_pipeline_ids() -> Result<(), String> {
+    for desc in PIPELINE_DESCS {
+        let count = PIPELINE_DESCS
+            .iter()
+            .filter(|candidate| candidate.id == desc.id)
+            .count();
+
+        if count != 1 {
+            return Err(format!(
+                "pipeline id {:?} appears {count} times in PIPELINE_DESCS",
+                desc.id
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_required_pass_coverage() -> Result<(), String> {
+    let required_passes = [
+        RenderPassId::ShadowDepth,
+        RenderPassId::Sky,
+        RenderPassId::Celestial,
+        RenderPassId::Clouds,
+        RenderPassId::TerrainOpaque,
+        RenderPassId::VolumetricFog,
+        RenderPassId::Precipitation,
+        RenderPassId::FinalComposite,
+        RenderPassId::Ui,
+    ];
+
+    for pass in required_passes {
+        if first_pipeline_descriptor_for_pass(pass).is_none() {
+            return Err(format!("render pass {pass:?} has no pipeline descriptor"));
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_pipeline_shader_coverage() -> Result<(), String> {
+    for desc in PIPELINE_DESCS {
+        if !ShaderPath::REQUIRED.contains(&desc.vertex) {
+            return Err(format!(
+                "pipeline {:?} uses vertex shader {:?}, but it is not in ShaderPath::REQUIRED",
+                desc.id, desc.vertex
+            ));
+        }
+
+        if let Some(fragment) = desc.fragment {
+            if !ShaderPath::REQUIRED.contains(&fragment) {
+                return Err(format!(
+                    "pipeline {:?} uses fragment shader {:?}, but it is not in ShaderPath::REQUIRED",
+                    desc.id, fragment
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
@@ -126,23 +162,20 @@ mod tests {
 
     #[test]
     fn registry_validates_v1_pipeline_table() {
-        RENDER_PIPELINE_REGISTRY
-            .validate()
-            .expect("V1 pipeline registry is valid");
+        validate_pipeline_descriptors().expect("V1 pipeline registry is valid");
     }
 
     #[test]
     fn registry_can_lookup_pipeline_by_id() {
-        let terrain = RENDER_PIPELINE_REGISTRY.get(PipelineId::TerrainOpaque);
+        let terrain = pipeline_descriptor(PipelineId::TerrainOpaque);
         assert_eq!(terrain.pass, RenderPassId::TerrainOpaque);
         assert_eq!(terrain.kind, PipelineKind::Mesh);
     }
 
     #[test]
     fn registry_can_lookup_pipeline_by_pass() {
-        let sky = RENDER_PIPELINE_REGISTRY
-            .first_for_pass(RenderPassId::Sky)
-            .expect("sky pass has a pipeline");
+        let sky =
+            first_pipeline_descriptor_for_pass(RenderPassId::Sky).expect("sky pass has a pipeline");
 
         assert_eq!(sky.id, PipelineId::Sky);
         assert_eq!(sky.kind, PipelineKind::Fullscreen);
@@ -151,7 +184,7 @@ mod tests {
 
     #[test]
     fn every_descriptor_uses_required_shader_paths() {
-        for desc in RENDER_PIPELINE_REGISTRY.descriptors() {
+        for desc in pipeline_descriptors() {
             assert!(ShaderPath::REQUIRED.contains(&desc.vertex));
 
             if let Some(fragment) = desc.fragment {
@@ -162,7 +195,7 @@ mod tests {
 
     #[test]
     fn fullscreen_pipelines_have_no_depth_write() {
-        for desc in RENDER_PIPELINE_REGISTRY.descriptors() {
+        for desc in pipeline_descriptors() {
             if desc.kind == PipelineKind::Fullscreen {
                 assert_ne!(desc.depth, DepthMode::WriteLess);
                 assert_ne!(desc.depth, DepthMode::ShadowWriteLess);
@@ -172,7 +205,7 @@ mod tests {
 
     #[test]
     fn opaque_terrain_contract_is_stable() {
-        let terrain = RENDER_PIPELINE_REGISTRY.get(PipelineId::TerrainOpaque);
+        let terrain = pipeline_descriptor(PipelineId::TerrainOpaque);
 
         assert_eq!(terrain.target, RenderTargetKind::SceneHdr);
         assert_eq!(terrain.depth, DepthMode::WriteLess);
@@ -182,7 +215,7 @@ mod tests {
 
     #[test]
     fn final_composite_contract_is_stable() {
-        let final_composite = RENDER_PIPELINE_REGISTRY.get(PipelineId::FinalComposite);
+        let final_composite = pipeline_descriptor(PipelineId::FinalComposite);
 
         assert_eq!(final_composite.target, RenderTargetKind::Swapchain);
         assert_eq!(final_composite.depth, DepthMode::None);
@@ -192,11 +225,20 @@ mod tests {
 
     #[test]
     fn shadow_depth_has_no_fragment_shader() {
-        let shadow = RENDER_PIPELINE_REGISTRY.get(PipelineId::ShadowDepth);
+        let shadow = pipeline_descriptor(PipelineId::ShadowDepth);
 
         assert_eq!(shadow.pass, RenderPassId::ShadowDepth);
         assert!(shadow.fragment.is_none());
         assert_eq!(shadow.target, RenderTargetKind::ShadowDepth);
         assert_eq!(shadow.depth, DepthMode::ShadowWriteLess);
+    }
+
+    #[test]
+    fn debug_pipelines_are_explicit_descriptors() {
+        let wire = pipeline_descriptor(PipelineId::TerrainWireDebug);
+        let line = pipeline_descriptor(PipelineId::DebugLine);
+
+        assert_eq!(wire.pass, RenderPassId::TerrainOpaque);
+        assert_eq!(line.pass, RenderPassId::TerrainOpaque);
     }
 }

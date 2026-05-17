@@ -3,6 +3,9 @@
 use crate::atmosphere::AtmosphereConfig;
 use crate::lod_animation::LodAnimator;
 use crate::quality::QualitySettings;
+use crate::render_pipeline_desc::PipelineId;
+use crate::render_pipeline_factory::{create_post_bind_group, PipelineBindGroupLayouts};
+use crate::render_pipeline_registry::RenderPipelineRegistry;
 use crate::types::ChunkMesh;
 use crate::world_streaming::{StreamingView, WorldStreamingConfig};
 use bytemuck::{Pod, Zeroable};
@@ -72,12 +75,10 @@ pub struct Renderer<'a> {
 
     // --- SHADOWS ---
     shadow_view: wgpu::TextureView,
-    pipeline_shadow: wgpu::RenderPipeline,
     shadow_global_buf: wgpu::Buffer,
     shadow_global_bind: wgpu::BindGroup,
 
     // --- UI ---
-    pipeline_ui: wgpu::RenderPipeline,
     console_v_buf: wgpu::Buffer,
     console_i_buf: wgpu::Buffer,
     console_inds: u32,
@@ -89,24 +90,13 @@ pub struct Renderer<'a> {
     inventory_inds: u32,
 
     // --- SKY ---
-    pipeline_sky: wgpu::RenderPipeline,
-    pipeline_clouds: wgpu::RenderPipeline,
-    pipeline_volumetric_fog: wgpu::RenderPipeline,
-    pipeline_precipitation: wgpu::RenderPipeline,
-    pipeline_celestial: wgpu::RenderPipeline,
-    pipeline_post: wgpu::RenderPipeline,
-    sky_global_bind: wgpu::BindGroup,
-    post_bind_layout: wgpu::BindGroupLayout,
     post_bind: wgpu::BindGroup,
     scene: GpuScene,
 
     // --- CORE ---
     animator: LodAnimator,
-    local_layout: wgpu::BindGroupLayout,
-
-    pipeline_fill: wgpu::RenderPipeline,
-    pipeline_wire: wgpu::RenderPipeline,
-    pipeline_line: wgpu::RenderPipeline,
+    pipeline_layouts: PipelineBindGroupLayouts,
+    pipelines: RenderPipelineRegistry,
 
     chunks: HashMap<SurfaceChunkKey, ChunkMesh>,
     lod_chunks: HashMap<LodKey, ChunkMesh>,
@@ -261,7 +251,6 @@ mod inventory_text;
 mod loading_pass;
 mod lod_selection;
 mod metrics;
-mod pipelines;
 mod post_process_renderer;
 mod precipitation_renderer;
 mod prewarm;
@@ -285,12 +274,24 @@ impl<'a> Renderer<'a> {
         self.surface.configure(&self.device, &self.config);
         self.depth = Self::mk_depth(&self.device, &self.config);
         self.scene = GpuScene::new(&self.device, self.config.width, self.config.height);
-        self.post_bind = Self::create_post_bind_group(
+        self.post_bind = create_post_bind_group(
             &self.device,
-            &self.post_bind_layout,
+            &self.pipeline_layouts.post_process_input,
             &self.scene.view,
             &self.scene.sampler,
         );
+    }
+
+    fn pipeline(&self, id: PipelineId) -> &wgpu::RenderPipeline {
+        self.pipelines.get(id)
+    }
+
+    fn terrain_pipeline(&self, wireframe: bool) -> &wgpu::RenderPipeline {
+        if wireframe && self.pipelines.wireframe_supported() {
+            self.pipelines.terrain_wire_or_fill()
+        } else {
+            self.pipeline(PipelineId::TerrainOpaque)
+        }
     }
 
     // QUADTREE LOGIC

@@ -510,7 +510,7 @@ impl MeshGen {
                 QuadFace {
                     pos: [i_tl, i_tr, i_br, i_bl],
                     colors: [c, c, c, c],
-                    force_radial: true,
+                    force_radial: false,
                     packed_tex_index: pack_material_edges(layer, edges),
                     flip_u: false,
                     flip_v: true, // v is flipped when viewed from below
@@ -555,7 +555,7 @@ impl MeshGen {
                 inds,
                 idx,
                 QuadFace {
-                    pos: [i_tl, i_tr, o_tr, o_tl],
+                    pos: [i_tr, i_tl, o_tl, o_tr],
                     colors: [c, c, c, c],
                     force_radial: false,
                     packed_tex_index: pack_material_edges(layer, edges),
@@ -578,7 +578,7 @@ impl MeshGen {
                 inds,
                 idx,
                 QuadFace {
-                    pos: [i_bl, i_tl, o_tl, o_bl],
+                    pos: [i_tl, i_bl, o_bl, o_tl],
                     colors: [c, c, c, c],
                     force_radial: false,
                     packed_tex_index: pack_material_edges(layer, edges),
@@ -636,14 +636,14 @@ impl MeshGen {
         let v1 = if face.flip_v { 0.0_f32 } else { uv_span[1] };
         let uvs: [[f32; 2]; 4] = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
 
+        let geometric_normal = (face.pos[1] - face.pos[0])
+            .cross(face.pos[2] - face.pos[0])
+            .normalize();
         let normal = if face.force_radial {
             let center = (face.pos[0] + face.pos[1] + face.pos[2] + face.pos[3]) * 0.25;
             center.normalize().to_array()
         } else {
-            (face.pos[1] - face.pos[0])
-                .cross(face.pos[2] - face.pos[0])
-                .normalize()
-                .to_array()
+            geometric_normal.to_array()
         };
 
         for (i, uv) in uvs.iter().enumerate() {
@@ -656,12 +656,12 @@ impl MeshGen {
             });
         }
 
-        inds.push(*idx);
-        inds.push(*idx + 1);
-        inds.push(*idx + 2);
-        inds.push(*idx + 2);
-        inds.push(*idx + 3);
-        inds.push(*idx);
+        let desired_normal = Vec3::from_array(normal);
+        if geometric_normal.dot(desired_normal) < 0.0 {
+            inds.extend_from_slice(&[*idx, *idx + 2, *idx + 1, *idx + 2, *idx, *idx + 3]);
+        } else {
+            inds.extend_from_slice(&[*idx, *idx + 1, *idx + 2, *idx + 2, *idx + 3, *idx]);
+        }
         *idx += 4;
     }
 }
@@ -833,5 +833,33 @@ mod tests {
             [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0],]
         );
         assert_eq!(inds, [0, 1, 2, 2, 3, 0]);
+    }
+
+    #[test]
+    fn force_radial_quad_flips_inward_winding_to_match_radial_normal() {
+        let mut verts = Vec::new();
+        let mut inds = Vec::new();
+        let mut idx = 0;
+        MeshGen::quad(
+            &mut verts,
+            &mut inds,
+            &mut idx,
+            QuadFace {
+                pos: [
+                    Vec3::new(0.0, 1.0, 0.0),
+                    Vec3::new(1.0, 1.0, 0.0),
+                    Vec3::new(1.0, 1.0, 1.0),
+                    Vec3::new(0.0, 1.0, 1.0),
+                ],
+                colors: [[1.0, 1.0, 1.0]; 4],
+                force_radial: true,
+                packed_tex_index: 0,
+                flip_u: false,
+                flip_v: false,
+            },
+        );
+
+        assert!(Vec3::from_array(verts[0].normal).dot(Vec3::Y) > 0.8);
+        assert_eq!(inds, [0, 2, 1, 2, 0, 3]);
     }
 }

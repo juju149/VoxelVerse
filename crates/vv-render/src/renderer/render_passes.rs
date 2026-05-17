@@ -1,6 +1,7 @@
 use super::terrain_renderer::TerrainRenderer;
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::lod_animation::AnyKey;
+use crate::render_pipeline_desc::PipelineId;
 use crate::render_schedule::{RenderFramePasses, RenderScheduleInputs};
 use crate::snapshot::RenderFrameSnapshot;
 use crate::types::ChunkMesh;
@@ -151,7 +152,7 @@ impl<'a> Renderer<'a> {
         let quality_bits = self.quality.pack();
 
         // Pack weather params for the WGSL globals. Order kept in sync with
-        // `weather_params` in include/camera/globals.wgsl.
+        // `weather_params` in include/interface/global.wgsl.
         // x = precipitation intensity, y/z = horizontal wind direction,
         // w = precipitation kind (0=none, 1=rain, 2=snow, 3=sleet,
         //                         4=sand,  5=ash,  6=toxic_mist).
@@ -177,7 +178,7 @@ impl<'a> Renderer<'a> {
         };
 
         // Pack celestial params. Order kept in sync with `celestial_params`
-        // and `celestial_moon` in include/camera/globals.wgsl.
+        // and `celestial_moon` in include/interface/global.wgsl.
         let (celestial_params, celestial_moon) = match frame.celestial {
             Some(c) => {
                 let (moon_dir, moon_radius) = match c.moons.first() {
@@ -344,7 +345,7 @@ impl<'a> Renderer<'a> {
                 occlusion_query_set: None,
             });
 
-            shadow_pass.set_pipeline(&self.pipeline_shadow);
+            shadow_pass.set_pipeline(self.pipeline(PipelineId::ShadowDepth));
             shadow_pass.set_bind_group(0, &self.shadow_global_bind, &[]);
             shadow_pass.set_bind_group(2, &self.atlas_bind, &[]);
 
@@ -414,11 +415,7 @@ impl<'a> Renderer<'a> {
                 occlusion_query_set: None,
             });
 
-            if debug.is_wireframe {
-                pass.set_pipeline(&self.pipeline_wire);
-            } else {
-                pass.set_pipeline(&self.pipeline_fill);
-            }
+            pass.set_pipeline(self.terrain_pipeline(debug.is_wireframe));
 
             // Set atlas bind group once for the whole main pass.
             pass.set_bind_group(0, &self.global_bind, &[]);
@@ -479,11 +476,7 @@ impl<'a> Renderer<'a> {
             }
 
             if !camera.is_first_person {
-                if debug.is_wireframe {
-                    pass.set_pipeline(&self.pipeline_wire);
-                } else {
-                    pass.set_pipeline(&self.pipeline_fill);
-                }
+                pass.set_pipeline(self.terrain_pipeline(debug.is_wireframe));
                 pass.set_bind_group(1, &self.local_bind_player, &[]);
                 pass.set_vertex_buffer(0, self.player_v_buf.slice(..));
                 pass.set_index_buffer(self.player_i_buf.slice(..), wgpu::IndexFormat::Uint32);
@@ -494,7 +487,7 @@ impl<'a> Renderer<'a> {
             main_draw_calls += self.draw_collision_debug(&mut pass);
 
             if self.block_damage_inds > 0 {
-                pass.set_pipeline(&self.pipeline_line);
+                pass.set_pipeline(self.pipeline(PipelineId::DebugLine));
                 pass.set_bind_group(0, &self.global_bind, &[]);
                 pass.set_bind_group(1, &self.local_bind_identity, &[]);
                 pass.set_vertex_buffer(0, self.block_damage_v_buf.slice(..));
@@ -504,7 +497,7 @@ impl<'a> Renderer<'a> {
             }
 
             if self.cursor_inds > 0 {
-                pass.set_pipeline(&self.pipeline_fill);
+                pass.set_pipeline(self.pipeline(PipelineId::TerrainOpaque));
                 pass.set_bind_group(0, &self.global_bind, &[]);
                 pass.set_bind_group(1, &self.local_bind_identity, &[]);
                 pass.set_vertex_buffer(0, self.cursor_v_buf.slice(..));
@@ -514,7 +507,7 @@ impl<'a> Renderer<'a> {
             }
 
             if camera.is_first_person {
-                pass.set_pipeline(&self.pipeline_line);
+                pass.set_pipeline(self.pipeline(PipelineId::DebugLine));
                 pass.set_bind_group(0, &self.global_bind_identity, &[]);
                 pass.set_bind_group(1, &self.local_bind_identity, &[]);
                 pass.set_vertex_buffer(0, self.cross_v_buf.slice(..));

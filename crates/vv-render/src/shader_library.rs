@@ -190,7 +190,48 @@ mod shader_interface_contract_tests {
         )
         .expect("shader contract smoke shader expands");
 
-        naga::front::wgsl::parse_str(&source)
-            .expect("shader contract smoke shader parses");
+        naga::front::wgsl::parse_str(&source).expect("shader contract smoke shader parses");
+    }
+
+    #[test]
+    fn material_atlas_contract_declares_canonical_bindings() {
+        let core_pack = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
+        let shader_root = core_pack.join("render").join("shaders");
+
+        let source =
+            std::fs::read_to_string(shader_root.join("include/interface/material_atlas.wgsl"))
+                .expect("material atlas include is readable");
+
+        for binding in [
+            "@group(2) @binding(0) var vv_material_albedo: texture_2d_array<f32>;",
+            "@group(2) @binding(1) var vv_material_normal: texture_2d_array<f32>;",
+            "@group(2) @binding(2) var vv_material_roughness: texture_2d_array<f32>;",
+            "@group(2) @binding(3) var vv_material_sampler: sampler;",
+            "@group(2) @binding(4) var<storage, read> vv_material_flat_colors: array<vec4<f32>>;",
+        ] {
+            assert!(
+                source.contains(binding),
+                "material atlas include missing binding: {binding}"
+            );
+        }
+    }
+
+    #[test]
+    fn textured_mesh_fragments_use_material_atlas_sampler() {
+        let core_pack = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
+        let shader_root = core_pack.join("render").join("shaders");
+
+        for rel in ["passes/terrain/terrain.frag.wgsl", "passes/ui/ui.frag.wgsl"] {
+            let source = std::fs::read_to_string(shader_root.join(rel))
+                .unwrap_or_else(|error| panic!("cannot read {rel}: {error}"));
+            assert!(
+                source.contains("include/interface/material_atlas.wgsl"),
+                "{rel} must include the material atlas contract"
+            );
+            assert!(
+                source.contains("vv_sample_material("),
+                "{rel} must sample block materials through the canonical helper"
+            );
+        }
     }
 }

@@ -9,6 +9,7 @@
 //! costs near nothing without a `CelestialState` snapshot.
 
 use super::Renderer;
+use crate::render_pipeline_desc::PipelineId;
 
 impl<'a> Renderer<'a> {
     pub(super) fn render_celestial(&self, enc: &mut wgpu::CommandEncoder) {
@@ -26,8 +27,8 @@ impl<'a> Renderer<'a> {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
-        pass.set_pipeline(&self.pipeline_celestial);
-        pass.set_bind_group(0, &self.sky_global_bind, &[]);
+        pass.set_pipeline(self.pipeline(PipelineId::Celestial));
+        pass.set_bind_group(0, &self.global_bind, &[]);
         pass.draw(0..3, 0..1);
     }
 }

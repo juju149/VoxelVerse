@@ -40,10 +40,10 @@ impl<'a> Renderer<'a> {
         }
 
         self.receive_lod_meshes();
+        self.dispatch_lod_jobs(view, planet);
 
         if should_rebuild_required {
             self.evict_stale_lods();
-            self.dispatch_lod_jobs(view, planet);
             self.evict_stale_voxels();
             self.rebuild_load_queue(view, planet);
         }

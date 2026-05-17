@@ -442,9 +442,9 @@ impl<'a> Renderer<'a> {
     /// Draw an isometric voxel block using 3 shaded faces.
     ///
     /// When `texture` is `Some`, each face samples its assigned atlas layer
-    /// and the vertex color carries pure grayscale shading. The UI shader
-    /// expects 1-based atlas indices (0 = "no material"), so each layer is
-    /// shifted by +1 at this boundary — the registry stores them 0-based.
+    /// and the vertex color carries pure grayscale shading. Layer `0` is the
+    /// neutral flat-color material; compiled block layers already use atlas
+    /// indices directly.
     ///
     /// When `texture` is `None`, the cube is flat-colored from `base_rgb`.
     pub(super) fn draw_iso_block(
@@ -475,10 +475,9 @@ impl<'a> Renderer<'a> {
             }
         };
 
-        // UI shader is 1-based; world atlas index 0 → tex_index 1.
         let face_tex = |layer: u32| -> u32 {
             if textured {
-                layer + 1
+                layer
             } else {
                 0
             }

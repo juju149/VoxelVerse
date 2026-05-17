@@ -48,7 +48,6 @@ impl<'a> GameApp<'a> {
         let mut renderer = pollster::block_on(Renderer::new(
             window,
             &content.textures,
-            content.blocks.material_colors(),
             &content.core_pack_dir,
         ));
         let audio = AudioEngine::new(&content.core_pack_dir);

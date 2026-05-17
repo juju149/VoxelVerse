@@ -1,4 +1,4 @@
-#include "include/camera/globals.wgsl"
+#include "include/interface/global.wgsl"
 #include "include/interface/fullscreen_io.wgsl"
 
 @fragment

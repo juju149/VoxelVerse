@@ -73,7 +73,7 @@ impl PerfTier {
                 return t;
             }
             eprintln!(
-                "[perf] VV_PERF=\"{}\" unrecognised — falling back to auto-detect",
+                "[perf] VV_PERF=\"{}\" unrecognised - using auto-detect",
                 forced
             );
         }

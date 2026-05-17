@@ -36,13 +36,8 @@ impl TextureRegistry {
             });
         }
 
-        // First pass: decode every material, replacing missing/invalid ones with
-        // None (they will become the fallback white tile).  We never panic on
-        // missing textures — content errors are warned about and the slot is
-        // kept alive so that all BlockMaterialLayers indices remain valid.
-        let mut decoded: Vec<Option<DecodedMaterialTextureSet>> =
-            Vec::with_capacity(material_sets.len());
-        let mut warn_count = 0usize;
+        let mut decoded: Vec<DecodedMaterialTextureSet> = Vec::with_capacity(material_sets.len());
+        let mut errors = Vec::new();
 
         for material in material_sets {
             match Self::load_material(pack_root, material) {
@@ -54,48 +49,32 @@ impl TextureRegistry {
                         && mat.roughness.width == size
                         && mat.roughness.height == size;
                     if ok {
-                        decoded.push(Some(mat));
+                        decoded.push(mat);
                     } else {
-                        eprintln!(
-                            "[texture] size mismatch for '{}', using fallback",
+                        errors.push(format!(
+                            "Texture material '{}' has mismatched PBR channel dimensions",
                             material.albedo
-                        );
-                        decoded.push(None);
-                        warn_count += 1;
+                        ));
                     }
                 }
                 Err(err) => {
-                    eprintln!("[texture] missing: {}", err);
-                    decoded.push(None);
-                    warn_count += 1;
+                    errors.push(err);
                 }
             }
         }
 
-        if warn_count > 0 {
-            eprintln!(
-                "[texture] {} material(s) missing or invalid — falling back to white",
-                warn_count
-            );
+        if !errors.is_empty() {
+            return Err(errors);
         }
 
-        let tile_size = decoded
-            .iter()
-            .flatten()
-            .map(|m| m.albedo.width)
-            .max()
-            .unwrap_or(16);
+        let tile_size = decoded.iter().map(|m| m.albedo.width).max().unwrap_or(16);
 
         let fallback = Self::fallback_material(tile_size);
         // Index 0 is always the fallback; indices 1..N match material_sets[0..N-1].
         let mut materials = Vec::with_capacity(decoded.len() + 1);
         materials.push(fallback.clone());
-        for slot in decoded {
-            let mat = match slot {
-                Some(m) => Self::resize_material_nearest(m, tile_size),
-                None => fallback.clone(),
-            };
-            materials.push(mat);
+        for material in decoded {
+            materials.push(Self::resize_material_nearest(material, tile_size));
         }
 
         Ok(Self {

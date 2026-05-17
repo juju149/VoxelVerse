@@ -263,10 +263,8 @@ fn push_quad(
             tex_index: VERTEX_COLOR_MATERIAL_SENTINEL,
         });
     }
-    // Pipeline runs with `cull_mode: None`, so either winding lights correctly
-    // (per-vertex normals carry the real orientation).  We use both windings to
-    // make sure the quad is solid from either side.
     inds.extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
+    inds.extend_from_slice(&[base, base + 2, base + 1, base + 3, base + 2, base]);
 }
 
 fn lod_display_height(terrain_height: u32, sea_level: u32, has_water: bool) -> u32 {
@@ -407,11 +405,34 @@ fn hash01(face: u8, u: u32, v: u32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::lod_display_height;
+    use super::{lod_display_height, push_quad};
+    use glam::Vec3;
 
     #[test]
     fn lod_display_height_uses_sea_level_for_water_cells() {
         assert_eq!(lod_display_height(90, 100, true), 100);
         assert_eq!(lod_display_height(120, 100, false), 120);
+    }
+
+    #[test]
+    fn lod_quads_are_emitted_with_both_windings() {
+        let mut verts = Vec::new();
+        let mut inds = Vec::new();
+
+        push_quad(
+            &mut verts,
+            &mut inds,
+            [
+                Vec3::new(0.0, 0.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(1.0, 1.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
+            ],
+            [0.0, 0.0, 1.0],
+            [1.0, 1.0, 1.0],
+        );
+
+        assert_eq!(verts.len(), 4);
+        assert_eq!(inds, [0, 1, 2, 2, 3, 0, 0, 2, 1, 3, 2, 0]);
     }
 }

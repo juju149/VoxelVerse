@@ -1,4 +1,5 @@
 use super::Renderer;
+use crate::render_pipeline_factory::DEPTH_FORMAT;
 use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 
 pub(super) struct TextResources {
@@ -75,6 +76,28 @@ impl<'a> Renderer<'a> {
         });
 
         ShadowMapResources { view, sampler }
+    }
+
+    pub(super) fn mk_depth(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+    ) -> wgpu::TextureView {
+        device
+            .create_texture(&wgpu::TextureDescriptor {
+                size: wgpu::Extent3d {
+                    width: config.width,
+                    height: config.height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: DEPTH_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                label: Some("Main Depth"),
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default())
     }
 
     pub(super) fn create_shadow_pass_resources(

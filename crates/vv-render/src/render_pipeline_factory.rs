@@ -1,61 +1,256 @@
 #![allow(dead_code)]
 
-//! Pure mapping layer from declarative pipeline descriptors to wgpu concepts.
-//!
-//! This file prepares the future PipelineFactory. It intentionally avoids
-//! owning `wgpu::RenderPipeline` values for now. The goal is to centralize all
-//! low-level mapping decisions before replacing manual pipeline creation.
+//! Mapping layer from declarative pipeline descriptors to wgpu objects.
 
+use std::collections::HashMap;
+
+use crate::render_graph::ShaderPath;
 use crate::render_pipeline_desc::{
-    BlendMode, DepthMode, PipelineKind, RenderPipelineDesc, RenderTargetKind, VertexLayoutId,
+    BindGroupSlot, BlendMode, CullMode, DepthMode, PipelineKind, PolygonMode, PrimitiveTopology,
+    RenderPipelineDesc, RenderTargetKind, VertexLayoutId,
 };
 use crate::shader_contract::vertex_location;
+use crate::shader_library::ShaderLibrary;
 use crate::types::Vertex;
 
 pub(crate) const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub(crate) const SCENE_HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+const TERRAIN_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 5] = [
+    wgpu::VertexAttribute {
+        format: wgpu::VertexFormat::Float32x3,
+        offset: 0,
+        shader_location: vertex_location::POSITION,
+    },
+    wgpu::VertexAttribute {
+        format: wgpu::VertexFormat::Float32x2,
+        offset: 12,
+        shader_location: vertex_location::UV,
+    },
+    wgpu::VertexAttribute {
+        format: wgpu::VertexFormat::Float32x3,
+        offset: 20,
+        shader_location: vertex_location::NORMAL,
+    },
+    wgpu::VertexAttribute {
+        format: wgpu::VertexFormat::Float32x3,
+        offset: 32,
+        shader_location: vertex_location::COLOR,
+    },
+    wgpu::VertexAttribute {
+        format: wgpu::VertexFormat::Uint32,
+        offset: 44,
+        shader_location: vertex_location::TEX_INDEX,
+    },
+];
+const TERRAIN_VERTEX_BUFFER_LAYOUTS: [wgpu::VertexBufferLayout<'static>; 1] =
+    [wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &TERRAIN_VERTEX_ATTRIBUTES,
+    }];
+
+pub(crate) struct PipelineBindGroupLayouts {
+    pub(crate) global: wgpu::BindGroupLayout,
+    pub(crate) local: wgpu::BindGroupLayout,
+    pub(crate) atlas: wgpu::BindGroupLayout,
+    pub(crate) post_process_input: wgpu::BindGroupLayout,
+}
+
+impl PipelineBindGroupLayouts {
+    pub(crate) fn create(device: &wgpu::Device) -> Self {
+        let global = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                    count: None,
+                },
+            ],
+            label: Some("global_layout"),
+        });
+
+        let local = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("local_layout"),
+        });
+
+        let atlas = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("atlas_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2Array,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let post_process_input =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Post Bind Layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        Self {
+            global,
+            local,
+            atlas,
+            post_process_input,
+        }
+    }
+
+    fn ordered_layouts<'a>(&'a self, slots: &[BindGroupSlot]) -> Vec<&'a wgpu::BindGroupLayout> {
+        slots
+            .iter()
+            .map(|slot| match slot {
+                BindGroupSlot::Global => &self.global,
+                BindGroupSlot::Local => &self.local,
+                BindGroupSlot::MaterialAtlas => &self.atlas,
+                BindGroupSlot::PostProcessInput => &self.post_process_input,
+            })
+            .collect()
+    }
+}
+
+pub(crate) fn create_post_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    view: &wgpu::TextureView,
+    sampler: &wgpu::Sampler,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("Post Bind Group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+        ],
+    })
+}
+
+pub(crate) fn create_shader_modules(
+    device: &wgpu::Device,
+    shader_library: &ShaderLibrary,
+) -> HashMap<ShaderPath, wgpu::ShaderModule> {
+    let mut modules = HashMap::with_capacity(ShaderPath::REQUIRED.len());
+    for &shader in ShaderPath::REQUIRED {
+        let source = shader_library
+            .source(shader)
+            .unwrap_or_else(|error| panic!("missing shader {}: {}", shader.relative(), error));
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some(shader.relative()),
+            source: wgpu::ShaderSource::Wgsl(source.into()),
+        });
+        modules.insert(shader, module);
+    }
+    modules
+}
 
 pub(crate) fn vertex_buffer_layout_for(
     layout: VertexLayoutId,
 ) -> &'static [wgpu::VertexBufferLayout<'static>] {
     match layout {
         VertexLayoutId::None => &[],
-        VertexLayoutId::Terrain => &[terrain_vertex_buffer_layout()],
+        VertexLayoutId::Terrain => &TERRAIN_VERTEX_BUFFER_LAYOUTS,
     }
 }
 
-pub(crate) fn terrain_vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
-    wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-        step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &[
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x3,
-                offset: 0,
-                shader_location: vertex_location::POSITION,
-            },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x2,
-                offset: 12,
-                shader_location: vertex_location::UV,
-            },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x3,
-                offset: 20,
-                shader_location: vertex_location::NORMAL,
-            },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x3,
-                offset: 32,
-                shader_location: vertex_location::COLOR,
-            },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Uint32,
-                offset: 44,
-                shader_location: vertex_location::TEX_INDEX,
-            },
-        ],
-    }
+pub(crate) fn terrain_vertex_buffer_layout() -> &'static wgpu::VertexBufferLayout<'static> {
+    &TERRAIN_VERTEX_BUFFER_LAYOUTS[0]
 }
 
 pub(crate) fn blend_state_for(mode: BlendMode) -> Option<wgpu::BlendState> {
@@ -122,25 +317,76 @@ pub(crate) fn depth_state_for(mode: DepthMode) -> Option<wgpu::DepthStencilState
     }
 }
 
-pub(crate) fn primitive_state_for(
-    desc: &RenderPipelineDesc,
-    wireframe: bool,
-) -> wgpu::PrimitiveState {
-    let cull_mode = match desc.kind {
-        PipelineKind::Fullscreen => None,
-        PipelineKind::Mesh => Some(wgpu::Face::Back),
+pub(crate) fn primitive_state_for(desc: &RenderPipelineDesc) -> wgpu::PrimitiveState {
+    let cull_mode = match desc.cull {
+        CullMode::None => None,
+        CullMode::Back => Some(wgpu::Face::Back),
+        CullMode::Front => Some(wgpu::Face::Front),
     };
 
     wgpu::PrimitiveState {
-        topology: wgpu::PrimitiveTopology::TriangleList,
+        topology: match desc.topology {
+            PrimitiveTopology::TriangleList => wgpu::PrimitiveTopology::TriangleList,
+            PrimitiveTopology::LineList => wgpu::PrimitiveTopology::LineList,
+        },
         cull_mode,
-        polygon_mode: if wireframe {
-            wgpu::PolygonMode::Line
-        } else {
-            wgpu::PolygonMode::Fill
+        polygon_mode: match desc.polygon {
+            PolygonMode::Fill => wgpu::PolygonMode::Fill,
+            PolygonMode::Line => wgpu::PolygonMode::Line,
         },
         ..Default::default()
     }
+}
+
+pub(crate) fn create_render_pipeline(
+    device: &wgpu::Device,
+    layouts: &PipelineBindGroupLayouts,
+    modules: &HashMap<ShaderPath, wgpu::ShaderModule>,
+    desc: &RenderPipelineDesc,
+    swapchain_format: wgpu::TextureFormat,
+) -> wgpu::RenderPipeline {
+    validate_factory_mapping(desc, swapchain_format)
+        .unwrap_or_else(|error| panic!("invalid pipeline descriptor {:?}: {error}", desc.id));
+
+    let bind_group_layouts = layouts.ordered_layouts(desc.bind_groups);
+    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some(&format!("{:?} Pipeline Layout", desc.id)),
+        bind_group_layouts: &bind_group_layouts,
+        push_constant_ranges: &[],
+    });
+
+    let vertex_module = modules
+        .get(&desc.vertex)
+        .unwrap_or_else(|| panic!("shader module missing for {:?}", desc.vertex));
+    let vertex_buffers = vertex_buffer_layout_for(desc.vertex_layout);
+    let color_target = color_target_for(desc.target, swapchain_format, desc.blend);
+    let fragment_targets = [color_target];
+
+    let fragment_state = desc.fragment.map(|fragment| {
+        let fragment_module = modules
+            .get(&fragment)
+            .unwrap_or_else(|| panic!("shader module missing for {:?}", fragment));
+        wgpu::FragmentState {
+            module: fragment_module,
+            entry_point: "fs_main",
+            targets: &fragment_targets,
+        }
+    });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some(&format!("{:?} Pipeline", desc.id)),
+        layout: Some(&pipeline_layout),
+        vertex: wgpu::VertexState {
+            module: vertex_module,
+            entry_point: "vs_main",
+            buffers: vertex_buffers,
+        },
+        fragment: fragment_state,
+        primitive: primitive_state_for(desc),
+        depth_stencil: depth_state_for(desc.depth),
+        multisample: Default::default(),
+        multiview: None,
+    })
 }
 
 pub(crate) fn validate_factory_mapping(
@@ -196,6 +442,25 @@ pub(crate) fn validate_factory_mapping(
         return Err(format!("opaque pipeline {:?} unexpectedly blends", desc.id));
     }
 
+    if desc.kind == PipelineKind::Fullscreen {
+        if desc.topology != PrimitiveTopology::TriangleList {
+            return Err(format!(
+                "fullscreen pipeline {:?} must use TriangleList",
+                desc.id
+            ));
+        }
+        if desc.cull != CullMode::None {
+            return Err(format!("fullscreen pipeline {:?} must not cull", desc.id));
+        }
+    }
+
+    if desc.polygon == PolygonMode::Line && desc.topology != PrimitiveTopology::TriangleList {
+        return Err(format!(
+            "wire polygon pipeline {:?} must use TriangleList topology",
+            desc.id
+        ));
+    }
+
     Ok(())
 }
 
@@ -203,8 +468,8 @@ pub(crate) fn validate_factory_mapping(
 mod tests {
     use super::*;
     use crate::render_pipeline_desc::{
-        BlendMode, DepthMode, PipelineId, RenderTargetKind, VertexLayoutId, PIPELINE_DESCS,
-        pipeline_desc,
+        pipeline_desc, BlendMode, DepthMode, PipelineId, RenderTargetKind, VertexLayoutId,
+        PIPELINE_DESCS,
     };
 
     const TEST_SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
@@ -212,8 +477,9 @@ mod tests {
     #[test]
     fn all_pipeline_descriptors_have_valid_factory_mappings() {
         for desc in PIPELINE_DESCS {
-            validate_factory_mapping(desc, TEST_SWAPCHAIN_FORMAT)
-                .unwrap_or_else(|error| panic!("invalid factory mapping for {:?}: {error}", desc.id));
+            validate_factory_mapping(desc, TEST_SWAPCHAIN_FORMAT).unwrap_or_else(|error| {
+                panic!("invalid factory mapping for {:?}: {error}", desc.id)
+            });
         }
     }
 
@@ -249,8 +515,12 @@ mod tests {
 
     #[test]
     fn scene_hdr_target_uses_hdr_format() {
-        let target = color_target_for(RenderTargetKind::SceneHdr, TEST_SWAPCHAIN_FORMAT, BlendMode::Opaque)
-            .expect("scene hdr color target exists");
+        let target = color_target_for(
+            RenderTargetKind::SceneHdr,
+            TEST_SWAPCHAIN_FORMAT,
+            BlendMode::Opaque,
+        )
+        .expect("scene hdr color target exists");
 
         assert_eq!(target.format, SCENE_HDR_FORMAT);
         assert!(target.blend.is_none());
@@ -258,8 +528,12 @@ mod tests {
 
     #[test]
     fn swapchain_target_uses_surface_format() {
-        let target = color_target_for(RenderTargetKind::Swapchain, TEST_SWAPCHAIN_FORMAT, BlendMode::Alpha)
-            .expect("swapchain color target exists");
+        let target = color_target_for(
+            RenderTargetKind::Swapchain,
+            TEST_SWAPCHAIN_FORMAT,
+            BlendMode::Alpha,
+        )
+        .expect("swapchain color target exists");
 
         assert_eq!(target.format, TEST_SWAPCHAIN_FORMAT);
         assert!(target.blend.is_some());
@@ -267,7 +541,12 @@ mod tests {
 
     #[test]
     fn shadow_depth_target_has_no_color_target() {
-        assert!(color_target_for(RenderTargetKind::ShadowDepth, TEST_SWAPCHAIN_FORMAT, BlendMode::Opaque).is_none());
+        assert!(color_target_for(
+            RenderTargetKind::ShadowDepth,
+            TEST_SWAPCHAIN_FORMAT,
+            BlendMode::Opaque
+        )
+        .is_none());
     }
 
     #[test]
@@ -292,11 +571,12 @@ mod tests {
         let color = color_target_for(desc.target, TEST_SWAPCHAIN_FORMAT, desc.blend)
             .expect("terrain color target");
         let depth = depth_state_for(desc.depth).expect("terrain depth state");
-        let primitive = primitive_state_for(desc, false);
+        let primitive = primitive_state_for(desc);
 
         assert_eq!(color.format, SCENE_HDR_FORMAT);
         assert!(color.blend.is_none());
         assert!(depth.depth_write_enabled);
         assert_eq!(primitive.cull_mode, Some(wgpu::Face::Back));
+        assert_eq!(primitive.polygon_mode, wgpu::PolygonMode::Fill);
     }
 }

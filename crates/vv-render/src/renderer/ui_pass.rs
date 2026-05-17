@@ -1,4 +1,5 @@
 use super::Renderer;
+use crate::render_pipeline_desc::PipelineId;
 
 impl<'a> Renderer<'a> {
     pub(super) fn render_ui_mesh_pass(
@@ -22,7 +23,7 @@ impl<'a> Renderer<'a> {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
-        ui_pass.set_pipeline(&self.pipeline_ui);
+        ui_pass.set_pipeline(self.pipeline(PipelineId::Ui));
         ui_pass.set_bind_group(0, &self.global_bind_identity, &[]);
         ui_pass.set_bind_group(1, &self.local_bind_identity, &[]);
         ui_pass.set_bind_group(2, &self.atlas_bind, &[]);

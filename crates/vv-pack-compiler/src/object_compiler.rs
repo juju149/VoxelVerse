@@ -276,16 +276,10 @@ fn compile_blocks(raw: &[(String, RawObjectDef)]) -> Result<BlockRegistry, Vec<S
         .or_else(|| blocks.iter().find(|b| b.hardness < 0.0).map(|b| b.id))
         .unwrap_or(VoxelId::AIR);
 
-    // One white entry for the fallback (index 0) plus one per actual material set.
-    let material_colors: Vec<[f32; 4]> = std::iter::once([1.0_f32, 1.0, 1.0, 1.0])
-        .chain(material_sets.iter().map(|_| [1.0_f32, 1.0, 1.0, 1.0]))
-        .collect();
-
     Ok(BlockRegistry::new(
         blocks,
         families,
         material_sets,
-        material_colors,
         default_place,
         planet_core,
         model_registry,

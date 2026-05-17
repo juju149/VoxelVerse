@@ -1,4 +1,4 @@
-#include "include/camera/globals.wgsl"
+#include "include/interface/global.wgsl"
 #include "include/interface/local.wgsl"
 #include "include/interface/terrain_io.wgsl"
 

@@ -11,10 +11,12 @@ use crate::render_graph::{RenderPassId, ShaderPath};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum PipelineId {
     ShadowDepth,
+    TerrainOpaque,
+    TerrainWireDebug,
+    DebugLine,
     Sky,
     Celestial,
     Clouds,
-    TerrainOpaque,
     VolumetricFog,
     Precipitation,
     FinalComposite,
@@ -25,6 +27,25 @@ pub(crate) enum PipelineId {
 pub(crate) enum PipelineKind {
     Mesh,
     Fullscreen,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PrimitiveTopology {
+    TriangleList,
+    LineList,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CullMode {
+    None,
+    Back,
+    Front,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PolygonMode {
+    Fill,
+    Line,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -77,6 +98,9 @@ pub(crate) struct RenderPipelineDesc {
     pub target: RenderTargetKind,
     pub depth: DepthMode,
     pub blend: BlendMode,
+    pub topology: PrimitiveTopology,
+    pub cull: CullMode,
+    pub polygon: PolygonMode,
 }
 
 const GLOBAL_ONLY: &[BindGroupSlot] = &[BindGroupSlot::Global];
@@ -93,49 +117,16 @@ pub(crate) const PIPELINE_DESCS: &[RenderPipelineDesc] = &[
         id: PipelineId::ShadowDepth,
         pass: RenderPassId::ShadowDepth,
         kind: PipelineKind::Mesh,
-        vertex: ShaderPath::TerrainVertex,
+        vertex: ShaderPath::TerrainDepthVertex,
         fragment: None,
         vertex_layout: VertexLayoutId::Terrain,
         bind_groups: TERRAIN_BIND_GROUPS,
         target: RenderTargetKind::ShadowDepth,
         depth: DepthMode::ShadowWriteLess,
         blend: BlendMode::Opaque,
-    },
-    RenderPipelineDesc {
-        id: PipelineId::Sky,
-        pass: RenderPassId::Sky,
-        kind: PipelineKind::Fullscreen,
-        vertex: ShaderPath::SkyVertex,
-        fragment: Some(ShaderPath::SkyFragment),
-        vertex_layout: VertexLayoutId::None,
-        bind_groups: GLOBAL_ONLY,
-        target: RenderTargetKind::SceneHdr,
-        depth: DepthMode::None,
-        blend: BlendMode::Replace,
-    },
-    RenderPipelineDesc {
-        id: PipelineId::Celestial,
-        pass: RenderPassId::Celestial,
-        kind: PipelineKind::Fullscreen,
-        vertex: ShaderPath::CelestialVertex,
-        fragment: Some(ShaderPath::CelestialFragment),
-        vertex_layout: VertexLayoutId::None,
-        bind_groups: GLOBAL_ONLY,
-        target: RenderTargetKind::SceneHdr,
-        depth: DepthMode::None,
-        blend: BlendMode::Additive,
-    },
-    RenderPipelineDesc {
-        id: PipelineId::Clouds,
-        pass: RenderPassId::Clouds,
-        kind: PipelineKind::Fullscreen,
-        vertex: ShaderPath::CloudsVertex,
-        fragment: Some(ShaderPath::CloudsFragment),
-        vertex_layout: VertexLayoutId::None,
-        bind_groups: GLOBAL_ONLY,
-        target: RenderTargetKind::SceneHdr,
-        depth: DepthMode::None,
-        blend: BlendMode::Alpha,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::Front,
+        polygon: PolygonMode::Fill,
     },
     RenderPipelineDesc {
         id: PipelineId::TerrainOpaque,
@@ -148,6 +139,84 @@ pub(crate) const PIPELINE_DESCS: &[RenderPipelineDesc] = &[
         target: RenderTargetKind::SceneHdr,
         depth: DepthMode::WriteLess,
         blend: BlendMode::Opaque,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::Back,
+        polygon: PolygonMode::Fill,
+    },
+    RenderPipelineDesc {
+        id: PipelineId::TerrainWireDebug,
+        pass: RenderPassId::TerrainOpaque,
+        kind: PipelineKind::Mesh,
+        vertex: ShaderPath::TerrainVertex,
+        fragment: Some(ShaderPath::TerrainFragment),
+        vertex_layout: VertexLayoutId::Terrain,
+        bind_groups: TERRAIN_BIND_GROUPS,
+        target: RenderTargetKind::SceneHdr,
+        depth: DepthMode::WriteLess,
+        blend: BlendMode::Opaque,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::Back,
+        polygon: PolygonMode::Line,
+    },
+    RenderPipelineDesc {
+        id: PipelineId::DebugLine,
+        pass: RenderPassId::TerrainOpaque,
+        kind: PipelineKind::Mesh,
+        vertex: ShaderPath::TerrainVertex,
+        fragment: Some(ShaderPath::TerrainFragment),
+        vertex_layout: VertexLayoutId::Terrain,
+        bind_groups: TERRAIN_BIND_GROUPS,
+        target: RenderTargetKind::SceneHdr,
+        depth: DepthMode::WriteLess,
+        blend: BlendMode::Opaque,
+        topology: PrimitiveTopology::LineList,
+        cull: CullMode::None,
+        polygon: PolygonMode::Fill,
+    },
+    RenderPipelineDesc {
+        id: PipelineId::Sky,
+        pass: RenderPassId::Sky,
+        kind: PipelineKind::Fullscreen,
+        vertex: ShaderPath::SkyVertex,
+        fragment: Some(ShaderPath::SkyFragment),
+        vertex_layout: VertexLayoutId::None,
+        bind_groups: GLOBAL_ONLY,
+        target: RenderTargetKind::SceneHdr,
+        depth: DepthMode::None,
+        blend: BlendMode::Replace,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::None,
+        polygon: PolygonMode::Fill,
+    },
+    RenderPipelineDesc {
+        id: PipelineId::Celestial,
+        pass: RenderPassId::Celestial,
+        kind: PipelineKind::Fullscreen,
+        vertex: ShaderPath::CelestialVertex,
+        fragment: Some(ShaderPath::CelestialFragment),
+        vertex_layout: VertexLayoutId::None,
+        bind_groups: GLOBAL_ONLY,
+        target: RenderTargetKind::SceneHdr,
+        depth: DepthMode::None,
+        blend: BlendMode::Additive,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::None,
+        polygon: PolygonMode::Fill,
+    },
+    RenderPipelineDesc {
+        id: PipelineId::Clouds,
+        pass: RenderPassId::Clouds,
+        kind: PipelineKind::Fullscreen,
+        vertex: ShaderPath::CloudsVertex,
+        fragment: Some(ShaderPath::CloudsFragment),
+        vertex_layout: VertexLayoutId::None,
+        bind_groups: GLOBAL_ONLY,
+        target: RenderTargetKind::SceneHdr,
+        depth: DepthMode::None,
+        blend: BlendMode::Alpha,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::None,
+        polygon: PolygonMode::Fill,
     },
     RenderPipelineDesc {
         id: PipelineId::VolumetricFog,
@@ -160,6 +229,9 @@ pub(crate) const PIPELINE_DESCS: &[RenderPipelineDesc] = &[
         target: RenderTargetKind::SceneHdr,
         depth: DepthMode::None,
         blend: BlendMode::Alpha,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::None,
+        polygon: PolygonMode::Fill,
     },
     RenderPipelineDesc {
         id: PipelineId::Precipitation,
@@ -172,6 +244,9 @@ pub(crate) const PIPELINE_DESCS: &[RenderPipelineDesc] = &[
         target: RenderTargetKind::SceneHdr,
         depth: DepthMode::None,
         blend: BlendMode::Alpha,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::None,
+        polygon: PolygonMode::Fill,
     },
     RenderPipelineDesc {
         id: PipelineId::FinalComposite,
@@ -184,6 +259,9 @@ pub(crate) const PIPELINE_DESCS: &[RenderPipelineDesc] = &[
         target: RenderTargetKind::Swapchain,
         depth: DepthMode::None,
         blend: BlendMode::Replace,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::None,
+        polygon: PolygonMode::Fill,
     },
     RenderPipelineDesc {
         id: PipelineId::Ui,
@@ -196,6 +274,9 @@ pub(crate) const PIPELINE_DESCS: &[RenderPipelineDesc] = &[
         target: RenderTargetKind::Swapchain,
         depth: DepthMode::None,
         blend: BlendMode::Alpha,
+        topology: PrimitiveTopology::TriangleList,
+        cull: CullMode::None,
+        polygon: PolygonMode::Fill,
     },
 ];
 
@@ -212,7 +293,7 @@ mod tests {
 
     #[test]
     fn v1_pipeline_registry_has_one_descriptor_per_pipeline() {
-        assert_eq!(PIPELINE_DESCS.len(), 9);
+        assert_eq!(PIPELINE_DESCS.len(), 11);
 
         for desc in PIPELINE_DESCS {
             let count = PIPELINE_DESCS
@@ -246,5 +327,12 @@ mod tests {
         let desc = pipeline_desc(PipelineId::FinalComposite);
         assert_eq!(desc.target, RenderTargetKind::Swapchain);
         assert_eq!(desc.depth, DepthMode::None);
+    }
+
+    #[test]
+    fn shadow_depth_uses_depth_only_shader() {
+        let desc = pipeline_desc(PipelineId::ShadowDepth);
+        assert_eq!(desc.vertex, ShaderPath::TerrainDepthVertex);
+        assert!(desc.fragment.is_none());
     }
 }

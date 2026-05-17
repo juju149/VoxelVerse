@@ -2,7 +2,8 @@ use super::{GlobalUniform, GpuScene, LocalUniform, Renderer};
 use crate::atmosphere::AtmosphereConfig;
 use crate::lod_animation::LodAnimator;
 use crate::perf_profile::{PerfProfile, PerfTier};
-use crate::render_graph::ShaderPath;
+use crate::render_pipeline_factory::{create_post_bind_group, PipelineBindGroupLayouts};
+use crate::render_pipeline_registry::RenderPipelineRegistry;
 use crate::shader_library::ShaderLibrary;
 use crate::texture_atlas::TextureAtlas;
 use crate::types::Vertex;
@@ -18,12 +19,7 @@ use wgpu::PresentMode;
 use winit::window::Window;
 
 impl<'a> Renderer<'a> {
-    pub async fn new(
-        window: &'a Window,
-        textures: &TextureRegistry,
-        material_colors: &[[f32; 4]],
-        core_pack_dir: &Path,
-    ) -> Self {
+    pub async fn new(window: &'a Window, textures: &TextureRegistry, core_pack_dir: &Path) -> Self {
         let instance = wgpu::Instance::default();
         let surface = instance.create_surface(window).unwrap();
 
@@ -105,121 +101,20 @@ impl<'a> Renderer<'a> {
         });
 
         let shadow_map = Self::create_shadow_map(&device, perf.shadow_map_size);
-
-        let global_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                // 1: shadow Texture
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Depth,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                // 2: shadow Sampler
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
-                    count: None,
-                },
-            ],
-            label: Some("global_layout"),
-        });
-
-        let local_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-            label: Some("local_layout"),
-        });
-
-        // --- MATERIAL TEXTURES BIND GROUP LAYOUT (group 2) ---
-        let atlas_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("atlas_layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2Array,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2Array,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2Array,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-            ],
-        });
+        let pipeline_layouts = PipelineBindGroupLayouts::create(&device);
+        let global_layout = &pipeline_layouts.global;
+        let local_layout = &pipeline_layouts.local;
+        let atlas_layout = &pipeline_layouts.atlas;
+        let post_bind_layout = &pipeline_layouts.post_process_input;
 
         let atlas = TextureAtlas::new(&device, &queue, textures);
 
-        // Per-atlas-layer flat color buffer for the color-only debug toggle.
-        // Always at least one entry so wgpu doesn't reject a zero-sized binding.
-        let mut color_data: Vec<[f32; 4]> = if material_colors.is_empty() {
-            vec![[1.0, 1.0, 1.0, 1.0]]
-        } else {
-            material_colors.to_vec()
-        };
-        // Pad to a multiple of vec4 stride (already is — kept explicit).
-        if color_data.is_empty() {
-            color_data.push([1.0, 1.0, 1.0, 1.0]);
-        }
+        let color_data: Vec<[f32; 4]> = (0..textures.materials().len())
+            .map(|layer| {
+                let color = textures.average_albedo_color(layer as u32);
+                [color[0], color[1], color[2], 1.0]
+            })
+            .collect();
         let material_color_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Material Flat Colors"),
             contents: bytemuck::cast_slice(&color_data),
@@ -227,7 +122,7 @@ impl<'a> Renderer<'a> {
         });
         let atlas_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Atlas Bind Group"),
-            layout: &atlas_layout,
+            layout: atlas_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -261,7 +156,7 @@ impl<'a> Renderer<'a> {
         });
 
         let global_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &global_layout,
+            layout: global_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -280,7 +175,7 @@ impl<'a> Renderer<'a> {
         });
 
         let shadow_pass =
-            Self::create_shadow_pass_resources(&device, &global_layout, &shadow_map.sampler);
+            Self::create_shadow_pass_resources(&device, global_layout, &shadow_map.sampler);
 
         let identity_mat = glam::Mat4::IDENTITY;
         let default_local = LocalUniform {
@@ -336,7 +231,7 @@ impl<'a> Renderer<'a> {
         });
 
         let local_bind_identity = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &local_layout,
+            layout: local_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: local_buf_identity.as_entire_binding(),
@@ -351,7 +246,7 @@ impl<'a> Renderer<'a> {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let local_bind_player = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &local_layout,
+            layout: local_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: local_buf_player.as_entire_binding(),
@@ -360,268 +255,18 @@ impl<'a> Renderer<'a> {
         });
 
         // --- PIPELINES ---
-        let terrain_shaders = Self::create_shader_pair(
+        let pipelines = RenderPipelineRegistry::build(
             &device,
             &shader_library,
-            ShaderPath::TerrainVertex,
-            ShaderPath::TerrainFragment,
-        );
-        let ui_shaders = Self::create_shader_pair(
-            &device,
-            &shader_library,
-            ShaderPath::UiVertex,
-            ShaderPath::UiFragment,
-        );
-        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[&global_layout, &local_layout, &atlas_layout],
-            push_constant_ranges: &[],
-        });
-
-        let pipeline_shadow = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Shadow Pipeline"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &terrain_shaders.vertex,
-                entry_point: "vs_main",
-                buffers: &[super::pipelines::vertex_buffer_layout()],
-            },
-            fragment: None,
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                cull_mode: Some(wgpu::Face::Front),
-                ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: Default::default(),
-                bias: wgpu::DepthBiasState {
-                    constant: 2,
-                    slope_scale: 2.0,
-                    clamp: 0.0,
-                },
-            }),
-            multisample: Default::default(),
-            multiview: None,
-        });
-
-        let pipeline_fill = Self::create_pipeline(
-            &device,
-            &config,
-            &layout,
-            &terrain_shaders.vertex,
-            &terrain_shaders.fragment,
-            wgpu::PrimitiveTopology::TriangleList,
-            false,
-        );
-        let pipeline_wire = Self::create_pipeline(
-            &device,
-            &config,
-            &layout,
-            &terrain_shaders.vertex,
-            &terrain_shaders.fragment,
-            wgpu::PrimitiveTopology::TriangleList,
-            true,
-        );
-        let pipeline_line = Self::create_pipeline(
-            &device,
-            &config,
-            &layout,
-            &terrain_shaders.vertex,
-            &terrain_shaders.fragment,
-            wgpu::PrimitiveTopology::LineList,
-            false,
+            &pipeline_layouts,
+            config.format,
+            features.contains(wgpu::Features::POLYGON_MODE_LINE),
         );
         let depth = Self::mk_depth(&device, &config);
 
-        // --- UI PIPELINE ---
-        let pipeline_ui = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("UI Pipeline"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &ui_shaders.vertex,
-                entry_point: "vs_main",
-                buffers: &[super::pipelines::vertex_buffer_layout()],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &ui_shaders.fragment,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: Default::default(),
-            multiview: None,
-        });
-
-        // --- SKY PIPELINE ---
-        // Fullscreen sky rendered with a separate, simple pipeline that only needs
-        // the global uniform (no shadow sampler, no atlas, no vertex buffer).
-        let sky_global_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("sky_global_layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-        });
-
-        let sky_global_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Sky Global Bind"),
-            layout: &sky_global_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: global_buf.as_entire_binding(),
-            }],
-        });
-
-        let sky_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Sky Pipeline Layout"),
-            bind_group_layouts: &[&sky_global_layout],
-            push_constant_ranges: &[],
-        });
-
-        let sky_shaders = Self::create_shader_pair(
-            &device,
-            &shader_library,
-            ShaderPath::SkyVertex,
-            ShaderPath::SkyFragment,
-        );
-
-        let pipeline_sky = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Sky Pipeline"),
-            layout: Some(&sky_layout),
-            vertex: wgpu::VertexState {
-                module: &sky_shaders.vertex,
-                entry_point: "vs_main",
-                buffers: &[], // fullscreen triangle from vertex_index — no vertex buffer
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &sky_shaders.fragment,
-                entry_point: "fs_main",
-                targets: &[Some(GpuScene::FORMAT.into())],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                cull_mode: None,
-                ..Default::default()
-            },
-            depth_stencil: None, // sky writes no depth
-            multisample: Default::default(),
-            multiview: None,
-        });
-
-        let clouds_shaders = Self::create_shader_pair(
-            &device,
-            &shader_library,
-            ShaderPath::CloudsVertex,
-            ShaderPath::CloudsFragment,
-        );
-        let pipeline_clouds = Self::create_fullscreen_pipeline(
-            &device,
-            &sky_layout,
-            &clouds_shaders.vertex,
-            &clouds_shaders.fragment,
-            GpuScene::FORMAT,
-            Some(wgpu::BlendState::ALPHA_BLENDING),
-            "Clouds Pipeline",
-        );
-
-        let fog_shaders = Self::create_shader_pair(
-            &device,
-            &shader_library,
-            ShaderPath::VolumetricFogVertex,
-            ShaderPath::VolumetricFogFragment,
-        );
-        let pipeline_volumetric_fog = Self::create_fullscreen_pipeline(
-            &device,
-            &sky_layout,
-            &fog_shaders.vertex,
-            &fog_shaders.fragment,
-            GpuScene::FORMAT,
-            Some(wgpu::BlendState::ALPHA_BLENDING),
-            "Volumetric Fog Pipeline",
-        );
-
-        let precip_shaders = Self::create_shader_pair(
-            &device,
-            &shader_library,
-            ShaderPath::PrecipitationVertex,
-            ShaderPath::PrecipitationFragment,
-        );
-        let pipeline_precipitation = Self::create_fullscreen_pipeline(
-            &device,
-            &sky_layout,
-            &precip_shaders.vertex,
-            &precip_shaders.fragment,
-            GpuScene::FORMAT,
-            Some(wgpu::BlendState::ALPHA_BLENDING),
-            "Precipitation Pipeline",
-        );
-
-        let celestial_shaders = Self::create_shader_pair(
-            &device,
-            &shader_library,
-            ShaderPath::CelestialVertex,
-            ShaderPath::CelestialFragment,
-        );
-        // Additive blend so stars/aurora/moon add to the sky pass underneath.
-        let additive = wgpu::BlendState {
-            color: wgpu::BlendComponent {
-                src_factor: wgpu::BlendFactor::SrcAlpha,
-                dst_factor: wgpu::BlendFactor::One,
-                operation: wgpu::BlendOperation::Add,
-            },
-            alpha: wgpu::BlendComponent::REPLACE,
-        };
-        let pipeline_celestial = Self::create_fullscreen_pipeline(
-            &device,
-            &sky_layout,
-            &celestial_shaders.vertex,
-            &celestial_shaders.fragment,
-            GpuScene::FORMAT,
-            Some(additive),
-            "Celestial Pipeline",
-        );
-
         let scene = GpuScene::new(&device, config.width, config.height);
-        let post_bind_layout = Self::create_post_bind_layout(&device);
         let post_bind =
-            Self::create_post_bind_group(&device, &post_bind_layout, &scene.view, &scene.sampler);
-        let post_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Post Pipeline Layout"),
-            bind_group_layouts: &[&sky_global_layout, &post_bind_layout],
-            push_constant_ranges: &[],
-        });
-        let post_shaders = Self::create_shader_pair(
-            &device,
-            &shader_library,
-            ShaderPath::FullscreenVertex,
-            ShaderPath::FinalCompositeFragment,
-        );
-        let pipeline_post = Self::create_fullscreen_pipeline(
-            &device,
-            &post_layout,
-            &post_shaders.vertex,
-            &post_shaders.fragment,
-            config.format,
-            None,
-            "Final Composite Pipeline",
-        );
+            create_post_bind_group(&device, post_bind_layout, &scene.view, &scene.sampler);
 
         // --- MESHES ---
         let player_mesh = MeshGen::generate_cylinder(0.4, 1.8, 16);
@@ -738,7 +383,7 @@ impl<'a> Renderer<'a> {
         });
 
         let global_bind_identity = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &global_layout,
+            layout: global_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -765,17 +410,6 @@ impl<'a> Renderer<'a> {
             device,
             queue,
             config,
-            pipeline_fill,
-            pipeline_wire,
-            pipeline_line,
-            pipeline_sky,
-            pipeline_clouds,
-            pipeline_volumetric_fog,
-            pipeline_precipitation,
-            pipeline_celestial,
-            pipeline_post,
-            sky_global_bind,
-            post_bind_layout,
             post_bind,
             scene,
             chunks: HashMap::new(),
@@ -793,7 +427,6 @@ impl<'a> Renderer<'a> {
             text_renderer: text_resources.text_renderer,
             text_cache: super::text_cache::TextCache::default(),
             shadow_view: shadow_map.view,
-            pipeline_shadow,
             shadow_global_buf: shadow_pass.global_buf,
             shadow_global_bind: shadow_pass.global_bind,
             collision_v_buf,
@@ -803,7 +436,6 @@ impl<'a> Renderer<'a> {
             player_v_buf,
             player_i_buf,
             player_inds: pi.len() as u32,
-            pipeline_ui,
             console_v_buf,
             console_i_buf,
             console_inds: 0,
@@ -828,7 +460,8 @@ impl<'a> Renderer<'a> {
             first_person_inds: 0,
             first_person_animation: super::hand_animation::HandAnimation::new(),
             animator: LodAnimator::new(),
-            local_layout,
+            pipeline_layouts,
+            pipelines,
             load_queue: Vec::new(),
             load_queue_set: HashSet::new(),
             player_chunk_pos: None,
@@ -873,116 +506,4 @@ impl<'a> Renderer<'a> {
             atlas_bind,
         }
     }
-
-    fn create_shader_pair(
-        device: &wgpu::Device,
-        shader_library: &ShaderLibrary,
-        vertex: ShaderPath,
-        fragment: ShaderPath,
-    ) -> RenderShaderPair {
-        let vertex_source = shader_library
-            .source(vertex)
-            .unwrap_or_else(|e| panic!("missing vertex shader {}: {}", vertex.relative(), e));
-        let fragment_source = shader_library
-            .source(fragment)
-            .unwrap_or_else(|e| panic!("missing fragment shader {}: {}", fragment.relative(), e));
-        RenderShaderPair {
-            vertex: device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(vertex.relative()),
-                source: wgpu::ShaderSource::Wgsl(vertex_source.into()),
-            }),
-            fragment: device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(fragment.relative()),
-                source: wgpu::ShaderSource::Wgsl(fragment_source.into()),
-            }),
-        }
-    }
-
-    fn create_fullscreen_pipeline(
-        device: &wgpu::Device,
-        layout: &wgpu::PipelineLayout,
-        vertex: &wgpu::ShaderModule,
-        fragment: &wgpu::ShaderModule,
-        format: wgpu::TextureFormat,
-        blend: Option<wgpu::BlendState>,
-        label: &'static str,
-    ) -> wgpu::RenderPipeline {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some(label),
-            layout: Some(layout),
-            vertex: wgpu::VertexState {
-                module: vertex,
-                entry_point: "vs_main",
-                buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: fragment,
-                entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format,
-                    blend,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                cull_mode: None,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: Default::default(),
-            multiview: None,
-        })
-    }
-
-    fn create_post_bind_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Post Bind Layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-        })
-    }
-
-    pub(super) fn create_post_bind_group(
-        device: &wgpu::Device,
-        layout: &wgpu::BindGroupLayout,
-        view: &wgpu::TextureView,
-        sampler: &wgpu::Sampler,
-    ) -> wgpu::BindGroup {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Post Bind Group"),
-            layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(sampler),
-                },
-            ],
-        })
-    }
-}
-
-struct RenderShaderPair {
-    vertex: wgpu::ShaderModule,
-    fragment: wgpu::ShaderModule,
 }

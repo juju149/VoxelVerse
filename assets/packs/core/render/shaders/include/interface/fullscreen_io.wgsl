@@ -4,16 +4,15 @@ struct FullscreenVertexOut {
 }
 
 fn vv_fullscreen_triangle(vertex_index: u32) -> FullscreenVertexOut {
-    let positions = array<vec2<f32>, 3>(
-        vec2<f32>(-1.0, -3.0),
-        vec2<f32>( 3.0,  1.0),
-        vec2<f32>(-1.0,  1.0)
-    );
-
-    let p = positions[vertex_index];
+    var p = vec2<f32>(-1.0, 1.0);
+    if vertex_index == 0u {
+        p = vec2<f32>(-1.0, -3.0);
+    } else if vertex_index == 1u {
+        p = vec2<f32>(3.0, 1.0);
+    }
 
     var out: FullscreenVertexOut;
     out.clip_pos = vec4<f32>(p, 0.0, 1.0);
-    out.uv = p * 0.5 + vec2<f32>(0.5);
+    out.uv = vec2<f32>(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
     return out;
 }
