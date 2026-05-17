@@ -164,4 +164,7 @@ pub struct RenderFrameSnapshot<'a> {
     pub craft: RenderCraftSnapshot,
     pub console: RenderConsoleSnapshot<'a>,
     pub debug: RenderDebugFlags,
+    /// Optional per-frame weather snapshot (Phase 2 of the weather/cosmos
+    /// roadmap). When `None` the renderer uses the planet preset as-is.
+    pub weather: Option<&'a vv_weather::WeatherState>,
 }

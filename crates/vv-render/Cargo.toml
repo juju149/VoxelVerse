@@ -11,6 +11,7 @@ vv-worldgen = { path = "../vv-worldgen" }
 vv-meshing = { path = "../vv-meshing" }
 vv-pack-compiler = { path = "../vv-pack-compiler" }
 vv-diagnostics = { path = "../vv-diagnostics" }
+vv-weather = { path = "../vv-weather" }
 
 bytemuck.workspace = true
 glam.workspace = true

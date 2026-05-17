@@ -43,6 +43,7 @@ pub(super) fn frame_from_runtime(
             is_wireframe: dev.is_wireframe,
             debug_mode: runtime.dev_mode(),
         },
+        weather: None,
     }
 }
 
@@ -78,6 +79,7 @@ pub(super) fn frame_from_inventory_context<'a>(
             is_wireframe: ctx.dev.is_wireframe,
             debug_mode: false,
         },
+        weather: None,
     }
 }
 

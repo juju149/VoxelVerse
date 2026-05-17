@@ -557,6 +557,22 @@ impl<'a> Renderer<'a> {
             "Volumetric Fog Pipeline",
         );
 
+        let precip_shaders = Self::create_shader_pair(
+            &device,
+            &shader_library,
+            ShaderPath::PrecipitationVertex,
+            ShaderPath::PrecipitationFragment,
+        );
+        let pipeline_precipitation = Self::create_fullscreen_pipeline(
+            &device,
+            &sky_layout,
+            &precip_shaders.vertex,
+            &precip_shaders.fragment,
+            GpuScene::FORMAT,
+            Some(wgpu::BlendState::ALPHA_BLENDING),
+            "Precipitation Pipeline",
+        );
+
         let scene = GpuScene::new(&device, config.width, config.height);
         let post_bind_layout = Self::create_post_bind_layout(&device);
         let post_bind =
@@ -685,6 +701,7 @@ impl<'a> Renderer<'a> {
             atmosphere_params: [0.0, 0.0, 0.0, 1.0],
             cloud_params: [0.0, 0.0, 0.0, 0.0],
             water_params: [0.55, 0.90, 0.72, 0.0],
+            weather_params: [0.0, 1.0, 0.0, 0.0],
         };
 
         let global_buf_identity = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -727,6 +744,7 @@ impl<'a> Renderer<'a> {
             pipeline_sky,
             pipeline_clouds,
             pipeline_volumetric_fog,
+            pipeline_precipitation,
             pipeline_post,
             sky_global_bind,
             post_bind_layout,

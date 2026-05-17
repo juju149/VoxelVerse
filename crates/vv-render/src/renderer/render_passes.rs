@@ -36,9 +36,12 @@ impl<'a> Renderer<'a> {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         let surface_radius = planet.profile.surface_radius;
-        let atmosphere = self
+        let mut atmosphere = self
             .atmosphere
             .evaluate(surface_radius, planet.world_time, self.quality);
+        if let Some(weather) = frame.weather {
+            atmosphere.apply_weather(weather);
+        }
         let sun_dir = atmosphere.sun_dir;
 
         let shadow_dist = 200.0;
@@ -113,6 +116,32 @@ impl<'a> Renderer<'a> {
         // camera is inside / very close to the surface.
         let quality_bits = self.quality.pack();
 
+        // Pack weather params for the WGSL globals. Order kept in sync with
+        // `weather_params` in include/camera/globals.wgsl.
+        // x = precipitation intensity, y/z = horizontal wind direction,
+        // w = precipitation kind (0=none, 1=rain, 2=snow, 3=sleet,
+        //                         4=sand,  5=ash,  6=toxic_mist).
+        let weather_params = match frame.weather {
+            Some(w) => {
+                let kind = match w.precipitation.kind {
+                    vv_weather::PrecipitationKindSample::None => 0.0,
+                    vv_weather::PrecipitationKindSample::Rain => 1.0,
+                    vv_weather::PrecipitationKindSample::Snow => 2.0,
+                    vv_weather::PrecipitationKindSample::Sleet => 3.0,
+                    vv_weather::PrecipitationKindSample::Sand => 4.0,
+                    vv_weather::PrecipitationKindSample::Ash => 5.0,
+                    vv_weather::PrecipitationKindSample::ToxicMist => 6.0,
+                };
+                [
+                    w.precipitation.intensity,
+                    w.wind.direction.x,
+                    w.wind.direction.z,
+                    kind,
+                ]
+            }
+            None => [0.0, 1.0, 0.0, 0.0],
+        };
+
         let global_uniform = |view_proj: glam::Mat4| GlobalUniform {
             view_proj: view_proj.to_cols_array(),
             light_view_proj: light_view_proj.to_cols_array(),
@@ -159,6 +188,7 @@ impl<'a> Renderer<'a> {
                 atmosphere.water.alpha,
                 0.0,
             ],
+            weather_params,
         };
 
         // 1. Build and upload the main global uniform.
@@ -417,6 +447,12 @@ impl<'a> Renderer<'a> {
 
         // --- PASS 5: VOLUMETRIC FOG VEIL ---
         self.render_volumetric_fog(&mut enc);
+
+        // --- PASS 5b: PRECIPITATION (Phase 3.B) ---
+        // Procedural rain/snow screen-space overlay. Self-skips in the
+        // shader when `weather_params.x == 0`, so it costs ~nothing when no
+        // weather state is supplied.
+        self.render_precipitation(&mut enc);
 
         // --- PASS 6: FINAL COMPOSITE ---
         self.render_final_composite(&mut enc, &view);

@@ -9,6 +9,12 @@ struct Global {
     atmosphere_params: vec4<f32>,
     cloud_params: vec4<f32>,
     water_params: vec4<f32>,
+    // x = precipitation intensity [0,1],
+    // y = wind direction x (horizontal),
+    // z = wind direction z (horizontal),
+    // w = precipitation kind (0 = none, 1 = rain, 2 = snow, 3 = sleet,
+    //                         4 = sand,  5 = ash,  6 = toxic_mist)
+    weather_params: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> global: Global;
@@ -59,4 +65,16 @@ fn vv_volumetric_fog_strength() -> f32 {
 
 fn vv_exposure() -> f32 {
     return max(global.atmosphere_params.w, 0.01);
+}
+
+fn vv_precip_intensity() -> f32 {
+    return clamp(global.weather_params.x, 0.0, 1.0);
+}
+
+fn vv_wind_dir_xz() -> vec2<f32> {
+    return global.weather_params.yz;
+}
+
+fn vv_precip_kind() -> u32 {
+    return u32(round(global.weather_params.w));
 }

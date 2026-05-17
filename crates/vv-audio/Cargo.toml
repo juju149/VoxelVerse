@@ -4,4 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+vv-weather = { path = "../vv-weather" }
 rodio.workspace = true
+
+[dev-dependencies]
+glam.workspace = true

@@ -465,13 +465,44 @@ et passe `cargo test`, `cargo clippy`, et les scripts `check_*.ps1` existants.
 - **DoD** : météo change toutes ~2 min, visible dans le HUD debug ; pas de
   rendu nouveau encore (juste valeurs).
 
-### Phase 3 — Rendu météo basique (4-5 jours)
-- [ ] `precipitation_renderer.rs` (pluie + neige instancées).
-- [ ] Étendre `cloud_renderer.rs` pour réagir à `WeatherState.cloud_*`.
-- [ ] Splash decals sur eau et sol.
-- [ ] Foudre (bolt mesh + flash ambient).
-- [ ] Audio `vv-audio` : layers pluie/vent/tonnerre par intensité.
-- **DoD** : orage jouable, transitions douces, FPS stable High profile.
+### Phase 3.A — Intégration data-driven (1 jour) ✅
+- [x] `vv-render` dépend de `vv-weather`.
+- [x] `RenderFrameSnapshot.weather: Option<&WeatherState>`.
+- [x] `EvaluatedAtmosphere::apply_weather` : override `cloud_coverage`,
+      multiplie `cloud_density` / `cloud_speed` / `fog_density`, additionne
+      `flash_intensity` des strikes (capé à 1.5).
+- [x] Câblage dans `render_passes.rs` après `evaluate(...)`.
+- **DoD** : un `WeatherState` "orage" assombrit visiblement le ciel et
+  épaissit le brouillard sans nouveau pipeline, et un strike fait un flash.
+
+### Phase 3.B — Pipelines pluie / neige / foudre (partiel ✅, polish à venir)
+- [x] WGSL `precipitation.frag.wgsl` : streaks rain + flakes snow procéduraux
+      en screen-space, lus depuis `weather_params` du `GlobalUniform`.
+- [x] `precipitation_renderer.rs` : pass full-screen entre fog et post.
+      Self-skip dans le shader quand `intensity == 0` → coût ~nul.
+- [x] `GlobalUniform.weather_params` (vec4, +16 octets → 272 total) : intensité,
+      direction du vent xz, kind (0..6).
+- [x] Tilt des streaks proportionnel à `wind.x` ; drift des flocons modulé
+      par `|wind.x|`.
+- [x] Flash ambient câblé en 3.A via `apply_weather` (boost `sun_intensity`).
+- [ ] **Polish 3.B-2** (suivi) : splash decals (water shader + additive sol),
+      bolt mesh (random walk 8-16 segments) à la place du flash uniforme,
+      streaks instancés pour densité élevée si nécessaire.
+- **DoD partiel** : pluie/neige visibles à `intensity > 0`, vent qui drague
+  les streaks, kind switch automatique entre rain/snow.
+
+### Phase 3.C — Audio météo (mixer ✅, sinks rodio à câbler)
+- [x] `vv-audio::WeatherAudioMix` : volumes cibles dérivés du `WeatherState`
+      (pluie via `precipitation.intensity`, vent via `wind.speed`, thunder
+      ambient sur frame de strike).
+- [x] `WeatherThunderEvent { delay_s, volume }` : claps retardés depuis
+      `LightningStrike.thunder_delay_s`, atténuation quadratique avec distance.
+- [x] Tests déterministes du mixage (sans device audio).
+- [ ] **Polish 3.C-2** (suivi) : câbler les `rodio::Sink` sustained pour les
+      loops pluie/vent une fois les .ogg ajoutés au pack, scheduling des
+      one-shots de tonnerre via timer interne.
+- **DoD partiel** : `WeatherAudioMix::from_state` est correct et testé ;
+  le host n'a plus qu'à brancher les sinks quand les assets arrivent.
 
 ### Phase 4 — Solver céleste (`vv-celestial`) (3 jours)
 - [ ] Crate `vv-celestial` : orbites circulaires, `f64`, positions soleil/lunes.

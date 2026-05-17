@@ -113,6 +113,6 @@ mod tests {
 
     #[test]
     fn global_uniform_layout_size_matches_wgsl_contract() {
-        assert_eq!(std::mem::size_of::<GlobalUniform>(), 256);
+        assert_eq!(std::mem::size_of::<GlobalUniform>(), 272);
     }
 }

@@ -1,5 +1,6 @@
 use super::config::{AtmosphereConfig, WaterConfig};
 use crate::quality::QualitySettings;
+use vv_weather::WeatherState;
 use vv_world::WorldTime;
 
 /// Vertical band the observer currently occupies. Drives sky/atmosphere
@@ -103,5 +104,36 @@ impl AtmosphereConfig {
             water: self.water,
             altitude_band: AltitudeBand::Ground,
         }
+    }
+}
+
+impl EvaluatedAtmosphere {
+    /// Apply a [`WeatherState`] snapshot on top of the base preset evaluation.
+    ///
+    /// - `cloud_coverage` is **replaced** by the weather value (the preset
+    ///   provides the unconditioned baseline; weather is authoritative).
+    /// - `cloud_density`, `cloud_speed`, and `fog_density` are **multiplied**
+    ///   by the weather multipliers so the preset still parameterises shape.
+    /// - Lightning strikes additively boost `sun_intensity` for the strike
+    ///   frame. The renderer reads `sun_intensity` for ambient brightness.
+    ///
+    /// Mirrors `docs/v1/13_WEATHER_AND_COSMOS.md` §5 ordering: preset → weather
+    /// → (biome → celestial, future phases).
+    pub fn apply_weather(&mut self, weather: &WeatherState) {
+        self.cloud_coverage = weather.cloud_coverage.clamp(0.0, 1.0);
+        self.cloud_density = (self.cloud_density * weather.cloud_density_mul).max(0.0);
+        self.cloud_speed = (self.cloud_speed * weather.cloud_speed_mul).max(0.0);
+        self.fog_density = (self.fog_density * weather.fog_multiplier).max(0.0);
+
+        // Frame-additive flash. Strikes already carry per-event intensity
+        // (with jitter); we sum across simultaneous strikes but cap the
+        // visible boost so a swarm can't blind the player.
+        let flash_sum: f32 = weather
+            .lightning_events
+            .iter()
+            .map(|s| s.flash_intensity.max(0.0))
+            .sum();
+        let flash_boost = (flash_sum * 0.05).min(0.75);
+        self.sun_intensity = (self.sun_intensity + flash_boost).min(1.5);
     }
 }

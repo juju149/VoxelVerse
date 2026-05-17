@@ -2155,7 +2155,9 @@ dependencies = [
 name = "vv-audio"
 version = "0.1.0"
 dependencies = [
+ "glam",
  "rodio",
+ "vv-weather",
 ]
 
 [[package]]
@@ -2266,6 +2268,7 @@ dependencies = [
  "vv-meshing",
  "vv-pack-compiler",
  "vv-voxel",
+ "vv-weather",
  "vv-world",
  "vv-worldgen",
  "wgpu",
