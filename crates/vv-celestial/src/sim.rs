@@ -6,7 +6,6 @@
 //! altitude, etc. Everything else is computed deterministically from time.
 
 use vv_content_schema::RawCelestialKind;
-use vv_world::WorldTime;
 
 use crate::body::{CelestialBodyId, CelestialRegistry};
 use crate::eclipse::solar_eclipse_factor;
@@ -56,26 +55,40 @@ impl CelestialSimState {
         self.primary_star
     }
 
-    pub fn snapshot(&self, registry: &CelestialRegistry, time: WorldTime) -> CelestialState {
+    /// Build the per-frame snapshot. The caller passes the simulation clock
+    /// directly so this crate stays independent of `vv-world::WorldTime` (the
+    /// runtime can keep its own clock without dragging the full planet
+    /// runtime into the celestial dep graph).
+    ///
+    /// * `elapsed_seconds` — simulation time since the system epoch. Drives
+    ///   orbital phases.
+    /// * `day_phase` — `[0, 1)` fraction of the observer planet's day used as
+    ///   the spin angle.
+    pub fn snapshot(
+        &self,
+        registry: &CelestialRegistry,
+        elapsed_seconds: f64,
+        day_phase: f32,
+    ) -> CelestialState {
         if registry.is_empty() {
             return empty_state(self.observer_altitude_m);
         }
 
-        let t = time.elapsed_seconds() as f64;
+        let t = elapsed_seconds;
         let observer_system_pos = match self.observer_planet {
             Some(id) => body_position(registry, id, t),
             None => SystemPos::ZERO,
         };
 
         // Build the local-frame rotation: the planet spins around its axis
-        // with the cycle described by `WorldTime`. The current day_phase
-        // gives the spin angle; we rotate every system-frame direction by
-        // the inverse to recover the observer's local sky.
+        // with the cycle described by the supplied day phase.  The current
+        // day_phase gives the spin angle; we rotate every system-frame
+        // direction by the inverse to recover the observer's local sky.
         let spin_axis = self
             .observer_planet
             .map(|id| registry.get(id).spin.axis)
             .unwrap_or(glam::Vec3::Y);
-        let spin_angle = -(time.day_phase() - self.noon_phase) * std::f32::consts::TAU;
+        let spin_angle = -(day_phase - self.noon_phase) * std::f32::consts::TAU;
         let spin_rot = glam::Quat::from_axis_angle(spin_axis, spin_angle);
 
         // Sun.

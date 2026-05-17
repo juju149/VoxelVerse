@@ -63,6 +63,13 @@ pub struct CelestialRegistry {
 pub enum RegistryError {
     UnknownParent { body: String, parent: String },
     DuplicateShortId(String),
+    /// A parent chain cycles back on itself (e.g. `earth.parent = moon`,
+    /// `moon.parent = earth`). Caught here so `body_position` cannot recurse
+    /// forever at runtime.
+    ParentCycle { chain: Vec<String> },
+    /// `CelestialBodyId` is a `u16`; packs with more bodies than that would
+    /// truncate silently. Refuse them at load instead.
+    TooManyBodies { count: usize, max: usize },
 }
 
 impl std::fmt::Display for RegistryError {
@@ -76,6 +83,12 @@ impl std::fmt::Display for RegistryError {
             }
             RegistryError::DuplicateShortId(id) => {
                 write!(f, "duplicate celestial short id '{id}'")
+            }
+            RegistryError::ParentCycle { chain } => {
+                write!(f, "celestial parent cycle: {}", chain.join(" -> "))
+            }
+            RegistryError::TooManyBodies { count, max } => {
+                write!(f, "too many celestial bodies: {count} > {max} (CelestialBodyId is u16)")
             }
         }
     }
@@ -92,6 +105,15 @@ impl CelestialRegistry {
     /// every entry so parents can be resolved into ids, then convert each
     /// orbit's parent ref.
     pub fn from_raw(items: &[(String, RawCelestialBodyDef)]) -> Result<Self, RegistryError> {
+        // ID-overflow guard — see `RegistryError::TooManyBodies`.
+        let max = u16::MAX as usize;
+        if items.len() > max {
+            return Err(RegistryError::TooManyBodies {
+                count: items.len(),
+                max,
+            });
+        }
+
         // Pass 1 — short ids and indices.
         let mut by_short_id: BTreeMap<String, CelestialBodyId> = BTreeMap::new();
         for (idx, (key, _raw)) in items.iter().enumerate() {
@@ -129,6 +151,18 @@ impl CelestialRegistry {
             });
         }
 
+        // Pass 3 — reject parent cycles. Without this guard, `body_position`
+        // recurses forever on a cyclic chain at runtime.
+        for body in &bodies {
+            if let Some(chain) = detect_cycle_from(&bodies, body.id) {
+                let names = chain
+                    .into_iter()
+                    .map(|id| bodies[id.0 as usize].short_id.clone())
+                    .collect();
+                return Err(RegistryError::ParentCycle { chain: names });
+            }
+        }
+
         Ok(Self {
             bodies,
             by_short_id,
@@ -158,6 +192,36 @@ impl CelestialRegistry {
     /// First body matching the supplied kind, in registry (sort) order.
     pub fn first_of_kind(&self, kind: RawCelestialKind) -> Option<CelestialBodyId> {
         self.bodies.iter().find(|b| b.kind == kind).map(|b| b.id)
+    }
+}
+
+/// Walk the parent chain from `start` and return the cyclic loop if one
+/// exists. The returned vector starts and ends on the same id so the error
+/// message reads e.g. `earth -> moon -> earth`. Bounded by `bodies.len()`.
+fn detect_cycle_from(bodies: &[ResolvedBody], start: CelestialBodyId) -> Option<Vec<CelestialBodyId>> {
+    let mut chain: Vec<CelestialBodyId> = vec![start];
+    let mut current = start;
+    loop {
+        let parent = bodies[current.0 as usize]
+            .orbit
+            .as_ref()
+            .and_then(|o| o.parent);
+        match parent {
+            None => return None,
+            Some(p) => {
+                if chain.contains(&p) {
+                    chain.push(p);
+                    return Some(chain);
+                }
+                chain.push(p);
+                current = p;
+                if chain.len() > bodies.len() + 1 {
+                    // Defensive — shouldn't be reached given the `contains`
+                    // check above.
+                    return Some(chain);
+                }
+            }
+        }
     }
 }
 

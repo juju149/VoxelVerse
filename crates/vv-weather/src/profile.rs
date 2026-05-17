@@ -14,6 +14,39 @@ use vv_content_schema::{
 
 use crate::snapshot::PrecipitationKindSample;
 
+/// Validated wind configuration used by the runtime sim. Mirrors
+/// `RawWeatherWindDef` but with clamps applied so consumers can trust the
+/// invariants without re-checking.
+#[derive(Clone, Copy, Debug)]
+pub struct ResolvedWind {
+    pub base_speed: f32,
+    pub gust_speed: f32,
+    pub gust_interval_s: f32,
+    pub direction_drift_per_s: f32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ResolvedLightning {
+    pub strikes_per_minute: f32,
+    pub flash_intensity: f32,
+    pub thunder_delay_per_km: f32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ResolvedPostFx {
+    pub exposure_mul: f32,
+    pub saturation_mul: f32,
+    pub contrast_add: f32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ResolvedTransitions {
+    pub fade_in_s: f32,
+    pub fade_out_s: f32,
+    pub min_duration_s: f32,
+    pub max_duration_s: f32,
+}
+
 /// Compact index into the [`WeatherRegistry`]. Stable across a save: indices
 /// are assigned in the order the registry receives them, which the loader
 /// guarantees is alphabetical (`load_typed_tree` sorts by path).
@@ -35,10 +68,10 @@ pub struct ResolvedProfile {
     pub cloud_speed_mul: f32,
     pub fog_multiplier: f32,
     pub precipitation: Option<ResolvedPrecipitation>,
-    pub wind: RawWeatherWindDef,
-    pub lightning: Option<RawWeatherLightningDef>,
-    pub post_fx: RawWeatherPostFxDef,
-    pub transitions: RawWeatherTransitionsDef,
+    pub wind: ResolvedWind,
+    pub lightning: Option<ResolvedLightning>,
+    pub post_fx: ResolvedPostFx,
+    pub transitions: ResolvedTransitions,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -106,10 +139,10 @@ impl WeatherRegistry {
             cloud_speed_mul: raw.cloud_speed_mul.max(0.0),
             fog_multiplier: raw.fog_multiplier.max(0.0),
             precipitation: raw.precipitation.as_ref().map(resolve_precipitation),
-            wind: raw.wind.clone(),
-            lightning: raw.lightning.clone(),
-            post_fx: raw.post_fx,
-            transitions: raw.transitions,
+            wind: resolve_wind(&raw.wind),
+            lightning: raw.lightning.as_ref().map(resolve_lightning),
+            post_fx: resolve_post_fx(raw.post_fx),
+            transitions: resolve_transitions(raw.transitions),
         };
         self.by_short_id.insert(short_id, id);
         self.profiles.push(resolved);
@@ -122,6 +155,43 @@ fn resolve_precipitation(raw: &RawWeatherPrecipitationDef) -> ResolvedPrecipitat
         intensity: raw.intensity.clamp(0.0, 1.0),
         wind_drift: raw.wind_drift.clamp(0.0, 1.0),
         splash_density: raw.splash_density.clamp(0.0, 1.0),
+    }
+}
+
+fn resolve_wind(raw: &RawWeatherWindDef) -> ResolvedWind {
+    ResolvedWind {
+        base_speed: raw.base_speed.max(0.0),
+        gust_speed: raw.gust_speed.max(0.0),
+        gust_interval_s: raw.gust_interval_s.max(0.1),
+        direction_drift_per_s: raw.direction_drift_per_s.max(0.0),
+    }
+}
+
+fn resolve_lightning(raw: &RawWeatherLightningDef) -> ResolvedLightning {
+    ResolvedLightning {
+        strikes_per_minute: raw.strikes_per_minute.max(0.0),
+        flash_intensity: raw.flash_intensity.max(0.0),
+        thunder_delay_per_km: raw.thunder_delay_per_km.max(0.0),
+    }
+}
+
+fn resolve_post_fx(raw: RawWeatherPostFxDef) -> ResolvedPostFx {
+    ResolvedPostFx {
+        exposure_mul: raw.exposure_mul.max(0.0),
+        saturation_mul: raw.saturation_mul.max(0.0),
+        contrast_add: raw.contrast_add,
+    }
+}
+
+fn resolve_transitions(raw: RawWeatherTransitionsDef) -> ResolvedTransitions {
+    // Clamp so the sim's max-window math (`max - min`) never goes negative.
+    let min_duration_s = raw.min_duration_s.max(0.0);
+    let max_duration_s = raw.max_duration_s.max(min_duration_s + 0.1);
+    ResolvedTransitions {
+        fade_in_s: raw.fade_in_s.max(0.05),
+        fade_out_s: raw.fade_out_s.max(0.05),
+        min_duration_s,
+        max_duration_s,
     }
 }
 

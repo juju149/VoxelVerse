@@ -19,7 +19,10 @@ mod sim;
 mod snapshot;
 mod wind;
 
-pub use profile::{ResolvedPrecipitation, ResolvedProfile, WeatherProfileId, WeatherRegistry};
+pub use profile::{
+    ResolvedLightning, ResolvedPostFx, ResolvedPrecipitation, ResolvedProfile, ResolvedTransitions,
+    ResolvedWind, WeatherProfileId, WeatherRegistry,
+};
 pub use sim::WeatherSimState;
 pub use snapshot::{
     LightningStrike, PrecipitationKindSample, PrecipitationSample, WeatherState, WindVector,

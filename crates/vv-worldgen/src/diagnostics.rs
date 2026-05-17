@@ -11,6 +11,7 @@
 //! diagnostics overlay, not here.
 
 use std::sync::atomic::{AtomicU64, Ordering};
+use vv_diagnostics::WorldgenStatsSnapshot;
 
 #[derive(Default, Debug)]
 pub struct WorldgenStats {
@@ -60,7 +61,9 @@ impl WorldgenStats {
             .fetch_add(1, Ordering::Relaxed);
     }
 
-    /// Snapshot for a HUD line — all counts are captured in one pass.
+    /// Snapshot for a HUD line — all counts are captured in one pass. Uses
+    /// the centralised `WorldgenStatsSnapshot` defined in `vv-diagnostics`
+    /// so the overlay can read it without depending on worldgen internals.
     pub fn snapshot(&self) -> WorldgenStatsSnapshot {
         WorldgenStatsSnapshot {
             cell_hits: self.cell_hits.load(Ordering::Relaxed),
@@ -70,25 +73,5 @@ impl WorldgenStats {
             candidates_rejected: self.candidates_rejected.load(Ordering::Relaxed),
             candidates_rejected_spacing: self.candidates_rejected_spacing.load(Ordering::Relaxed),
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct WorldgenStatsSnapshot {
-    pub cell_hits: u64,
-    pub cell_misses: u64,
-    pub features_emitted: u64,
-    pub props_emitted: u64,
-    pub candidates_rejected: u64,
-    pub candidates_rejected_spacing: u64,
-}
-
-impl WorldgenStatsSnapshot {
-    pub fn cell_hit_ratio(self) -> f32 {
-        let total = self.cell_hits + self.cell_misses;
-        if total == 0 {
-            return 0.0;
-        }
-        self.cell_hits as f32 / total as f32
     }
 }

@@ -7,7 +7,6 @@ use vv_content_schema::{
     ContentRef, RawCelestialBodyDef, RawCelestialKind, RawCelestialOrbitDef, RawCelestialSpinDef,
     RawCelestialSurfaceDef,
 };
-use vv_world::WorldTime;
 
 fn star(name: &str, radius_m: f64, spin_period_s: f64) -> (String, RawCelestialBodyDef) {
     (
@@ -150,6 +149,31 @@ fn unknown_parent_is_rejected() {
 }
 
 #[test]
+fn parent_cycle_is_rejected() {
+    // a -> b -> a: orbit solver would recurse forever, registry must refuse.
+    let a = planet("a", Some("b"), 1.0, 1.0, 1.0, 1.0);
+    let b = planet("b", Some("a"), 1.0, 1.0, 1.0, 1.0);
+    let result = CelestialRegistry::from_raw(&[a, b]);
+    match result {
+        Err(vv_celestial::RegistryError::ParentCycle { chain }) => {
+            assert!(chain.len() >= 2, "cycle chain should name at least 2 bodies");
+        }
+        Err(other) => panic!("expected ParentCycle, got {other:?}"),
+        Ok(_) => panic!("expected ParentCycle, got Ok"),
+    }
+}
+
+#[test]
+fn self_parent_is_rejected_as_cycle() {
+    let me = planet("solo", Some("solo"), 1.0, 1.0, 1.0, 1.0);
+    let result = CelestialRegistry::from_raw(&[me]);
+    assert!(matches!(
+        result,
+        Err(vv_celestial::RegistryError::ParentCycle { .. })
+    ));
+}
+
+#[test]
 fn duplicate_short_id_is_rejected() {
     let mut a = star("dup", 1.0, 1.0);
     let mut b = star("dup", 1.0, 1.0);
@@ -164,16 +188,14 @@ fn duplicate_short_id_is_rejected() {
 fn sun_direction_makes_one_complete_revolution_per_day() {
     let reg = earth_like_registry();
     let sim = CelestialSimState::new(&reg);
-    let day_length_s = reg.get(reg.id_of("terra").unwrap()).spin.period_s as f32;
-    let cfg_day = WorldTime::new(day_length_s, 0.0);
+    let day_length_s = reg.get(reg.id_of("terra").unwrap()).spin.period_s as f64;
 
-    let mut time = cfg_day;
-    let s_noon = sim.snapshot(&reg, time).sun_dir_world;
+    let s_noon = sim.snapshot(&reg, 0.0, 0.0).sun_dir_world;
 
     // Advance to phase 0.5 (midnight): sun should be roughly opposite.
-    let mut t_mid = WorldTime::new(day_length_s, 0.5);
-    t_mid.tick(0.0);
-    let s_mid = sim.snapshot(&reg, t_mid).sun_dir_world;
+    let s_mid = sim
+        .snapshot(&reg, day_length_s * 0.5, 0.5)
+        .sun_dir_world;
     let dot = s_noon.dot(s_mid);
     assert!(
         dot < -0.5,
@@ -181,8 +203,7 @@ fn sun_direction_makes_one_complete_revolution_per_day() {
     );
 
     // After a full day at the same phase, the snapshot must match.
-    time.tick(day_length_s);
-    let s_full = sim.snapshot(&reg, time).sun_dir_world;
+    let s_full = sim.snapshot(&reg, day_length_s, 0.0).sun_dir_world;
     assert!((s_full - s_noon).length() < 0.05);
 }
 
@@ -190,7 +211,7 @@ fn sun_direction_makes_one_complete_revolution_per_day() {
 fn moons_are_included_in_snapshot() {
     let reg = earth_like_registry();
     let sim = CelestialSimState::new(&reg);
-    let snap = sim.snapshot(&reg, WorldTime::default());
+    let snap = sim.snapshot(&reg, 0.0, 0.0);
     assert_eq!(snap.moons.len(), 1);
     let m = &snap.moons[0];
     assert!(m.distance_m > 3.0e8 && m.distance_m < 5.0e8);
@@ -204,22 +225,22 @@ fn altitude_band_classification() {
     let mut sim = CelestialSimState::new(&reg);
     sim.set_observer_altitude_m(0.0);
     assert_eq!(
-        sim.snapshot(&reg, WorldTime::default()).altitude_band,
+        sim.snapshot(&reg, 0.0, 0.0).altitude_band,
         AltitudeBand::Ground
     );
     sim.set_observer_altitude_m(10_000.0);
     assert_eq!(
-        sim.snapshot(&reg, WorldTime::default()).altitude_band,
+        sim.snapshot(&reg, 0.0, 0.0).altitude_band,
         AltitudeBand::Strato
     );
     sim.set_observer_altitude_m(50_000.0);
     assert_eq!(
-        sim.snapshot(&reg, WorldTime::default()).altitude_band,
+        sim.snapshot(&reg, 0.0, 0.0).altitude_band,
         AltitudeBand::Meso
     );
     sim.set_observer_altitude_m(120_000.0);
     assert_eq!(
-        sim.snapshot(&reg, WorldTime::default()).altitude_band,
+        sim.snapshot(&reg, 0.0, 0.0).altitude_band,
         AltitudeBand::Space
     );
 }
@@ -228,13 +249,9 @@ fn altitude_band_classification() {
 fn stars_visible_at_night() {
     let reg = earth_like_registry();
     let sim = CelestialSimState::new(&reg);
-    let day_length_s = reg.get(reg.id_of("terra").unwrap()).spin.period_s as f32;
 
-    let noon = WorldTime::new(day_length_s, 0.0);
-    let midnight = WorldTime::new(day_length_s, 0.5);
-
-    let snap_noon = sim.snapshot(&reg, noon);
-    let snap_mid = sim.snapshot(&reg, midnight);
+    let snap_noon = sim.snapshot(&reg, 0.0, 0.0);
+    let snap_mid = sim.snapshot(&reg, 0.0, 0.5);
     assert!(
         snap_mid.stars_visibility > snap_noon.stars_visibility,
         "stars must be more visible at midnight ({} vs {})",
@@ -247,11 +264,10 @@ fn stars_visible_at_night() {
 fn determinism_same_time_same_snapshot() {
     let reg = earth_like_registry();
     let sim = CelestialSimState::new(&reg);
-    let day_length_s = 86_400.0_f32;
-    let mut t = WorldTime::new(day_length_s, 0.13);
-    t.tick(73.5);
-    let a = sim.snapshot(&reg, t);
-    let b = sim.snapshot(&reg, t);
+    let elapsed = 86_400.0_f64 * 0.13 + 73.5;
+    let phase = ((elapsed / 86_400.0) as f32).fract();
+    let a = sim.snapshot(&reg, elapsed, phase);
+    let b = sim.snapshot(&reg, elapsed, phase);
     assert_eq!(a.sun_dir_world, b.sun_dir_world);
     assert_eq!(a.moons.len(), b.moons.len());
     for (ma, mb) in a.moons.iter().zip(b.moons.iter()) {

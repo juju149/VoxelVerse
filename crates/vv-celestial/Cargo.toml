@@ -5,6 +5,5 @@ edition.workspace = true
 
 [dependencies]
 vv-content-schema = { path = "../vv-content-schema" }
-vv-world = { path = "../vv-world" }
 
 glam.workspace = true
