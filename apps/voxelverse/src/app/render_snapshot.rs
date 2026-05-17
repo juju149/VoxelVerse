@@ -44,6 +44,7 @@ pub(super) fn frame_from_runtime(
             debug_mode: runtime.dev_mode(),
         },
         weather: None,
+        celestial: None,
     }
 }
 
@@ -80,6 +81,7 @@ pub(super) fn frame_from_inventory_context<'a>(
             debug_mode: false,
         },
         weather: None,
+        celestial: None,
     }
 }
 

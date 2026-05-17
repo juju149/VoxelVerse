@@ -12,6 +12,7 @@ vv-meshing = { path = "../vv-meshing" }
 vv-pack-compiler = { path = "../vv-pack-compiler" }
 vv-diagnostics = { path = "../vv-diagnostics" }
 vv-weather = { path = "../vv-weather" }
+vv-celestial = { path = "../vv-celestial" }
 
 bytemuck.workspace = true
 glam.workspace = true

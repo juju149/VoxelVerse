@@ -15,6 +15,14 @@ struct Global {
     // w = precipitation kind (0 = none, 1 = rain, 2 = snow, 3 = sleet,
     //                         4 = sand,  5 = ash,  6 = toxic_mist)
     weather_params: vec4<f32>,
+    // x = eclipse_factor (0 = clear, 1 = totality),
+    // y = stars_visibility [0,1],
+    // z = aurora_intensity [0,1],
+    // w = sun angular radius (radians)
+    celestial_params: vec4<f32>,
+    // xyz = primary moon direction in world frame (unit, 0 if absent),
+    // w   = primary moon angular radius (radians, 0 if absent)
+    celestial_moon: vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> global: Global;
@@ -77,4 +85,28 @@ fn vv_wind_dir_xz() -> vec2<f32> {
 
 fn vv_precip_kind() -> u32 {
     return u32(round(global.weather_params.w));
+}
+
+fn vv_eclipse_factor() -> f32 {
+    return clamp(global.celestial_params.x, 0.0, 1.0);
+}
+
+fn vv_stars_visibility() -> f32 {
+    return clamp(global.celestial_params.y, 0.0, 1.0);
+}
+
+fn vv_aurora_intensity() -> f32 {
+    return clamp(global.celestial_params.z, 0.0, 1.0);
+}
+
+fn vv_sun_angular_radius() -> f32 {
+    return max(global.celestial_params.w, 0.0);
+}
+
+fn vv_moon_dir() -> vec3<f32> {
+    return global.celestial_moon.xyz;
+}
+
+fn vv_moon_angular_radius() -> f32 {
+    return max(global.celestial_moon.w, 0.0);
 }

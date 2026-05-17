@@ -21,6 +21,7 @@ mod tests {
     use super::evaluate::AltitudeBand;
     use super::{AtmosphereConfig, PlanetAtmospherePreset};
     use crate::quality::QualitySettings;
+    use vv_celestial::{AltitudeBand as CelestialAltitudeBand, CelestialState};
     use vv_weather::{
         LightningStrike, PrecipitationKindSample, PrecipitationSample, WeatherProfileId,
         WeatherState, WindVector,
@@ -126,5 +127,64 @@ mod tests {
         let mut evaluated = base;
         evaluated.apply_weather(&state);
         assert!(evaluated.sun_intensity <= 1.5 + 1e-5);
+    }
+
+    fn celestial_state(sun_dir: glam::Vec3, eclipse: f32, band: CelestialAltitudeBand) -> CelestialState {
+        CelestialState {
+            sun_dir_world: sun_dir,
+            sun_disc_color: glam::Vec3::new(1.0, 0.95, 0.85),
+            sun_disc_angular_radius: 0.0046,
+            sun_distance_m: 1.496e11,
+            moons: Vec::new(),
+            stars_visibility: 0.0,
+            aurora_intensity: 0.0,
+            eclipse_factor: eclipse,
+            altitude_band: band,
+        }
+    }
+
+    #[test]
+    fn apply_celestial_overrides_sun_dir() {
+        let config = AtmosphereConfig::default();
+        let mut time = WorldTime::new(config.day_length_seconds, 0.25);
+        time.tick(0.0);
+        let mut evaluated = config.evaluate(500.0, time, QualitySettings::default());
+        let new_dir = glam::Vec3::new(0.3, 0.9, 0.1).normalize();
+        evaluated.apply_celestial(&celestial_state(new_dir, 0.0, CelestialAltitudeBand::Ground));
+        assert!((evaluated.sun_dir - new_dir).length() < 1e-5);
+    }
+
+    #[test]
+    fn apply_celestial_eclipse_dims_sun() {
+        let config = AtmosphereConfig::default();
+        let mut time = WorldTime::new(config.day_length_seconds, 0.25);
+        time.tick(0.0);
+        let mut evaluated = config.evaluate(500.0, time, QualitySettings::default());
+        let new_dir = glam::Vec3::new(0.0, 1.0, 0.0);
+        let before = {
+            let mut clear = evaluated;
+            clear.apply_celestial(&celestial_state(new_dir, 0.0, CelestialAltitudeBand::Ground));
+            clear.sun_intensity
+        };
+        evaluated.apply_celestial(&celestial_state(new_dir, 1.0, CelestialAltitudeBand::Ground));
+        assert!(
+            evaluated.sun_intensity < before * 0.2,
+            "totality must crush sun_intensity (got {} vs base {before})",
+            evaluated.sun_intensity
+        );
+    }
+
+    #[test]
+    fn apply_celestial_propagates_altitude_band() {
+        let config = AtmosphereConfig::default();
+        let mut time = WorldTime::new(config.day_length_seconds, 0.25);
+        time.tick(0.0);
+        let mut evaluated = config.evaluate(500.0, time, QualitySettings::default());
+        evaluated.apply_celestial(&celestial_state(
+            glam::Vec3::Y,
+            0.0,
+            CelestialAltitudeBand::Space,
+        ));
+        assert_eq!(evaluated.altitude_band, AltitudeBand::Space);
     }
 }

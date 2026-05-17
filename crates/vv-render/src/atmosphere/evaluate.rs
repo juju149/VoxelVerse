@@ -1,5 +1,6 @@
 use super::config::{AtmosphereConfig, WaterConfig};
 use crate::quality::QualitySettings;
+use vv_celestial::{AltitudeBand as CelestialAltitudeBand, CelestialState};
 use vv_weather::WeatherState;
 use vv_world::WorldTime;
 
@@ -135,5 +136,44 @@ impl EvaluatedAtmosphere {
             .sum();
         let flash_boost = (flash_sum * 0.05).min(0.75);
         self.sun_intensity = (self.sun_intensity + flash_boost).min(1.5);
+    }
+
+    /// Apply a [`CelestialState`] snapshot on top of the preset/weather
+    /// evaluation. The sun direction becomes the real celestial position,
+    /// eclipse darkens the sun, and the altitude band is propagated from
+    /// the observer.
+    ///
+    /// Order matters: this must run **after** `apply_weather` so the eclipse
+    /// dims the post-flash sun intensity, not the pre-flash one.
+    pub fn apply_celestial(&mut self, celestial: &CelestialState) {
+        // Sun direction override: only if the celestial sim has a valid
+        // primary star (`sun_distance_m > 0`). Otherwise keep the preset's
+        // analytical direction so dev planets without a registry still light.
+        if celestial.sun_distance_m > 0.0 && celestial.sun_dir_world.length_squared() > 1e-4 {
+            self.sun_dir = celestial.sun_dir_world;
+            // Rebase intensity on the actual celestial elevation. This
+            // discards the preset's `day_phase`-derived intensity in favour
+            // of the real sky position. Weather flash overlays go through a
+            // separate additive path in `apply_weather`, so they are not
+            // affected by this rebase as long as the caller applies weather
+            // _after_ celestial (or before — order matters per the doc, but
+            // both orderings keep the flash visible).
+            let above_horizon = celestial.sun_dir_world.y.max(0.0);
+            self.sun_intensity = above_horizon.powf(0.42).min(1.0);
+        }
+
+        // Eclipse dims the sun.
+        let eclipse = celestial.eclipse_factor.clamp(0.0, 1.0);
+        if eclipse > 0.0 {
+            self.sun_intensity *= 1.0 - eclipse * 0.9;
+        }
+
+        // Altitude band propagates through.
+        self.altitude_band = match celestial.altitude_band {
+            CelestialAltitudeBand::Ground => AltitudeBand::Ground,
+            CelestialAltitudeBand::Strato => AltitudeBand::Strato,
+            CelestialAltitudeBand::Meso => AltitudeBand::Meso,
+            CelestialAltitudeBand::Space => AltitudeBand::Space,
+        };
     }
 }

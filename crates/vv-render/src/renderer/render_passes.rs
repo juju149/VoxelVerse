@@ -42,6 +42,9 @@ impl<'a> Renderer<'a> {
         if let Some(weather) = frame.weather {
             atmosphere.apply_weather(weather);
         }
+        if let Some(celestial) = frame.celestial {
+            atmosphere.apply_celestial(celestial);
+        }
         let sun_dir = atmosphere.sun_dir;
 
         let shadow_dist = 200.0;
@@ -142,6 +145,27 @@ impl<'a> Renderer<'a> {
             None => [0.0, 1.0, 0.0, 0.0],
         };
 
+        // Pack celestial params. Order kept in sync with `celestial_params`
+        // and `celestial_moon` in include/camera/globals.wgsl.
+        let (celestial_params, celestial_moon) = match frame.celestial {
+            Some(c) => {
+                let (moon_dir, moon_radius) = match c.moons.first() {
+                    Some(m) => (m.direction, m.angular_radius_rad),
+                    None => (glam::Vec3::ZERO, 0.0),
+                };
+                (
+                    [
+                        c.eclipse_factor,
+                        c.stars_visibility,
+                        c.aurora_intensity,
+                        c.sun_disc_angular_radius,
+                    ],
+                    [moon_dir.x, moon_dir.y, moon_dir.z, moon_radius],
+                )
+            }
+            None => ([0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]),
+        };
+
         let global_uniform = |view_proj: glam::Mat4| GlobalUniform {
             view_proj: view_proj.to_cols_array(),
             light_view_proj: light_view_proj.to_cols_array(),
@@ -189,6 +213,8 @@ impl<'a> Renderer<'a> {
                 0.0,
             ],
             weather_params,
+            celestial_params,
+            celestial_moon,
         };
 
         // 1. Build and upload the main global uniform.
@@ -307,6 +333,12 @@ impl<'a> Renderer<'a> {
         // Renders the atmospheric sky as a fullscreen triangle before terrain so
         // background pixels (horizon, space above planet) show the sky.
         self.render_sky(&mut enc);
+
+        // --- PASS 2b: CELESTIAL (Phase 5.B) ---
+        // Stars + moon + aurora additive overlay between sky and clouds so
+        // clouds occlude them naturally. Self-skips when no celestial state
+        // is supplied (every input is zero).
+        self.render_celestial(&mut enc);
 
         // --- PASS 3: CLOUDS ---
         self.render_clouds(&mut enc);

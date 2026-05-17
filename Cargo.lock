@@ -2272,6 +2272,7 @@ dependencies = [
  "png",
  "rayon",
  "sysinfo",
+ "vv-celestial",
  "vv-diagnostics",
  "vv-math",
  "vv-meshing",

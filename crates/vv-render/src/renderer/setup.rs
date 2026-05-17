@@ -573,6 +573,31 @@ impl<'a> Renderer<'a> {
             "Precipitation Pipeline",
         );
 
+        let celestial_shaders = Self::create_shader_pair(
+            &device,
+            &shader_library,
+            ShaderPath::CelestialVertex,
+            ShaderPath::CelestialFragment,
+        );
+        // Additive blend so stars/aurora/moon add to the sky pass underneath.
+        let additive = wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha: wgpu::BlendComponent::REPLACE,
+        };
+        let pipeline_celestial = Self::create_fullscreen_pipeline(
+            &device,
+            &sky_layout,
+            &celestial_shaders.vertex,
+            &celestial_shaders.fragment,
+            GpuScene::FORMAT,
+            Some(additive),
+            "Celestial Pipeline",
+        );
+
         let scene = GpuScene::new(&device, config.width, config.height);
         let post_bind_layout = Self::create_post_bind_layout(&device);
         let post_bind =
@@ -702,6 +727,8 @@ impl<'a> Renderer<'a> {
             cloud_params: [0.0, 0.0, 0.0, 0.0],
             water_params: [0.55, 0.90, 0.72, 0.0],
             weather_params: [0.0, 1.0, 0.0, 0.0],
+            celestial_params: [0.0, 0.0, 0.0, 0.0],
+            celestial_moon: [0.0, 0.0, 0.0, 0.0],
         };
 
         let global_buf_identity = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -745,6 +772,7 @@ impl<'a> Renderer<'a> {
             pipeline_clouds,
             pipeline_volumetric_fog,
             pipeline_precipitation,
+            pipeline_celestial,
             pipeline_post,
             sky_global_bind,
             post_bind_layout,

@@ -167,4 +167,8 @@ pub struct RenderFrameSnapshot<'a> {
     /// Optional per-frame weather snapshot (Phase 2 of the weather/cosmos
     /// roadmap). When `None` the renderer uses the planet preset as-is.
     pub weather: Option<&'a vv_weather::WeatherState>,
+    /// Optional per-frame celestial snapshot (Phase 4 of the weather/cosmos
+    /// roadmap). When `None` the renderer falls back to the preset-driven
+    /// sun direction and skips stars/moons/aurora.
+    pub celestial: Option<&'a vv_celestial::CelestialState>,
 }

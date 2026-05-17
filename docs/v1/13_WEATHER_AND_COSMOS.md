@@ -521,13 +521,49 @@ et passe `cargo test`, `cargo clippy`, et les scripts `check_*.ps1` existants.
   (avec tilt axial 23.5°) ; déterminisme strict ; 18 tests verts ;
   débuggage par overlay câblable via les champs publics du snapshot.
 
-### Phase 5 — Rendu sky complet (5-7 jours)
-- [ ] Réécriture `sky_renderer.rs` avec atmosphere scattering (LUT pré-cuit).
-- [ ] `star_field_renderer.rs` (mode dynamique 8k).
-- [ ] `celestial_body_renderer.rs` (impostor sun/moons + corona).
-- [ ] `aurora_renderer.rs` (raymarch half-res).
-- [ ] Tone mapping ajusté pour HDR sky + bloom corona.
-- **DoD** : ciel jour/nuit/dawn/dusk + lunes + étoiles + aurore aux pôles.
+### Phase 5.A — Intégration data céleste (1 jour) ✅
+- [x] `vv-render` dépend de `vv-celestial`.
+- [x] `RenderFrameSnapshot.celestial: Option<&CelestialState>`.
+- [x] `EvaluatedAtmosphere::apply_celestial` : override `sun_dir` depuis la
+      mécanique orbitale, rebase `sun_intensity` sur l'élévation réelle,
+      dim eclipse (× (1 − 0.9·factor)), propage `altitude_band`.
+- [x] `app/render_snapshot.rs` passe `celestial: None` (l'app n'a pas encore
+      de runtime sim instancié ; l'API est prête).
+- **DoD** : un `CelestialState` avec orbite donne une direction soleil
+  réelle dans la frame du joueur, l'eclipse assombrit, l'altitude band passe.
+
+### Phase 5.B — Pass étoiles + lune + aurore (1 jour) ✅
+- [x] `GlobalUniform` étendu à **304 octets** : `celestial_params` (eclipse,
+      stars_visibility, aurora_intensity, sun_angular_radius) +
+      `celestial_moon` (xyz dir, w angular_radius).
+- [x] WGSL helpers : `vv_eclipse_factor`, `vv_stars_visibility`,
+      `vv_aurora_intensity`, `vv_sun_angular_radius`, `vv_moon_dir`,
+      `vv_moon_angular_radius`.
+- [x] `passes/celestial/celestial.frag.wgsl` :
+      - **Stars** : grille de cellules 110×N avec hash, ~30 % peuplées,
+        scintillement temporel, 3 teintes spectrales (bleue, blanche, chaude).
+      - **Moon disc** : projection direction monde → NDC, shading Lambertien,
+        teinte froide, fallback ambient floor.
+      - **Aurora** : ruban vertical bandes haute du ciel, ripples sin,
+        mix vert↔violet.
+      - Self-skip quand toutes les sources sont à 0.
+- [x] `pipeline_celestial` : full-screen, blend additif `SrcAlpha · 1`.
+- [x] Nouveau `RenderPassId::Celestial` entre Sky et Clouds (les nuages
+      occluent naturellement étoiles/aurore).
+- [x] Eclipse boost stars (×0.8) → étoiles visibles en plein jour pendant
+      une totalité.
+- **DoD** : un `CelestialState` non-nul affiche immédiatement étoiles
+  scintillantes la nuit, une lune correctement positionnée, et l'aurore
+  aux pôles ; en plein jour avec une lune en transit, l'eclipse révèle
+  les étoiles.
+
+### Phase 5.C — Polish (suivi)
+- [ ] Bruneton/Hillaire LUT scattering (transmittance + multi-scattering).
+- [ ] Voie Lactée cubemap pré-cuite depuis `StarCatalog.milky_way`.
+- [ ] Vrai impostor mesh pour sun/moons (au lieu du procédural disc).
+- [ ] Multi-moon via SSBO (au lieu du single moon dans le GlobalUniform).
+- [ ] Bloom corona HDR.
+- [ ] Tone mapping ajusté au HDR sky.
 
 ### Phase 6 — Ambiance par biome (2 jours)
 - [ ] Application `BiomeAmbience` au blend final.

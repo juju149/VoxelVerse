@@ -35,13 +35,15 @@ pub struct GlobalUniform {
     pub cloud_params: [f32; 4], // bytes 224-239 (x=steps, y=density, z=speed, w=coverage)
     pub water_params: [f32; 4], // bytes 240-255 (x=fresnel, y=specular, z=alpha, w=reserved)
     pub weather_params: [f32; 4], // bytes 256-271 (x=precip_intensity, y=wind_dir_x, z=wind_dir_z, w=precip_kind)
+    pub celestial_params: [f32; 4], // bytes 272-287 (x=eclipse, y=stars_visibility, z=aurora_intensity, w=sun_angular_radius)
+    pub celestial_moon: [f32; 4], // bytes 288-303 (xyz=moon dir, w=moon angular radius; 0 if no moon)
 }
 
 /// Compile-time guard: buffer sizes in setup.rs / render_resources.rs use
 /// `std::mem::size_of::<GlobalUniform>()` so they stay in sync automatically.
 /// If you ever change GlobalUniform, this assertion documents the expected size.
 const _: () = assert!(
-    std::mem::size_of::<GlobalUniform>() == 272,
+    std::mem::size_of::<GlobalUniform>() == 304,
     "GlobalUniform size changed — verify all uniform buffer sizes stay consistent"
 );
 
@@ -91,6 +93,7 @@ pub struct Renderer<'a> {
     pipeline_clouds: wgpu::RenderPipeline,
     pipeline_volumetric_fog: wgpu::RenderPipeline,
     pipeline_precipitation: wgpu::RenderPipeline,
+    pipeline_celestial: wgpu::RenderPipeline,
     pipeline_post: wgpu::RenderPipeline,
     sky_global_bind: wgpu::BindGroup,
     post_bind_layout: wgpu::BindGroupLayout,
@@ -258,6 +261,7 @@ mod loading_pass;
 mod lod_selection;
 mod metrics;
 mod pipelines;
+mod celestial_renderer;
 mod post_process_renderer;
 mod precipitation_renderer;
 mod prewarm;
