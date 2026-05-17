@@ -1,14 +1,10 @@
 use crate::app::runtime_state::{GameRuntime, InventoryInputContext};
-use crate::ui::InventoryUiState;
-use vv_gameplay::{quick_craft_recipe_indices, Controller, Hotbar, HotbarSlot, Inventory, Player};
-use vv_pack_compiler::{CompiledIngredient, CompiledRecipe, CompiledRecipeKind, RecipeRegistry};
+use crate::ui::{craft_panel_snapshot, inventory_panel_snapshot, InventoryUiState};
+use vv_gameplay::{Controller, Hotbar, HotbarSlot, Player};
 use vv_render::{
-    RenderCamera, RenderConsoleSnapshot, RenderCraftIngredient, RenderCraftRecipe,
-    RenderCraftSnapshot, RenderDebugFlags, RenderFrameSnapshot, RenderHeldStack,
-    RenderHotbarSnapshot, RenderInventorySnapshot, RenderInventoryUiSnapshot, RenderItemStack,
-    RenderUiSnapshot,
+    RenderCamera, RenderConsoleSnapshot, RenderDebugFlags, RenderFrameSnapshot, RenderHeldStack,
+    RenderHotbarSnapshot, RenderInventoryUiSnapshot, RenderItemStack, RenderUiSnapshot,
 };
-use vv_world::PlanetData;
 
 pub(super) fn frame_from_runtime(
     runtime: &GameRuntime,
@@ -27,11 +23,15 @@ pub(super) fn frame_from_runtime(
         ),
         planet: runtime.planet(),
         hotbar: hotbar_snapshot(runtime.hotbar()),
-        inventory: inventory_snapshot(runtime.inventory()),
+        inventory: inventory_panel_snapshot(
+            runtime.inventory(),
+            runtime.planet(),
+            runtime.inventory_ui(),
+        ),
         ui: RenderUiSnapshot {
             inventory: inventory_ui_snapshot(runtime.inventory_ui()),
         },
-        craft: craft_snapshot(runtime.planet(), runtime.recipes(), runtime.inventory_ui()),
+        craft: craft_panel_snapshot(runtime.planet(), runtime.recipes(), runtime.inventory_ui()),
         console: RenderConsoleSnapshot {
             height_fraction: runtime.console().height_fraction,
             history: &runtime.console().history,
@@ -64,11 +64,11 @@ pub(super) fn frame_from_inventory_context<'a>(
         ),
         planet: ctx.planet,
         hotbar: hotbar_snapshot(ctx.hotbar),
-        inventory: inventory_snapshot(ctx.inventory),
+        inventory: inventory_panel_snapshot(ctx.inventory, ctx.planet, ctx.inventory_ui),
         ui: RenderUiSnapshot {
             inventory: inventory_ui_snapshot(ctx.inventory_ui),
         },
-        craft: craft_snapshot(ctx.planet, ctx.recipes, ctx.inventory_ui),
+        craft: craft_panel_snapshot(ctx.planet, ctx.recipes, ctx.inventory_ui),
         console: RenderConsoleSnapshot {
             height_fraction: ctx.console.height_fraction,
             history: &ctx.console.history,
@@ -112,13 +112,6 @@ fn hotbar_snapshot(hotbar: &Hotbar) -> RenderHotbarSnapshot {
     }
 }
 
-fn inventory_snapshot(inventory: &Inventory) -> RenderInventorySnapshot {
-    RenderInventorySnapshot {
-        slots: inventory.slots().map(|slot| slot.map(render_stack)),
-        total_count: inventory.total_count(),
-    }
-}
-
 fn inventory_ui_snapshot(ui: &InventoryUiState) -> RenderInventoryUiSnapshot {
     RenderInventoryUiSnapshot {
         is_open: ui.is_open,
@@ -139,132 +132,6 @@ fn inventory_ui_snapshot(ui: &InventoryUiState) -> RenderInventoryUiSnapshot {
     }
 }
 
-fn craft_snapshot(
-    planet: &PlanetData,
-    recipes: &RecipeRegistry,
-    ui: &InventoryUiState,
-) -> RenderCraftSnapshot {
-    let recipe_indices = quick_craft_recipe_indices(recipes);
-    let rows = recipe_indices
-        .iter()
-        .filter_map(|index| recipes.recipes().get(*index).map(|recipe| (*index, recipe)))
-        .map(|(index, recipe)| craft_recipe_snapshot(index, recipe, planet, 1))
-        .collect::<Vec<_>>();
-
-    let selected_index = ui
-        .selected_recipe
-        .filter(|selected| recipe_indices.contains(selected))
-        .or_else(|| recipe_indices.first().copied());
-    let selected_recipe = selected_index
-        .and_then(|index| recipes.recipes().get(index).map(|recipe| (index, recipe)))
-        .map(|(index, recipe)| craft_recipe_snapshot(index, recipe, planet, ui.craft_quantity));
-
-    RenderCraftSnapshot {
-        recipes: rows,
-        selected_recipe,
-    }
-}
-
-fn craft_recipe_snapshot(
-    index: usize,
-    recipe: &CompiledRecipe,
-    planet: &PlanetData,
-    quantity: u32,
-) -> RenderCraftRecipe {
-    let output_count = recipe.output_count.saturating_mul(quantity.max(1));
-    let output_name = planet
-        .item(recipe.output_item)
-        .expect("compiled recipe output item missing from runtime item registry")
-        .display_name
-        .clone();
-    let station_label = recipe
-        .station_tag
-        .as_deref()
-        .map(format_station_label)
-        .unwrap_or_else(|| "Fabrication main".to_string());
-    let ingredients = recipe_ingredient_counts(recipe)
-        .into_iter()
-        .map(|(ingredient, count)| craft_ingredient_snapshot(ingredient, count, planet, quantity))
-        .collect();
-
-    RenderCraftRecipe {
-        index,
-        output: RenderItemStack {
-            item_id: recipe.output_item,
-            quantity: output_count,
-        },
-        output_name,
-        station_label,
-        ingredients,
-    }
-}
-
-fn craft_ingredient_snapshot(
-    ingredient: CompiledIngredient,
-    count: u32,
-    planet: &PlanetData,
-    quantity: u32,
-) -> RenderCraftIngredient {
-    match ingredient {
-        CompiledIngredient::Item(item_id) => {
-            let label = planet
-                .item(item_id)
-                .expect("compiled recipe ingredient item missing from runtime item registry")
-                .display_name
-                .clone();
-            RenderCraftIngredient {
-                icon: Some(RenderItemStack {
-                    item_id,
-                    quantity: count.saturating_mul(quantity.max(1)),
-                }),
-                label,
-                count,
-            }
-        }
-        CompiledIngredient::Tag(tag) => RenderCraftIngredient {
-            icon: None,
-            label: format!("Tag {}", tag),
-            count,
-        },
-    }
-}
-
-fn recipe_ingredient_counts(recipe: &CompiledRecipe) -> Vec<(CompiledIngredient, u32)> {
-    let ingredients: Vec<CompiledIngredient> = match &recipe.kind {
-        CompiledRecipeKind::Shaped(shaped) => shaped.grid.iter().filter_map(Clone::clone).collect(),
-        CompiledRecipeKind::Shapeless(shapeless) => shapeless.ingredients.clone(),
-        CompiledRecipeKind::Smelting(_) => Vec::new(),
-    };
-
-    let mut counted: Vec<(CompiledIngredient, u32)> = Vec::new();
-    for ingredient in ingredients {
-        if let Some((_, count)) = counted
-            .iter_mut()
-            .find(|(existing, _)| same_ingredient(existing, &ingredient))
-        {
-            *count += 1;
-        } else {
-            counted.push((ingredient, 1));
-        }
-    }
-    counted
-}
-
-fn same_ingredient(a: &CompiledIngredient, b: &CompiledIngredient) -> bool {
-    match (a, b) {
-        (CompiledIngredient::Item(a), CompiledIngredient::Item(b)) => a == b,
-        (CompiledIngredient::Tag(a), CompiledIngredient::Tag(b)) => a == b,
-        _ => false,
-    }
-}
-
-fn format_station_label(station: &str) -> String {
-    station
-        .trim_start_matches("#station.")
-        .trim_start_matches("core:tag/station/")
-        .replace('_', " ")
-}
-
 fn render_stack(stack: HotbarSlot) -> RenderItemStack {
     RenderItemStack {
         item_id: stack.item_id,
@@ -274,9 +141,11 @@ fn render_stack(stack: HotbarSlot) -> RenderItemStack {
 
 #[cfg(test)]
 mod tests {
-    use super::{hotbar_snapshot, inventory_snapshot};
+    use super::hotbar_snapshot;
+    use crate::ui::{inventory_panel_snapshot, InventoryUiState};
     use vv_gameplay::{Hotbar, Inventory};
     use vv_pack_compiler::ItemId;
+    use vv_world::PlanetData;
 
     #[test]
     fn hotbar_snapshot_contains_render_owned_slot_data() {
@@ -301,11 +170,22 @@ mod tests {
         assert!(inventory.add(first, 4, 99));
         assert!(inventory.add(second, 6, 99));
 
-        let snapshot = inventory_snapshot(&inventory);
+        let content = crate::app::content_bootstrap::load_core_content()
+            .expect("core pack must load in tests");
+        let planet = PlanetData::new(
+            content.planet,
+            content.blocks,
+            content.items,
+            content.procedural,
+            content.procedural_planet_index,
+        );
+
+        let snapshot = inventory_panel_snapshot(&inventory, &planet, &InventoryUiState::new());
 
         assert_eq!(snapshot.slots[0].unwrap().item_id, first);
         assert_eq!(snapshot.slots[0].unwrap().quantity, 4);
         assert_eq!(snapshot.slots[1].unwrap().item_id, second);
+        assert!(snapshot.visible_slots.iter().all(|visible| *visible));
         assert_eq!(snapshot.total_count, 10);
     }
 }

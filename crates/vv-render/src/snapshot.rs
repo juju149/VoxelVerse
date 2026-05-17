@@ -67,6 +67,7 @@ pub struct RenderHotbarSnapshot {
 #[derive(Clone, Debug)]
 pub struct RenderInventorySnapshot {
     pub slots: [Option<RenderItemStack>; RENDER_INVENTORY_SIZE],
+    pub visible_slots: [bool; RENDER_INVENTORY_SIZE],
     pub total_count: u32,
 }
 
@@ -87,43 +88,6 @@ pub struct RenderInventoryUiSnapshot {
     pub search_focused: bool,
     pub user_zoom: crate::ui::UserZoom,
     pub capacity_kg: f32,
-}
-
-impl RenderInventoryUiSnapshot {
-    pub fn matches_search(&self, name: &str) -> bool {
-        let q = self.search_query.to_lowercase();
-        if q.is_empty() {
-            return true;
-        }
-        name.to_lowercase().contains(&q)
-    }
-
-    pub fn matches_filter(&self, category: &str) -> bool {
-        match self.active_filter {
-            crate::ui::InventoryFilter::All => true,
-            crate::ui::InventoryFilter::Resources => {
-                matches!(
-                    category,
-                    "resource" | "ore" | "terrain" | "natural/log" | "natural/leaves" | "flora"
-                )
-            }
-            crate::ui::InventoryFilter::Tools => matches!(category, "tool" | "weapon"),
-            crate::ui::InventoryFilter::Food => matches!(category, "food" | "consumable"),
-            crate::ui::InventoryFilter::Misc => !matches!(
-                category,
-                "resource"
-                    | "ore"
-                    | "terrain"
-                    | "natural/log"
-                    | "natural/leaves"
-                    | "flora"
-                    | "tool"
-                    | "weapon"
-                    | "food"
-                    | "consumable"
-            ),
-        }
-    }
 }
 
 #[derive(Clone, Debug)]

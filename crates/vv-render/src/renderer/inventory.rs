@@ -523,14 +523,7 @@ impl<'a> Renderer<'a> {
         let slots = &inventory.slots;
         for (i, rect) in layout.inventory_slots.iter().enumerate() {
             let slot = slots[i];
-            let visible = slot
-                .map(|s| {
-                    let item = planet.item(s.item_id);
-                    let name = item.map(|i| i.display_name.as_str()).unwrap_or("");
-                    let category = item.map(|i| i.category.as_str()).unwrap_or("");
-                    ui.matches_search(name) && ui.matches_filter(category)
-                })
-                .unwrap_or(true);
+            let visible = inventory.visible_slots[i];
             let is_hovered =
                 matches!(ui.hovered_slot, Some(RenderSlotRef::Inventory(idx)) if idx == i);
             let state = self.slot_state(slot, visible, is_hovered, false);

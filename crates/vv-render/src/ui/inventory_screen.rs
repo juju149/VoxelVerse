@@ -140,44 +140,6 @@ impl InventoryUiState {
         self.hovered_filter = None;
         self.hovered_recipe = None;
     }
-
-    pub fn matches_search(&self, name: &str) -> bool {
-        let q = self.search_query.to_lowercase();
-        if q.is_empty() {
-            return true;
-        }
-        name.to_lowercase().contains(&q)
-    }
-
-    /// Returns true if `category` matches the active filter.
-    /// Block categories come from the `.ron` `category` field
-    /// (e.g. `"terrain"`, `"ore"`, `"tool"`, `"food"`, `"consumable"`).
-    pub fn matches_filter(&self, category: &str) -> bool {
-        match self.active_filter {
-            InventoryFilter::All => true,
-            InventoryFilter::Resources => {
-                matches!(
-                    category,
-                    "resource" | "ore" | "terrain" | "natural/log" | "natural/leaves" | "flora"
-                )
-            }
-            InventoryFilter::Tools => matches!(category, "tool" | "weapon"),
-            InventoryFilter::Food => matches!(category, "food" | "consumable"),
-            InventoryFilter::Misc => !matches!(
-                category,
-                "resource"
-                    | "ore"
-                    | "terrain"
-                    | "natural/log"
-                    | "natural/leaves"
-                    | "flora"
-                    | "tool"
-                    | "weapon"
-                    | "food"
-                    | "consumable"
-            ),
-        }
-    }
 }
 
 impl Default for InventoryUiState {
