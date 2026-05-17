@@ -1,20 +1,13 @@
-#![allow(clippy::too_many_arguments)]
-
 use super::terrain_renderer::TerrainRenderer;
 use super::text_cache::TextSlot;
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::lod_animation::AnyKey;
+use crate::snapshot::RenderFrameSnapshot;
 use crate::types::{ChunkMesh, Vertex};
-use crate::ui::InventoryUiState;
 use glyphon::{Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea, TextBounds};
 use std::collections::HashSet;
-use vv_gameplay::Console;
-use vv_gameplay::Controller;
-use vv_gameplay::{Hotbar, Inventory, Player};
 use vv_math::Frustum;
 use vv_meshing::MeshGen;
-use vv_pack_compiler::RecipeRegistry;
-use vv_world::PlanetData;
 
 struct PendingText {
     slot: TextSlot,
@@ -141,17 +134,15 @@ impl<'a> Renderer<'a> {
         self.device.poll(wgpu::Maintain::Wait);
     }
 
-    pub fn render(
-        &mut self,
-        controller: &Controller,
-        player: &Player,
-        planet: &PlanetData,
-        hotbar: &Hotbar,
-        inventory: &Inventory,
-        inventory_ui: &InventoryUiState,
-        recipes: &RecipeRegistry,
-        console: &Console,
-    ) {
+    pub fn render(&mut self, frame: &RenderFrameSnapshot<'_>) {
+        let camera = &frame.camera;
+        let planet = frame.planet;
+        let hotbar = frame.hotbar;
+        let inventory = frame.inventory;
+        let inventory_ui = frame.inventory_ui;
+        let recipes = frame.recipes;
+        let console = &frame.console;
+        let debug = &frame.debug;
         let render_started = std::time::Instant::now();
         self.update_console_mesh(console.height_fraction);
         if inventory_ui.is_open {
@@ -162,8 +153,8 @@ impl<'a> Renderer<'a> {
         }
         self.update_inventory_mesh(inventory, hotbar, inventory_ui, planet, recipes);
 
-        if controller.show_collisions {
-            let mesh = MeshGen::generate_collision_debug(player.position, planet);
+        if debug.show_collisions {
+            let mesh = MeshGen::generate_collision_debug(camera.player_pos, planet);
             let gpu_v: Vec<Vertex> = mesh.vertices.iter().copied().map(Vertex::from).collect();
             self.queue
                 .write_buffer(&self.collision_v_buf, 0, bytemuck::cast_slice(&gpu_v));
@@ -195,7 +186,7 @@ impl<'a> Renderer<'a> {
         let proj_size = 60.0;
 
         // basic LookAt
-        let center = player.position;
+        let center = camera.player_pos;
         let mut sun_view =
             glam::Mat4::look_at_rh(center + (sun_dir * shadow_dist), center, glam::Vec3::Y);
 
@@ -224,15 +215,14 @@ impl<'a> Renderer<'a> {
         let light_view_proj = sun_proj * sun_view;
 
         // -- Camera Matrix --
-        let mvp =
-            controller.get_matrix(player, self.config.width as f32, self.config.height as f32);
+        let mvp = camera.view_proj;
 
         // --- FRUSTUM CULLING LOGIC ---
         let current_frustum = Frustum::from_matrix(mvp);
 
         // determine which frustum to use for culling
         // if freeze is on, we use the stored one. if freeze is off, update the stored one (or just use current).
-        let cull_frustum = if controller.freeze_culling {
+        let cull_frustum = if debug.freeze_culling {
             if self.frozen_frustum.is_none() {
                 self.frozen_frustum = Some(Frustum::from_matrix(mvp));
             }
@@ -248,7 +238,7 @@ impl<'a> Renderer<'a> {
         let mut main_draw_calls = 0usize;
         let mut shadow_draw_calls = 0usize;
 
-        let cam_pos = controller.get_camera_pos(player);
+        let cam_pos = camera.camera_pos;
         let frustum = Frustum::from_matrix(mvp);
 
         // Build a separate frustum from the sun's light-space matrix so the
@@ -325,7 +315,7 @@ impl<'a> Renderer<'a> {
             bytemuck::cast_slice(&[shadow_uniform_data]),
         );
 
-        let model_mat = player.get_model_matrix();
+        let model_mat = camera.model_matrix;
         self.queue.write_buffer(
             &self.local_buf_player,
             0,
@@ -458,7 +448,7 @@ impl<'a> Renderer<'a> {
                 occlusion_query_set: None,
             });
 
-            if controller.is_wireframe {
+            if debug.is_wireframe {
                 pass.set_pipeline(&self.pipeline_wire);
             } else {
                 pass.set_pipeline(&self.pipeline_fill);
@@ -519,8 +509,8 @@ impl<'a> Renderer<'a> {
                 }
             }
 
-            if !controller.first_person {
-                if controller.is_wireframe {
+            if !camera.is_first_person {
+                if debug.is_wireframe {
                     pass.set_pipeline(&self.pipeline_wire);
                 } else {
                     pass.set_pipeline(&self.pipeline_fill);
@@ -562,7 +552,7 @@ impl<'a> Renderer<'a> {
                 main_draw_calls += 1;
             }
 
-            if controller.first_person {
+            if camera.is_first_person {
                 pass.set_pipeline(&self.pipeline_line);
                 pass.set_bind_group(0, &self.global_bind_identity, &[]);
                 pass.set_bind_group(1, &self.local_bind_identity, &[]);
@@ -603,7 +593,7 @@ impl<'a> Renderer<'a> {
             ui_pass.set_bind_group(1, &self.local_bind_identity, &[]);
             ui_pass.set_bind_group(2, &self.atlas_bind, &[]);
 
-            if controller.first_person && self.first_person_inds > 0 {
+            if camera.is_first_person && self.first_person_inds > 0 {
                 ui_pass.set_vertex_buffer(0, self.first_person_v_buf.slice(..));
                 ui_pass
                     .set_index_buffer(self.first_person_i_buf.slice(..), wgpu::IndexFormat::Uint32);
@@ -723,21 +713,21 @@ impl<'a> Renderer<'a> {
                 top: 10.0,
             });
 
-            let show_engine_debug = player.debug_mode || self.engine_debug_page;
+            let show_engine_debug = debug.debug_mode || self.engine_debug_page;
             if show_engine_debug {
-                let status = if controller.freeze_culling {
+                let status = if debug.freeze_culling {
                     "FROZEN"
                 } else {
                     "ACTIVE"
                 };
                 let stats = self.render_stats(rendered_chunks, rendered_lods);
-                let target = controller
+                let target = camera
                     .cursor_id
                     .map(|id| format!("f{} l{} u{} v{}", id.face, id.layer, id.u, id.v));
                 let info = stats.debug_overlay(
                     status,
                     self.frame_stats.frame_time_ms(),
-                    player.position.to_array(),
+                    camera.player_pos.to_array(),
                     target,
                 );
                 pending.push(PendingText {

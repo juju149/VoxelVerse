@@ -99,5 +99,18 @@ fn apply_one(cmd: FrameCommand, renderer: &mut Renderer<'_>, runtime: &mut GameR
             renderer.log_memory(planet);
             renderer.window.request_redraw();
         }
+        FrameCommand::ToggleWireframe => {
+            runtime.dev_state_mut().is_wireframe = !runtime.dev_state().is_wireframe;
+            renderer.window.request_redraw();
+        }
+        FrameCommand::ToggleCollisions => {
+            runtime.dev_state_mut().show_collisions = !runtime.dev_state().show_collisions;
+            println!("Show Collisions: {}", runtime.dev_state().show_collisions);
+            renderer.window.request_redraw();
+        }
+        FrameCommand::ToggleCullingFreeze => {
+            runtime.dev_state_mut().freeze_culling = !runtime.dev_state().freeze_culling;
+            renderer.window.request_redraw();
+        }
     }
 }

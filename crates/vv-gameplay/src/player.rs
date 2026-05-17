@@ -9,7 +9,6 @@ pub struct Player {
     pub rotation: Quat,
     pub cam_pitch: f32,
     pub grounded: bool,
-    pub debug_mode: bool,
 
     // Configuration
     pub move_speed: f32,
@@ -33,7 +32,6 @@ impl Player {
             rotation: Quat::IDENTITY,
             cam_pitch: 0.0,
             grounded: false,
-            debug_mode: false,
             move_speed: 5.0,
             jump_force: 8.0,
             mouse_sens: 0.002,

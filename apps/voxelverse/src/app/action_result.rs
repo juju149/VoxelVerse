@@ -122,4 +122,10 @@ pub(super) enum FrameCommand {
     CyclePcfQuality,
     /// Apply a resize intent to the active planet.
     ResizePlanet(PlanetResizeIntent),
+    /// Toggle wireframe render mode (terrain + player body).
+    ToggleWireframe,
+    /// Toggle collision debug mesh overlay.
+    ToggleCollisions,
+    /// Freeze or unfreeze the frustum used for culling.
+    ToggleCullingFreeze,
 }

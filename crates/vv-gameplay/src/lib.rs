@@ -14,7 +14,7 @@ mod player_controller;
 pub use block_interaction::{BlockAction, BlockActionIntent, BlockInteraction};
 pub use block_selection::{BlockSelection, BlockSelectionMode};
 pub use console::Console;
-pub use controller::Controller;
+pub use controller::{Controller, ControllerFrameInput};
 pub use crafting::{can_craft_recipe, craft_recipe, quick_craft_recipe_indices, CraftError};
 pub use hotbar::{Hotbar, HotbarNotice, HotbarSlot, HOTBAR_SLOT_COUNT};
 pub use inventory::{Inventory, SlotRef, INVENTORY_COLS, INVENTORY_ROWS, INVENTORY_SIZE};

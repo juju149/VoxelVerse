@@ -3,6 +3,7 @@ use crate::app::cursor::{grab_cursor, sync_cursor_mode};
 use crate::app::event_router::{route_device_event, route_window_event};
 use crate::app::frame_driver::tick_game_frame;
 use crate::app::golden_scene::{golden_scene_enabled, GoldenScene};
+use crate::app::input_accumulator::InputAccumulator;
 use crate::app::runtime_state::GameRuntime;
 use std::sync::Arc;
 use std::time::Instant;
@@ -18,6 +19,7 @@ pub(super) struct GameApp<'a> {
     pub(super) renderer: Renderer<'a>,
     pub(super) audio: AudioEngine,
     pub(super) runtime: GameRuntime,
+    pub(super) input_accum: InputAccumulator,
     cursor_grabbed: bool,
     last_time: Instant,
 }
@@ -113,6 +115,7 @@ impl<'a> GameApp<'a> {
             renderer,
             audio,
             runtime: GameRuntime::new(player, planet, loot, tags, recipes, create_console()),
+            input_accum: InputAccumulator::new(),
             cursor_grabbed: false,
             last_time: Instant::now(),
         }

@@ -12,4 +12,3 @@ vv-physics = { path = "../vv-physics" }
 vv-pack-compiler = { path = "../vv-pack-compiler" }
 
 glam.workspace = true
-winit.workspace = true

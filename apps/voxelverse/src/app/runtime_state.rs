@@ -1,18 +1,19 @@
+use crate::app::dev_state::DevState;
 use crate::app::gameplay_actions::{MineBlockContext, PlaceBlockContext};
 use crate::ui::InventoryUiState;
 use std::sync::Arc;
 use vv_gameplay::{
-    Console, Controller, Hotbar, Inventory, MiningState, Player, PlayerController, PlayerInput,
+    Console, Controller, ControllerFrameInput, Hotbar, Inventory, MiningState, Player,
+    PlayerController, PlayerInput,
 };
 use vv_pack_compiler::{LootRegistry, RecipeRegistry, TagRegistry};
 use vv_voxel::VoxelCoord;
 use vv_world::PlanetData;
-use winit::event::WindowEvent;
 
 /// Typed context for inventory input — replaces the 10-element tuple from the old
 /// `inventory_event_parts()` method.
 pub(super) struct InventoryInputContext<'a> {
-    pub(super) controller: &'a mut Controller,
+    pub(super) controller: &'a Controller,
     pub(super) player: &'a Player,
     pub(super) planet: &'a PlanetData,
     pub(super) hotbar: &'a mut Hotbar,
@@ -22,6 +23,7 @@ pub(super) struct InventoryInputContext<'a> {
     pub(super) tags: &'a TagRegistry,
     pub(super) shift_held: &'a mut bool,
     pub(super) console: &'a Console,
+    pub(super) dev: &'a DevState,
 }
 
 /// Top-level runtime state. Fields are private; use controlled accessor methods.
@@ -34,6 +36,8 @@ pub(super) struct GameRuntime {
     /// True when dev/debug features are enabled.
     /// Automatically active in debug builds; set via `VOXELVERSE_DEV` env var in release.
     dev_mode: bool,
+    /// Mutable debug flags, active only when dev_mode is true.
+    dev: DevState,
 }
 
 struct GameplayRuntime {
@@ -88,6 +92,7 @@ impl GameRuntime {
             planet,
             first_scene_snapshot_logged: false,
             dev_mode: cfg!(debug_assertions) || std::env::var("VOXELVERSE_DEV").is_ok(),
+            dev: DevState::new(),
         }
     }
 
@@ -204,6 +209,14 @@ impl GameRuntime {
         self.dev_mode
     }
 
+    pub(super) fn dev_state(&self) -> &DevState {
+        &self.dev
+    }
+
+    pub(super) fn dev_state_mut(&mut self) -> &mut DevState {
+        &mut self.dev
+    }
+
     // ── Multi-field action contexts ───────────────────────────────────────────
     // These methods split-borrow internal fields so callers never need to reach
     // into the private structs directly.
@@ -238,7 +251,7 @@ impl GameRuntime {
 
     pub(super) fn as_inventory_context(&mut self) -> InventoryInputContext<'_> {
         InventoryInputContext {
-            controller: &mut self.gameplay.controller,
+            controller: &self.gameplay.controller,
             player: &self.gameplay.player,
             planet: &self.planet,
             hotbar: &mut self.gameplay.hotbar,
@@ -248,6 +261,7 @@ impl GameRuntime {
             tags: &self.content.tags,
             shift_held: &mut self.ui.shift_held,
             console: &self.ui.console,
+            dev: &self.dev,
         }
     }
 
@@ -261,12 +275,10 @@ impl GameRuntime {
 
     // ── Controller + player combined operations ───────────────────────────────
 
-    /// Route a winit window event to the controller with player context.
-    /// Splits the borrow across `gameplay.controller` (mut) and `gameplay.player` (ref).
-    pub(super) fn process_controller_event(&mut self, event: &WindowEvent) {
-        self.gameplay
-            .controller
-            .process_events(event, &self.gameplay.player);
+    /// Apply accumulated frame input to the controller.
+    /// Splits the borrow across `gameplay.controller` (mut).
+    pub(super) fn apply_controller_input(&mut self, input: ControllerFrameInput) {
+        self.gameplay.controller.apply_input(input);
     }
 
     /// Advance player physics using controller-sampled input and planet data.

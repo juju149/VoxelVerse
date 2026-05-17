@@ -83,26 +83,14 @@ impl Console {
             }
 
             "/debug_mode" => {
-                if parts.len() < 3 || parts[1] != "set" {
-                    self.log("Usage: /debug_mode set [true/false]", [1.0, 0.5, 0.0]);
-                    return;
-                }
-                match parts[2] {
-                    "true" => {
-                        player.debug_mode = true;
-                        self.log("Debug Mode: ON", [0.0, 1.0, 0.0]);
-                    }
-                    "false" => {
-                        player.debug_mode = false;
-                        self.log("Debug Mode: OFF", [1.0, 0.0, 0.0]);
-                    }
-                    _ => self.log("Value must be true or false", [1.0, 0.0, 0.0]),
-                }
+                self.log(
+                    "Dev mode is controlled by build type or VOXELVERSE_DEV env var.",
+                    [1.0, 0.5, 0.0],
+                );
             }
 
             "help" => {
                 self.log("Available Commands:", [0.0, 1.0, 1.0]);
-                self.log("  /debug_mode set true", [0.8, 0.8, 0.8]);
                 self.log("  /move_speed set {value}", [0.8, 0.8, 0.8]);
                 self.log("  /jump_force set {value}", [0.8, 0.8, 0.8]);
             }

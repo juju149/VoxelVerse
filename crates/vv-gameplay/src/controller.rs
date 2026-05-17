@@ -5,21 +5,39 @@ use glam::{Mat4, Vec2, Vec3};
 use vv_math::Ray;
 use vv_physics::Physics;
 use vv_voxel::VoxelCoord;
-use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
-use winit::keyboard::{KeyCode, PhysicalKey};
+
+/// Pure input state for one frame, produced by the app layer from winit events.
+/// Contains no winit types — safe to keep in vv-gameplay.
+pub struct ControllerFrameInput {
+    /// Current held state: [forward(W), left(A), back(S), right(D), jump(Space)]
+    pub keys: [bool; 5],
+    /// LeftCtrl sprint held state.
+    pub sprint: bool,
+    /// Raw mouse delta from device events (accumulated this frame). First-person only.
+    pub raw_mouse_delta: (f32, f32),
+    /// Screen-space cursor position (pixels), updated from WindowEvent::CursorMoved.
+    pub cursor_pos: Option<(f32, f32)>,
+    /// Cursor position delta for orbit camera (non-first-person mode).
+    pub cursor_delta: (f32, f32),
+    /// Scroll wheel delta this frame (positive = zoom out). Non-first-person only.
+    pub scroll_delta: f32,
+    /// Middle mouse button held (orbit mode).
+    pub orbit_active: bool,
+    /// One-shot: K key was pressed this frame — toggles first_person / cam_dist.
+    pub toggle_camera_mode: bool,
+    /// One-shot: F key was pressed this frame — toggles fly_mode (first_person only).
+    pub toggle_fly: bool,
+}
 
 pub struct Controller {
     pub cam_dist: f32,
 
-    // input State
+    /// Screen-space cursor position (pixels), used for orbit ray casting.
     pub mouse_pos: Vec2,
     pub mouse_delta: (f32, f32),
     pub is_orbiting: bool,
-    pub is_wireframe: bool,
-    pub show_collisions: bool,
     pub fly_mode: bool,
     pub sprint: bool,
-    pub freeze_culling: bool,
     pub cursor_id: Option<VoxelCoord>,
 
     pub first_person: bool,
@@ -35,13 +53,44 @@ impl Controller {
             mouse_delta: (0.0, 0.0),
             is_orbiting: false,
             cursor_id: None,
-            is_wireframe: false,
-            show_collisions: false,
             fly_mode: false,
-            freeze_culling: false,
             sprint: false,
             first_person: true,
             keys: [false; 5],
+        }
+    }
+
+    /// Apply accumulated frame input produced by the app-layer `InputAccumulator`.
+    /// Replaces the old winit-aware `process_events` + `process_mouse_motion` methods.
+    pub fn apply_input(&mut self, input: ControllerFrameInput) {
+        self.keys = input.keys;
+        self.sprint = input.sprint;
+        self.is_orbiting = input.orbit_active;
+
+        if let Some(pos) = input.cursor_pos {
+            self.mouse_pos = Vec2::new(pos.0, pos.1);
+        }
+
+        if self.first_person {
+            self.mouse_delta.0 += input.raw_mouse_delta.0;
+            self.mouse_delta.1 += input.raw_mouse_delta.1;
+        } else {
+            if input.cursor_delta != (0.0, 0.0) {
+                self.mouse_delta = input.cursor_delta;
+            }
+            if input.scroll_delta != 0.0 {
+                self.cam_dist = (self.cam_dist - input.scroll_delta * 50.0).clamp(10.0, 10000.0);
+            }
+        }
+
+        if input.toggle_camera_mode {
+            self.first_person = !self.first_person;
+            self.cam_dist = if self.first_person { 40.0 } else { 100.0 };
+        }
+
+        if input.toggle_fly && self.first_person {
+            self.fly_mode = !self.fly_mode;
+            println!("Fly Mode: {}", self.fly_mode);
         }
     }
 
@@ -91,99 +140,6 @@ impl Controller {
             let up = Physics::get_up_vector(player.position);
             player.position + (up * self.cam_dist)
         }
-    }
-
-    pub fn process_mouse_motion(&mut self, delta: (f64, f64)) {
-        if self.first_person {
-            // accumulate raw mouse delta
-            self.mouse_delta.0 += delta.0 as f32;
-            self.mouse_delta.1 += delta.1 as f32;
-        }
-    }
-
-    pub fn process_events(&mut self, event: &WindowEvent, player: &Player) -> bool {
-        match event {
-            WindowEvent::CursorMoved { position, .. } => {
-                let new_pos = Vec2::new(position.x as f32, position.y as f32);
-                let d = new_pos - self.mouse_pos;
-                self.mouse_pos = new_pos;
-                if !self.first_person {
-                    self.mouse_delta = (d.x, d.y);
-                }
-            }
-            WindowEvent::MouseInput {
-                state,
-                button: MouseButton::Middle,
-                ..
-            } => {
-                self.is_orbiting = *state == ElementState::Pressed;
-            }
-            WindowEvent::MouseWheel { delta, .. } if !self.first_person => {
-                let y = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => *y,
-                    MouseScrollDelta::PixelDelta(p) => p.y as f32 * 0.01,
-                };
-
-                self.cam_dist = (self.cam_dist - y * 50.0).clamp(10.0, 10000.0);
-                return true;
-            }
-            WindowEvent::KeyboardInput { event, .. } => {
-                let pressed = event.state == ElementState::Pressed;
-                match event.physical_key {
-                    PhysicalKey::Code(KeyCode::KeyW) => self.keys[0] = pressed,
-                    PhysicalKey::Code(KeyCode::KeyA) => self.keys[1] = pressed,
-                    PhysicalKey::Code(KeyCode::KeyS) => self.keys[2] = pressed,
-                    PhysicalKey::Code(KeyCode::KeyD) => self.keys[3] = pressed,
-                    PhysicalKey::Code(KeyCode::Space) => self.keys[4] = pressed,
-
-                    PhysicalKey::Code(KeyCode::ControlLeft) => self.sprint = pressed,
-
-                    PhysicalKey::Code(KeyCode::KeyP) if pressed => {
-                        if player.debug_mode {
-                            self.is_wireframe = !self.is_wireframe;
-                        }
-                        return true;
-                    }
-
-                    PhysicalKey::Code(KeyCode::KeyO) if pressed => {
-                        if player.debug_mode {
-                            self.show_collisions = !self.show_collisions;
-                            println!("Show Collisions: {}", self.show_collisions);
-                        }
-                        return true;
-                    }
-
-                    PhysicalKey::Code(KeyCode::Quote) if pressed => {
-                        if player.debug_mode {
-                            self.freeze_culling = !self.freeze_culling;
-                        }
-                        return true;
-                    }
-
-                    PhysicalKey::Code(KeyCode::KeyK) if pressed => {
-                        self.first_person = !self.first_person;
-
-                        if self.first_person {
-                            self.cam_dist = 40.0;
-                        } else {
-                            self.cam_dist = 100.0;
-                        }
-                        return true;
-                    }
-
-                    PhysicalKey::Code(KeyCode::KeyF) if pressed => {
-                        if self.first_person {
-                            self.fly_mode = !self.fly_mode;
-                            println!("Fly Mode: {}", self.fly_mode);
-                        }
-                        return true;
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-        false
     }
 
     pub fn get_matrix(&self, player: &Player, width: f32, height: f32) -> Mat4 {

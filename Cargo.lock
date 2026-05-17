@@ -2185,7 +2185,6 @@ dependencies = [
  "vv-voxel",
  "vv-world",
  "vv-worldgen",
- "winit",
 ]
 
 [[package]]

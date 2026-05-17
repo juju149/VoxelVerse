@@ -4,10 +4,12 @@ use crate::ui::{
     HeldStack, InventoryButton, InventoryLayout, InventoryUiState, UiTheme, UiViewport,
 };
 use vv_gameplay::{
-    craft_recipe, quick_craft_recipe_indices, Controller, Hotbar, HotbarSlot, Inventory, SlotRef,
+    craft_recipe, quick_craft_recipe_indices, Hotbar, HotbarSlot, Inventory, SlotRef,
 };
 use vv_pack_compiler::{CompiledRecipe, RecipeRegistry, TagRegistry};
-use vv_render::Renderer;
+use vv_render::{
+    RenderCamera, RenderConsoleSnapshot, RenderDebugFlags, RenderFrameSnapshot, Renderer,
+};
 use vv_world::PlanetData;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -69,22 +71,43 @@ pub(super) fn handle_inventory_window_event(
                 key.physical_key,
                 key.text.as_deref(),
                 renderer,
-                ctx.controller,
+                ctx.controller.first_person,
                 ctx.hotbar,
                 ctx.inventory,
                 ctx.inventory_ui,
             );
         }
-        WindowEvent::RedrawRequested => renderer.render(
-            ctx.controller,
-            ctx.player,
-            ctx.planet,
-            ctx.hotbar,
-            ctx.inventory,
-            ctx.inventory_ui,
-            ctx.recipes,
-            ctx.console,
-        ),
+        WindowEvent::RedrawRequested => {
+            let w = renderer.config.width as f32;
+            let h = renderer.config.height as f32;
+            let frame = RenderFrameSnapshot {
+                camera: RenderCamera {
+                    view_proj: ctx.controller.get_matrix(ctx.player, w, h),
+                    camera_pos: ctx.controller.get_camera_pos(ctx.player),
+                    player_pos: ctx.player.position,
+                    model_matrix: ctx.player.get_model_matrix(),
+                    is_first_person: ctx.controller.first_person,
+                    cursor_id: ctx.controller.cursor_id,
+                },
+                planet: ctx.planet,
+                hotbar: ctx.hotbar,
+                inventory: ctx.inventory,
+                inventory_ui: ctx.inventory_ui,
+                recipes: ctx.recipes,
+                console: RenderConsoleSnapshot {
+                    height_fraction: ctx.console.height_fraction,
+                    history: &ctx.console.history,
+                    input_buffer: &ctx.console.input_buffer,
+                },
+                debug: RenderDebugFlags {
+                    show_collisions: ctx.dev.show_collisions,
+                    freeze_culling: ctx.dev.freeze_culling,
+                    is_wireframe: ctx.dev.is_wireframe,
+                    debug_mode: false,
+                },
+            };
+            renderer.render(&frame);
+        }
         _ => {}
     }
 }
@@ -94,7 +117,7 @@ fn handle_inventory_key(
     key: PhysicalKey,
     text: Option<&str>,
     renderer: &Renderer<'_>,
-    controller: &Controller,
+    is_first_person: bool,
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
     ui: &mut InventoryUiState,
@@ -126,7 +149,7 @@ fn handle_inventory_key(
 
     match key {
         PhysicalKey::Code(KeyCode::Escape) | PhysicalKey::Code(KeyCode::KeyE) => {
-            close_inventory(renderer, controller, hotbar, inventory, ui);
+            close_inventory(renderer, is_first_person, hotbar, inventory, ui);
         }
         PhysicalKey::Code(KeyCode::KeyQ) => {
             if ui.held.is_some() {
@@ -170,7 +193,7 @@ fn digit_for_keycode(code: KeyCode) -> Option<usize> {
 
 fn close_inventory(
     renderer: &Renderer<'_>,
-    controller: &Controller,
+    is_first_person: bool,
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
     ui: &mut InventoryUiState,
@@ -179,7 +202,7 @@ fn close_inventory(
         return_held(hotbar, inventory, held);
     }
     ui.close();
-    if controller.first_person {
+    if is_first_person {
         grab_cursor(renderer.window);
     }
     renderer.window.request_redraw();

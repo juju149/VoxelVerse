@@ -13,6 +13,9 @@ pub(super) fn decode_dev_key(key: PhysicalKey) -> Vec<FrameCommand> {
     if let Some(cmd) = quality_command(key) {
         return vec![cmd];
     }
+    if let Some(cmd) = debug_toggle_command(key) {
+        return vec![cmd];
+    }
     vec![]
 }
 
@@ -33,6 +36,15 @@ fn quality_command(key: PhysicalKey) -> Option<FrameCommand> {
         }
         PhysicalKey::Code(KeyCode::F5) => Some(FrameCommand::ToggleTriplanarGrain),
         PhysicalKey::Code(KeyCode::F6) => Some(FrameCommand::CyclePcfQuality),
+        _ => None,
+    }
+}
+
+fn debug_toggle_command(key: PhysicalKey) -> Option<FrameCommand> {
+    match key {
+        PhysicalKey::Code(KeyCode::KeyP) => Some(FrameCommand::ToggleWireframe),
+        PhysicalKey::Code(KeyCode::KeyO) => Some(FrameCommand::ToggleCollisions),
+        PhysicalKey::Code(KeyCode::Quote) => Some(FrameCommand::ToggleCullingFreeze),
         _ => None,
     }
 }
