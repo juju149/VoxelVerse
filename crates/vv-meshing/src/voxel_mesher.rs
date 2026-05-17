@@ -4,10 +4,9 @@ use super::{
 };
 use glam::Vec3;
 use std::sync::OnceLock;
-use vv_math::CoordSystem;
 use vv_pack_compiler::{CompiledMesh, CompiledMeshClass};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use vv_world::PlanetSnapshot;
+use vv_world::{PlanetGeometry, PlanetSnapshot};
 use vv_worldgen::ChunkFeatureMap;
 
 /// Read-only voxel accessor used during meshing.
@@ -424,7 +423,7 @@ impl MeshGen {
 
         // geometry Helpers
         let p = |u_off: u32, v_off: u32, l_off: u32| {
-            CoordSystem::get_vertex_pos(
+            PlanetGeometry::get_vertex_pos(
                 id.face,
                 id.u + u_off,
                 id.v + v_off,

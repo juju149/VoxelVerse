@@ -1,6 +1,52 @@
 use crate::{sphere_to_cube_surface, unit_cube_to_sphere};
 use glam::Vec3;
-use vv_voxel::{PlanetProfile, VoxelCoord};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GridCoord {
+    pub face: u8,
+    pub layer: u32,
+    pub u: u32,
+    pub v: u32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SphericalGrid {
+    pub resolution: u32,
+    pub inner_radius: f32,
+    pub layer_height: f32,
+}
+
+impl SphericalGrid {
+    pub fn new(resolution: u32, inner_radius: f32, layer_height: f32) -> Self {
+        Self {
+            resolution: resolution.max(1),
+            inner_radius,
+            layer_height: layer_height.max(f32::EPSILON),
+        }
+    }
+
+    pub fn layer_radius(self, layer: u32) -> f32 {
+        self.inner_radius + self.layer_height * layer as f32
+    }
+
+    pub fn layer_center_radius(self, layer: u32) -> f32 {
+        self.layer_radius(layer) + self.layer_height * 0.5
+    }
+
+    pub fn radius_to_layer(self, radius: f32) -> Option<(u32, f32)> {
+        if radius < self.inner_radius || radius.is_nan() {
+            return None;
+        }
+
+        let layer_f = (radius - self.inner_radius) / self.layer_height;
+        let layer = layer_f.floor() as i32;
+        if layer < 0 || layer >= self.resolution as i32 {
+            return None;
+        }
+
+        Some((layer as u32, layer_f.fract()))
+    }
+}
 
 pub struct CoordSystem;
 
@@ -21,10 +67,10 @@ impl CoordSystem {
         }
     }
 
-    pub fn get_local_coords(pos: Vec3, profile: PlanetProfile) -> Option<(VoxelCoord, Vec3)> {
-        let res = profile.resolution;
+    pub fn get_local_coords(pos: Vec3, grid: SphericalGrid) -> Option<(GridCoord, Vec3)> {
+        let res = grid.resolution;
         let dist = pos.length();
-        let (layer, f_layer) = profile.radius_to_layer(dist)?;
+        let (layer, f_layer) = grid.radius_to_layer(dist)?;
 
         let (face, u_local, v_local) = Self::direction_to_face_uv(pos);
 
@@ -42,13 +88,13 @@ impl CoordSystem {
         let v = v.clamp(0, res as i32 - 1) as u32;
 
         Some((
-            VoxelCoord { face, layer, u, v },
+            GridCoord { face, layer, u, v },
             Vec3::new(f_u, f_v, f_layer),
         ))
     }
 
-    pub fn get_layer_radius(layer: u32, profile: PlanetProfile) -> f32 {
-        profile.layer_radius(layer)
+    pub fn get_layer_radius(layer: u32, grid: SphericalGrid) -> f32 {
+        grid.layer_radius(layer)
     }
 
     pub fn get_direction(face: u8, u: u32, v: u32, res: u32) -> Vec3 {
@@ -82,21 +128,15 @@ impl CoordSystem {
         unit_cube_to_sphere(cx, cy, cz).normalize()
     }
 
-    pub fn get_vertex_pos(face: u8, u: u32, v: u32, layer: u32, profile: PlanetProfile) -> Vec3 {
-        let res = profile.resolution;
+    pub fn get_vertex_pos(face: u8, u: u32, v: u32, layer: u32, grid: SphericalGrid) -> Vec3 {
+        let res = grid.resolution;
         let dir = Self::get_direction(face, u, v, res);
-        let radius = Self::get_layer_radius(layer, profile);
+        let radius = Self::get_layer_radius(layer, grid);
         dir * radius
     }
 
-    pub fn get_vertex_pos_f32(
-        face: u8,
-        u: f32,
-        v: f32,
-        layer: f32,
-        profile: PlanetProfile,
-    ) -> Vec3 {
-        let res = profile.resolution as f64;
+    pub fn get_vertex_pos_f32(face: u8, u: f32, v: f32, layer: f32, grid: SphericalGrid) -> Vec3 {
+        let res = grid.resolution as f64;
         let uf = u as f64;
         let vf = v as f64;
 
@@ -115,14 +155,14 @@ impl CoordSystem {
         let dir = unit_cube_to_sphere(cx, cy, cz).normalize();
         let layer_i = layer.floor() as u32;
         let frac = layer - layer.floor();
-        let r0 = Self::get_layer_radius(layer_i, profile) as f64;
-        let r1 = Self::get_layer_radius(layer_i + 1, profile) as f64;
+        let r0 = Self::get_layer_radius(layer_i, grid) as f64;
+        let r1 = Self::get_layer_radius(layer_i + 1, grid) as f64;
         let radius = (r0 + frac as f64 * (r1 - r0)) as f32;
         dir * radius
     }
 
-    pub fn get_block_center(face: u8, u: u32, v: u32, layer: u32, profile: PlanetProfile) -> Vec3 {
-        let res = profile.resolution;
+    pub fn get_block_center(face: u8, u: u32, v: u32, layer: u32, grid: SphericalGrid) -> Vec3 {
+        let res = grid.resolution;
         let rf = res as f64;
         let uf = u as f64 + 0.5;
         let vf = v as f64 + 0.5;
@@ -140,13 +180,13 @@ impl CoordSystem {
         };
 
         let dir = unit_cube_to_sphere(cx, cy, cz).normalize();
-        let radius = profile.layer_center_radius(layer);
+        let radius = grid.layer_center_radius(layer);
         dir * radius
     }
 
-    pub fn pos_to_id(pos: Vec3, profile: PlanetProfile) -> Option<VoxelCoord> {
-        let res = profile.resolution;
-        let (layer, _) = profile.radius_to_layer(pos.length())?;
+    pub fn pos_to_id(pos: Vec3, grid: SphericalGrid) -> Option<GridCoord> {
+        let res = grid.resolution;
+        let (layer, _) = grid.radius_to_layer(pos.length())?;
         let (face, u_local, v_local) = Self::direction_to_face_uv(pos);
 
         let rf = res as f64;
@@ -156,18 +196,18 @@ impl CoordSystem {
         let u = u_raw.clamp(0, res as i32 - 1) as u32;
         let v = v_raw.clamp(0, res as i32 - 1) as u32;
 
-        Some(VoxelCoord { face, layer, u, v })
+        Some(GridCoord { face, layer, u, v })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::CoordSystem;
-    use vv_voxel::PlanetProfile;
+    use super::{CoordSystem, SphericalGrid};
 
     #[test]
     fn cube_sphere_coords_roundtrip_on_all_faces() {
-        let profile = PlanetProfile::new(49);
+        let grid = SphericalGrid::new(49, 4.0, 1.0);
+        let surface_layer = 20;
         let samples = [
             (0, 3, 5),
             (1, 9, 17),
@@ -178,24 +218,25 @@ mod tests {
         ];
 
         for (face, u, v) in samples {
-            let pos = CoordSystem::get_block_center(face, u, v, profile.surface_layer, profile);
-            let coord = CoordSystem::pos_to_id(pos, profile)
+            let pos = CoordSystem::get_block_center(face, u, v, surface_layer, grid);
+            let coord = CoordSystem::pos_to_id(pos, grid)
                 .expect("surface sample should map back to a voxel coordinate");
 
             assert_eq!(coord.face, face);
             assert!((coord.u as i32 - u as i32).abs() <= 1);
             assert!((coord.v as i32 - v as i32).abs() <= 1);
-            assert_eq!(coord.layer, profile.surface_layer);
+            assert_eq!(coord.layer, surface_layer);
         }
     }
 
     #[test]
     fn profile_voxel_size_changes_world_scale() {
-        let one_meter = PlanetProfile::with_seed_and_voxel_size(64, 1, 1.0);
-        let half_meter = PlanetProfile::with_seed_and_voxel_size(64, 1, 0.5);
+        let one_meter = SphericalGrid::new(64, 4.0, 1.0);
+        let half_meter = SphericalGrid::new(64, 2.0, 0.5);
+        let surface_layer = 32;
 
-        let p1 = CoordSystem::get_vertex_pos(4, 32, 32, one_meter.surface_layer, one_meter);
-        let p2 = CoordSystem::get_vertex_pos(4, 32, 32, half_meter.surface_layer, half_meter);
+        let p1 = CoordSystem::get_vertex_pos(4, 32, 32, surface_layer, one_meter);
+        let p2 = CoordSystem::get_vertex_pos(4, 32, 32, surface_layer, half_meter);
 
         assert!((p2.length() - p1.length() * 0.5).abs() < 0.001);
     }

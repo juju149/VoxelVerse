@@ -18,10 +18,9 @@
 
 use super::{CpuMesh, CpuVertex, MeshGen, VERTEX_COLOR_MATERIAL_SENTINEL};
 use glam::Vec3;
-use vv_math::CoordSystem;
 use vv_pack_compiler::TerrainPalette;
 use vv_voxel::{LodKey, CHUNK_SIZE};
-use vv_world::PlanetSnapshot;
+use vv_world::{PlanetGeometry, PlanetSnapshot};
 
 /// Cells per side per LOD tile.  Equal to `CHUNK_SIZE` so the macro-voxel size
 /// matches one base voxel chunk at the smallest LOD level and doubles cleanly
@@ -125,10 +124,10 @@ impl MeshGen {
                 let mid_u = (u0 + (u1 - u0) / 2).min(res.saturating_sub(1));
                 let mid_v = (v0 + (v1 - v0) / 2).min(res.saturating_sub(1));
 
-                let p_bl = CoordSystem::get_vertex_pos(key.face, u0, v0, h, data.profile);
-                let p_br = CoordSystem::get_vertex_pos(key.face, u1, v0, h, data.profile);
-                let p_tr = CoordSystem::get_vertex_pos(key.face, u1, v1, h, data.profile);
-                let p_tl = CoordSystem::get_vertex_pos(key.face, u0, v1, h, data.profile);
+                let p_bl = PlanetGeometry::get_vertex_pos(key.face, u0, v0, h, data.profile);
+                let p_br = PlanetGeometry::get_vertex_pos(key.face, u1, v0, h, data.profile);
+                let p_tr = PlanetGeometry::get_vertex_pos(key.face, u1, v1, h, data.profile);
+                let p_tl = PlanetGeometry::get_vertex_pos(key.face, u0, v1, h, data.profile);
 
                 let cell_center = (p_bl + p_br + p_tr + p_tl) * 0.25;
                 let radial = cell_center.normalize_or_zero();
@@ -179,10 +178,10 @@ impl MeshGen {
                     heights[(cj * n + ci - 1) as usize]
                 };
                 if nh < h {
-                    let bl = CoordSystem::get_vertex_pos(key.face, u0, v0, nh, data.profile);
-                    let br = CoordSystem::get_vertex_pos(key.face, u0, v1, nh, data.profile);
-                    let tr = CoordSystem::get_vertex_pos(key.face, u0, v1, h, data.profile);
-                    let tl = CoordSystem::get_vertex_pos(key.face, u0, v0, h, data.profile);
+                    let bl = PlanetGeometry::get_vertex_pos(key.face, u0, v0, nh, data.profile);
+                    let br = PlanetGeometry::get_vertex_pos(key.face, u0, v1, nh, data.profile);
+                    let tr = PlanetGeometry::get_vertex_pos(key.face, u0, v1, h, data.profile);
+                    let tl = PlanetGeometry::get_vertex_pos(key.face, u0, v0, h, data.profile);
                     emit_wall(bl, br, tr, tl);
                 }
 
@@ -197,10 +196,10 @@ impl MeshGen {
                     heights[(cj * n + ci + 1) as usize]
                 };
                 if nh < h {
-                    let bl = CoordSystem::get_vertex_pos(key.face, u1, v1, nh, data.profile);
-                    let br = CoordSystem::get_vertex_pos(key.face, u1, v0, nh, data.profile);
-                    let tr = CoordSystem::get_vertex_pos(key.face, u1, v0, h, data.profile);
-                    let tl = CoordSystem::get_vertex_pos(key.face, u1, v1, h, data.profile);
+                    let bl = PlanetGeometry::get_vertex_pos(key.face, u1, v1, nh, data.profile);
+                    let br = PlanetGeometry::get_vertex_pos(key.face, u1, v0, nh, data.profile);
+                    let tr = PlanetGeometry::get_vertex_pos(key.face, u1, v0, h, data.profile);
+                    let tl = PlanetGeometry::get_vertex_pos(key.face, u1, v1, h, data.profile);
                     emit_wall(bl, br, tr, tl);
                 }
 
@@ -215,10 +214,10 @@ impl MeshGen {
                     heights[((cj - 1) * n + ci) as usize]
                 };
                 if nh < h {
-                    let bl = CoordSystem::get_vertex_pos(key.face, u1, v0, nh, data.profile);
-                    let br = CoordSystem::get_vertex_pos(key.face, u0, v0, nh, data.profile);
-                    let tr = CoordSystem::get_vertex_pos(key.face, u0, v0, h, data.profile);
-                    let tl = CoordSystem::get_vertex_pos(key.face, u1, v0, h, data.profile);
+                    let bl = PlanetGeometry::get_vertex_pos(key.face, u1, v0, nh, data.profile);
+                    let br = PlanetGeometry::get_vertex_pos(key.face, u0, v0, nh, data.profile);
+                    let tr = PlanetGeometry::get_vertex_pos(key.face, u0, v0, h, data.profile);
+                    let tl = PlanetGeometry::get_vertex_pos(key.face, u1, v0, h, data.profile);
                     emit_wall(bl, br, tr, tl);
                 }
 
@@ -233,10 +232,10 @@ impl MeshGen {
                     heights[((cj + 1) * n + ci) as usize]
                 };
                 if nh < h {
-                    let bl = CoordSystem::get_vertex_pos(key.face, u0, v1, nh, data.profile);
-                    let br = CoordSystem::get_vertex_pos(key.face, u1, v1, nh, data.profile);
-                    let tr = CoordSystem::get_vertex_pos(key.face, u1, v1, h, data.profile);
-                    let tl = CoordSystem::get_vertex_pos(key.face, u0, v1, h, data.profile);
+                    let bl = PlanetGeometry::get_vertex_pos(key.face, u0, v1, nh, data.profile);
+                    let br = PlanetGeometry::get_vertex_pos(key.face, u1, v1, nh, data.profile);
+                    let tr = PlanetGeometry::get_vertex_pos(key.face, u1, v1, h, data.profile);
+                    let tl = PlanetGeometry::get_vertex_pos(key.face, u0, v1, h, data.profile);
                     emit_wall(bl, br, tr, tl);
                 }
             }

@@ -4,10 +4,9 @@ use crate::types::Vertex;
 use crate::world_streaming::StreamingView;
 use glam::Vec3;
 use std::collections::HashSet;
-use vv_math::CoordSystem;
 use vv_meshing::{CpuMesh, MeshGen, UploadBudgetState};
 use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord, CHUNK_SIZE};
-use vv_world::PlanetData;
+use vv_world::{PlanetData, PlanetGeometry};
 
 fn lod_mesh_byte_size(mesh: &CpuMesh) -> usize {
     mesh.vertices.len() * std::mem::size_of::<Vertex>() + mesh.indices.len() * 4
@@ -21,7 +20,7 @@ impl<'a> Renderer<'a> {
             .set_fade_duration(self.world_streaming.lod_transition_time);
 
         let res = planet.resolution();
-        let player_id = CoordSystem::pos_to_id(view.player_pos, planet.profile());
+        let player_id = PlanetGeometry::pos_to_id(view.player_pos, planet.profile());
         let previous_player_chunk_pos = self.player_chunk_pos;
         let player_surface_key = player_id.map(|id| SurfaceChunkKey {
             face: id.face,
@@ -264,7 +263,8 @@ impl<'a> Renderer<'a> {
         let center_u = (x + size / 2).min(planet.resolution() - 1);
         let center_v = (y + size / 2).min(planet.resolution() - 1);
         let h = planet.profile().surface_layer;
-        let world_pos = CoordSystem::get_vertex_pos(face, center_u, center_v, h, planet.profile());
+        let world_pos =
+            PlanetGeometry::get_vertex_pos(face, center_u, center_v, h, planet.profile());
 
         let mut dist = world_pos.distance(context.view.camera_pos);
         let cursor_inside = context
@@ -554,14 +554,14 @@ fn chunk_center(key: SurfaceChunkKey, planet: &PlanetData) -> Vec3 {
     let u = key.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
     let v = key.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
     let h = planet.profile().surface_layer;
-    CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile())
+    PlanetGeometry::get_vertex_pos(key.face, u, v, h, planet.profile())
 }
 
 fn lod_center(key: LodKey, planet: &PlanetData) -> Vec3 {
     let u = (key.x + key.size / 2).min(planet.resolution().saturating_sub(1));
     let v = (key.y + key.size / 2).min(planet.resolution().saturating_sub(1));
     let h = planet.profile().surface_layer;
-    CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile())
+    PlanetGeometry::get_vertex_pos(key.face, u, v, h, planet.profile())
 }
 
 fn chunk_radius_world(planet: &PlanetData) -> f32 {

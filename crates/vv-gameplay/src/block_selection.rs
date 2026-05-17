@@ -1,7 +1,6 @@
-use vv_math::CoordSystem;
 use vv_math::Ray;
 use vv_voxel::VoxelCoord;
-use vv_world::VoxelRead;
+use vv_world::{PlanetGeometry, VoxelRead};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BlockSelectionMode {
@@ -30,7 +29,7 @@ impl BlockSelection {
                 break;
             }
 
-            if let Some(id) = CoordSystem::pos_to_id(point, profile) {
+            if let Some(id) = PlanetGeometry::pos_to_id(point, profile) {
                 let exists = planet.exists(id);
                 match mode {
                     BlockSelectionMode::HitSolid if exists => return Some((id, distance)),

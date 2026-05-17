@@ -1,7 +1,6 @@
 use glam::{Quat, Vec3};
-use vv_math::CoordSystem;
 use vv_voxel::VoxelCoord;
-use vv_world::PlanetData;
+use vv_world::{PlanetData, PlanetGeometry};
 
 pub struct Physics;
 impl Physics {
@@ -25,7 +24,7 @@ impl Physics {
         let res = planet.resolution();
         let profile = planet.profile();
 
-        let (id, local) = match CoordSystem::get_local_coords(pos, profile) {
+        let (id, local) = match PlanetGeometry::get_local_coords(pos, profile) {
             Some(val) => val,
             None => {
                 return pos.length() < profile.inner_radius;

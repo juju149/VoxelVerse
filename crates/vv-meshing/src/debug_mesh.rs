@@ -1,9 +1,8 @@
 use super::{CpuMesh, CpuVertex, MeshGen};
 use glam::Vec3;
-use vv_math::CoordSystem;
 use vv_pack_compiler::TerrainPalette;
 use vv_voxel::VoxelCoord;
-use vv_world::PlanetData;
+use vv_world::{PlanetData, PlanetGeometry};
 
 impl MeshGen {
     pub fn generate_collision_debug(player_pos: Vec3, planet: &PlanetData) -> CpuMesh {
@@ -17,7 +16,7 @@ impl MeshGen {
         // check a 3x3x3 area around the player
         let range = 2;
 
-        if let Some((center_id, _)) = CoordSystem::get_local_coords(player_pos, profile) {
+        if let Some((center_id, _)) = PlanetGeometry::get_local_coords(player_pos, profile) {
             let start_u = (center_id.u as i32 - range).max(0);
             let end_u = (center_id.u as i32 + range).min(res as i32 - 1);
             let start_v = (center_id.v as i32 - range).max(0);
@@ -37,13 +36,14 @@ impl MeshGen {
                             v: v as u32,
                         };
 
-                        let block_pos =
-                            CoordSystem::get_block_center(id.face, id.u, id.v, id.layer, profile);
+                        let block_pos = PlanetGeometry::get_block_center(
+                            id.face, id.u, id.v, id.layer, profile,
+                        );
 
                         if vv_physics::Physics::is_solid(block_pos, planet) {
                             // visualize the "Core" of the block that triggers collision
                             let get_p = |uu, vv, ll| {
-                                CoordSystem::get_vertex_pos(
+                                PlanetGeometry::get_vertex_pos(
                                     id.face,
                                     id.u + uu,
                                     id.v + vv,

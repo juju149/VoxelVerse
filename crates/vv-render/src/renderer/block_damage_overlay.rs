@@ -1,9 +1,8 @@
 use super::{BlockDamageCacheSignature, Renderer};
 use crate::Vertex;
 use glam::Vec3;
-use vv_math::CoordSystem;
 use vv_voxel::VoxelCoord;
-use vv_world::PlanetData;
+use vv_world::{PlanetData, PlanetGeometry};
 
 const MAX_OVERLAY_BLOCKS: usize = 32;
 
@@ -104,7 +103,7 @@ enum OverlayFace {
 
 fn face_corners(coord: VoxelCoord, face: OverlayFace, planet: &PlanetData) -> [Vec3; 4] {
     let p = |u: f32, v: f32, l: f32| {
-        CoordSystem::get_vertex_pos_f32(
+        PlanetGeometry::get_vertex_pos_f32(
             coord.face,
             coord.u as f32 + u,
             coord.v as f32 + v,

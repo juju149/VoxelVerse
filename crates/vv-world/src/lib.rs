@@ -1,6 +1,7 @@
 mod block_damage;
 mod broken_props;
 mod planet;
+mod planet_geometry;
 mod planet_snapshot;
 mod runtime;
 mod terrain_visual_palette;
@@ -13,6 +14,7 @@ pub use vv_voxel::PlanetProfile;
 pub use block_damage::{BlockDamage, BlockDamageLayer, BlockDamageResult};
 pub use broken_props::BrokenPropLayer;
 pub use planet::{PlanetData, PlanetDataSources, VoxelEditResult, VoxelRead};
+pub use planet_geometry::PlanetGeometry;
 pub use planet_snapshot::PlanetSnapshot;
 pub use runtime::VoxelRuntime;
 pub use terrain_visual_palette::TerrainVisualPalette;

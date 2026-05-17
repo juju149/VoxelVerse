@@ -14,8 +14,7 @@
 //!   prop colours are treated consistently with terrain vertex colours.
 
 use super::{CpuMesh, CpuVertex, VoxelMeshingConfig, VERTEX_COLOR_MATERIAL_SENTINEL};
-use vv_math::CoordSystem;
-use vv_world::{PlanetProfile, VoxModel, VoxModelRegistry};
+use vv_world::{PlanetGeometry, PlanetProfile, VoxModel, VoxModelRegistry};
 use vv_worldgen::procedural::{PropOrientation, PropStamp};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -183,7 +182,7 @@ fn bake_instance(
             let wv = base_v + ry * inv_max_xy;
             let wl = base_l + mz * scale_z * layer_dir;
             corners[i] =
-                CoordSystem::get_vertex_pos_f32(instance.face, wu, wv, wl, context.profile);
+                PlanetGeometry::get_vertex_pos_f32(instance.face, wu, wv, wl, context.profile);
         }
 
         // Compute face normal from cross product of two edges.

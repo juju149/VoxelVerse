@@ -1,9 +1,8 @@
 use crate::{
-    BlockDamageLayer, BlockDamageResult, BrokenPropLayer, PlanetProfile, PlanetSnapshot,
-    TerrainVisualPalette, VoxModelRegistry, VoxelRuntime, WorldTime,
+    BlockDamageLayer, BlockDamageResult, BrokenPropLayer, PlanetGeometry, PlanetProfile,
+    PlanetSnapshot, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime, WorldTime,
 };
 use std::sync::Arc;
-use vv_math::CoordSystem;
 use vv_pack_compiler::{
     BlockRegistry, CompiledBlock, CompiledBlockVisual, CompiledItem, CompiledPlanet, ItemId,
     ItemRegistry, ProceduralRegistry,
@@ -429,7 +428,7 @@ impl PlanetData {
         // → temperature ≈ 1.0 → tropical biome.  Face 0 is the +Y pole.
         let u = self.resolution / 2;
         let v = self.resolution / 2;
-        let dir = CoordSystem::get_direction(4, u, v, self.resolution);
+        let dir = PlanetGeometry::get_direction(4, u, v, self.resolution);
         dir * (self.surface_radius(4, u, v) + self.profile.spawn_clearance())
     }
 }

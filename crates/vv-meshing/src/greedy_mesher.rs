@@ -2,6 +2,7 @@ use crate::voxel_mesher::{ChunkAccessor, QuadFace};
 use crate::{pack_material_edges, CpuVertex, FaceEdgeMask, MeshGen};
 use std::collections::{HashMap, HashSet};
 use vv_voxel::{VoxelCoord, VoxelId};
+use vv_world::PlanetGeometry;
 
 pub(crate) struct GreedyMesher;
 
@@ -214,7 +215,7 @@ fn emit_quad(
     let data = accessor.data();
     let cell = run.cell;
     let p = |u: u32, v: u32, l: u32| {
-        vv_math::CoordSystem::get_vertex_pos(cell.coord.face, u, v, l, data.profile)
+        PlanetGeometry::get_vertex_pos(cell.coord.face, u, v, l, data.profile)
     };
     let a0 = cell.a;
     let a1 = cell.a + run.width;
