@@ -69,7 +69,10 @@ impl std::fmt::Display for RegistryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RegistryError::UnknownParent { body, parent } => {
-                write!(f, "celestial body '{body}' references unknown parent '{parent}'")
+                write!(
+                    f,
+                    "celestial body '{body}' references unknown parent '{parent}'"
+                )
             }
             RegistryError::DuplicateShortId(id) => {
                 write!(f, "duplicate celestial short id '{id}'")
@@ -88,14 +91,15 @@ impl CelestialRegistry {
     /// Build a registry from the loader's raw output. Two passes: first index
     /// every entry so parents can be resolved into ids, then convert each
     /// orbit's parent ref.
-    pub fn from_raw(
-        items: &[(String, RawCelestialBodyDef)],
-    ) -> Result<Self, RegistryError> {
+    pub fn from_raw(items: &[(String, RawCelestialBodyDef)]) -> Result<Self, RegistryError> {
         // Pass 1 — short ids and indices.
         let mut by_short_id: BTreeMap<String, CelestialBodyId> = BTreeMap::new();
         for (idx, (key, _raw)) in items.iter().enumerate() {
             let short = short_id_from_key(key);
-            if by_short_id.insert(short.clone(), CelestialBodyId(idx as u16)).is_some() {
+            if by_short_id
+                .insert(short.clone(), CelestialBodyId(idx as u16))
+                .is_some()
+            {
                 return Err(RegistryError::DuplicateShortId(short));
             }
         }
@@ -125,7 +129,10 @@ impl CelestialRegistry {
             });
         }
 
-        Ok(Self { bodies, by_short_id })
+        Ok(Self {
+            bodies,
+            by_short_id,
+        })
     }
 
     pub fn len(&self) -> usize {
@@ -150,10 +157,7 @@ impl CelestialRegistry {
 
     /// First body matching the supplied kind, in registry (sort) order.
     pub fn first_of_kind(&self, kind: RawCelestialKind) -> Option<CelestialBodyId> {
-        self.bodies
-            .iter()
-            .find(|b| b.kind == kind)
-            .map(|b| b.id)
+        self.bodies.iter().find(|b| b.kind == kind).map(|b| b.id)
     }
 }
 
@@ -165,14 +169,12 @@ fn resolve_orbit(
     let parent = match &raw.parent {
         Some(parent_ref) => {
             let parent_short = short_id_from_key(&parent_ref.0);
-            let parent_id =
-                index
-                    .get(parent_short.as_str())
-                    .copied()
-                    .ok_or_else(|| RegistryError::UnknownParent {
-                        body: body_short.to_string(),
-                        parent: parent_ref.0.clone(),
-                    })?;
+            let parent_id = index.get(parent_short.as_str()).copied().ok_or_else(|| {
+                RegistryError::UnknownParent {
+                    body: body_short.to_string(),
+                    parent: parent_ref.0.clone(),
+                }
+            })?;
             Some(parent_id)
         }
         None => None,

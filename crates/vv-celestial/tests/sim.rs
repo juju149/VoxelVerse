@@ -1,8 +1,7 @@
 //! End-to-end tests for the celestial simulator.
 
 use vv_celestial::{
-    body_position, AltitudeBand, CelestialBodyId, CelestialRegistry, CelestialSimState,
-    SystemPos,
+    body_position, AltitudeBand, CelestialBodyId, CelestialRegistry, CelestialSimState, SystemPos,
 };
 use vv_content_schema::{
     ContentRef, RawCelestialBodyDef, RawCelestialKind, RawCelestialOrbitDef, RawCelestialSpinDef,
@@ -57,7 +56,10 @@ fn planet(
                 phase_rad: 0.0,
             }),
             spin: RawCelestialSpinDef {
-                axis: (0.0, 1.0, 0.0),
+                // Earth-like axial tilt (~23.5° from the orbit normal).
+                // Without a tilt the sun rides the horizon forever — the
+                // observer's equator would lie in the orbit plane.
+                axis: (0.3978, 0.9175, 0.0),
                 period_s: spin_period_s,
             },
             surface: RawCelestialSurfaceDef {
@@ -94,7 +96,7 @@ fn moon(
             }),
             spin: RawCelestialSpinDef {
                 axis: (0.0, 1.0, 0.0),
-                period_s: period_s, // tidally locked
+                period_s, // tidally locked
             },
             surface: RawCelestialSurfaceDef {
                 emissive_color: (0.6, 0.6, 0.62),
@@ -110,7 +112,14 @@ fn moon(
 fn earth_like_registry() -> CelestialRegistry {
     let items = vec![
         star("sol", 6.96e8, 2.16e6),
-        planet("terra", Some("sol"), 1.496e11, 365.25 * 86_400.0, 86_400.0, 6.371e6),
+        planet(
+            "terra",
+            Some("sol"),
+            1.496e11,
+            365.25 * 86_400.0,
+            86_400.0,
+            6.371e6,
+        ),
         moon("luna", "terra", 3.844e8, 27.3 * 86_400.0, 1.737e6),
     ];
     CelestialRegistry::from_raw(&items).expect("registry must build")
@@ -124,8 +133,14 @@ fn registry_resolves_parents_and_finds_kinds() {
     let terra = reg.id_of("terra").expect("terra");
     let luna = reg.id_of("luna").expect("luna");
     assert_eq!(reg.get(sun).orbit.as_ref().and_then(|o| o.parent), None);
-    assert_eq!(reg.get(terra).orbit.as_ref().and_then(|o| o.parent), Some(sun));
-    assert_eq!(reg.get(luna).orbit.as_ref().and_then(|o| o.parent), Some(terra));
+    assert_eq!(
+        reg.get(terra).orbit.as_ref().and_then(|o| o.parent),
+        Some(sun)
+    );
+    assert_eq!(
+        reg.get(luna).orbit.as_ref().and_then(|o| o.parent),
+        Some(terra)
+    );
 }
 
 #[test]
@@ -149,10 +164,7 @@ fn duplicate_short_id_is_rejected() {
 fn sun_direction_makes_one_complete_revolution_per_day() {
     let reg = earth_like_registry();
     let sim = CelestialSimState::new(&reg);
-    let day_length_s = reg
-        .get(reg.id_of("terra").unwrap())
-        .spin
-        .period_s as f32;
+    let day_length_s = reg.get(reg.id_of("terra").unwrap()).spin.period_s as f32;
     let cfg_day = WorldTime::new(day_length_s, 0.0);
 
     let mut time = cfg_day;
@@ -163,7 +175,10 @@ fn sun_direction_makes_one_complete_revolution_per_day() {
     t_mid.tick(0.0);
     let s_mid = sim.snapshot(&reg, t_mid).sun_dir_world;
     let dot = s_noon.dot(s_mid);
-    assert!(dot < -0.5, "sun should flip across the sky over half a day (dot={dot})");
+    assert!(
+        dot < -0.5,
+        "sun should flip across the sky over half a day (dot={dot})"
+    );
 
     // After a full day at the same phase, the snapshot must match.
     time.tick(day_length_s);
@@ -213,10 +228,7 @@ fn altitude_band_classification() {
 fn stars_visible_at_night() {
     let reg = earth_like_registry();
     let sim = CelestialSimState::new(&reg);
-    let day_length_s = reg
-        .get(reg.id_of("terra").unwrap())
-        .spin
-        .period_s as f32;
+    let day_length_s = reg.get(reg.id_of("terra").unwrap()).spin.period_s as f32;
 
     let noon = WorldTime::new(day_length_s, 0.0);
     let midnight = WorldTime::new(day_length_s, 0.5);
@@ -226,7 +238,8 @@ fn stars_visible_at_night() {
     assert!(
         snap_mid.stars_visibility > snap_noon.stars_visibility,
         "stars must be more visible at midnight ({} vs {})",
-        snap_mid.stars_visibility, snap_noon.stars_visibility
+        snap_mid.stars_visibility,
+        snap_noon.stars_visibility
     );
 }
 
@@ -258,13 +271,14 @@ fn body_position_returns_sun_at_origin_when_no_orbit() {
 #[test]
 fn first_of_kind_finds_primary() {
     let reg = earth_like_registry();
-    let star = reg.first_of_kind(RawCelestialKind_for_test::Star);
+    let star = reg.first_of_kind(RawCelestialKind::Star);
     assert!(star.is_some());
     assert_eq!(reg.get(star.unwrap()).short_id, "sol");
 }
 
-// Re-export the enum locally so the test compiles without dragging
-// `RawCelestialKind` into the public surface of this test file twice.
-type RawCelestialKind_for_test = vv_content_schema::RawCelestialKind;
-#[allow(dead_code)]
-fn _ensure_body_id_uses_compact_type(_id: CelestialBodyId) {}
+#[test]
+fn body_id_is_compact() {
+    // Ids fit in 16 bits so packing them with kind into a u32 GPU instance
+    // attribute stays free in future passes.
+    assert_eq!(std::mem::size_of::<CelestialBodyId>(), 2);
+}

@@ -229,7 +229,14 @@ fn transition_fades_blend_zero_to_one() {
 fn lightning_strikes_are_emitted_when_configured() {
     // A profile with an extreme strike rate so we hit at least one within
     // a 10-second window.
-    let mut profile = make_profile("Storm", 1.0, Some(RawPrecipitationKind::Rain), &[], 1.0, 2.0);
+    let mut profile = make_profile(
+        "Storm",
+        1.0,
+        Some(RawPrecipitationKind::Rain),
+        &[],
+        1.0,
+        2.0,
+    );
     profile.lightning = Some(RawWeatherLightningDef {
         strikes_per_minute: 120.0, // 2 / s
         flash_intensity: 3.0,

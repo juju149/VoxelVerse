@@ -504,12 +504,22 @@ et passe `cargo test`, `cargo clippy`, et les scripts `check_*.ps1` existants.
 - **DoD partiel** : `WeatherAudioMix::from_state` est correct et testé ;
   le host n'a plus qu'à brancher les sinks quand les assets arrivent.
 
-### Phase 4 — Solver céleste (`vv-celestial`) (3 jours)
-- [ ] Crate `vv-celestial` : orbites circulaires, `f64`, positions soleil/lunes.
-- [ ] Couplage `WorldTime` + repère système.
-- [ ] Snapshot `CelestialState`.
-- [ ] Eclipse simple soleil/lune.
-- **DoD** : positions céleste correctes, debug overlay angles.
+### Phase 4 — Solver céleste (`vv-celestial`) ✅
+- [x] Crate `vv-celestial` : orbites circulaires, `f64`, positions soleil/lunes
+      (`orbit::body_position` récursive — `SystemPos = DVec3`).
+- [x] `CelestialRegistry::from_raw` résout les parents (`ContentRef` → `CelestialBodyId`),
+      détecte parents inconnus et duplicatas (erreurs typées).
+- [x] Couplage `WorldTime` : `day_phase` → rotation autour de `spin.axis` ;
+      `elapsed_seconds` → position orbitale.
+- [x] Snapshot `CelestialState` : `sun_dir_world`, `sun_disc_*`, `moons[]`,
+      `stars_visibility`, `aurora_intensity`, `eclipse_factor`, `altitude_band`.
+- [x] `solar_eclipse_factor` : couverture angulaire (linéaire entre les deux
+      limites), gère cas annulaires/totaux/partiels/derrière-soleil.
+- [x] `AltitudeBand::from_altitude_m` : Ground / Strato / Meso / Space.
+- **DoD** : positions céleste validées (orbite revient à 0 après période ;
+  lune à 384 000 km de la Terre) ; soleil traverse le ciel sur 1 jour
+  (avec tilt axial 23.5°) ; déterminisme strict ; 18 tests verts ;
+  débuggage par overlay câblable via les champs publics du snapshot.
 
 ### Phase 5 — Rendu sky complet (5-7 jours)
 - [ ] Réécriture `sky_renderer.rs` avec atmosphere scattering (LUT pré-cuit).

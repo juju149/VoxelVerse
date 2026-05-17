@@ -37,7 +37,10 @@ impl WeatherSimState {
     /// the registry using the supplied seed — the highest-rarity profile in
     /// the current biome wins, ties broken by registry order.
     pub fn new(registry: &WeatherRegistry, seed: u64, biome_short_id: impl Into<String>) -> Self {
-        assert!(!registry.is_empty(), "WeatherRegistry must contain at least one profile");
+        assert!(
+            !registry.is_empty(),
+            "WeatherRegistry must contain at least one profile"
+        );
         let biome_short_id = biome_short_id.into();
         let mut rng = PcgRng::new(seed);
         let current = pick_initial(registry, &biome_short_id).unwrap_or(WeatherProfileId(0));
@@ -135,10 +138,26 @@ impl WeatherSimState {
         let next = self.next.map(|id| registry.get(id));
         let blend = self.transition_progress.clamp(0.0, 1.0);
 
-        let cloud_coverage = blend_scalar(current.cloud_coverage, next.map(|p| p.cloud_coverage), blend);
-        let fog_multiplier = blend_scalar(current.fog_multiplier, next.map(|p| p.fog_multiplier), blend);
-        let cloud_density_mul = blend_scalar(current.cloud_density_mul, next.map(|p| p.cloud_density_mul), blend);
-        let cloud_speed_mul = blend_scalar(current.cloud_speed_mul, next.map(|p| p.cloud_speed_mul), blend);
+        let cloud_coverage = blend_scalar(
+            current.cloud_coverage,
+            next.map(|p| p.cloud_coverage),
+            blend,
+        );
+        let fog_multiplier = blend_scalar(
+            current.fog_multiplier,
+            next.map(|p| p.fog_multiplier),
+            blend,
+        );
+        let cloud_density_mul = blend_scalar(
+            current.cloud_density_mul,
+            next.map(|p| p.cloud_density_mul),
+            blend,
+        );
+        let cloud_speed_mul = blend_scalar(
+            current.cloud_speed_mul,
+            next.map(|p| p.cloud_speed_mul),
+            blend,
+        );
 
         let wind: WindVector = self.wind.sample(current, next, blend);
         let precipitation = blend_precipitation(current, next, blend);
@@ -161,7 +180,8 @@ impl WeatherSimState {
     fn attempt_switch_now(&mut self, profile: &ResolvedProfile, dt: f32) -> bool {
         // Bernoulli with mean-time-to-switch = max_duration_s - min_duration_s
         // (so on average we transition near max_duration_s).
-        let window = (profile.transitions.max_duration_s - profile.transitions.min_duration_s).max(0.1);
+        let window =
+            (profile.transitions.max_duration_s - profile.transitions.min_duration_s).max(0.1);
         let p = 1.0 - (-dt / window).exp();
         self.rng.next_unit() < p
     }
@@ -258,12 +278,24 @@ fn blend_precipitation(
         (cur.kind, 1.0)
     };
 
-    let base_intensity = if t < 0.5 { cur.intensity } else { nxt.intensity };
+    let base_intensity = if t < 0.5 {
+        cur.intensity
+    } else {
+        nxt.intensity
+    };
     PrecipitationSample {
         kind,
         intensity: (base_intensity * intensity_scale).clamp(0.0, 1.0),
-        wind_drift: if t < 0.5 { cur.wind_drift } else { nxt.wind_drift },
-        splash_density: if t < 0.5 { cur.splash_density } else { nxt.splash_density },
+        wind_drift: if t < 0.5 {
+            cur.wind_drift
+        } else {
+            nxt.wind_drift
+        },
+        splash_density: if t < 0.5 {
+            cur.splash_density
+        } else {
+            nxt.splash_density
+        },
     }
 }
 

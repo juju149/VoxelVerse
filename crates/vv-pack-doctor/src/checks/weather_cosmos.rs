@@ -77,7 +77,12 @@ fn check_weather(dir: &Path, pack_root: &Path, report: &mut Report) {
         if let Some(p) = &def.precipitation {
             check_unit(report, &rel, "precipitation.intensity", p.intensity);
             check_unit(report, &rel, "precipitation.wind_drift", p.wind_drift);
-            check_unit(report, &rel, "precipitation.splash_density", p.splash_density);
+            check_unit(
+                report,
+                &rel,
+                "precipitation.splash_density",
+                p.splash_density,
+            );
         }
 
         let wind = &def.wind;
@@ -97,7 +102,12 @@ fn check_weather(dir: &Path, pack_root: &Path, report: &mut Report) {
         check_positive(report, &rel, "wind.gust_interval_s", wind.gust_interval_s);
 
         if let Some(l) = &def.lightning {
-            check_non_negative(report, &rel, "lightning.strikes_per_minute", l.strikes_per_minute);
+            check_non_negative(
+                report,
+                &rel,
+                "lightning.strikes_per_minute",
+                l.strikes_per_minute,
+            );
             if l.strikes_per_minute > 60.0 {
                 push_warn(
                     report,
@@ -161,7 +171,12 @@ fn check_biome_ambience(dir: &Path, pack_root: &Path, report: &mut Report) {
         if let Some(t) = def.sky_horizon_tint {
             check_color(report, &rel, "sky_horizon_tint", t);
         }
-        check_unit(report, &rel, "ambient_dust_density", def.ambient_dust_density);
+        check_unit(
+            report,
+            &rel,
+            "ambient_dust_density",
+            def.ambient_dust_density,
+        );
 
         if let Some(p) = &def.ambient_particles {
             check_unit(report, &rel, "ambient_particles.intensity", p.intensity);
@@ -187,7 +202,12 @@ fn check_biome_ambience(dir: &Path, pack_root: &Path, report: &mut Report) {
         }
 
         if let Some(a) = &def.aurora {
-            check_unit(report, &rel, "aurora.latitude_threshold", a.latitude_threshold);
+            check_unit(
+                report,
+                &rel,
+                "aurora.latitude_threshold",
+                a.latitude_threshold,
+            );
             check_color(report, &rel, "aurora.color_a", a.color_a);
             check_color(report, &rel, "aurora.color_b", a.color_b);
             check_non_negative(report, &rel, "aurora.intensity", a.intensity);
@@ -247,10 +267,7 @@ fn check_celestial(dir: &Path, pack_root: &Path, report: &mut Report) {
                 push_err(
                     report,
                     &rel,
-                    &format!(
-                        "orbit.eccentricity = {} must be in [0, 1)",
-                        o.eccentricity
-                    ),
+                    &format!("orbit.eccentricity = {} must be in [0, 1)", o.eccentricity),
                     Some("orbit"),
                 );
             } else if o.eccentricity > 1e-6 {
@@ -293,7 +310,12 @@ fn check_celestial(dir: &Path, pack_root: &Path, report: &mut Report) {
                 Some("surface"),
             );
         }
-        check_non_negative(report, &rel, "surface.emissive_intensity", s.emissive_intensity);
+        check_non_negative(
+            report,
+            &rel,
+            "surface.emissive_intensity",
+            s.emissive_intensity,
+        );
         if let Some(c) = &s.corona {
             check_color(report, &rel, "surface.corona.inner", c.inner);
             check_color(report, &rel, "surface.corona.outer", c.outer);

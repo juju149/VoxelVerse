@@ -24,10 +24,10 @@ pub fn solar_eclipse_factor(
         return 0.0;
     }
     let sun_alpha = (sun_radius_m / sun_distance_m).clamp(-1.0, 1.0).asin() as f32;
-    let occ_alpha = (occluder_radius_m / occluder_distance_m).clamp(-1.0, 1.0).asin() as f32;
-    let cos_sep = sun_dir_local
-        .dot(occluder_dir_local)
-        .clamp(-1.0, 1.0);
+    let occ_alpha = (occluder_radius_m / occluder_distance_m)
+        .clamp(-1.0, 1.0)
+        .asin() as f32;
+    let cos_sep = sun_dir_local.dot(occluder_dir_local).clamp(-1.0, 1.0);
     let sep = cos_sep.acos();
 
     if sep >= sun_alpha + occ_alpha {
@@ -41,8 +41,7 @@ pub fn solar_eclipse_factor(
     // Cheap and visually smooth — full lune-area formula is overkill for V1.
     let outer = sun_alpha + occ_alpha;
     let inner = (occ_alpha - sun_alpha).abs();
-    let t = ((outer - sep) / (outer - inner)).clamp(0.0, 1.0);
-    t
+    ((outer - sep) / (outer - inner)).clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
@@ -56,31 +55,20 @@ mod tests {
 
     #[test]
     fn aligned_moon_fully_eclipses_sun() {
-        let f = solar_eclipse_factor(
-            glam::Vec3::Y,
-            SUN_R,
-            SUN_D,
-            glam::Vec3::Y,
-            MOON_R,
-            MOON_D,
-        );
+        let f = solar_eclipse_factor(glam::Vec3::Y, SUN_R, SUN_D, glam::Vec3::Y, MOON_R, MOON_D);
         // Moon angular radius (~0.0045 rad) > sun (~0.00465 rad). Earth's
         // moon barely covers the sun — total at perigee, annular at apogee.
         // With these exact textbook values, occ_alpha is slightly smaller, so
         // we expect a near-full but not exactly 1.0 result.
-        assert!(f > 0.9, "alignment should give a near-full eclipse, got {f}");
+        assert!(
+            f > 0.9,
+            "alignment should give a near-full eclipse, got {f}"
+        );
     }
 
     #[test]
     fn moon_far_from_sun_has_no_effect() {
-        let f = solar_eclipse_factor(
-            glam::Vec3::Y,
-            SUN_R,
-            SUN_D,
-            -glam::Vec3::Y,
-            MOON_R,
-            MOON_D,
-        );
+        let f = solar_eclipse_factor(glam::Vec3::Y, SUN_R, SUN_D, -glam::Vec3::Y, MOON_R, MOON_D);
         assert_eq!(f, 0.0);
     }
 
@@ -104,14 +92,7 @@ mod tests {
         let sun_alpha = (SUN_R / SUN_D) as f32;
         let offset = sun_alpha * 0.5;
         let moon_dir = glam::Vec3::new(offset.sin(), offset.cos(), 0.0).normalize();
-        let f = solar_eclipse_factor(
-            glam::Vec3::Y,
-            SUN_R,
-            SUN_D,
-            moon_dir,
-            MOON_R,
-            MOON_D,
-        );
+        let f = solar_eclipse_factor(glam::Vec3::Y, SUN_R, SUN_D, moon_dir, MOON_R, MOON_D);
         assert!(f > 0.0 && f < 1.0, "expected partial, got {f}");
     }
 }

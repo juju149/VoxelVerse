@@ -115,8 +115,7 @@ impl CelestialSimState {
             }
             let dir_system = (delta / distance_m).as_vec3();
             let dir_world = (spin_rot * dir_system).normalize_or_zero();
-            let angular_radius_rad =
-                ((body.radius_m / distance_m).clamp(-1.0, 1.0)).asin() as f32;
+            let angular_radius_rad = ((body.radius_m / distance_m).clamp(-1.0, 1.0)).asin() as f32;
             // Phase: relative angle between moon and sun in local frame.
             // 0 = new (back lit), 1 = full (sun behind observer).
             let cos_sep = dir_world.dot(sun_dir_world).clamp(-1.0, 1.0);

@@ -66,8 +66,18 @@ impl WindState {
     /// Sample the current wind vector. `profile_blend` lets the caller smooth
     /// the base speed across a `current → next` transition without owning the
     /// blend state here.
-    pub fn sample(&self, current: &ResolvedProfile, next: Option<&ResolvedProfile>, blend: f32) -> WindVector {
-        let base = lerp(current.wind.base_speed, next.map(|p| p.wind.base_speed).unwrap_or(current.wind.base_speed), blend);
+    pub fn sample(
+        &self,
+        current: &ResolvedProfile,
+        next: Option<&ResolvedProfile>,
+        blend: f32,
+    ) -> WindVector {
+        let base = lerp(
+            current.wind.base_speed,
+            next.map(|p| p.wind.base_speed)
+                .unwrap_or(current.wind.base_speed),
+            blend,
+        );
         let speed = (base + self.gust_speed_m_s).max(0.0);
         let dir = glam::Vec3::new(self.heading_rad.cos(), 0.0, self.heading_rad.sin());
         WindVector {

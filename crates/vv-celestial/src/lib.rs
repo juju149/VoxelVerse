@@ -18,8 +18,8 @@ mod sim;
 mod snapshot;
 
 pub use body::{
-    CelestialBodyId, CelestialRegistry, RegistryError, ResolvedBody, ResolvedOrbit,
-    ResolvedSpin, ResolvedSurface,
+    CelestialBodyId, CelestialRegistry, RegistryError, ResolvedBody, ResolvedOrbit, ResolvedSpin,
+    ResolvedSurface,
 };
 pub use eclipse::solar_eclipse_factor;
 pub use orbit::{body_position, SystemPos};

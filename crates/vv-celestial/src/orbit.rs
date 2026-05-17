@@ -27,10 +27,13 @@ pub fn body_position(
     };
     match &body.orbit {
         Some(orbit) => {
-            let theta =
-                std::f64::consts::TAU * (t_seconds / orbit.period_s) + orbit.phase_rad;
+            let theta = std::f64::consts::TAU * (t_seconds / orbit.period_s) + orbit.phase_rad;
             parent_pos
-                + SystemPos::new(orbit.semi_major_axis_m * theta.cos(), 0.0, orbit.semi_major_axis_m * theta.sin())
+                + SystemPos::new(
+                    orbit.semi_major_axis_m * theta.cos(),
+                    0.0,
+                    orbit.semi_major_axis_m * theta.sin(),
+                )
         }
         None => parent_pos,
     }
@@ -41,8 +44,8 @@ mod tests {
     use super::*;
     use crate::body::{CelestialBodyId, CelestialRegistry};
     use vv_content_schema::{
-        RawCelestialBodyDef, RawCelestialKind, RawCelestialOrbitDef, RawCelestialSpinDef,
-        RawCelestialSurfaceDef, ContentRef,
+        ContentRef, RawCelestialBodyDef, RawCelestialKind, RawCelestialOrbitDef,
+        RawCelestialSpinDef, RawCelestialSurfaceDef,
     };
 
     fn surf() -> RawCelestialSurfaceDef {
@@ -60,7 +63,12 @@ mod tests {
         }
     }
 
-    fn body(name: &str, parent: Option<&str>, radius_au: f64, period_s: f64) -> RawCelestialBodyDef {
+    fn body(
+        name: &str,
+        parent: Option<&str>,
+        radius_au: f64,
+        period_s: f64,
+    ) -> RawCelestialBodyDef {
         RawCelestialBodyDef {
             display_name: name.to_string(),
             kind: RawCelestialKind::Planet,

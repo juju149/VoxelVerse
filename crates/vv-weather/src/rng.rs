@@ -72,7 +72,10 @@ mod tests {
                 break;
             }
         }
-        assert!(differ, "two distinct seeds must not produce identical streams");
+        assert!(
+            differ,
+            "two distinct seeds must not produce identical streams"
+        );
     }
 
     #[test]
