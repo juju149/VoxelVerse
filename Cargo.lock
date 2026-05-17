@@ -2269,6 +2269,7 @@ dependencies = [
  "bytemuck",
  "glam",
  "glyphon",
+ "naga",
  "png",
  "rayon",
  "sysinfo",

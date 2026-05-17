@@ -62,7 +62,7 @@ impl<'a> Renderer<'a> {
             }),
             primitive: wgpu::PrimitiveState {
                 topology,
-                cull_mode: None,
+                cull_mode: Some(wgpu::Face::Back),
                 polygon_mode: if wireframe {
                     wgpu::PolygonMode::Line
                 } else {

@@ -23,8 +23,8 @@ impl GoldenScene {
             color_only_mode: false,
             volumetric_fog: true,
             volumetric_clouds: false,
-            fxaa: true,
-            bloom: false,
+            soft_aa: true,
+            highlight_lift: false,
             cloud_steps: 6,
         },
     };

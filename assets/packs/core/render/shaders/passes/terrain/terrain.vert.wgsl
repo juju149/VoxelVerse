@@ -25,6 +25,7 @@ struct VertexOut {
     @location(4) shadow_pos: vec3<f32>,
     @location(5) color: vec3<f32>,
     @location(6) @interpolate(flat) packed_tex_index: u32,
+    @location(7) @interpolate(flat) lod_alpha: f32,
 }
 
 @vertex
@@ -42,5 +43,6 @@ fn vs_main(in: VertexIn) -> VertexOut {
     out.shadow_pos = vec3<f32>(light_clip.x * 0.5 + 0.5, -light_clip.y * 0.5 + 0.5, light_clip.z);
     out.color = in.color;
     out.packed_tex_index = in.tex_index;
+    out.lod_alpha = vv_lod_alpha(local.params);
     return out;
 }

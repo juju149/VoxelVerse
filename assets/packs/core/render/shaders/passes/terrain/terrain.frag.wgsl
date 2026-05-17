@@ -13,6 +13,7 @@
 #include "include/voxel/face_variation.wgsl"
 #include "include/voxel/triplanar.wgsl"
 #include "include/voxel/ao.wgsl"
+#include "include/voxel/lod_fade.wgsl"
 #include "include/camera/depth.wgsl"
 
 // Ghibli-styled terrain fragment.
@@ -28,6 +29,7 @@ struct VertexOut {
     @location(4) shadow_pos: vec3<f32>,
     @location(5) color: vec3<f32>,
     @location(6) @interpolate(flat) packed_tex_index: u32,
+    @location(7) @interpolate(flat) lod_alpha: f32,
 }
 
 fn vv_prepare_albedo(
@@ -57,14 +59,15 @@ fn vv_prepare_albedo(
 
 // Light contribution from the sun: wrap-around diffuse + soft backlight.
 // Shadows are tinted warm at dawn and cool during the day for painterly depth.
+// shadow: pre-computed shadow factor [0,1] shared with specular to avoid
+// sampling the shadow map twice per fragment.
 fn vv_ghibli_direct(
     normal: vec3<f32>,
     world_pos: vec3<f32>,
-    shadow_pos: vec3<f32>,
+    shadow: f32,
 ) -> vec3<f32> {
     let sun_dir = vv_sun_direction();
     let ndotl = vv_sun_wrap_diffuse(normal, sun_dir);
-    let shadow = vv_shadow(shadow_pos, ndotl, vv_shadow_pcf_level());
 
     // Painterly shadow tint mixes sky + dawn warmth.
     let dawn = vv_dawn_factor();
@@ -96,6 +99,13 @@ fn vv_ghibli_sky_lift(color: vec3<f32>, normal: vec3<f32>, world_pos: vec3<f32>)
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
+    // Dithered LOD fade: stochastically discard pixels when a chunk is
+    // spawning in or dying out. Operates on the opaque depth pass so no
+    // alpha-blending pipeline is needed.
+    if in.lod_alpha < vv_dither_threshold(in.clip_pos) {
+        discard;
+    }
+
     let layer = in.packed_tex_index & VV_MATERIAL_INDEX_MASK;
     let qbits = vv_quality_bits();
 
@@ -113,14 +123,18 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 
     let ao = vv_vertex_ao(in.color) * vv_soft_contact_occlusion(geometry_normal, in.world_pos);
 
-    let direct = vv_ghibli_direct(normal, in.world_pos, in.shadow_pos);
+    // Compute shadow once and share between direct lighting and specular.
+    // At PCF level 2 this saves up to 13 depth-compare samples per fragment.
+    let sun_dir = vv_sun_direction();
+    let ndotl = vv_sun_wrap_diffuse(normal, sun_dir);
+    let shadow = vv_shadow(in.shadow_pos, ndotl, vv_shadow_pcf_level());
+
+    let direct = vv_ghibli_direct(normal, in.world_pos, shadow);
     let ambient = vv_hemisphere_ambient(normal, in.world_pos) * ao;
     let bounce = vv_micro_bounce(normal, in.world_pos, albedo);
 
-    // Crisp painterly highlight, gated by shadow.
-    let sun_dir = vv_sun_direction();
-    let shadow_for_spec = vv_shadow(in.shadow_pos, max(dot(normal, sun_dir), 0.0), vv_shadow_pcf_level());
-    let specular = vv_sun_color() * vv_specular_lite(normal, view_dir, sun_dir, roughness) * shadow_for_spec;
+    // Crisp painterly highlight, gated by the same shadow.
+    let specular = vv_sun_color() * vv_specular_lite(normal, view_dir, sun_dir, roughness) * shadow;
 
     var color = albedo * (direct + ambient + bounce) + specular;
     color = vv_ghibli_sky_lift(color, geometry_normal, in.world_pos);

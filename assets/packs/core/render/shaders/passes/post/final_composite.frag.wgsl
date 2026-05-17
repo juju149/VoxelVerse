@@ -3,8 +3,8 @@
 
 // Ghibli final grade.
 // AgX tonemap → painterly grade → subtle vignette.
-// Optional FXAA (qbit 64) and over-bright bloom lift (qbit 128).
-// Single scene sample on the fast path, 5 taps when FXAA is on.
+// Optional soft AA (qbit 64, 5-tap box blur) and highlight lift (qbit 128).
+// Single scene sample on the fast path, 5 taps when soft AA is on.
 
 @group(1) @binding(0) var t_scene: texture_2d<f32>;
 @group(1) @binding(1) var s_scene: sampler;
@@ -54,7 +54,7 @@ fn fs_main(in: FullscreenVertexOut) -> @location(0) vec4<f32> {
 
     var color = vv_sample_scene(in.uv);
 
-    // Cheap FXAA-style box blur on quality flag.
+    // 5-tap box blur for soft edge anti-aliasing.
     if (qbits & 64u) != 0u {
         let l = vv_sample_scene(in.uv - vec2<f32>(px.x, 0.0));
         let r = vv_sample_scene(in.uv + vec2<f32>(px.x, 0.0));
@@ -63,7 +63,7 @@ fn fs_main(in: FullscreenVertexOut) -> @location(0) vec4<f32> {
         color = color * 0.60 + (l + r + u + d) * 0.10;
     }
 
-    // Soft over-bright glow (no extra blur pass).
+    // Highlight lift: raise over-bright values without a full bloom pass.
     if (qbits & 128u) != 0u {
         let bloom = max(color - vec3<f32>(1.0), vec3<f32>(0.0));
         color += bloom * 0.22;

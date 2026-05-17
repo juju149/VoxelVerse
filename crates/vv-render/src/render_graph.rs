@@ -50,6 +50,51 @@ pub enum ShaderPath {
 }
 
 impl ShaderPath {
+    /// Shaders that have a compiled pipeline and are drawn every frame (or
+    /// conditionally when their quality flag / atmosphere value is non-zero).
+    /// These must compile without error before the renderer starts.
+    pub const ACTIVE_IN_PASS: &'static [ShaderPath] = &[
+        ShaderPath::TerrainVertex,
+        ShaderPath::TerrainFragment,
+        ShaderPath::TerrainDepthVertex,
+        ShaderPath::SkyVertex,
+        ShaderPath::SkyFragment,
+        ShaderPath::CloudsVertex,
+        ShaderPath::CloudsFragment,
+        ShaderPath::VolumetricFogVertex,
+        ShaderPath::VolumetricFogFragment,
+        ShaderPath::PrecipitationVertex,
+        ShaderPath::PrecipitationFragment,
+        ShaderPath::CelestialVertex,
+        ShaderPath::CelestialFragment,
+        ShaderPath::FullscreenVertex,
+        ShaderPath::FinalCompositeFragment,
+        ShaderPath::UiVertex,
+        ShaderPath::UiFragment,
+    ];
+
+    /// Shaders that are loaded and validated but whose pipelines are not yet
+    /// wired into any render pass. Must be promoted to ACTIVE_IN_PASS before
+    /// being used in production; their absence does not block startup.
+    pub const OPTIONAL_FEATURE: &'static [ShaderPath] = &[
+        ShaderPath::WaterVertex,
+        ShaderPath::WaterFragment,
+        ShaderPath::FoliageVertex,
+        ShaderPath::FoliageFragment,
+        ShaderPath::FxaaFragment,
+        ShaderPath::BloomDownsampleFragment,
+        ShaderPath::BloomUpsampleFragment,
+    ];
+
+    /// Shaders only active when a debug overlay is enabled at runtime.
+    pub const DEBUG_ONLY: &'static [ShaderPath] = &[
+        ShaderPath::DebugNormalsFragment,
+        ShaderPath::DebugDepthFragment,
+        ShaderPath::DebugLightingFragment,
+    ];
+
+    /// Union of all three categories. Used by ShaderLibrary::load to verify
+    /// every shader file exists on disk at startup.
     pub const REQUIRED: &'static [ShaderPath] = &[
         ShaderPath::TerrainVertex,
         ShaderPath::TerrainFragment,
@@ -127,6 +172,20 @@ mod tests {
                 .join("shaders")
                 .join(shader.relative());
             assert!(path.is_file(), "missing shader {}", path.display());
+        }
+    }
+
+    /// Parse all ACTIVE_IN_PASS shaders with naga to catch WGSL errors at
+    /// test-time rather than at runtime (wgpu device.create_shader_module panic).
+    #[test]
+    fn active_shaders_are_valid_wgsl() {
+        let core_pack = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
+        let lib =
+            crate::shader_library::ShaderLibrary::load(&core_pack).expect("shader library loads");
+        for &shader in ShaderPath::ACTIVE_IN_PASS {
+            let source = lib.source(shader).expect("shader in library");
+            naga::front::wgsl::parse_str(source)
+                .unwrap_or_else(|e| panic!("WGSL parse failed in {}: {e}", shader.relative()));
         }
     }
 

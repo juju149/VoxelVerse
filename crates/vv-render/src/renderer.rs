@@ -246,6 +246,7 @@ struct BlockDamageCacheSignature {
 }
 
 mod block_damage_overlay;
+mod celestial_renderer;
 mod cloud_renderer;
 mod collision_debug_renderer;
 mod debug_draw;
@@ -261,7 +262,6 @@ mod loading_pass;
 mod lod_selection;
 mod metrics;
 mod pipelines;
-mod celestial_renderer;
 mod post_process_renderer;
 mod precipitation_renderer;
 mod prewarm;

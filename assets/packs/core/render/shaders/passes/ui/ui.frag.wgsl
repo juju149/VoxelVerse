@@ -13,6 +13,7 @@ struct UiVertexOut {
     @location(4) shadow_pos: vec3<f32>,
     @location(5) color: vec3<f32>,
     @location(6) @interpolate(flat) packed_tex_index: u32,
+    @location(7) @interpolate(flat) lod_alpha: f32,
 }
 
 @fragment
@@ -24,4 +25,5 @@ fn fs_main(in: UiVertexOut) -> @location(0) vec4<f32> {
     let tex = textureSample(t_albedo, s_material, in.uv, i32(mat_idx) - 1).rgb;
     return vec4<f32>(tex * in.color, 1.0);
 }
+
 

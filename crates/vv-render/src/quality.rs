@@ -1,17 +1,18 @@
 //! Runtime-tunable rendering quality knobs.
 //!
 //! Single responsibility: own the values that the shader consumes for its
-//! optional cost paths (shadow PCF kernel size, triplanar grain).  Encoded
-//! into the unused `cam_pos.w` slot of the global uniform to avoid touching
-//! the bind-group layout and wgsl struct size.
+//! optional cost paths (shadow PCF kernel size, triplanar grain).  Packed
+//! as a float bitmask written to `global.render_params.y` in the frame
+//! uniform.  The same bits are redundantly stored in `global.cam_pos.w`
+//! for legacy callers — `render_params.y` is the canonical source.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PcfQuality {
-    /// 3×3 (9 samples) — cheapest, slight banding on shadow edges.
+    /// 1 tap — no filtering, hard shadow edges.
     Low,
-    /// 5×5 (25 samples) — balanced default for high-end machines.
+    /// 5-tap cross — soft edges at low cost.
     Medium,
-    /// 7×7 (49 samples) — softest shadow edges, expensive.
+    /// 13-tap Poisson — soft shadows, expensive on large terrain views.
     High,
 }
 
@@ -37,8 +38,12 @@ pub struct QualitySettings {
     pub color_only_mode: bool,
     pub volumetric_fog: bool,
     pub volumetric_clouds: bool,
-    pub fxaa: bool,
-    pub bloom: bool,
+    /// 5-tap box blur in final_composite — cheaper than FXAA, reduces aliasing
+    /// on geometry edges without the full FXAA pass.
+    pub soft_aa: bool,
+    /// Over-bright glow via single highlight lift in final_composite — not a
+    /// real multi-pass bloom, just a one-tap overbright clamp.
+    pub highlight_lift: bool,
     pub cloud_steps: u32,
 }
 
@@ -60,26 +65,27 @@ impl Default for QualitySettings {
             color_only_mode: false,
             volumetric_fog: false,
             volumetric_clouds: false,
-            fxaa: false,
-            bloom: false,
+            soft_aa: false,
+            highlight_lift: false,
             cloud_steps: 0,
         }
     }
 }
 
 impl QualitySettings {
-    /// Pack settings into a single f32 written to `global.cam_pos.w`.
-    /// Bit 0 = triplanar; bits 1-2 = pcf level; bit 3 = color-only mode;
-    /// bit 4 = volumetric fog; bit 5 = volumetric clouds; bit 6 = FXAA;
-    /// bit 7 = bloom.
+    /// Pack settings into a single f32 written to `global.render_params.y`
+    /// (also mirrored to `global.cam_pos.w` for bind-group stability).
+    /// Bit 0 = triplanar; bits 1-2 = pcf level (0=1tap,1=5tap,2=13tap);
+    /// bit 3 = color-only mode; bit 4 = volumetric fog;
+    /// bit 5 = volumetric clouds; bit 6 = soft AA; bit 7 = highlight lift.
     pub fn pack(self) -> f32 {
         let bits = (self.triplanar_grain as u32)
             | (self.pcf.level_bits() << 1)
             | ((self.color_only_mode as u32) << 3)
             | ((self.volumetric_fog as u32) << 4)
             | ((self.volumetric_clouds as u32) << 5)
-            | ((self.fxaa as u32) << 6)
-            | ((self.bloom as u32) << 7);
+            | ((self.soft_aa as u32) << 6)
+            | ((self.highlight_lift as u32) << 7);
         bits as f32
     }
 }
@@ -98,8 +104,8 @@ mod tests {
             color_only_mode: false,
             volumetric_fog: true,
             volumetric_clouds: true,
-            fxaa: true,
-            bloom: true,
+            soft_aa: true,
+            highlight_lift: true,
             cloud_steps: 10,
         };
         let bits = settings.pack() as u32;

@@ -129,7 +129,11 @@ mod tests {
         assert!(evaluated.sun_intensity <= 1.5 + 1e-5);
     }
 
-    fn celestial_state(sun_dir: glam::Vec3, eclipse: f32, band: CelestialAltitudeBand) -> CelestialState {
+    fn celestial_state(
+        sun_dir: glam::Vec3,
+        eclipse: f32,
+        band: CelestialAltitudeBand,
+    ) -> CelestialState {
         CelestialState {
             sun_dir_world: sun_dir,
             sun_disc_color: glam::Vec3::new(1.0, 0.95, 0.85),
@@ -150,7 +154,11 @@ mod tests {
         time.tick(0.0);
         let mut evaluated = config.evaluate(500.0, time, QualitySettings::default());
         let new_dir = glam::Vec3::new(0.3, 0.9, 0.1).normalize();
-        evaluated.apply_celestial(&celestial_state(new_dir, 0.0, CelestialAltitudeBand::Ground));
+        evaluated.apply_celestial(&celestial_state(
+            new_dir,
+            0.0,
+            CelestialAltitudeBand::Ground,
+        ));
         assert!((evaluated.sun_dir - new_dir).length() < 1e-5);
     }
 
@@ -163,10 +171,18 @@ mod tests {
         let new_dir = glam::Vec3::new(0.0, 1.0, 0.0);
         let before = {
             let mut clear = evaluated;
-            clear.apply_celestial(&celestial_state(new_dir, 0.0, CelestialAltitudeBand::Ground));
+            clear.apply_celestial(&celestial_state(
+                new_dir,
+                0.0,
+                CelestialAltitudeBand::Ground,
+            ));
             clear.sun_intensity
         };
-        evaluated.apply_celestial(&celestial_state(new_dir, 1.0, CelestialAltitudeBand::Ground));
+        evaluated.apply_celestial(&celestial_state(
+            new_dir,
+            1.0,
+            CelestialAltitudeBand::Ground,
+        ));
         assert!(
             evaluated.sun_intensity < before * 0.2,
             "totality must crush sun_intensity (got {} vs base {before})",

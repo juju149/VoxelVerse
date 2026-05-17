@@ -3,7 +3,37 @@ use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::lod_animation::AnyKey;
 use crate::snapshot::RenderFrameSnapshot;
 use crate::types::ChunkMesh;
+use std::collections::HashMap;
 use vv_math::Frustum;
+use vv_voxel::{LodKey, SurfaceChunkKey, CHUNK_SIZE};
+
+fn lod_tile_fully_covered_by_voxel_chunks(
+    lod: LodKey,
+    chunks: &HashMap<SurfaceChunkKey, ChunkMesh>,
+) -> bool {
+    if lod.size == 0 {
+        return false;
+    }
+
+    let first_u = lod.x / CHUNK_SIZE;
+    let first_v = lod.y / CHUNK_SIZE;
+    let last_u = (lod.x + lod.size - 1) / CHUNK_SIZE;
+    let last_v = (lod.y + lod.size - 1) / CHUNK_SIZE;
+
+    for u_idx in first_u..=last_u {
+        for v_idx in first_v..=last_v {
+            if !chunks.contains_key(&SurfaceChunkKey {
+                face: lod.face,
+                u_idx,
+                v_idx,
+            }) {
+                return false;
+            }
+        }
+    }
+
+    true
+}
 
 impl<'a> Renderer<'a> {
     pub fn render(&mut self, frame: &RenderFrameSnapshot<'_>) {
@@ -165,6 +195,16 @@ impl<'a> Renderer<'a> {
             }
             None => ([0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]),
         };
+
+        let render_celestial_pass = celestial_params[0] > 0.001
+            || celestial_params[1] > 0.001
+            || celestial_params[2] > 0.001
+            || celestial_params[3] > 0.0
+            || celestial_moon[3] > 0.0;
+        let render_clouds_pass = atmosphere.cloud_density > 0.001;
+        let render_volumetric_fog_pass =
+            self.quality.volumetric_fog && atmosphere.volumetric_fog_strength > 0.001;
+        let render_precipitation_pass = weather_params[0] > 0.001;
 
         let global_uniform = |view_proj: glam::Mat4| GlobalUniform {
             view_proj: view_proj.to_cols_array(),
@@ -338,10 +378,17 @@ impl<'a> Renderer<'a> {
         // Stars + moon + aurora additive overlay between sky and clouds so
         // clouds occlude them naturally. Self-skips when no celestial state
         // is supplied (every input is zero).
-        self.render_celestial(&mut enc);
+        if render_celestial_pass {
+            self.render_celestial(&mut enc);
+        }
 
         // --- PASS 3: CLOUDS ---
-        self.render_clouds(&mut enc);
+        // Skip when no cloud density is active (quality flag off or coverage = 0).
+        if atmosphere.cloud_density > 0.001 {
+            if render_clouds_pass {
+                self.render_clouds(&mut enc);
+            }
+        }
 
         // --- PASS 4: MAIN RENDER ---
         let terrain_draw_started = std::time::Instant::now();
@@ -380,7 +427,10 @@ impl<'a> Renderer<'a> {
             pass.set_bind_group(2, &self.atlas_bind, &[]);
 
             // DRAW LOD CHUNKS
-            for mesh in self.lod_chunks.values() {
+            for (lod_key, mesh) in &self.lod_chunks {
+                if lod_tile_fully_covered_by_voxel_chunks(*lod_key, &self.chunks) {
+                    continue;
+                }
                 if TerrainRenderer::behind_planet_horizon(
                     surface_radius,
                     cam_pos,
@@ -478,13 +528,26 @@ impl<'a> Renderer<'a> {
         self.last_terrain_draw_ms = terrain_draw_started.elapsed().as_secs_f32() * 1000.0;
 
         // --- PASS 5: VOLUMETRIC FOG VEIL ---
-        self.render_volumetric_fog(&mut enc);
+        // Skip when the fog shader itself returns 0 (vv_fog_veil_alpha is
+        // disabled) or when the quality profile has volumetric fog off.
+        if atmosphere.volumetric_fog_strength > 0.0 {
+            if render_volumetric_fog_pass {
+                self.render_volumetric_fog(&mut enc);
+            }
+        }
 
         // --- PASS 5b: PRECIPITATION (Phase 3.B) ---
-        // Procedural rain/snow screen-space overlay. Self-skips in the
-        // shader when `weather_params.x == 0`, so it costs ~nothing when no
-        // weather state is supplied.
-        self.render_precipitation(&mut enc);
+        // Skip entirely when there is no active precipitation — saves one
+        // fullscreen triangle dispatch on clear weather frames.
+        let precip_intensity = frame
+            .weather
+            .map(|w| w.precipitation.intensity)
+            .unwrap_or(0.0);
+        if precip_intensity > 0.001 {
+            if render_precipitation_pass {
+                self.render_precipitation(&mut enc);
+            }
+        }
 
         // --- PASS 6: FINAL COMPOSITE ---
         self.render_final_composite(&mut enc, &view);
