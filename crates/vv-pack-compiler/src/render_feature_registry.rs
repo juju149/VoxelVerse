@@ -381,17 +381,17 @@ fn validate_kind_target_blend_combo(
     use RawRenderTargetKind::*;
 
     // Engine-side topology rules. Anything not listed is forbidden.
-    let ok = match (kind, target) {
-        (PostProcess, SceneHdr | PostPingPong | SwapchainLdr) => true,
-        (SkyLayer, SceneHdr) => true,
-        (WeatherLayer, SceneHdr | PostPingPong) => true,
-        (WaterSurface, SceneHdr) => true,
-        (FoliageSurface, SceneHdr) => true,
-        (TerrainMaterial, SceneHdr) => true,
-        (DebugView, SceneHdr | SwapchainLdr) => true,
-        (UiEffect, SwapchainLdr) => true,
-        _ => false,
-    };
+    let ok = matches!(
+        (kind, target),
+        (PostProcess, SceneHdr | PostPingPong | SwapchainLdr)
+            | (SkyLayer, SceneHdr)
+            | (WeatherLayer, SceneHdr | PostPingPong)
+            | (WaterSurface, SceneHdr)
+            | (FoliageSurface, SceneHdr)
+            | (TerrainMaterial, SceneHdr)
+            | (DebugView, SceneHdr | SwapchainLdr)
+            | (UiEffect, SwapchainLdr)
+    );
     if !ok {
         return Err(format!(
             "feature kind {:?} cannot render into target {:?}",
