@@ -2161,6 +2161,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vv-celestial"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "vv-content-schema",
+ "vv-world",
+]
+
+[[package]]
 name = "vv-content-schema"
 version = "0.1.0"
 dependencies = [
