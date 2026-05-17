@@ -10,3 +10,5 @@ vv-voxel = { path = "../vv-voxel" }
 
 naga = { version = "0.19", features = ["wgsl-in"] }
 png.workspace = true
+ron.workspace = true
+serde.workspace = true

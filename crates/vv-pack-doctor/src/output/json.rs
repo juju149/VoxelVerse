@@ -331,6 +331,13 @@ fn field_planet(out: &mut String, planet: &PlanetReport, depth: usize, comma: bo
         "render_profiles",
         planet.counts.render_profiles as i64,
         depth + 2,
+        true,
+    );
+    field_num(
+        out,
+        "render_features",
+        planet.counts.render_features as i64,
+        depth + 2,
         false,
     );
     indent(out, depth + 1);

@@ -27,6 +27,7 @@ mod generated;
 mod media;
 pub mod object;
 mod pack;
+mod render_feature;
 mod skeleton;
 mod sound;
 mod version;
@@ -44,6 +45,11 @@ pub use media::{
 };
 pub use object::*;
 pub use pack::{RawIdentityMode, RawPackContentRoots, RawPackKind, RawPackManifest, RawPackRules};
+pub use render_feature::{
+    RawAllowedBindGroup, RawBlendMode, RawDepthMode, RawRenderFeatureCost, RawRenderFeatureDef,
+    RawRenderFeatureEntryPoints, RawRenderFeatureKind, RawRenderFeatureQuality,
+    RawRenderFeatureSlot, RawRenderProfileDef, RawRenderQualityClass, RawRenderTargetKind,
+};
 pub use skeleton::*;
 pub use sound::*;
 pub use version::*;

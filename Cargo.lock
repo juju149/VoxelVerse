@@ -2228,6 +2228,8 @@ version = "0.1.0"
 dependencies = [
  "naga",
  "png",
+ "ron",
+ "serde",
  "vv-content-schema",
  "vv-pack-loader",
  "vv-voxel",

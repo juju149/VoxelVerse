@@ -11,6 +11,7 @@ mod planet_registry;
 mod procedural;
 mod procedural_registry;
 mod recipe_registry;
+mod render_feature_registry;
 pub mod shader;
 mod tag_registry;
 mod texture_registry;
@@ -36,6 +37,11 @@ pub use procedural_registry::*;
 pub use recipe_registry::{
     CompiledIngredient, CompiledRecipe, CompiledRecipeKind, CompiledShapedRecipe,
     CompiledShapelessRecipe, CompiledSmeltingRecipe, RecipeId, RecipeRegistry,
+};
+pub use render_feature_registry::{
+    compile_pack_render_features, compile_render_features, CompiledRenderFeature,
+    CompiledRenderProfile, CompiledShaderRef, RawRenderFeatureInput, RawRenderProfileInput,
+    RenderFeatureCompileError, RenderFeatureRegistry,
 };
 pub use tag_registry::{CompiledTag, TagId, TagRegistry};
 pub use texture_registry::{DecodedMaterialTextureSet, TextureRegistry};

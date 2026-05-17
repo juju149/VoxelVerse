@@ -21,6 +21,8 @@ pub const WEATHER_FORMAT_VERSION: u32 = 1;
 pub const BIOME_AMBIENCE_FORMAT_VERSION: u32 = 1;
 pub const CELESTIAL_FORMAT_VERSION: u32 = 1;
 pub const STAR_CATALOG_FORMAT_VERSION: u32 = 1;
+pub const RENDER_FEATURE_FORMAT_VERSION: u32 = 1;
+pub const RENDER_PROFILE_FORMAT_VERSION: u32 = 1;
 
 /// Checks a `format_version` field against the expected constant.
 /// Returns a structured error string if the version mismatches.

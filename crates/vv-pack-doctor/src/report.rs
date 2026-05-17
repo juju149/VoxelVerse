@@ -111,6 +111,7 @@ pub struct PlanetCounts {
     pub ore_rules: usize,
     pub cave_rules: usize,
     pub render_profiles: usize,
+    pub render_features: usize,
 }
 
 #[derive(Debug, Clone, Default)]
