@@ -2262,7 +2262,6 @@ dependencies = [
  "rayon",
  "sysinfo",
  "vv-diagnostics",
- "vv-gameplay",
  "vv-math",
  "vv-meshing",
  "vv-pack-compiler",

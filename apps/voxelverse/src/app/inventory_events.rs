@@ -1,15 +1,12 @@
 use crate::app::cursor::{grab_cursor, release_cursor};
+use crate::app::render_snapshot::frame_from_inventory_context;
 use crate::app::runtime_state::InventoryInputContext;
 use crate::ui::{
     HeldStack, InventoryButton, InventoryLayout, InventoryUiState, UiTheme, UiViewport,
 };
-use vv_gameplay::{
-    craft_recipe, quick_craft_recipe_indices, Hotbar, HotbarSlot, Inventory, SlotRef,
-};
+use vv_gameplay::{craft_recipe, quick_craft_recipe_indices, Hotbar, HotbarSlot, Inventory};
 use vv_pack_compiler::{CompiledRecipe, RecipeRegistry, TagRegistry};
-use vv_render::{
-    RenderCamera, RenderConsoleSnapshot, RenderDebugFlags, RenderFrameSnapshot, Renderer,
-};
+use vv_render::{RenderItemStack, RenderSlotRef, Renderer};
 use vv_world::PlanetData;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -80,32 +77,7 @@ pub(super) fn handle_inventory_window_event(
         WindowEvent::RedrawRequested => {
             let w = renderer.config.width as f32;
             let h = renderer.config.height as f32;
-            let frame = RenderFrameSnapshot {
-                camera: RenderCamera {
-                    view_proj: ctx.controller.get_matrix(ctx.player, w, h),
-                    camera_pos: ctx.controller.get_camera_pos(ctx.player),
-                    player_pos: ctx.player.position,
-                    model_matrix: ctx.player.get_model_matrix(),
-                    is_first_person: ctx.controller.first_person,
-                    cursor_id: ctx.controller.cursor_id,
-                },
-                planet: ctx.planet,
-                hotbar: ctx.hotbar,
-                inventory: ctx.inventory,
-                inventory_ui: ctx.inventory_ui,
-                recipes: ctx.recipes,
-                console: RenderConsoleSnapshot {
-                    height_fraction: ctx.console.height_fraction,
-                    history: &ctx.console.history,
-                    input_buffer: &ctx.console.input_buffer,
-                },
-                debug: RenderDebugFlags {
-                    show_collisions: ctx.dev.show_collisions,
-                    freeze_culling: ctx.dev.freeze_culling,
-                    is_wireframe: ctx.dev.is_wireframe,
-                    debug_mode: false,
-                },
-            };
+            let frame = frame_from_inventory_context(ctx, w, h);
             renderer.render(&frame);
         }
         _ => {}
@@ -162,7 +134,7 @@ fn handle_inventory_key(
         PhysicalKey::Code(code) => {
             if let Some(idx) = digit_for_keycode(code) {
                 if let Some(slot_ref) = ui.hovered_slot {
-                    if !matches!(slot_ref, SlotRef::Hotbar(i) if i == idx) {
+                    if !matches!(slot_ref, RenderSlotRef::Hotbar(i) if i == idx) {
                         swap_with_hotbar(hotbar, inventory, slot_ref, idx);
                     }
                     renderer.window.request_redraw();
@@ -211,7 +183,7 @@ fn close_inventory(
 fn return_held(hotbar: &mut Hotbar, inventory: &mut Inventory, held: HeldStack) {
     let source_empty = read_slot(hotbar, inventory, held.source).is_none();
     if source_empty {
-        place_into(hotbar, inventory, held.source, held.stack);
+        place_into(hotbar, inventory, held.source, gameplay_stack(held.stack));
         return;
     }
     for _ in 0..held.stack.quantity {
@@ -303,14 +275,14 @@ fn handle_inventory_left_click(
             if let Some(stack) = read_slot(hotbar, inventory, target) {
                 place_into_optional(hotbar, inventory, target, None);
                 ui.held = Some(HeldStack {
-                    stack,
+                    stack: render_stack(stack),
                     source: target,
                 });
             }
         }
         Some(held) => match read_slot(hotbar, inventory, target) {
             None => {
-                place_into(hotbar, inventory, target, held.stack);
+                place_into(hotbar, inventory, target, gameplay_stack(held.stack));
             }
             Some(existing) if existing.item_id == held.stack.item_id => {
                 let merged = HotbarSlot {
@@ -320,9 +292,9 @@ fn handle_inventory_left_click(
                 place_into(hotbar, inventory, target, merged);
             }
             Some(existing) => {
-                place_into(hotbar, inventory, target, held.stack);
+                place_into(hotbar, inventory, target, gameplay_stack(held.stack));
                 ui.held = Some(HeldStack {
-                    stack: existing,
+                    stack: render_stack(existing),
                     source: target,
                 });
             }
@@ -344,7 +316,7 @@ fn handle_inventory_right_click(
                 if stack.quantity <= 1 {
                     place_into_optional(hotbar, inventory, target, None);
                     ui.held = Some(HeldStack {
-                        stack,
+                        stack: render_stack(stack),
                         source: target,
                     });
                 } else {
@@ -360,7 +332,7 @@ fn handle_inventory_right_click(
                         },
                     );
                     ui.held = Some(HeldStack {
-                        stack: HotbarSlot {
+                        stack: RenderItemStack {
                             item_id: stack.item_id,
                             quantity: half_up,
                         },
@@ -398,9 +370,9 @@ fn handle_inventory_right_click(
             }
             Some(_) => {
                 let existing = read_slot(hotbar, inventory, target).unwrap();
-                place_into(hotbar, inventory, target, held.stack);
+                place_into(hotbar, inventory, target, gameplay_stack(held.stack));
                 ui.held = Some(HeldStack {
-                    stack: existing,
+                    stack: render_stack(existing),
                     source: target,
                 });
             }
@@ -444,12 +416,12 @@ fn max_craft_quantity(
     max
 }
 
-fn quick_move(hotbar: &mut Hotbar, inventory: &mut Inventory, source: SlotRef) {
+fn quick_move(hotbar: &mut Hotbar, inventory: &mut Inventory, source: RenderSlotRef) {
     let Some(stack) = read_slot(hotbar, inventory, source) else {
         return;
     };
     match source {
-        SlotRef::Inventory(_) => {
+        RenderSlotRef::Inventory(_) => {
             place_into_optional(hotbar, inventory, source, None);
             let mut slots = *hotbar.slots();
             if let Some(slot) = slots
@@ -466,7 +438,7 @@ fn quick_move(hotbar: &mut Hotbar, inventory: &mut Inventory, source: SlotRef) {
             }
             hotbar.set_slots(slots);
         }
-        SlotRef::Hotbar(_) => {
+        RenderSlotRef::Hotbar(_) => {
             place_into_optional(hotbar, inventory, source, None);
             let mut placed = false;
             for slot in inventory
@@ -508,7 +480,7 @@ fn quick_move(hotbar: &mut Hotbar, inventory: &mut Inventory, source: SlotRef) {
 fn swap_with_hotbar(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
-    target: SlotRef,
+    target: RenderSlotRef,
     hotbar_index: usize,
 ) {
     let a = read_slot(hotbar, inventory, target);
@@ -519,7 +491,7 @@ fn swap_with_hotbar(
     hotbar.set_slots(slots);
 }
 
-fn drop_one_from_slot(hotbar: &mut Hotbar, inventory: &mut Inventory, slot: SlotRef) {
+fn drop_one_from_slot(hotbar: &mut Hotbar, inventory: &mut Inventory, slot: RenderSlotRef) {
     let Some(stack) = read_slot(hotbar, inventory, slot) else {
         return;
     };
@@ -547,31 +519,50 @@ fn drop_one_from_held(ui: &mut InventoryUiState) {
     }
 }
 
-fn read_slot(hotbar: &Hotbar, inventory: &Inventory, slot: SlotRef) -> Option<HotbarSlot> {
+fn read_slot(hotbar: &Hotbar, inventory: &Inventory, slot: RenderSlotRef) -> Option<HotbarSlot> {
     match slot {
-        SlotRef::Hotbar(i) => hotbar.slots()[i],
-        SlotRef::Inventory(i) => inventory.slot(i),
+        RenderSlotRef::Hotbar(i) => hotbar.slots()[i],
+        RenderSlotRef::Inventory(i) => inventory.slot(i),
     }
 }
 
-fn place_into(hotbar: &mut Hotbar, inventory: &mut Inventory, slot: SlotRef, stack: HotbarSlot) {
+fn place_into(
+    hotbar: &mut Hotbar,
+    inventory: &mut Inventory,
+    slot: RenderSlotRef,
+    stack: HotbarSlot,
+) {
     place_into_optional(hotbar, inventory, slot, Some(stack));
 }
 
 fn place_into_optional(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
-    slot: SlotRef,
+    slot: RenderSlotRef,
     stack: Option<HotbarSlot>,
 ) {
     match slot {
-        SlotRef::Hotbar(i) => {
+        RenderSlotRef::Hotbar(i) => {
             let mut new_slots = *hotbar.slots();
             new_slots[i] = stack;
             hotbar.set_slots(new_slots);
         }
-        SlotRef::Inventory(i) => {
+        RenderSlotRef::Inventory(i) => {
             inventory.set(i, stack);
         }
+    }
+}
+
+fn render_stack(stack: HotbarSlot) -> RenderItemStack {
+    RenderItemStack {
+        item_id: stack.item_id,
+        quantity: stack.quantity,
+    }
+}
+
+fn gameplay_stack(stack: RenderItemStack) -> HotbarSlot {
+    HotbarSlot {
+        item_id: stack.item_id,
+        quantity: stack.quantity,
     }
 }

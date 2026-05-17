@@ -1,9 +1,9 @@
-use super::inventory::{recipe_ingredient_counts, selected_recipe_index, InventoryTextSpec};
+use super::inventory::{selected_recipe_index, InventoryTextSpec};
 use super::inventory_geometry::equip_slot_rects;
-use crate::ui::{InventoryLayout, InventoryUiState, UiTheme};
-use vv_gameplay::{quick_craft_recipe_indices, Hotbar, Inventory};
-use vv_pack_compiler::{CompiledIngredient, RecipeRegistry};
-use vv_world::PlanetData;
+use crate::snapshot::{
+    RenderCraftSnapshot, RenderHotbarSnapshot, RenderInventorySnapshot, RenderInventoryUiSnapshot,
+};
+use crate::ui::{InventoryLayout, UiTheme};
 
 // =============================================================================
 // Text spec helpers
@@ -70,7 +70,7 @@ pub(super) fn push_search_text(
     specs: &mut Vec<InventoryTextSpec>,
     theme: &UiTheme,
     layout: &InventoryLayout,
-    ui: &InventoryUiState,
+    ui: &RenderInventoryUiSnapshot,
 ) {
     let (text, color) = if ui.search_query.is_empty() {
         (
@@ -97,7 +97,7 @@ pub(super) fn push_filter_text(
     specs: &mut Vec<InventoryTextSpec>,
     theme: &UiTheme,
     layout: &InventoryLayout,
-    ui: &InventoryUiState,
+    ui: &RenderInventoryUiSnapshot,
 ) {
     let size = theme.text.control_size * layout.scale;
     for (filter, rect) in &layout.filter_chips {
@@ -126,11 +126,11 @@ pub(super) fn push_quantity_badges(
     specs: &mut Vec<InventoryTextSpec>,
     theme: &UiTheme,
     layout: &InventoryLayout,
-    inventory: &Inventory,
+    inventory: &RenderInventorySnapshot,
 ) {
     let font = theme.quantity_badge.font_size * layout.scale;
     for (i, rect) in layout.inventory_slots.iter().enumerate() {
-        let Some(slot) = inventory.slot(i) else {
+        let Some(slot) = inventory.slots[i] else {
             continue;
         };
         if slot.quantity <= 1 {
@@ -155,9 +155,9 @@ pub(super) fn push_weight_text(
     specs: &mut Vec<InventoryTextSpec>,
     theme: &UiTheme,
     layout: &InventoryLayout,
-    ui: &InventoryUiState,
-    inventory: &Inventory,
-    _hotbar: &Hotbar,
+    ui: &RenderInventoryUiSnapshot,
+    inventory: &RenderInventorySnapshot,
+    _hotbar: &RenderHotbarSnapshot,
 ) {
     let total_kg = total_weight_kg(inventory, ui);
     let label = format!("{:.1} / {:.0} kg", total_kg, ui.capacity_kg);
@@ -210,28 +210,25 @@ pub(super) fn push_equipment_placeholder(
     let _ = layout.equipment_placeholder_origin;
 }
 
-pub(super) fn push_craft_placeholder(
+pub(super) fn push_craft_text(
     specs: &mut Vec<InventoryTextSpec>,
     theme: &UiTheme,
     layout: &InventoryLayout,
-    ui: &InventoryUiState,
-    planet: &PlanetData,
-    recipes: &RecipeRegistry,
+    ui: &RenderInventoryUiSnapshot,
+    craft: &RenderCraftSnapshot,
 ) {
-    push_recipe_rows(specs, theme, layout, ui, planet, recipes);
-    push_recipe_detail(specs, theme, layout, ui, planet, recipes);
+    push_recipe_rows(specs, theme, layout, ui, craft);
+    push_recipe_detail(specs, theme, layout, ui, craft);
 }
 
 fn push_recipe_rows(
     specs: &mut Vec<InventoryTextSpec>,
     theme: &UiTheme,
     layout: &InventoryLayout,
-    ui: &InventoryUiState,
-    planet: &PlanetData,
-    recipes: &RecipeRegistry,
+    ui: &RenderInventoryUiSnapshot,
+    craft: &RenderCraftSnapshot,
 ) {
-    let recipe_indices = quick_craft_recipe_indices(recipes);
-    if recipe_indices.is_empty() {
+    if craft.recipes.is_empty() {
         specs.push(InventoryTextSpec {
             text: "Aucune recette chargee".to_string(),
             left: layout.right_panel.x + 18.0 * layout.scale,
@@ -242,24 +239,16 @@ fn push_recipe_rows(
         return;
     }
 
-    let selected = selected_recipe_index(ui, recipes);
+    let selected = selected_recipe_index(ui, craft);
     let size = theme.text.control_size * layout.scale;
-    for (row, recipe_index) in layout.craft_recipe_rows.iter().zip(recipe_indices) {
-        let Some(recipe) = recipes.recipes().get(recipe_index) else {
-            continue;
-        };
-        let item_name = planet
-            .items
-            .get(recipe.output_item)
-            .map(|item| item.display_name.as_str())
-            .unwrap_or("Objet inconnu");
-        let color = if Some(recipe_index) == selected {
+    for (row, recipe) in layout.craft_recipe_rows.iter().zip(craft.recipes.iter()) {
+        let color = if Some(recipe.index) == selected {
             theme.filter_chip.text_selected
         } else {
             theme.filter_chip.text
         };
         specs.push(InventoryTextSpec {
-            text: item_name.to_string(),
+            text: recipe.output_name.clone(),
             left: row.x + row.h + 12.0 * layout.scale,
             top: row.y + (row.h - size) * 0.5 - 2.0 * layout.scale,
             size,
@@ -272,59 +261,40 @@ fn push_recipe_detail(
     specs: &mut Vec<InventoryTextSpec>,
     theme: &UiTheme,
     layout: &InventoryLayout,
-    ui: &InventoryUiState,
-    planet: &PlanetData,
-    recipes: &RecipeRegistry,
+    ui: &RenderInventoryUiSnapshot,
+    craft: &RenderCraftSnapshot,
 ) {
-    let Some(recipe_index) = selected_recipe_index(ui, recipes) else {
-        return;
-    };
-    let Some(recipe) = recipes.recipes().get(recipe_index) else {
+    let Some(recipe) = craft.selected_recipe.as_ref() else {
         return;
     };
 
     let title_size = theme.text.section_size * layout.scale;
     let body_size = theme.text.body_size * layout.scale;
     let muted_size = theme.text.muted_size * layout.scale;
-    let output_name = planet
-        .items
-        .get(recipe.output_item)
-        .map(|item| item.display_name.as_str())
-        .unwrap_or("Objet inconnu");
     specs.push(InventoryTextSpec {
-        text: output_name.to_uppercase(),
+        text: recipe.output_name.to_uppercase(),
         left: layout.craft_output_slot.x + layout.craft_output_slot.w + 12.0 * layout.scale,
         top: layout.craft_output_slot.y + 2.0 * layout.scale,
         size: title_size,
         color: theme.text.section.as_rgb8(),
     });
-    let station = recipe
-        .station_tag
-        .as_deref()
-        .map(format_station_label)
-        .unwrap_or_else(|| "Fabrication main".to_string());
     specs.push(InventoryTextSpec {
-        text: station,
+        text: recipe.station_label.clone(),
         left: layout.craft_output_slot.x + layout.craft_output_slot.w + 12.0 * layout.scale,
         top: layout.craft_output_slot.y + title_size + 8.0 * layout.scale,
         size: muted_size,
         color: theme.text.muted.as_rgb8(),
     });
 
-    for (row, (ingredient, count)) in layout
-        .craft_ingredient_rows
-        .iter()
-        .zip(recipe_ingredient_counts(recipe))
-    {
-        let label = ingredient_label(&ingredient, planet);
+    for (row, ingredient) in layout.craft_ingredient_rows.iter().zip(&recipe.ingredients) {
         specs.push(InventoryTextSpec {
-            text: label,
+            text: ingredient.label.clone(),
             left: row.x + row.h + 12.0 * layout.scale,
             top: row.y + (row.h - muted_size) * 0.5 - 2.0 * layout.scale,
             size: muted_size,
             color: theme.text.body.as_rgb8(),
         });
-        let qty = format!("{} / craft", count);
+        let qty = format!("{} / craft", ingredient.count);
         let qty_w = qty.chars().count() as f32 * muted_size * 0.58;
         specs.push(InventoryTextSpec {
             text: qty,
@@ -389,29 +359,11 @@ fn push_centered_text(
     });
 }
 
-fn ingredient_label(ingredient: &CompiledIngredient, planet: &PlanetData) -> String {
-    match ingredient {
-        CompiledIngredient::Item(id) => planet
-            .items
-            .get(*id)
-            .map(|item| item.display_name.clone())
-            .unwrap_or_else(|| "Objet inconnu".to_string()),
-        CompiledIngredient::Tag(tag) => format!("Tag {}", tag),
-    }
-}
-
-fn format_station_label(station: &str) -> String {
-    station
-        .trim_start_matches("#station.")
-        .trim_start_matches("core:tag/station/")
-        .replace('_', " ")
-}
-
 pub(super) fn push_held_quantity(
     specs: &mut Vec<InventoryTextSpec>,
     theme: &UiTheme,
     layout: &InventoryLayout,
-    ui: &InventoryUiState,
+    ui: &RenderInventoryUiSnapshot,
 ) {
     let Some(held) = ui.held else { return };
     if held.stack.quantity <= 1 {
@@ -448,8 +400,11 @@ pub(super) fn push_footer_keys(
     });
 }
 
-pub(super) fn total_weight_kg(inventory: &Inventory, ui: &InventoryUiState) -> f32 {
-    let count = inventory.total_count() as f32;
+pub(super) fn total_weight_kg(
+    inventory: &RenderInventorySnapshot,
+    ui: &RenderInventoryUiSnapshot,
+) -> f32 {
+    let count = inventory.total_count as f32;
     let held = ui.held.map(|h| h.stack.quantity as f32).unwrap_or(0.0);
-    (count + held) * InventoryUiState::UNIT_WEIGHT_KG
+    (count + held) * crate::ui::InventoryUiState::UNIT_WEIGHT_KG
 }

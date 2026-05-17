@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use super::Renderer;
+use crate::snapshot::RenderItemStack;
 use crate::ui::{ComponentState, UiColor, UiRect, UiTheme};
 use crate::Vertex;
 use vv_pack_compiler::CompiledItemGameplay;
@@ -184,7 +185,7 @@ impl<'a> Renderer<'a> {
         verts: &mut Vec<Vertex>,
         inds: &mut Vec<u32>,
         rect: UiRect,
-        content: Option<vv_gameplay::HotbarSlot>,
+        content: Option<RenderItemStack>,
         state: ComponentState,
         planet: &PlanetData,
         theme: &UiTheme,

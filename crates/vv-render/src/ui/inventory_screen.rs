@@ -1,15 +1,34 @@
 use super::theme::{UiAnchor, UiTheme, UiViewport, UserZoom};
-use vv_gameplay::{
-    HotbarSlot, SlotRef, HOTBAR_SLOT_COUNT, INVENTORY_COLS, INVENTORY_ROWS, INVENTORY_SIZE,
+use crate::snapshot::{
+    RenderHeldStack, RenderItemStack, RenderSlotRef, RENDER_HOTBAR_SLOT_COUNT,
+    RENDER_INVENTORY_COLS, RENDER_INVENTORY_ROWS, RENDER_INVENTORY_SIZE,
 };
 
 /// A stack the player has picked up. Follows the cursor and is deposited on
 /// the next click — Minecraft-style. The source is remembered so we can put
 /// the stack back if the inventory is closed while still holding it.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct HeldStack {
-    pub stack: HotbarSlot,
-    pub source: SlotRef,
+    pub stack: RenderItemStack,
+    pub source: RenderSlotRef,
+}
+
+impl From<RenderHeldStack> for HeldStack {
+    fn from(value: RenderHeldStack) -> Self {
+        Self {
+            stack: value.stack,
+            source: value.source,
+        }
+    }
+}
+
+impl From<HeldStack> for RenderHeldStack {
+    fn from(value: HeldStack) -> Self {
+        Self {
+            stack: value.stack,
+            source: value.source,
+        }
+    }
 }
 
 /// Functional buttons in the modal.
@@ -25,8 +44,8 @@ pub enum InventoryButton {
 }
 
 /// Filter chips above the inventory grid. Only `All` actually returns
-/// every item today — the other categories will hook into a content-level
-/// tag system later (see TODO in `InventoryUiState::matches_filter`).
+/// every item today. The other categories use the compiled item category
+/// string until content exposes richer render-facing tags.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum InventoryFilter {
     All,
@@ -62,7 +81,7 @@ pub struct InventoryUiState {
     pub search_query: String,
     pub held: Option<HeldStack>,
     pub cursor: (f32, f32),
-    pub hovered_slot: Option<SlotRef>,
+    pub hovered_slot: Option<RenderSlotRef>,
     pub hovered_button: Option<InventoryButton>,
     pub hovered_search: bool,
     pub hovered_filter: Option<InventoryFilter>,
@@ -261,8 +280,8 @@ impl InventoryLayout {
         let real_hotbar_slot = (viewport.height * theme.hotbar.slot_height_ratio)
             .clamp(theme.hotbar.slot_size_min, theme.hotbar.slot_size_max);
         let real_hotbar_gap = theme.hotbar.slot_gap * (real_hotbar_slot / 56.0).max(1.0);
-        let real_hotbar_total_w = HOTBAR_SLOT_COUNT as f32 * real_hotbar_slot
-            + (HOTBAR_SLOT_COUNT - 1) as f32 * real_hotbar_gap;
+        let real_hotbar_total_w = RENDER_HOTBAR_SLOT_COUNT as f32 * real_hotbar_slot
+            + (RENDER_HOTBAR_SLOT_COUNT - 1) as f32 * real_hotbar_gap;
         let real_hotbar_bottom_margin = (viewport.height * 0.035).clamp(
             theme.spacing.hotbar_bottom_margin_min,
             theme.spacing.hotbar_bottom_margin_max,
@@ -413,16 +432,16 @@ impl InventoryLayout {
         }
 
         // 9x4 grid that fills the panel width.
-        let cols = INVENTORY_COLS as f32;
+        let cols = RENDER_INVENTORY_COLS as f32;
         let gap_ratio = 0.10_f32;
         let inv_slot = (center_inner_w / (cols + (cols - 1.0) * gap_ratio)).floor();
         let inv_gap = (inv_slot * gap_ratio).max(s(4.0));
         let grid_w = inv_slot * cols + inv_gap * (cols - 1.0);
         let grid_left = center_inner_x + (center_inner_w - grid_w) * 0.5;
         let grid_top = chip_top + chip_h + s(theme.spacing.large);
-        let mut inventory_slots = Vec::with_capacity(INVENTORY_SIZE);
-        for row in 0..INVENTORY_ROWS {
-            for col in 0..INVENTORY_COLS {
+        let mut inventory_slots = Vec::with_capacity(RENDER_INVENTORY_SIZE);
+        for row in 0..RENDER_INVENTORY_ROWS {
+            for col in 0..RENDER_INVENTORY_COLS {
                 inventory_slots.push(UiRect {
                     x: grid_left + col as f32 * (inv_slot + inv_gap),
                     y: grid_top + row as f32 * (inv_slot + inv_gap),
@@ -569,8 +588,8 @@ impl InventoryLayout {
 
         // ---------------- Hotbar mirror ----------------
         let hotbar_left = (viewport.width - real_hotbar_total_w) * 0.5;
-        let mut hotbar_slots = Vec::with_capacity(HOTBAR_SLOT_COUNT);
-        for i in 0..HOTBAR_SLOT_COUNT {
+        let mut hotbar_slots = Vec::with_capacity(RENDER_HOTBAR_SLOT_COUNT);
+        for i in 0..RENDER_HOTBAR_SLOT_COUNT {
             hotbar_slots.push(UiRect {
                 x: hotbar_left + i as f32 * (real_hotbar_slot + real_hotbar_gap),
                 y: real_hotbar_top,
@@ -624,15 +643,15 @@ impl InventoryLayout {
         }
     }
 
-    pub fn slot_under_cursor(&self, px: f32, py: f32) -> Option<SlotRef> {
+    pub fn slot_under_cursor(&self, px: f32, py: f32) -> Option<RenderSlotRef> {
         for (i, rect) in self.inventory_slots.iter().enumerate() {
             if rect.contains(px, py) {
-                return Some(SlotRef::Inventory(i));
+                return Some(RenderSlotRef::Inventory(i));
             }
         }
         for (i, rect) in self.hotbar_slots.iter().enumerate() {
             if rect.contains(px, py) {
-                return Some(SlotRef::Hotbar(i));
+                return Some(RenderSlotRef::Hotbar(i));
             }
         }
         None

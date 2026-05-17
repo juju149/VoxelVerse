@@ -1,7 +1,7 @@
 use super::{HotbarCacheSignature, Renderer};
+use crate::snapshot::{RenderHotbarSnapshot, RENDER_HOTBAR_SLOT_COUNT};
 use crate::ui::{ComponentState, UiRect, UiTheme};
 use crate::Vertex;
-use vv_gameplay::{Hotbar, HOTBAR_SLOT_COUNT};
 use vv_world::PlanetData;
 
 struct HotbarLayout {
@@ -72,9 +72,9 @@ impl<'a> Renderer<'a> {
         self.console_inds = inds.len() as u32;
     }
 
-    pub fn update_hotbar_mesh(&mut self, hotbar: &Hotbar, planet: &PlanetData) {
+    pub fn update_hotbar_mesh(&mut self, hotbar: &RenderHotbarSnapshot, planet: &PlanetData) {
         let signature = HotbarCacheSignature {
-            revision: hotbar.revision(),
+            revision: hotbar.revision,
             viewport: (self.config.width, self.config.height),
         };
         if self.hotbar_cache_signature == Some(signature) {
@@ -91,7 +91,7 @@ impl<'a> Renderer<'a> {
 
         // Draw only the slots — no panel background, no shadow, no border.
         // Visual separation comes from the slot borders alone.
-        for (index, slot) in hotbar.slots().iter().enumerate() {
+        for (index, slot) in hotbar.slots.iter().enumerate() {
             let x0 = layout.left + index as f32 * (layout.slot + layout.gap);
             let slot_rect = UiRect {
                 x: x0,
@@ -100,7 +100,7 @@ impl<'a> Renderer<'a> {
                 h: layout.slot,
             };
 
-            let selected = index == hotbar.selected_index();
+            let selected = index == hotbar.selected_index;
             let state = if selected {
                 ComponentState::Selected
             } else if slot.is_none() {
@@ -130,10 +130,10 @@ impl<'a> Renderer<'a> {
         self.hotbar_cache_signature = Some(signature);
     }
 
-    pub(super) fn hotbar_text_specs(&self, hotbar: &Hotbar) -> Vec<HotbarTextSpec> {
+    pub(super) fn hotbar_text_specs(&self, hotbar: &RenderHotbarSnapshot) -> Vec<HotbarTextSpec> {
         let theme = UiTheme::VOXELVERSE;
         let mut specs = Vec::new();
-        for (index, slot) in hotbar.slots().iter().enumerate() {
+        for (index, slot) in hotbar.slots.iter().enumerate() {
             let Some(slot) = slot else {
                 continue;
             };
@@ -153,7 +153,7 @@ impl<'a> Renderer<'a> {
             });
         }
 
-        if let Some(notice) = hotbar.notice_text() {
+        if let Some(notice) = hotbar.notice_text {
             let (left, top) = self.hotbar_notice_position();
             specs.push(HotbarTextSpec {
                 text: notice.to_string(),
@@ -199,7 +199,8 @@ impl<'a> Renderer<'a> {
         let slot = (height * theme.hotbar.slot_height_ratio)
             .clamp(theme.hotbar.slot_size_min, theme.hotbar.slot_size_max);
         let gap = theme.hotbar.slot_gap * (slot / 56.0).max(1.0);
-        let total_width = HOTBAR_SLOT_COUNT as f32 * slot + (HOTBAR_SLOT_COUNT - 1) as f32 * gap;
+        let total_width =
+            RENDER_HOTBAR_SLOT_COUNT as f32 * slot + (RENDER_HOTBAR_SLOT_COUNT - 1) as f32 * gap;
         let bottom_margin = (height * 0.035).clamp(
             theme.spacing.hotbar_bottom_margin_min,
             theme.spacing.hotbar_bottom_margin_max,

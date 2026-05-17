@@ -14,18 +14,19 @@
 
 use super::inventory_geometry::equip_slot_rects;
 use super::inventory_text::{
-    push_column_titles, push_craft_placeholder, push_equipment_placeholder, push_filter_text,
+    push_column_titles, push_craft_text, push_equipment_placeholder, push_filter_text,
     push_footer_keys, push_header_text, push_held_quantity, push_quantity_badges, push_search_text,
     push_sort_text, push_weight_text, total_weight_kg,
 };
 use super::Renderer;
+use crate::snapshot::{
+    RenderCraftSnapshot, RenderHotbarSnapshot, RenderInventorySnapshot, RenderInventoryUiSnapshot,
+    RenderSlotRef,
+};
 use crate::ui::{
-    ComponentState, InventoryButton, InventoryLayout, InventoryUiState, UiColor, UiRect, UiTheme,
-    UiViewport,
+    ComponentState, InventoryButton, InventoryLayout, UiColor, UiRect, UiTheme, UiViewport,
 };
 use crate::Vertex;
-use vv_gameplay::{quick_craft_recipe_indices, Hotbar, HotbarSlot, Inventory, SlotRef};
-use vv_pack_compiler::{CompiledIngredient, CompiledRecipe, CompiledRecipeKind, RecipeRegistry};
 use vv_world::PlanetData;
 
 pub(super) struct InventoryTextSpec {
@@ -43,11 +44,11 @@ pub(super) struct InventoryTextSpec {
 impl<'a> Renderer<'a> {
     pub fn update_inventory_mesh(
         &mut self,
-        inventory: &Inventory,
-        hotbar: &Hotbar,
-        ui: &InventoryUiState,
+        inventory: &RenderInventorySnapshot,
+        hotbar: &RenderHotbarSnapshot,
+        ui: &RenderInventoryUiSnapshot,
         planet: &PlanetData,
-        recipes: &RecipeRegistry,
+        craft: &RenderCraftSnapshot,
     ) {
         if !ui.is_open {
             self.inventory_inds = 0;
@@ -65,7 +66,7 @@ impl<'a> Renderer<'a> {
         self.draw_modal_window(&mut verts, &mut inds, &theme, &layout);
         self.draw_header(&mut verts, &mut inds, &theme, &layout, ui);
         self.draw_equipment_panel(&mut verts, &mut inds, &theme, &layout);
-        self.draw_craft_panel(&mut verts, &mut inds, &theme, &layout, ui, planet, recipes);
+        self.draw_craft_panel(&mut verts, &mut inds, &theme, &layout, ui, planet, craft);
         self.draw_search_bar(&mut verts, &mut inds, &theme, &layout, ui);
         self.draw_filter_chips(&mut verts, &mut inds, &theme, &layout, ui);
         self.draw_inventory_grid(
@@ -85,11 +86,11 @@ impl<'a> Renderer<'a> {
 
     pub(super) fn inventory_text_specs(
         &self,
-        inventory: &Inventory,
-        hotbar: &Hotbar,
-        ui: &InventoryUiState,
-        planet: &PlanetData,
-        recipes: &RecipeRegistry,
+        inventory: &RenderInventorySnapshot,
+        hotbar: &RenderHotbarSnapshot,
+        ui: &RenderInventoryUiSnapshot,
+        _planet: &PlanetData,
+        craft: &RenderCraftSnapshot,
     ) -> Vec<InventoryTextSpec> {
         if !ui.is_open {
             return Vec::new();
@@ -107,7 +108,7 @@ impl<'a> Renderer<'a> {
         push_weight_text(&mut specs, &theme, &layout, ui, inventory, hotbar);
         push_sort_text(&mut specs, &theme, &layout);
         push_equipment_placeholder(&mut specs, &theme, &layout);
-        push_craft_placeholder(&mut specs, &theme, &layout, ui, planet, recipes);
+        push_craft_text(&mut specs, &theme, &layout, ui, craft);
         push_held_quantity(&mut specs, &theme, &layout, ui);
         push_footer_keys(&mut specs, &theme, &layout);
 
@@ -116,42 +117,12 @@ impl<'a> Renderer<'a> {
 }
 
 pub(super) fn selected_recipe_index(
-    ui: &InventoryUiState,
-    recipes: &RecipeRegistry,
+    ui: &RenderInventoryUiSnapshot,
+    craft: &RenderCraftSnapshot,
 ) -> Option<usize> {
-    let indices = quick_craft_recipe_indices(recipes);
     ui.selected_recipe
-        .filter(|selected| indices.contains(selected))
-        .or_else(|| indices.first().copied())
-}
-
-pub(super) fn recipe_ingredient_counts(recipe: &CompiledRecipe) -> Vec<(CompiledIngredient, u32)> {
-    let ingredients: Vec<CompiledIngredient> = match &recipe.kind {
-        CompiledRecipeKind::Shaped(shaped) => shaped.grid.iter().filter_map(Clone::clone).collect(),
-        CompiledRecipeKind::Shapeless(shapeless) => shapeless.ingredients.clone(),
-        CompiledRecipeKind::Smelting(_) => Vec::new(),
-    };
-
-    let mut counted: Vec<(CompiledIngredient, u32)> = Vec::new();
-    for ingredient in ingredients {
-        if let Some((_, count)) = counted
-            .iter_mut()
-            .find(|(existing, _)| same_ingredient(existing, &ingredient))
-        {
-            *count += 1;
-        } else {
-            counted.push((ingredient, 1));
-        }
-    }
-    counted
-}
-
-fn same_ingredient(a: &CompiledIngredient, b: &CompiledIngredient) -> bool {
-    match (a, b) {
-        (CompiledIngredient::Item(a), CompiledIngredient::Item(b)) => a == b,
-        (CompiledIngredient::Tag(a), CompiledIngredient::Tag(b)) => a == b,
-        _ => false,
-    }
+        .filter(|selected| craft.recipes.iter().any(|recipe| recipe.index == *selected))
+        .or_else(|| craft.recipes.first().map(|recipe| recipe.index))
 }
 
 // =============================================================================
@@ -194,7 +165,7 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        ui: &InventoryUiState,
+        ui: &RenderInventoryUiSnapshot,
     ) {
         // A thin warm divider under the header.
         let divider = UiRect {
@@ -286,9 +257,9 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        ui: &InventoryUiState,
+        ui: &RenderInventoryUiSnapshot,
         planet: &PlanetData,
-        recipes: &RecipeRegistry,
+        craft: &RenderCraftSnapshot,
     ) {
         let radius = 10.0 * layout.scale;
         self.fill_rounded_rect(
@@ -307,10 +278,10 @@ impl<'a> Renderer<'a> {
             radius,
         );
 
-        let indices = quick_craft_recipe_indices(recipes);
-        for (row, recipe_index) in layout.craft_recipe_rows.iter().zip(indices.iter().copied()) {
-            let selected = Some(recipe_index) == selected_recipe_index(ui, recipes);
-            let hovered = ui.hovered_recipe == Some(recipe_index);
+        let selected_index = selected_recipe_index(ui, craft);
+        for (row, recipe) in layout.craft_recipe_rows.iter().zip(craft.recipes.iter()) {
+            let selected = Some(recipe.index) == selected_index;
+            let hovered = ui.hovered_recipe == Some(recipe.index);
             let state = if selected {
                 ComponentState::Selected
             } else if hovered {
@@ -319,27 +290,22 @@ impl<'a> Renderer<'a> {
                 ComponentState::Normal
             };
             self.draw_recipe_row(verts, inds, *row, state, theme, layout.scale);
-            if let Some(recipe) = recipes.recipes().get(recipe_index) {
-                let icon = UiRect {
-                    x: row.x + 8.0 * layout.scale,
-                    y: row.y + 6.0 * layout.scale,
-                    w: row.h - 12.0 * layout.scale,
-                    h: row.h - 12.0 * layout.scale,
-                };
-                self.draw_inventory_slot(
-                    verts,
-                    inds,
-                    icon,
-                    Some(HotbarSlot {
-                        item_id: recipe.output_item,
-                        quantity: recipe.output_count,
-                    }),
-                    ComponentState::Normal,
-                    planet,
-                    theme,
-                    layout.scale * 0.78,
-                );
-            }
+            let icon = UiRect {
+                x: row.x + 8.0 * layout.scale,
+                y: row.y + 6.0 * layout.scale,
+                w: row.h - 12.0 * layout.scale,
+                h: row.h - 12.0 * layout.scale,
+            };
+            self.draw_inventory_slot(
+                verts,
+                inds,
+                icon,
+                Some(recipe.output),
+                ComponentState::Normal,
+                planet,
+                theme,
+                layout.scale * 0.78,
+            );
         }
 
         self.fill_rounded_rect(
@@ -358,10 +324,7 @@ impl<'a> Renderer<'a> {
             8.0 * layout.scale,
         );
 
-        let Some(recipe_index) = selected_recipe_index(ui, recipes) else {
-            return;
-        };
-        let Some(recipe) = recipes.recipes().get(recipe_index) else {
+        let Some(recipe) = craft.selected_recipe.as_ref() else {
             return;
         };
 
@@ -369,23 +332,16 @@ impl<'a> Renderer<'a> {
             verts,
             inds,
             layout.craft_output_slot,
-            Some(HotbarSlot {
-                item_id: recipe.output_item,
-                quantity: recipe.output_count.saturating_mul(ui.craft_quantity),
-            }),
+            Some(recipe.output),
             ComponentState::Selected,
             planet,
             theme,
             layout.scale,
         );
 
-        for (row, ingredient) in layout
-            .craft_ingredient_rows
-            .iter()
-            .zip(recipe_ingredient_counts(recipe))
-        {
+        for (row, ingredient) in layout.craft_ingredient_rows.iter().zip(&recipe.ingredients) {
             self.fill_rounded_rect(verts, inds, *row, theme.slot.fill_empty, 5.0 * layout.scale);
-            if let CompiledIngredient::Item(item_id) = ingredient.0 {
+            if let Some(icon_stack) = ingredient.icon {
                 let icon = UiRect {
                     x: row.x + 4.0 * layout.scale,
                     y: row.y + 3.0 * layout.scale,
@@ -396,10 +352,7 @@ impl<'a> Renderer<'a> {
                     verts,
                     inds,
                     icon,
-                    Some(HotbarSlot {
-                        item_id,
-                        quantity: ingredient.1.saturating_mul(ui.craft_quantity),
-                    }),
+                    Some(icon_stack),
                     ComponentState::Normal,
                     planet,
                     theme,
@@ -463,7 +416,7 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        ui: &InventoryUiState,
+        ui: &RenderInventoryUiSnapshot,
     ) {
         let radius = 8.0 * layout.scale;
         let fill = if ui.search_focused {
@@ -523,7 +476,7 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        ui: &InventoryUiState,
+        ui: &RenderInventoryUiSnapshot,
     ) {
         for (filter, rect) in &layout.filter_chips {
             let selected = *filter == ui.active_filter;
@@ -563,11 +516,11 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        ui: &InventoryUiState,
-        inventory: &Inventory,
+        ui: &RenderInventoryUiSnapshot,
+        inventory: &RenderInventorySnapshot,
         planet: &PlanetData,
     ) {
-        let slots = inventory.slots();
+        let slots = &inventory.slots;
         for (i, rect) in layout.inventory_slots.iter().enumerate() {
             let slot = slots[i];
             let visible = slot
@@ -578,7 +531,8 @@ impl<'a> Renderer<'a> {
                     ui.matches_search(name) && ui.matches_filter(category)
                 })
                 .unwrap_or(true);
-            let is_hovered = matches!(ui.hovered_slot, Some(SlotRef::Inventory(idx)) if idx == i);
+            let is_hovered =
+                matches!(ui.hovered_slot, Some(RenderSlotRef::Inventory(idx)) if idx == i);
             let state = self.slot_state(slot, visible, is_hovered, false);
             self.draw_inventory_slot(verts, inds, *rect, slot, state, planet, theme, layout.scale);
 
@@ -603,13 +557,13 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        hotbar: &vv_gameplay::Hotbar,
+        hotbar: &RenderHotbarSnapshot,
         planet: &PlanetData,
     ) {
-        let slots = hotbar.slots();
+        let slots = &hotbar.slots;
         for (i, rect) in layout.hotbar_slots.iter().enumerate() {
             let content = slots[i];
-            let selected = i == hotbar.selected_index();
+            let selected = i == hotbar.selected_index;
             let state = if selected {
                 crate::ui::ComponentState::Selected
             } else if content.is_none() {
@@ -636,9 +590,9 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        ui: &InventoryUiState,
+        ui: &RenderInventoryUiSnapshot,
     ) {
-        if let Some(SlotRef::Hotbar(hover_idx)) = ui.hovered_slot {
+        if let Some(RenderSlotRef::Hotbar(hover_idx)) = ui.hovered_slot {
             if let Some(rect) = layout.hotbar_slots.get(hover_idx) {
                 self.stroke_rounded_rect(
                     verts,
@@ -660,8 +614,8 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        ui: &InventoryUiState,
-        inventory: &Inventory,
+        ui: &RenderInventoryUiSnapshot,
+        inventory: &RenderInventorySnapshot,
     ) {
         // Subtle separator above the weight area.
         self.fill_rect(verts, inds, layout.center_separator, theme.panel.border);
@@ -712,7 +666,7 @@ impl<'a> Renderer<'a> {
         inds: &mut Vec<u32>,
         theme: &UiTheme,
         layout: &InventoryLayout,
-        ui: &InventoryUiState,
+        ui: &RenderInventoryUiSnapshot,
         planet: &PlanetData,
     ) {
         let Some(held) = ui.held else {

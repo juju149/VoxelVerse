@@ -16,6 +16,7 @@ mod inventory_events;
 mod player_frame_update;
 mod player_input_router;
 mod render_frame_update;
+mod render_snapshot;
 mod runtime_loop;
 mod runtime_state;
 mod ui_frame_update;

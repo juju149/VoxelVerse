@@ -4,8 +4,8 @@ use crate::app::frame_commands::{apply_action_result, apply_frame_commands};
 use crate::app::game_app::GameApp;
 use crate::app::input_intent::{intent_for_hotbar_key, intent_for_mouse_button, intent_for_scroll};
 use crate::app::player_input_router::dispatch_intent;
+use crate::app::render_snapshot::frame_from_runtime;
 use crate::app::ui_input_router::{handle_console_input, handle_inventory_input};
-use vv_render::{RenderCamera, RenderConsoleSnapshot, RenderDebugFlags, RenderFrameSnapshot};
 use winit::event::{DeviceEvent, ElementState, WindowEvent};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::keyboard::{KeyCode, PhysicalKey};
@@ -145,38 +145,6 @@ fn route_system_event(
 fn render_current_frame(app: &mut GameApp<'_>) {
     let w = app.renderer.config.width as f32;
     let h = app.renderer.config.height as f32;
-    let dev = app.runtime.dev_state();
-    let frame = RenderFrameSnapshot {
-        camera: RenderCamera {
-            view_proj: app
-                .runtime
-                .controller()
-                .get_matrix(app.runtime.player(), w, h),
-            camera_pos: app
-                .runtime
-                .controller()
-                .get_camera_pos(app.runtime.player()),
-            player_pos: app.runtime.player().position,
-            model_matrix: app.runtime.player().get_model_matrix(),
-            is_first_person: app.runtime.first_person(),
-            cursor_id: app.runtime.cursor_id(),
-        },
-        planet: app.runtime.planet(),
-        hotbar: app.runtime.hotbar(),
-        inventory: app.runtime.inventory(),
-        inventory_ui: app.runtime.inventory_ui(),
-        recipes: app.runtime.recipes(),
-        console: RenderConsoleSnapshot {
-            height_fraction: app.runtime.console().height_fraction,
-            history: &app.runtime.console().history,
-            input_buffer: &app.runtime.console().input_buffer,
-        },
-        debug: RenderDebugFlags {
-            show_collisions: dev.show_collisions,
-            freeze_culling: dev.freeze_culling,
-            is_wireframe: dev.is_wireframe,
-            debug_mode: app.runtime.dev_mode(),
-        },
-    };
+    let frame = frame_from_runtime(&app.runtime, w, h);
     app.renderer.render(&frame);
 }

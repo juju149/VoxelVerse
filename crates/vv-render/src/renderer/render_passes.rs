@@ -137,10 +137,10 @@ impl<'a> Renderer<'a> {
     pub fn render(&mut self, frame: &RenderFrameSnapshot<'_>) {
         let camera = &frame.camera;
         let planet = frame.planet;
-        let hotbar = frame.hotbar;
-        let inventory = frame.inventory;
-        let inventory_ui = frame.inventory_ui;
-        let recipes = frame.recipes;
+        let hotbar = &frame.hotbar;
+        let inventory = &frame.inventory;
+        let inventory_ui = &frame.ui.inventory;
+        let craft = &frame.craft;
         let console = &frame.console;
         let debug = &frame.debug;
         let render_started = std::time::Instant::now();
@@ -151,7 +151,7 @@ impl<'a> Renderer<'a> {
         } else {
             self.update_hotbar_mesh(hotbar, planet);
         }
-        self.update_inventory_mesh(inventory, hotbar, inventory_ui, planet, recipes);
+        self.update_inventory_mesh(inventory, hotbar, inventory_ui, planet, craft);
 
         if debug.show_collisions {
             let mesh = MeshGen::generate_collision_debug(camera.player_pos, planet);
@@ -690,7 +690,7 @@ impl<'a> Renderer<'a> {
             }
 
             for (i, spec) in self
-                .inventory_text_specs(inventory, hotbar, inventory_ui, planet, recipes)
+                .inventory_text_specs(inventory, hotbar, inventory_ui, planet, craft)
                 .into_iter()
                 .enumerate()
             {

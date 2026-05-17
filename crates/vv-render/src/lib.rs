@@ -16,5 +16,10 @@ pub use lod_streaming::{LodSplitCurve, LodStreamingConfig, StreamingView};
 pub use quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 pub use render_graph::{RenderPassId, ShaderPath};
 pub use renderer::{PlayerActionFeedback, Renderer};
-pub use snapshot::{RenderCamera, RenderConsoleSnapshot, RenderDebugFlags, RenderFrameSnapshot};
+pub use snapshot::{
+    RenderCamera, RenderConsoleSnapshot, RenderCraftIngredient, RenderCraftRecipe,
+    RenderCraftSnapshot, RenderDebugFlags, RenderFrameSnapshot, RenderHeldStack,
+    RenderHotbarSnapshot, RenderInventorySnapshot, RenderInventoryUiSnapshot, RenderItemStack,
+    RenderSlotRef, RenderUiSnapshot,
+};
 pub use types::Vertex;

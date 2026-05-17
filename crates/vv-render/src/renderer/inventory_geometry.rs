@@ -1,7 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 
 use super::Renderer;
-use crate::ui::{ComponentState, InventoryButton, InventoryUiState, UiColor, UiRect};
+use crate::snapshot::{RenderInventoryUiSnapshot, RenderItemStack};
+use crate::ui::{ComponentState, InventoryButton, UiColor, UiRect};
 use crate::Vertex;
 use vv_pack_compiler::BlockMaterialLayers;
 
@@ -13,7 +14,7 @@ impl<'a> Renderer<'a> {
     /// Component-state mapping shared by all slot drawers.
     pub(super) fn slot_state(
         &self,
-        content: Option<vv_gameplay::HotbarSlot>,
+        content: Option<RenderItemStack>,
         visible: bool,
         hovered: bool,
         selected: bool,
@@ -35,7 +36,7 @@ impl<'a> Renderer<'a> {
 
     pub(super) fn inventory_button_state(
         &self,
-        ui: &InventoryUiState,
+        ui: &RenderInventoryUiSnapshot,
         button: InventoryButton,
     ) -> ComponentState {
         if matches!(ui.hovered_button, Some(b) if b == button) {
