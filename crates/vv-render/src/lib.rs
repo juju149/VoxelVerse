@@ -1,11 +1,14 @@
 mod atmosphere;
+mod debug_render_mode;
 mod lod_animation;
 pub mod perf_profile;
 pub mod quality;
 mod render_budget;
 mod render_graph;
+mod render_pipeline_desc;
 mod render_schedule;
 mod renderer;
+mod shader_contract;
 mod shader_library;
 pub mod snapshot;
 pub(crate) mod texture_atlas;

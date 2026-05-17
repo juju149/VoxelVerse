@@ -1,7 +1,4 @@
-struct FullscreenVertexOut {
-    @builtin(position) clip_pos: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-}
+#include "include/interface/fullscreen_io.wgsl"
 
 @fragment
 fn fs_main(in: FullscreenVertexOut) -> @location(0) vec4<f32> {
