@@ -141,3 +141,34 @@ fn normalize_relative(path: &Path) -> Result<PathBuf, String> {
     }
     Ok(out)
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn all_required_core_shaders_expand_and_parse_as_wgsl() {
+        let core_pack = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
+        let shader_root = core_pack.join("render").join("shaders");
+
+        for shader in ShaderPath::REQUIRED {
+            let mut include_stack = Vec::new();
+            let source = expand_shader(
+                &shader_root,
+                Path::new(shader.relative()),
+                &mut include_stack,
+            )
+            .unwrap_or_else(|error| {
+                panic!(
+                    "WGSL include expansion failed for {}: {}",
+                    shader.relative(),
+                    error
+                )
+            });
+
+            naga::front::wgsl::parse_str(&source).unwrap_or_else(|error| {
+                panic!("WGSL parse failed for {}: {:?}", shader.relative(), error)
+            });
+        }
+    }
+}
