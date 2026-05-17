@@ -28,8 +28,8 @@ impl<'a> Renderer<'a> {
         let swash_cache = SwashCache::new();
         let mut text_atlas = TextAtlas::new(device, queue, format);
         // Ensure the glyph renderer's pipeline targets the same swapchain
-        // format (may be HDR) to avoid incompatible pipeline/attachment
-        // mismatches at runtime.
+        // format (may be HDR) to avoid pipeline/attachment format mismatches
+        // at runtime.
         let text_renderer = GlyphRenderer::new(
             &mut text_atlas,
             device,

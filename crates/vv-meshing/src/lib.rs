@@ -1,4 +1,5 @@
 mod ambient_occlusion;
+mod config;
 mod cpu_mesh;
 mod debug_mesh;
 mod greedy_mesher;
@@ -9,6 +10,7 @@ mod rounded_edges;
 pub mod scheduler;
 mod voxel_mesher;
 
+pub use config::VoxelMeshingConfig;
 pub use cpu_mesh::{CpuMesh, CpuVertex};
 pub(crate) use greedy_mesher::GreedyMesher;
 pub use rounded_edges::{pack_material_edges, FaceEdgeMask};

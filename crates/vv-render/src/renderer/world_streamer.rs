@@ -135,9 +135,10 @@ impl<'a> Renderer<'a> {
             let mut snapshot = planet.snapshot();
             snapshot.player_surface_key = self.player_chunk_pos;
             let tx = self.mesh_tx.clone();
+            let meshing = self.meshing;
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
-                let mesh = MeshGen::build_chunk(key, &snapshot);
+                let mesh = MeshGen::build_chunk(key, &snapshot, meshing);
                 let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
                 let _ = tx.send(MeshJobResult {
                     key,
@@ -174,9 +175,10 @@ impl<'a> Renderer<'a> {
             let mut snapshot = planet.snapshot();
             snapshot.player_surface_key = self.player_chunk_pos;
             let tx = self.mesh_tx.clone();
+            let meshing = self.meshing;
             rayon::spawn(move || {
                 let started = std::time::Instant::now();
-                let mesh = MeshGen::build_chunk(key, &snapshot);
+                let mesh = MeshGen::build_chunk(key, &snapshot, meshing);
                 let elapsed_ms = started.elapsed().as_secs_f32() * 1000.0;
                 let _ = tx.send(MeshJobResult {
                     key,

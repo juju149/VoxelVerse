@@ -1,6 +1,6 @@
 use super::{
     ambient_occlusion, pack_material_edges, prop_baker::bake_props, CpuMesh, CpuVertex,
-    FaceEdgeMask, GreedyMesher, MeshGen,
+    FaceEdgeMask, GreedyMesher, MeshGen, VoxelMeshingConfig,
 };
 use glam::Vec3;
 use std::sync::OnceLock;
@@ -9,8 +9,6 @@ use vv_pack_compiler::{CompiledMesh, CompiledMeshClass};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use vv_world::PlanetSnapshot;
 use vv_worldgen::ChunkFeatureMap;
-
-const PROP_LOD_CHUNK_RADIUS: u32 = 5;
 
 /// Read-only voxel accessor used during meshing.
 ///
@@ -115,6 +113,7 @@ impl MeshGen {
     pub fn should_bake_props_for_chunk(
         key: SurfaceChunkKey,
         player_key: Option<SurfaceChunkKey>,
+        config: VoxelMeshingConfig,
     ) -> bool {
         let Some(player_key) = player_key else {
             return true;
@@ -123,8 +122,8 @@ impl MeshGen {
             return false;
         }
 
-        key.u_idx.abs_diff(player_key.u_idx) <= PROP_LOD_CHUNK_RADIUS
-            && key.v_idx.abs_diff(player_key.v_idx) <= PROP_LOD_CHUNK_RADIUS
+        key.u_idx.abs_diff(player_key.u_idx) <= config.prop_lod_chunk_radius
+            && key.v_idx.abs_diff(player_key.v_idx) <= config.prop_lod_chunk_radius
     }
 
     fn add_modified_candidates(id: VoxelCoord, candidates: &mut CandidateBuffer, res: u32) {
@@ -155,7 +154,11 @@ impl MeshGen {
         }
     }
 
-    pub fn build_chunk(key: SurfaceChunkKey, data: &PlanetSnapshot) -> CpuMesh {
+    pub fn build_chunk(
+        key: SurfaceChunkKey,
+        data: &PlanetSnapshot,
+        config: VoxelMeshingConfig,
+    ) -> CpuMesh {
         let mut verts = Vec::with_capacity((CHUNK_SIZE * CHUNK_SIZE * 4) as usize);
         let mut inds = Vec::with_capacity((CHUNK_SIZE * CHUNK_SIZE * 6) as usize);
         let mut idx = 0u32;
@@ -209,7 +212,7 @@ impl MeshGen {
                     min_h = min_h.min(get_h(key.face, u, v + 1));
                 }
                 if min_h < h {
-                    let bottom = min_h.max(h.saturating_sub(20));
+                    let bottom = min_h.max(h.saturating_sub(config.cliff_fill_depth));
                     for l in (bottom + 1)..h {
                         candidates.push(VoxelCoord {
                             face: key.face,
@@ -303,7 +306,7 @@ impl MeshGen {
         // Append .vox prop geometry (grass, flowers, mushrooms, …).
         // Props are NOT in the voxel grid — query the terrain procedural layer.
         // Filter out columns where the prop or its support block was broken by the player.
-        if Self::should_bake_props_for_chunk(key, data.player_surface_key) {
+        if Self::should_bake_props_for_chunk(key, data.player_surface_key, config) {
             let stamps = data.terrain.props_for_chunk(key);
             if !stamps.is_empty() {
                 let alive_stamps: Vec<_> = stamps
@@ -311,7 +314,13 @@ impl MeshGen {
                     .filter(|s| data.broken_props.is_alive(s.face, s.u, s.v))
                     .collect();
                 if !alive_stamps.is_empty() {
-                    bake_props(&alive_stamps, &data.prop_models, data.profile, &mut mesh);
+                    bake_props(
+                        &alive_stamps,
+                        &data.prop_models,
+                        data.profile,
+                        &mut mesh,
+                        config,
+                    );
                 }
             }
         }
@@ -667,7 +676,7 @@ fn greedy_meshing_enabled() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{CandidateBuffer, MeshGen, QuadFace};
+    use super::{CandidateBuffer, MeshGen, QuadFace, VoxelMeshingConfig};
     use glam::Vec3;
     use vv_voxel::{SurfaceChunkKey, VoxelCoord};
 
@@ -687,24 +696,52 @@ mod tests {
     #[test]
     fn prop_lod_keeps_only_near_same_face_chunks() {
         let player = Some(chunk(2, 10, 10));
+        let config = VoxelMeshingConfig::default();
 
         assert!(MeshGen::should_bake_props_for_chunk(
             chunk(2, 15, 10),
-            player
+            player,
+            config
         ));
         assert!(!MeshGen::should_bake_props_for_chunk(
             chunk(2, 16, 10),
-            player
+            player,
+            config
         ));
         assert!(!MeshGen::should_bake_props_for_chunk(
             chunk(3, 10, 10),
-            player
+            player,
+            config
         ));
     }
 
     #[test]
     fn prop_lod_defaults_to_baking_when_player_key_is_unknown() {
-        assert!(MeshGen::should_bake_props_for_chunk(chunk(5, 80, 80), None));
+        assert!(MeshGen::should_bake_props_for_chunk(
+            chunk(5, 80, 80),
+            None,
+            VoxelMeshingConfig::default()
+        ));
+    }
+
+    #[test]
+    fn prop_lod_uses_configured_chunk_radius() {
+        let config = VoxelMeshingConfig {
+            prop_lod_chunk_radius: 2,
+            ..VoxelMeshingConfig::default()
+        };
+        let player = Some(chunk(1, 10, 10));
+
+        assert!(MeshGen::should_bake_props_for_chunk(
+            chunk(1, 12, 10),
+            player,
+            config
+        ));
+        assert!(!MeshGen::should_bake_props_for_chunk(
+            chunk(1, 13, 10),
+            player,
+            config
+        ));
     }
 
     #[test]

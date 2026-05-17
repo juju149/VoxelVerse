@@ -66,8 +66,8 @@ pub struct PlanetData {
     /// Persistent per-voxel damage used by gameplay and rendered as cracks.
     pub block_damage: BlockDamageLayer,
     /// Surface-chunk key of the player's current position (updated each frame
-    /// before rayon workers start).  Used by the mesher's prop LOD gate to skip
-    /// prop geometry in chunks beyond `PROP_LOD_CHUNK_RADIUS`.
+    /// before rayon workers start).  Used by the mesher's configured prop LOD
+    /// gate to skip distant prop geometry.
     pub player_surface_key: Option<SurfaceChunkKey>,
     block_ids: PlanetBlockIds,
     planet_def: CompiledPlanet,

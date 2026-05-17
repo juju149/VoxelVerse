@@ -240,8 +240,8 @@ impl<'a> Renderer<'a> {
             .keys()
             .copied()
             .filter(|key| {
-                MeshGen::should_bake_props_for_chunk(*key, previous_player_key)
-                    != MeshGen::should_bake_props_for_chunk(*key, current_player_key)
+                MeshGen::should_bake_props_for_chunk(*key, previous_player_key, self.meshing)
+                    != MeshGen::should_bake_props_for_chunk(*key, current_player_key, self.meshing)
             })
             .collect();
         self.dirty_chunks.extend(changed);

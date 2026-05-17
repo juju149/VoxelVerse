@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{Receiver, Sender};
 use vv_diagnostics::FrameStats;
 use vv_math::Frustum;
-use vv_meshing::CpuMesh;
+use vv_meshing::{CpuMesh, VoxelMeshingConfig};
 use vv_meshing::{MeshScheduler, SchedulerStats};
 use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord};
 use vv_world::PlanetData;
@@ -199,6 +199,7 @@ pub struct Renderer<'a> {
     /// render pass for texel-snapping the sun view matrix.
     pub shadow_map_size: u32,
     pub lod_streaming: LodStreamingConfig,
+    pub meshing: VoxelMeshingConfig,
     pub atmosphere: AtmosphereConfig,
 
     // --- ATLAS ---
@@ -241,6 +242,7 @@ struct BlockDamageCacheSignature {
 
 mod block_damage_overlay;
 mod cloud_renderer;
+mod collision_debug_renderer;
 mod debug_draw;
 mod first_person_item;
 mod fog_renderer;
@@ -250,6 +252,7 @@ mod inventory;
 mod inventory_components;
 mod inventory_geometry;
 mod inventory_text;
+mod loading_pass;
 mod lod_selection;
 mod metrics;
 mod pipelines;
@@ -261,6 +264,8 @@ mod setup;
 mod sky_renderer;
 mod terrain_renderer;
 mod text_cache;
+mod text_pass;
+mod ui_pass;
 mod ui_renderer;
 mod world_streamer;
 

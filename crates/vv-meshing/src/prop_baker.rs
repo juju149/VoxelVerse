@@ -13,21 +13,10 @@
 //! * **sRGB colours in vertex buffer** — the shader applies gamma-expansion so
 //!   prop colours are treated consistently with terrain vertex colours.
 
-use super::{CpuMesh, CpuVertex, VERTEX_COLOR_MATERIAL_SENTINEL};
+use super::{CpuMesh, CpuVertex, VoxelMeshingConfig, VERTEX_COLOR_MATERIAL_SENTINEL};
 use vv_math::CoordSystem;
 use vv_world::{PlanetProfile, VoxModel, VoxModelRegistry};
 use vv_worldgen::procedural::{PropOrientation, PropStamp};
-
-/// Maximum visible faces a single prop may contribute to a chunk mesh.
-/// A grass blade has ~10-20, a mushroom ~50.  Hard-capping prevents a single
-/// unusually-complex model from blowing up the budget.
-const MAX_FACES_PER_STAMP: usize = 256;
-
-/// Maximum total prop quads per chunk (all stamps combined).
-/// Beyond this threshold additional stamps are skipped this frame.
-/// At 4 vertices per quad × 512 quads = 2048 vertices worst case, easily
-/// below the GPU vertex budget.
-const MAX_QUADS_PER_CHUNK: usize = 2048;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct PropBatchKey<'a> {
@@ -50,7 +39,13 @@ pub struct PropInstanceBatch<'a> {
     pub instances: Vec<PropInstance>,
 }
 
-/// Group alive prop stamps by instance-compatible model/rotation.
+struct PropBakeContext<'a> {
+    model: &'a VoxModel,
+    profile: PlanetProfile,
+    config: VoxelMeshingConfig,
+}
+
+/// Group alive prop stamps by shared model/rotation.
 /// The current renderer still bakes these batches into terrain meshes, but
 /// this is the stable handoff shape for future GPU instancing.
 pub fn collect_prop_instance_batches(stamps: &[PropStamp]) -> Vec<PropInstanceBatch<'_>> {
@@ -88,6 +83,7 @@ pub fn bake_props(
     models: &VoxModelRegistry,
     profile: PlanetProfile,
     mesh: &mut CpuMesh,
+    config: VoxelMeshingConfig,
 ) {
     if stamps.is_empty() {
         return;
@@ -102,15 +98,18 @@ pub fn bake_props(
             continue;
         };
         for instance in &batch.instances {
-            if total_quads >= MAX_QUADS_PER_CHUNK {
+            if total_quads >= config.max_prop_quads_per_chunk {
                 break;
             }
             let before = verts.len();
             bake_instance(
                 instance,
                 batch.key.rotation,
-                model,
-                profile,
+                PropBakeContext {
+                    model,
+                    profile,
+                    config,
+                },
                 &mut verts,
                 &mut inds,
                 &mut idx,
@@ -128,12 +127,12 @@ pub fn bake_props(
 fn bake_instance(
     instance: &PropInstance,
     rotation: u8,
-    model: &VoxModel,
-    profile: PlanetProfile,
+    context: PropBakeContext<'_>,
     verts: &mut Vec<CpuVertex>,
     inds: &mut Vec<u32>,
     idx: &mut u32,
 ) {
+    let model = context.model;
     if model.is_empty() || model.size_x == 0 || model.size_y == 0 || model.size_z == 0 {
         return;
     }
@@ -172,7 +171,7 @@ fn bake_instance(
     };
 
     for (faces_done, face) in model.faces.iter().enumerate() {
-        if faces_done >= MAX_FACES_PER_STAMP {
+        if faces_done >= context.config.max_prop_faces_per_stamp {
             break;
         }
 
@@ -183,7 +182,8 @@ fn bake_instance(
             let wu = base_u + rx * inv_max_xy;
             let wv = base_v + ry * inv_max_xy;
             let wl = base_l + mz * scale_z * layer_dir;
-            corners[i] = CoordSystem::get_vertex_pos_f32(instance.face, wu, wv, wl, profile);
+            corners[i] =
+                CoordSystem::get_vertex_pos_f32(instance.face, wu, wv, wl, context.profile);
         }
 
         // Compute face normal from cross product of two edges.

@@ -77,9 +77,9 @@ impl<'a> Renderer<'a> {
             .unwrap();
         // Force swapchain to a widely-supported LDR format to avoid validation
         // errors when third-party pipelines (glyphon) expect an sRGB target.
-        // This sacrifices HDR swapchain, but ensures runtime compatibility
-        // across diverse GPUs. If HDR is required later, adapt glyphon
-        // pipeline creation to match the surface format.
+        // This sacrifices HDR swapchain, but keeps runtime behavior stable
+        // across diverse GPUs. If HDR is required later, glyphon pipeline
+        // creation must target the surface format.
         config.format = wgpu::TextureFormat::Bgra8UnormSrgb;
 
         let available_present_modes = surface.get_capabilities(&adapter).present_modes;
@@ -822,6 +822,7 @@ impl<'a> Renderer<'a> {
             quality: perf.quality,
             shadow_map_size: perf.shadow_map_size,
             lod_streaming: perf.lod_streaming,
+            meshing: perf.meshing,
             atmosphere: AtmosphereConfig::default(),
             atlas_bind,
         }

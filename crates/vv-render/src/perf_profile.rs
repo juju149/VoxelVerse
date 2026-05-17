@@ -9,7 +9,7 @@
 use crate::lod_streaming::{LodSplitCurve, LodStreamingConfig};
 use crate::quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 use std::str::FromStr;
-use vv_meshing::SchedulerBudget;
+use vv_meshing::{SchedulerBudget, VoxelMeshingConfig};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PerfTier {
@@ -103,6 +103,7 @@ pub struct PerfProfile {
     pub lod_streaming: LodStreamingConfig,
     pub quality: QualitySettings,
     pub scheduler: SchedulerBudget,
+    pub meshing: VoxelMeshingConfig,
 }
 
 impl PerfProfile {
@@ -145,6 +146,12 @@ impl PerfProfile {
                     upload_bytes_per_frame: 6 * 1024 * 1024,
                     upload_time_budget_ms: 3.5,
                 },
+                meshing: VoxelMeshingConfig {
+                    prop_lod_chunk_radius: 3,
+                    cliff_fill_depth: 14,
+                    max_prop_faces_per_stamp: 128,
+                    max_prop_quads_per_chunk: 1024,
+                },
             },
             PerfTier::Medium => Self {
                 tier,
@@ -174,6 +181,12 @@ impl PerfProfile {
                     cloud_steps: 6,
                 },
                 scheduler: SchedulerBudget::default(),
+                meshing: VoxelMeshingConfig {
+                    prop_lod_chunk_radius: 4,
+                    cliff_fill_depth: 18,
+                    max_prop_faces_per_stamp: 192,
+                    max_prop_quads_per_chunk: 1536,
+                },
             },
             PerfTier::High => Self {
                 tier,
@@ -212,6 +225,7 @@ impl PerfProfile {
                     upload_bytes_per_frame: 20 * 1024 * 1024,
                     upload_time_budget_ms: 6.0,
                 },
+                meshing: VoxelMeshingConfig::default(),
             },
             PerfTier::Ultra => Self {
                 tier,
@@ -250,6 +264,12 @@ impl PerfProfile {
                     upload_bytes_per_frame: 28 * 1024 * 1024,
                     upload_time_budget_ms: 7.0,
                 },
+                meshing: VoxelMeshingConfig {
+                    prop_lod_chunk_radius: 6,
+                    cliff_fill_depth: 24,
+                    max_prop_faces_per_stamp: 320,
+                    max_prop_quads_per_chunk: 3072,
+                },
             },
         }
     }
@@ -257,7 +277,7 @@ impl PerfProfile {
     pub fn print(&self) {
         println!(
             "[perf] tier={} profile={:?} shadow={}px lod_near={:.1} hyst={:.2} transition={:.2}s max_chunks={} max_lods={} pcf={:?} triplanar={} fog={} clouds={} fxaa={} bloom={} \
-             voxel(disp/up/pend)={}/{}/{} lod(disp/up/pend)={}/{}/{}",
+             voxel(disp/up/pend)={}/{}/{} lod(disp/up/pend)={}/{}/{} prop_radius={} cliff_depth={} prop_quads={}",
             self.tier.label(),
             self.quality.profile,
             self.shadow_map_size,
@@ -278,6 +298,9 @@ impl PerfProfile {
             self.scheduler.dispatch_lod,
             self.scheduler.upload_lod,
             self.scheduler.max_pending_lod,
+            self.meshing.prop_lod_chunk_radius,
+            self.meshing.cliff_fill_depth,
+            self.meshing.max_prop_quads_per_chunk,
         );
     }
 }

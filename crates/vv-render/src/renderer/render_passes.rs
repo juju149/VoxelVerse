@@ -1,139 +1,11 @@
 use super::terrain_renderer::TerrainRenderer;
-use super::text_cache::TextSlot;
 use super::{GlobalUniform, LocalUniform, Renderer};
 use crate::lod_animation::AnyKey;
 use crate::snapshot::RenderFrameSnapshot;
-use crate::types::{ChunkMesh, Vertex};
-use glyphon::{Attrs, Buffer, Family, Metrics, Resolution, Shaping, TextArea, TextBounds};
-use std::collections::HashSet;
+use crate::types::ChunkMesh;
 use vv_math::Frustum;
-use vv_meshing::MeshGen;
-
-struct PendingText {
-    slot: TextSlot,
-    text: String,
-    size: f32,
-    color: [u8; 3],
-    left: f32,
-    top: f32,
-}
 
 impl<'a> Renderer<'a> {
-    pub fn render_loading(&mut self, progress: f32, message: &str) {
-        let progress = progress.clamp(0.0, 1.0);
-        self.window
-            .set_title(&format!("VoxelVerse - chargement {:.0}%", progress * 100.0));
-
-        let Ok(out) = self.surface.get_current_texture() else {
-            return;
-        };
-        let view = out
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut enc = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-
-        {
-            let _pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Loading Clear"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.03,
-                            g: 0.04,
-                            b: 0.05,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-        }
-
-        let filled = (progress * 28.0).round() as usize;
-        let bar = format!(
-            "[{}{}] {:.0}%",
-            "#".repeat(filled),
-            "-".repeat(28usize.saturating_sub(filled)),
-            progress * 100.0
-        );
-        let text = format!("VoxelVerse\n{}\n{}", message, bar);
-        let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(24.0, 34.0));
-        buffer.set_size(
-            &mut self.font_system,
-            self.config.width as f32,
-            self.config.height as f32,
-        );
-        buffer.set_text(
-            &mut self.font_system,
-            &text,
-            Attrs::new()
-                .family(Family::Monospace)
-                .color(glyphon::Color::rgb(230, 240, 235)),
-            Shaping::Advanced,
-        );
-
-        let text_area = TextArea {
-            buffer: &buffer,
-            left: 48.0,
-            top: (self.config.height as f32 * 0.5 - 70.0).max(40.0),
-            scale: 1.0,
-            bounds: TextBounds {
-                left: 0,
-                top: 0,
-                right: self.config.width as i32,
-                bottom: self.config.height as i32,
-            },
-            default_color: glyphon::Color::rgb(255, 255, 255),
-        };
-
-        self.text_renderer
-            .prepare(
-                &self.device,
-                &self.queue,
-                &mut self.font_system,
-                &mut self.text_atlas,
-                Resolution {
-                    width: self.config.width,
-                    height: self.config.height,
-                },
-                vec![text_area],
-                &mut self.swash_cache,
-            )
-            .ok();
-
-        {
-            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Loading Text"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    // Render loading text directly to the swapchain view to
-                    // avoid drawing UI into HDR intermediate targets which may
-                    // have incompatible formats for the text pipeline.
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-            let _ = self.text_renderer.render(&self.text_atlas, &mut pass);
-        }
-
-        self.queue.submit(std::iter::once(enc.finish()));
-        out.present();
-        self.device.poll(wgpu::Maintain::Wait);
-    }
-
     pub fn render(&mut self, frame: &RenderFrameSnapshot<'_>) {
         let camera = &frame.camera;
         let planet = frame.planet;
@@ -153,20 +25,7 @@ impl<'a> Renderer<'a> {
         }
         self.update_inventory_mesh(inventory, hotbar, inventory_ui, planet, craft);
 
-        if debug.show_collisions {
-            let mesh = MeshGen::generate_collision_debug(camera.player_pos, planet);
-            let gpu_v: Vec<Vertex> = mesh.vertices.iter().copied().map(Vertex::from).collect();
-            self.queue
-                .write_buffer(&self.collision_v_buf, 0, bytemuck::cast_slice(&gpu_v));
-            self.queue.write_buffer(
-                &self.collision_i_buf,
-                0,
-                bytemuck::cast_slice(&mesh.indices),
-            );
-            self.collision_inds = mesh.indices.len() as u32;
-        } else {
-            self.collision_inds = 0;
-        }
+        self.update_collision_debug_mesh(debug.show_collisions, camera.player_pos, planet);
 
         let out = match self.surface.get_current_texture() {
             Ok(o) => o,
@@ -522,15 +381,7 @@ impl<'a> Renderer<'a> {
                 main_draw_calls += 1;
             }
 
-            if self.collision_inds > 0 {
-                pass.set_pipeline(&self.pipeline_line); // Use line pipeline
-                pass.set_bind_group(0, &self.global_bind, &[]);
-                pass.set_bind_group(1, &self.local_bind_identity, &[]);
-                pass.set_vertex_buffer(0, self.collision_v_buf.slice(..));
-                pass.set_index_buffer(self.collision_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..self.collision_inds, 0, 0..1);
-                main_draw_calls += 1;
-            }
+            main_draw_calls += self.draw_collision_debug(&mut pass);
 
             if self.block_damage_inds > 0 {
                 pass.set_pipeline(&self.pipeline_line);
@@ -570,246 +421,14 @@ impl<'a> Renderer<'a> {
         // --- PASS 6: FINAL COMPOSITE ---
         self.render_final_composite(&mut enc, &view);
 
-        // --- PASS 7: UI MESHES ---
-        // Gameplay UI is authored in final display colors. Keep it out of the
-        // HDR scene tonemap so hotbar/inventory colors stay exactly theme-owned.
-        {
-            let mut ui_pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("UI Mesh Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-            ui_pass.set_pipeline(&self.pipeline_ui);
-            ui_pass.set_bind_group(0, &self.global_bind_identity, &[]);
-            ui_pass.set_bind_group(1, &self.local_bind_identity, &[]);
-            ui_pass.set_bind_group(2, &self.atlas_bind, &[]);
-
-            if camera.is_first_person && self.first_person_inds > 0 {
-                ui_pass.set_vertex_buffer(0, self.first_person_v_buf.slice(..));
-                ui_pass
-                    .set_index_buffer(self.first_person_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                ui_pass.draw_indexed(0..self.first_person_inds, 0, 0..1);
-                main_draw_calls += 1;
-            }
-
-            if self.hotbar_inds > 0 {
-                ui_pass.set_vertex_buffer(0, self.hotbar_v_buf.slice(..));
-                ui_pass.set_index_buffer(self.hotbar_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                ui_pass.draw_indexed(0..self.hotbar_inds, 0, 0..1);
-                main_draw_calls += 1;
-            }
-
-            if self.inventory_inds > 0 {
-                ui_pass.set_vertex_buffer(0, self.inventory_v_buf.slice(..));
-                ui_pass.set_index_buffer(self.inventory_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                ui_pass.draw_indexed(0..self.inventory_inds, 0, 0..1);
-                main_draw_calls += 1;
-            }
-
-            if self.console_inds > 0 {
-                ui_pass.set_vertex_buffer(0, self.console_v_buf.slice(..));
-                ui_pass.set_index_buffer(self.console_i_buf.slice(..), wgpu::IndexFormat::Uint32);
-                ui_pass.draw_indexed(0..self.console_inds, 0, 0..1);
-                main_draw_calls += 1;
-            }
-        }
+        main_draw_calls += self.render_ui_mesh_pass(&mut enc, &view, camera.is_first_person);
 
         self.last_draw_calls = main_draw_calls;
         self.last_shadow_draw_calls = shadow_draw_calls;
 
         self.frame_stats.tick();
 
-        // --- PASS 3: TEXT RENDER ---
-        // run this pass every frame to show FPS
-        {
-            let mut pending: Vec<PendingText> = Vec::new();
-
-            if console.height_fraction > 0.0 {
-                let console_pixel_height =
-                    (self.config.height as f32 / 2.0) * console.height_fraction;
-                let start_y = console_pixel_height - 40.0;
-                let line_height = 20.0;
-
-                for (i, (line_text, color)) in console.history.iter().rev().enumerate() {
-                    let y = start_y - (i as f32 * line_height);
-                    if y < 0.0 {
-                        break;
-                    }
-                    pending.push(PendingText {
-                        slot: TextSlot::console_history(i as u32),
-                        text: line_text.clone(),
-                        size: 16.0,
-                        color: [
-                            (color[0] * 255.0) as u8,
-                            (color[1] * 255.0) as u8,
-                            (color[2] * 255.0) as u8,
-                        ],
-                        left: 10.0,
-                        top: y,
-                    });
-                }
-
-                let input_y = console_pixel_height - 20.0;
-                let time = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis();
-                let cursor = if (time / 500).is_multiple_of(2) {
-                    "_"
-                } else {
-                    " "
-                };
-                pending.push(PendingText {
-                    slot: TextSlot::console_input(),
-                    text: format!("> {}{}", console.input_buffer, cursor),
-                    size: 16.0,
-                    color: [255, 255, 0],
-                    left: 10.0,
-                    top: input_y,
-                });
-            }
-
-            for (i, spec) in self.hotbar_text_specs(hotbar).into_iter().enumerate() {
-                pending.push(PendingText {
-                    slot: TextSlot::hotbar_quantity(i as u32),
-                    text: spec.text,
-                    size: spec.size.max(8.0),
-                    color: spec.color,
-                    left: spec.left,
-                    top: spec.top,
-                });
-            }
-
-            for (i, spec) in self
-                .inventory_text_specs(inventory, hotbar, inventory_ui, planet, craft)
-                .into_iter()
-                .enumerate()
-            {
-                pending.push(PendingText {
-                    slot: TextSlot::inventory_spec(i as u32),
-                    text: spec.text,
-                    size: spec.size.max(8.0),
-                    color: spec.color,
-                    left: spec.left,
-                    top: spec.top,
-                });
-            }
-
-            pending.push(PendingText {
-                slot: TextSlot::FPS,
-                text: format!("FPS: {}", self.frame_stats.fps()),
-                size: 20.0,
-                color: [0, 255, 0],
-                left: self.config.width as f32 - 120.0,
-                top: 10.0,
-            });
-
-            let show_engine_debug = debug.debug_mode || self.engine_debug_page;
-            if show_engine_debug {
-                let status = if debug.freeze_culling {
-                    "FROZEN"
-                } else {
-                    "ACTIVE"
-                };
-                let stats = self.render_stats(rendered_chunks, rendered_lods);
-                let target = camera
-                    .cursor_id
-                    .map(|id| format!("f{} l{} u{} v{}", id.face, id.layer, id.u, id.v));
-                let info = stats.debug_overlay(
-                    status,
-                    self.frame_stats.frame_time_ms(),
-                    camera.player_pos.to_array(),
-                    target,
-                );
-                pending.push(PendingText {
-                    slot: TextSlot::DEBUG,
-                    text: info,
-                    size: 14.0,
-                    color: [200, 200, 200],
-                    left: self.config.width as f32 - 180.0,
-                    top: 40.0,
-                });
-            }
-
-            let viewport_w = self.config.width;
-            let viewport_h = self.config.height;
-            for item in &pending {
-                self.text_cache.ensure(
-                    item.slot,
-                    &mut self.font_system,
-                    &item.text,
-                    item.size,
-                    item.color,
-                    viewport_w,
-                    viewport_h,
-                );
-            }
-
-            let used: HashSet<TextSlot> = pending.iter().map(|p| p.slot).collect();
-            self.text_cache.retain(|slot| used.contains(slot));
-
-            let text_areas: Vec<TextArea> = pending
-                .iter()
-                .filter_map(|item| {
-                    self.text_cache.get(item.slot).map(|buffer| TextArea {
-                        buffer,
-                        left: item.left,
-                        top: item.top,
-                        scale: 1.0,
-                        bounds: TextBounds {
-                            left: 0,
-                            top: 0,
-                            right: viewport_w as i32,
-                            bottom: viewport_h as i32,
-                        },
-                        default_color: glyphon::Color::rgb(255, 255, 255),
-                    })
-                })
-                .collect();
-
-            self.text_renderer
-                .prepare(
-                    &self.device,
-                    &self.queue,
-                    &mut self.font_system,
-                    &mut self.text_atlas,
-                    Resolution {
-                        width: viewport_w,
-                        height: viewport_h,
-                    },
-                    text_areas,
-                    &mut self.swash_cache,
-                )
-                .unwrap();
-
-            let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Text Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-
-            self.text_renderer
-                .render(&self.text_atlas, &mut pass)
-                .unwrap();
-        }
+        self.render_text_pass(&mut enc, &view, frame, rendered_chunks, rendered_lods);
 
         self.queue.submit(std::iter::once(enc.finish()));
         out.present();
