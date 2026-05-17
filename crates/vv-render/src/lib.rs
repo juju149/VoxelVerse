@@ -6,6 +6,7 @@ pub mod quality;
 mod render_budget;
 mod render_graph;
 mod render_pipeline_desc;
+mod render_pipeline_registry;
 mod render_schedule;
 mod renderer;
 mod shader_contract;
