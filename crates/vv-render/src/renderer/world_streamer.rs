@@ -108,7 +108,7 @@ impl<'a> Renderer<'a> {
                 && (is_dirty_rebuild || !self.chunks.contains_key(&key))
             {
                 let bytes = mesh_byte_size(&mesh);
-                self.upload_chunk_buffers(key, mesh, planet.profile.edge_rounding_radius_voxels);
+                self.upload_chunk_buffers(key, mesh, planet.profile().edge_rounding_radius_voxels);
                 budget.count += 1;
                 budget.bytes += bytes;
                 self.scheduler_stats.uploaded_voxel += 1;
@@ -132,8 +132,7 @@ impl<'a> Renderer<'a> {
             }
             self.pending_chunks.insert(key);
             self.pending_dirty.insert(key);
-            let mut snapshot = planet.snapshot();
-            snapshot.player_surface_key = self.player_chunk_pos;
+            let snapshot = planet.snapshot_with_player_surface_key(self.player_chunk_pos);
             let tx = self.mesh_tx.clone();
             let meshing = self.meshing;
             rayon::spawn(move || {
@@ -172,8 +171,7 @@ impl<'a> Renderer<'a> {
                 continue;
             }
             self.pending_chunks.insert(key);
-            let mut snapshot = planet.snapshot();
-            snapshot.player_surface_key = self.player_chunk_pos;
+            let snapshot = planet.snapshot_with_player_surface_key(self.player_chunk_pos);
             let tx = self.mesh_tx.clone();
             let meshing = self.meshing;
             rayon::spawn(move || {
@@ -296,7 +294,7 @@ impl<'a> Renderer<'a> {
     pub fn log_memory(&self, planet: &PlanetData) {
         let stats = self.render_stats(0, 0);
         println!("------------------------------------------");
-        println!("RESOLUTION: {}", planet.resolution);
+        println!("RESOLUTION: {}", planet.resolution());
         println!("Active Chunks: {}", stats.active_chunks);
         println!("Active LODs: {}", stats.active_lods);
         println!("Pending Chunks: {}", stats.pending_chunks);

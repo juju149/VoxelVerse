@@ -14,7 +14,7 @@ impl<'a> Renderer<'a> {
         focused: Option<VoxelCoord>,
     ) {
         let signature = BlockDamageCacheSignature {
-            revision: planet.block_damage.revision(),
+            revision: planet.block_damage_revision(),
             focused,
         };
         if self.block_damage_cache_signature == Some(signature) {
@@ -39,7 +39,7 @@ pub(super) fn build_block_damage_overlay_mesh(
     if let Some(coord) = focused {
         coords.push(coord);
     }
-    for (coord, _) in planet.block_damage.iter() {
+    for coord in planet.damaged_block_coords() {
         if Some(coord) != focused && coords.len() < MAX_OVERLAY_BLOCKS {
             coords.push(coord);
         }
@@ -109,7 +109,7 @@ fn face_corners(coord: VoxelCoord, face: OverlayFace, planet: &PlanetData) -> [V
             coord.u as f32 + u,
             coord.v as f32 + v,
             coord.layer as f32 + l,
-            planet.profile,
+            planet.profile(),
         )
     };
     match face {

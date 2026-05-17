@@ -4,7 +4,10 @@ use crate::{
 };
 use std::sync::Arc;
 use vv_math::CoordSystem;
-use vv_pack_compiler::{BlockRegistry, CompiledPlanet, ItemRegistry, ProceduralRegistry};
+use vv_pack_compiler::{
+    BlockRegistry, CompiledBlock, CompiledBlockVisual, CompiledItem, CompiledPlanet, ItemId,
+    ItemRegistry, ProceduralRegistry,
+};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use vv_worldgen::{bake_for_chunk, ChunkFeatureMap, ProceduralPlanetTerrain};
 
@@ -47,27 +50,21 @@ pub trait VoxelRead {
 
 #[derive(Clone)]
 pub struct PlanetData {
-    pub voxels: Arc<VoxelRuntime>,
-    pub content: Arc<BlockRegistry>,
-    pub items: Arc<ItemRegistry>,
-    pub terrain_visuals: Arc<TerrainVisualPalette>,
-    pub procedural: Arc<ProceduralRegistry>,
-    pub procedural_planet_index: usize,
-    pub profile: PlanetProfile,
-    pub resolution: u32,
-    pub has_core: bool,
-    pub terrain: ProceduralPlanetTerrain,
-    pub world_time: WorldTime,
-    /// Read-only registry of pre-loaded .vox prop models.
-    pub prop_models: Arc<VoxModelRegistry>,
-    /// Mutable set of prop columns the player has explicitly destroyed.
-    pub broken_props: Arc<BrokenPropLayer>,
-    /// Persistent per-voxel damage used by gameplay and rendered as cracks.
-    pub block_damage: BlockDamageLayer,
-    /// Surface-chunk key of the player's current position (updated each frame
-    /// before rayon workers start).  Used by the mesher's configured prop LOD
-    /// gate to skip distant prop geometry.
-    pub player_surface_key: Option<SurfaceChunkKey>,
+    voxels: Arc<VoxelRuntime>,
+    content: Arc<BlockRegistry>,
+    items: Arc<ItemRegistry>,
+    terrain_visuals: Arc<TerrainVisualPalette>,
+    procedural: Arc<ProceduralRegistry>,
+    procedural_planet_index: usize,
+    profile: PlanetProfile,
+    resolution: u32,
+    has_core: bool,
+    terrain: ProceduralPlanetTerrain,
+    world_time: WorldTime,
+    prop_models: Arc<VoxModelRegistry>,
+    broken_props: Arc<BrokenPropLayer>,
+    block_damage: BlockDamageLayer,
+    player_surface_key: Option<SurfaceChunkKey>,
     block_ids: PlanetBlockIds,
     planet_def: CompiledPlanet,
     /// Seed stored so resize can regenerate terrain with the same seed.
@@ -144,6 +141,83 @@ impl PlanetData {
             seed: profile.seed,
             planet_def,
         }
+    }
+
+    pub fn resolution(&self) -> u32 {
+        self.resolution
+    }
+
+    pub fn profile(&self) -> PlanetProfile {
+        self.profile
+    }
+
+    pub fn world_time(&self) -> WorldTime {
+        self.world_time
+    }
+
+    pub fn tick_world_time(&mut self, dt_seconds: f32) {
+        self.world_time.tick(dt_seconds);
+    }
+
+    pub fn set_day_length_seconds(&mut self, seconds: f32) {
+        self.world_time.set_day_length_seconds(seconds);
+    }
+
+    pub fn set_day_phase(&mut self, phase: f32) {
+        self.world_time.set_day_phase(phase);
+    }
+
+    pub fn set_fixed_elapsed_seconds(&mut self, elapsed_seconds: f32) {
+        self.world_time.set_fixed_elapsed_seconds(elapsed_seconds);
+    }
+
+    pub fn block(&self, id: VoxelId) -> Option<&CompiledBlock> {
+        self.content.block(id)
+    }
+
+    pub fn block_color(&self, id: VoxelId) -> [f32; 3] {
+        self.content.color(id)
+    }
+
+    pub fn block_visual(&self, id: VoxelId) -> &CompiledBlockVisual {
+        self.content.visual(id)
+    }
+
+    pub fn item(&self, id: ItemId) -> Option<&CompiledItem> {
+        self.items.get(id)
+    }
+
+    pub fn items(&self) -> &ItemRegistry {
+        &self.items
+    }
+
+    pub fn edge_rounding_radius_voxels(&self) -> f32 {
+        self.profile.edge_rounding_radius_voxels
+    }
+
+    pub fn block_damage_revision(&self) -> u64 {
+        self.block_damage.revision()
+    }
+
+    pub fn damaged_block_coords(&self) -> impl Iterator<Item = VoxelCoord> + '_ {
+        self.block_damage.iter().map(|(coord, _)| coord)
+    }
+
+    pub fn surface_height(&self, face: u8, u: u32, v: u32) -> u32 {
+        self.terrain.get_height(face, u, v)
+    }
+
+    pub fn terrain_surface_layer(&self, face: u8, u: u32, v: u32) -> u32 {
+        self.terrain.terrain_surface_layer(face, u, v)
+    }
+
+    pub fn snapshot_with_player_surface_key(
+        &self,
+        player_surface_key: Option<SurfaceChunkKey>,
+    ) -> PlanetSnapshot {
+        let mut snapshot = self.snapshot();
+        snapshot.player_surface_key = player_surface_key;
+        snapshot
     }
 
     pub fn resize(&mut self, increase: bool) {

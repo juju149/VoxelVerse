@@ -67,10 +67,10 @@ impl<'a> Renderer<'a> {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let surface_radius = planet.profile.surface_radius;
+        let surface_radius = planet.profile().surface_radius;
         let mut atmosphere =
             self.atmosphere
-                .evaluate(surface_radius, planet.world_time, self.quality);
+                .evaluate(surface_radius, planet.world_time(), self.quality);
         if let Some(weather) = frame.weather {
             atmosphere.apply_weather(weather);
         }
@@ -281,7 +281,7 @@ impl<'a> Renderer<'a> {
 
         let now = std::time::Instant::now();
         let edge_rounding_radius = |key: AnyKey| match key {
-            AnyKey::Voxel(_) => planet.profile.edge_rounding_radius_voxels,
+            AnyKey::Voxel(_) => planet.profile().edge_rounding_radius_voxels,
             AnyKey::Lod(_) => 0.0,
         };
         let dying_status = self.animator.update_dying(now);

@@ -28,7 +28,7 @@ impl<'a> Renderer<'a> {
         println!(
             "[engine/{label}] profile={:?} planet_resolution={} chunks={} lods={} pending={}/{} uploads={} draw_calls={} frame_ms={:.2} gpu_est={}",
             self.quality.profile,
-            planet.resolution,
+            planet.resolution(),
             stats.active_chunks,
             stats.active_lods,
             stats.pending_chunks,

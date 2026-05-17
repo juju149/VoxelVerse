@@ -216,8 +216,8 @@ impl<'a> Renderer<'a> {
         if let Some(slot) = content {
             let (base_color, layers) = match planet.resolve_item_voxel(slot.item_id) {
                 Some(voxel) => (
-                    planet.content.color(voxel),
-                    Some(planet.content.visual(voxel).layers),
+                    planet.block_color(voxel),
+                    Some(planet.block_visual(voxel).layers),
                 ),
                 None => ([0.6, 0.6, 0.6], None),
             };
@@ -228,7 +228,7 @@ impl<'a> Renderer<'a> {
             };
             if let Some(layers) = layers {
                 self.draw_iso_block(verts, inds, rect, base_color, dim, Some(layers));
-            } else if let Some(item) = planet.items.get(slot.item_id) {
+            } else if let Some(item) = planet.item(slot.item_id) {
                 self.draw_item_glyph(
                     verts,
                     inds,

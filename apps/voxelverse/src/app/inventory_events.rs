@@ -235,7 +235,7 @@ fn handle_inventory_left_click(
                     {
                         let _ = craft_recipe(
                             recipe,
-                            &planet.items,
+                            planet.items(),
                             tags,
                             hotbar,
                             inventory,
@@ -400,7 +400,7 @@ fn max_craft_quantity(
         let mut trial_inventory = inventory.clone();
         if craft_recipe(
             recipe,
-            &planet.items,
+            planet.items(),
             tags,
             &mut trial_hotbar,
             &mut trial_inventory,

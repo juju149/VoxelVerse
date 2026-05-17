@@ -42,9 +42,7 @@ impl GoldenScene {
     }
 
     pub fn apply_time(self, planet: &mut PlanetData) {
-        planet
-            .world_time
-            .set_fixed_elapsed_seconds(self.fixed_elapsed_secs);
+        planet.set_fixed_elapsed_seconds(self.fixed_elapsed_secs);
     }
 }
 
@@ -82,13 +80,13 @@ mod tests {
             content.procedural,
             content.procedural_planet_index,
         );
-        assert_eq!(runtime.profile.seed, scene.seed);
-        assert_eq!(runtime.profile.resolution, 1024);
+        assert_eq!(runtime.profile().seed, scene.seed);
+        assert_eq!(runtime.profile().resolution, 1024);
         assert!(runtime.spawn_position().is_finite());
 
         let mut runtime = runtime;
         scene.apply_time(&mut runtime);
-        assert_eq!(runtime.world_time.elapsed_seconds(), 180.0);
-        assert!(runtime.world_time.is_paused());
+        assert_eq!(runtime.world_time().elapsed_seconds(), 180.0);
+        assert!(runtime.world_time().is_paused());
     }
 }

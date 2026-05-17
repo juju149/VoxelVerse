@@ -525,7 +525,7 @@ impl<'a> Renderer<'a> {
             let slot = slots[i];
             let visible = slot
                 .map(|s| {
-                    let item = planet.items.get(s.item_id);
+                    let item = planet.item(s.item_id);
                     let name = item.map(|i| i.display_name.as_str()).unwrap_or("");
                     let category = item.map(|i| i.category.as_str()).unwrap_or("");
                     ui.matches_search(name) && ui.matches_filter(category)
@@ -700,12 +700,12 @@ impl<'a> Renderer<'a> {
                 verts,
                 inds,
                 ghost,
-                planet.content.color(v),
+                planet.block_color(v),
                 1.0,
-                Some(planet.content.visual(v).layers),
+                Some(planet.block_visual(v).layers),
             ),
             None => {
-                if let Some(item) = planet.items.get(held.stack.item_id) {
+                if let Some(item) = planet.item(held.stack.item_id) {
                     self.draw_item_glyph(
                         verts,
                         inds,

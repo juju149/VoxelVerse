@@ -15,7 +15,7 @@ impl<'a> Renderer<'a> {
                     id.u + u,
                     id.v + v,
                     id.layer + l,
-                    planet.profile,
+                    planet.profile(),
                 )
             };
 

@@ -20,12 +20,13 @@ impl PlanetResize {
             Vec3::Y
         };
 
-        let probe_pos = current_dir * planet.profile.surface_radius;
-        let spawn_radius = if let Some(id) = CoordSystem::pos_to_id(probe_pos, planet.profile) {
-            let height = planet.terrain.get_height(id.face, id.u, id.v);
-            planet.profile.layer_radius(height + 1) + planet.profile.spawn_clearance()
+        let profile = planet.profile();
+        let probe_pos = current_dir * profile.surface_radius;
+        let spawn_radius = if let Some(id) = CoordSystem::pos_to_id(probe_pos, profile) {
+            let height = planet.surface_height(id.face, id.u, id.v);
+            profile.layer_radius(height + 1) + profile.spawn_clearance()
         } else {
-            planet.profile.surface_radius + planet.profile.spawn_clearance()
+            profile.surface_radius + profile.spawn_clearance()
         };
 
         player.position = current_dir * spawn_radius;

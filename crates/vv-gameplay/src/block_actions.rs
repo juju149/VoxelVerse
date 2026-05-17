@@ -77,7 +77,7 @@ pub fn place_block(ctx: PlaceBlockContext<'_>) -> GameActionResult {
         if !edit.dirty_chunks.is_empty() {
             ctx.hotbar.consume_selected();
             let sound_kind = active_voxel
-                .and_then(|voxel| ctx.planet.content.block(voxel))
+                .and_then(|voxel| ctx.planet.block(voxel))
                 .map(|block| block_sound(block.sound_kind))
                 .unwrap_or_default();
             result.push_feedback(GameFeedbackEvent::BlockPlace { sound_kind });
@@ -96,13 +96,13 @@ pub fn mine_block(ctx: MineBlockContext<'_>, dt: f32) -> GameActionResult {
 
     let coord = ctx.controller.cursor_id;
     let voxel = coord.map(|c| ctx.planet.get_voxel(c));
-    let block = voxel.and_then(|v| ctx.planet.content.block(v));
+    let block = voxel.and_then(|v| ctx.planet.block(v));
     let feedback = ctx.mining.tick(MiningStrikeInput {
         coord,
         voxel,
         block,
         selected_item: ctx.hotbar.selected_item_id(),
-        items: &ctx.planet.items,
+        items: ctx.planet.items(),
         dt,
         wants_mining: true,
     });
@@ -124,7 +124,6 @@ pub fn mine_block(ctx: MineBlockContext<'_>, dt: f32) -> GameActionResult {
         } => {
             let sound_kind = ctx
                 .planet
-                .content
                 .block(voxel)
                 .map(|block| block_sound(block.sound_kind))
                 .unwrap_or_default();
@@ -177,7 +176,7 @@ fn break_block(ctx: BreakBlockContext<'_>) -> GameActionResult {
     }
 
     if ctx.drops_enabled {
-        if let Some(block) = ctx.planet.content.block(ctx.voxel) {
+        if let Some(block) = ctx.planet.block(ctx.voxel) {
             let mut inventory_full = false;
             for (item_id, count) in roll_block_drops(&block.drops_key, ctx.loot) {
                 if collect_drop(item_id, count, ctx.planet, ctx.hotbar, ctx.inventory) {
@@ -201,7 +200,7 @@ fn collect_drop(
     hotbar: &mut Hotbar,
     inventory: &mut Inventory,
 ) -> bool {
-    let item = planet.items.get(item_id);
+    let item = planet.item(item_id);
     let max_stack = item.map(|i| i.stack_size.0).unwrap_or(99);
     !hotbar.add(item_id, count, max_stack) && !inventory.add(item_id, count, max_stack)
 }

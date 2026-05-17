@@ -173,8 +173,7 @@ fn craft_recipe_snapshot(
 ) -> RenderCraftRecipe {
     let output_count = recipe.output_count.saturating_mul(quantity.max(1));
     let output_name = planet
-        .items
-        .get(recipe.output_item)
+        .item(recipe.output_item)
         .expect("compiled recipe output item missing from runtime item registry")
         .display_name
         .clone();
@@ -209,8 +208,7 @@ fn craft_ingredient_snapshot(
     match ingredient {
         CompiledIngredient::Item(item_id) => {
             let label = planet
-                .items
-                .get(item_id)
+                .item(item_id)
                 .expect("compiled recipe ingredient item missing from runtime item registry")
                 .display_name
                 .clone();

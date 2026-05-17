@@ -81,12 +81,8 @@ impl<'a> GameApp<'a> {
             },
             |progress, message| renderer.render_loading(progress, message),
         );
-        planet
-            .world_time
-            .set_day_length_seconds(renderer.atmosphere.day_length_seconds);
-        planet
-            .world_time
-            .set_day_phase(renderer.atmosphere.start_phase);
+        planet.set_day_length_seconds(renderer.atmosphere.day_length_seconds);
+        planet.set_day_phase(renderer.atmosphere.start_phase);
         if let Some(scene) = golden_scene {
             scene.apply_time(&mut planet);
         }

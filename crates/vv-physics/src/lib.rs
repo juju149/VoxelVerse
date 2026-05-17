@@ -22,12 +22,13 @@ impl Physics {
     }
 
     pub fn is_solid(pos: Vec3, planet: &PlanetData) -> bool {
-        let res = planet.resolution;
+        let res = planet.resolution();
+        let profile = planet.profile();
 
-        let (id, local) = match CoordSystem::get_local_coords(pos, planet.profile) {
+        let (id, local) = match CoordSystem::get_local_coords(pos, profile) {
             Some(val) => val,
             None => {
-                return pos.length() < planet.profile.inner_radius;
+                return pos.length() < profile.inner_radius;
             }
         };
 

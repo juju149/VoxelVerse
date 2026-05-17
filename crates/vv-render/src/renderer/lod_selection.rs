@@ -20,8 +20,8 @@ impl<'a> Renderer<'a> {
         self.animator
             .set_fade_duration(self.world_streaming.lod_transition_time);
 
-        let res = planet.resolution;
-        let player_id = CoordSystem::pos_to_id(view.player_pos, planet.profile);
+        let res = planet.resolution();
+        let player_id = CoordSystem::pos_to_id(view.player_pos, planet.profile());
         let previous_player_chunk_pos = self.player_chunk_pos;
         let player_surface_key = player_id.map(|id| SurfaceChunkKey {
             face: id.face,
@@ -257,14 +257,14 @@ impl<'a> Renderer<'a> {
         let QuadNode { face, x, y, size } = node;
         let planet = context.planet;
 
-        if x >= planet.resolution || y >= planet.resolution {
+        if x >= planet.resolution() || y >= planet.resolution() {
             return;
         }
 
-        let center_u = (x + size / 2).min(planet.resolution - 1);
-        let center_v = (y + size / 2).min(planet.resolution - 1);
-        let h = planet.profile.surface_layer;
-        let world_pos = CoordSystem::get_vertex_pos(face, center_u, center_v, h, planet.profile);
+        let center_u = (x + size / 2).min(planet.resolution() - 1);
+        let center_v = (y + size / 2).min(planet.resolution() - 1);
+        let h = planet.profile().surface_layer;
+        let world_pos = CoordSystem::get_vertex_pos(face, center_u, center_v, h, planet.profile());
 
         let mut dist = world_pos.distance(context.view.camera_pos);
         let cursor_inside = context
@@ -279,7 +279,7 @@ impl<'a> Renderer<'a> {
         }
 
         let node_radius_world =
-            (size as f32 * planet.profile.layer_radius(h)) / planet.resolution as f32;
+            (size as f32 * planet.profile().layer_radius(h)) / planet.resolution() as f32;
         let node_size_chunks = (size / CHUNK_SIZE).max(1);
         let split_distance = self
             .world_streaming
@@ -345,8 +345,8 @@ impl<'a> Renderer<'a> {
                 u_idx: x / CHUNK_SIZE,
                 v_idx: y / CHUNK_SIZE,
             };
-            if (key.u_idx * CHUNK_SIZE) < planet.resolution
-                && (key.v_idx * CHUNK_SIZE) < planet.resolution
+            if (key.u_idx * CHUNK_SIZE) < planet.resolution()
+                && (key.v_idx * CHUNK_SIZE) < planet.resolution()
             {
                 voxels.insert(key);
             }
@@ -374,7 +374,7 @@ fn enforce_streaming_budget(
         let keep: HashSet<SurfaceChunkKey> =
             ranked.iter().take(max_voxels).map(|(k, _)| *k).collect();
         for dropped in voxels.difference(&keep) {
-            if let Some(fallback) = fallback_lod_for_voxel(*dropped, planet.resolution) {
+            if let Some(fallback) = fallback_lod_for_voxel(*dropped, planet.resolution()) {
                 lods.insert(fallback);
             }
         }
@@ -444,7 +444,7 @@ fn priority_score(
 
 fn horizon_importance(center: Vec3, radius: f32, view: StreamingView, planet: &PlanetData) -> f32 {
     let cam_dist = view.camera_pos.length();
-    let surface_radius = planet.profile.surface_radius;
+    let surface_radius = planet.profile().surface_radius;
     if cam_dist <= surface_radius * 1.001 {
         return 0.0;
     }
@@ -457,7 +457,7 @@ fn horizon_importance(center: Vec3, radius: f32, view: StreamingView, planet: &P
 }
 
 fn terrain_landmark_importance(radius: f32, planet: &PlanetData) -> f32 {
-    (radius / planet.profile.surface_radius.max(1.0)).clamp(0.0, 1.0)
+    (radius / planet.profile().surface_radius.max(1.0)).clamp(0.0, 1.0)
 }
 
 fn node_was_split(
@@ -553,23 +553,29 @@ fn voxel_in_lod(coord: VoxelCoord, key: LodKey) -> bool {
 fn chunk_center(key: SurfaceChunkKey, planet: &PlanetData) -> Vec3 {
     let u = key.u_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
     let v = key.v_idx * CHUNK_SIZE + CHUNK_SIZE / 2;
-    let h = planet.profile.surface_layer;
-    CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile)
+    let h = planet.profile().surface_layer;
+    CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile())
 }
 
 fn lod_center(key: LodKey, planet: &PlanetData) -> Vec3 {
-    let u = (key.x + key.size / 2).min(planet.resolution.saturating_sub(1));
-    let v = (key.y + key.size / 2).min(planet.resolution.saturating_sub(1));
-    let h = planet.profile.surface_layer;
-    CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile)
+    let u = (key.x + key.size / 2).min(planet.resolution().saturating_sub(1));
+    let v = (key.y + key.size / 2).min(planet.resolution().saturating_sub(1));
+    let h = planet.profile().surface_layer;
+    CoordSystem::get_vertex_pos(key.face, u, v, h, planet.profile())
 }
 
 fn chunk_radius_world(planet: &PlanetData) -> f32 {
-    (CHUNK_SIZE as f32 * planet.profile.layer_radius(planet.profile.surface_layer))
-        / planet.resolution as f32
+    (CHUNK_SIZE as f32
+        * planet
+            .profile()
+            .layer_radius(planet.profile().surface_layer))
+        / planet.resolution() as f32
 }
 
 fn lod_radius_world(key: LodKey, planet: &PlanetData) -> f32 {
-    (key.size as f32 * planet.profile.layer_radius(planet.profile.surface_layer))
-        / planet.resolution as f32
+    (key.size as f32
+        * planet
+            .profile()
+            .layer_radius(planet.profile().surface_layer))
+        / planet.resolution() as f32
 }

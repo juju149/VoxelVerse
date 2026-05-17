@@ -18,7 +18,7 @@ pub(super) fn tick_render_frame(
     let selected_item = runtime
         .hotbar()
         .selected_item_id()
-        .and_then(|item_id| runtime.planet().items.get(item_id));
+        .and_then(|item_id| runtime.planet().item(item_id));
     renderer.update_first_person_item(dt, selected_item);
 
     let width = renderer.config.width as f32;
