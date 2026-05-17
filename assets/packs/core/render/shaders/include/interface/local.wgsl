@@ -12,3 +12,7 @@ fn vv_local_opacity() -> f32 {
 fn vv_local_edge_radius() -> f32 {
     return max(local.params.y, 0.0);
 }
+
+fn vv_local_flags() -> vec2<f32> {
+    return local.params.zw;
+}

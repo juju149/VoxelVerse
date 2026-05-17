@@ -172,3 +172,25 @@ mod tests {
         }
     }
 }
+#[cfg(test)]
+mod shader_interface_contract_tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn shader_interface_contract_smoke_test_parses() {
+        let core_pack = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/packs/core");
+        let shader_root = core_pack.join("render").join("shaders");
+
+        let mut include_stack = Vec::new();
+        let source = expand_shader(
+            &shader_root,
+            Path::new("passes/debug/shader_contract_smoke.frag.wgsl"),
+            &mut include_stack,
+        )
+        .expect("shader contract smoke shader expands");
+
+        naga::front::wgsl::parse_str(&source)
+            .expect("shader contract smoke shader parses");
+    }
+}

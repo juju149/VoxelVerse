@@ -31,3 +31,9 @@ fn vv_safe_normalize(v: vec3<f32>) -> vec3<f32> {
 fn vv_luminance(color: vec3<f32>) -> f32 {
     return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
+
+fn vv_hash21(p: vec2<f32>) -> f32 {
+    var x = fract(p * vec2<f32>(123.34, 456.21));
+    x = x + dot(x, x + 34.345);
+    return fract(x.x * x.y);
+}

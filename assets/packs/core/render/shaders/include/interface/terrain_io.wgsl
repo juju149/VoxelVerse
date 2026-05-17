@@ -17,3 +17,7 @@ struct TerrainVertexOut {
     @location(6) @interpolate(flat) packed_tex_index: u32,
     @location(7) @interpolate(flat) lod_alpha: f32,
 }
+
+fn vv_material_layer_from_vertex(in: TerrainVertexOut) -> u32 {
+    return in.packed_tex_index & VV_MATERIAL_INDEX_MASK;
+}
