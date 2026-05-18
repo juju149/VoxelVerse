@@ -67,54 +67,57 @@ impl MeshGen {
 
                 let wall_c = scale_color(wall_color, LOD_WALL_SHADE_SCALE);
 
-                let mut emit_wall = |bl: Vec3, br: Vec3, tr: Vec3, tl: Vec3| {
+                // Emit a wall quad with vertices wound CCW from the exterior (outward-facing).
+                // The outward normal is derived from the geometry so each wall face is lit correctly.
+                let mut emit_wall = |p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3| {
+                    let wall_normal = (p1 - p0).cross(p3 - p0).normalize_or_zero();
                     push_quad(
                         &mut verts,
                         &mut inds,
-                        [bl, br, tr, tl],
-                        radial.to_array(),
+                        [p0, p1, p2, p3],
+                        wall_normal.to_array(),
                         wall_c,
                     );
                 };
 
-                // -U wall
+                // -U wall: exterior faces -U direction; winding is CCW from outside (u < u0).
                 let nh = if ci == 0 {
                     h.saturating_sub(input.skirt_layers)
                 } else {
                     input.cell_heights[(cj * n + ci - 1) as usize]
                 };
                 if nh < h {
-                    emit_wall(vp(u0, v0, nh), vp(u0, v1, nh), vp(u0, v1, h), vp(u0, v0, h));
+                    emit_wall(vp(u0, v0, h), vp(u0, v1, h), vp(u0, v1, nh), vp(u0, v0, nh));
                 }
 
-                // +U wall
+                // +U wall: exterior faces +U direction; winding is CCW from outside (u > u1).
                 let nh = if ci == n - 1 {
                     h.saturating_sub(input.skirt_layers)
                 } else {
                     input.cell_heights[(cj * n + ci + 1) as usize]
                 };
                 if nh < h {
-                    emit_wall(vp(u1, v1, nh), vp(u1, v0, nh), vp(u1, v0, h), vp(u1, v1, h));
+                    emit_wall(vp(u1, v1, h), vp(u1, v0, h), vp(u1, v0, nh), vp(u1, v1, nh));
                 }
 
-                // -V wall
+                // -V wall: exterior faces -V direction; winding is CCW from outside (v < v0).
                 let nh = if cj == 0 {
                     h.saturating_sub(input.skirt_layers)
                 } else {
                     input.cell_heights[((cj - 1) * n + ci) as usize]
                 };
                 if nh < h {
-                    emit_wall(vp(u1, v0, nh), vp(u0, v0, nh), vp(u0, v0, h), vp(u1, v0, h));
+                    emit_wall(vp(u1, v0, h), vp(u0, v0, h), vp(u0, v0, nh), vp(u1, v0, nh));
                 }
 
-                // +V wall
+                // +V wall: exterior faces +V direction; winding is CCW from outside (v > v1).
                 let nh = if cj == n - 1 {
                     h.saturating_sub(input.skirt_layers)
                 } else {
                     input.cell_heights[((cj + 1) * n + ci) as usize]
                 };
                 if nh < h {
-                    emit_wall(vp(u0, v1, nh), vp(u1, v1, nh), vp(u1, v1, h), vp(u0, v1, h));
+                    emit_wall(vp(u0, v1, h), vp(u1, v1, h), vp(u1, v1, nh), vp(u0, v1, nh));
                 }
             }
         }
