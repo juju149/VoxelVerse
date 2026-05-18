@@ -1,5 +1,6 @@
 use crate::app::cursor::{grab_cursor, release_cursor};
 use crate::app::debug_input::decode_dev_key;
+use crate::app::diagnostics_export::record_rendered_frame;
 use crate::app::frame_commands::{apply_action_result, apply_frame_commands};
 use crate::app::game_app::GameApp;
 use crate::app::input_intent::{intent_for_hotbar_key, intent_for_mouse_button, intent_for_scroll};
@@ -145,6 +146,15 @@ fn route_system_event(
 fn render_current_frame(app: &mut GameApp<'_>) {
     let w = app.renderer.config.width as f32;
     let h = app.renderer.config.height as f32;
-    let frame = frame_from_runtime(&app.runtime, w, h);
-    app.renderer.render(&frame);
+    let camera_direction = app
+        .runtime
+        .controller()
+        .view_ray(app.runtime.player(), w, h)
+        .direction
+        .to_array();
+    {
+        let frame = frame_from_runtime(&app.runtime, w, h);
+        app.renderer.render(&frame);
+    }
+    record_rendered_frame(app, camera_direction);
 }

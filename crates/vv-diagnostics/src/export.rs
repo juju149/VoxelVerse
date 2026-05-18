@@ -1,9 +1,9 @@
 use crate::diagnostics_frame::DiagnosticsFrame;
 use crate::ring_buffer::{DiagnosticsRingBuffer, RollingDiagnosticsSummary};
 use crate::spike::SpikeReport;
-use std::fs::{self, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub fn export_latest_frame(root: &Path, frame: &DiagnosticsFrame) -> io::Result<()> {
     fs::create_dir_all(root)?;
@@ -53,6 +53,80 @@ pub fn export_timeline(root: &Path, ring: &DiagnosticsRingBuffer) -> io::Result<
         )?;
     }
     Ok(())
+}
+
+pub struct DiagnosticsFileSink {
+    root: PathBuf,
+    timeline: File,
+}
+
+impl DiagnosticsFileSink {
+    pub fn new(root: impl Into<PathBuf>) -> io::Result<Self> {
+        let root = root.into();
+        fs::create_dir_all(&root)?;
+        let timeline_path = root.join("timeline.csv");
+        let timeline_exists = timeline_path.exists();
+        let mut timeline = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(timeline_path)?;
+        if !timeline_exists || timeline.metadata()?.len() == 0 {
+            writeln!(
+                timeline,
+                "timestamp_ms,frame_index,frame_ms,fps_1s,fps_5s,render_ms,terrain_draw_ms,update_view_ms,lod_selection_ms,upload_ms,upload_bytes,active_chunks,active_lods,pending_jobs,pending_chunks,pending_lods,draw_calls,gpu_memory_bytes,worldgen_samples,worldgen_cache_hit_ratio,audio_voices_started,audio_voices_throttled,warnings"
+            )?;
+        }
+        Ok(Self { root, timeline })
+    }
+
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
+    pub fn write_frame(
+        &mut self,
+        frame: &DiagnosticsFrame,
+        summary: &RollingDiagnosticsSummary,
+        spike: Option<&SpikeReport>,
+    ) -> io::Result<()> {
+        export_latest_frame(&self.root, frame)?;
+        export_rolling_summary(&self.root, summary)?;
+        if let Some(spike) = spike {
+            append_spike_report(&self.root, spike)?;
+        }
+        self.append_timeline_row(frame)
+    }
+
+    fn append_timeline_row(&mut self, frame: &DiagnosticsFrame) -> io::Result<()> {
+        writeln!(
+            self.timeline,
+            "{},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{},{},{},{},{},{},{},{},{},{:.5},{},{},{}",
+            frame.timestamp_ms,
+            frame.frame.frame_index,
+            frame.frame.frame_time_ms,
+            frame.frame.fps_rolling_1s,
+            frame.frame.fps_rolling_5s,
+            frame.render.render_world_ms,
+            frame.render.terrain_draw_ms,
+            frame.render.update_view_ms,
+            frame.render.lod_selection_ms,
+            frame.render.gpu_upload_ms,
+            frame.render.gpu_upload_bytes,
+            frame.render.active_chunks,
+            frame.render.active_lods,
+            frame.workload.pending_jobs,
+            frame.workload.pending_chunks,
+            frame.workload.pending_lods,
+            frame.workload.draw_calls,
+            frame.workload.gpu_memory_bytes,
+            frame.workload.worldgen_samples,
+            frame.worldgen.cell_hit_ratio(),
+            frame.audio.voices_started,
+            frame.audio.voices_throttled,
+            frame.warnings.len()
+        )?;
+        self.timeline.flush()
+    }
 }
 
 fn write_json(path: impl AsRef<Path>, value: &impl serde::Serialize) -> io::Result<()> {

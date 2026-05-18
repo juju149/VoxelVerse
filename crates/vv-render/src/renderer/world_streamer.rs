@@ -78,6 +78,10 @@ impl<'a> Renderer<'a> {
         );
         self.animator.start_spawn(AnyKey::Lod(key));
         self.frame_metrics.gpu_upload_ms += upload_started.elapsed().as_secs_f32() * 1000.0;
+        self.frame_metrics.gpu_upload_bytes = self
+            .frame_metrics
+            .gpu_upload_bytes
+            .saturating_add(mesh_byte_size(&mesh) as u64);
     }
 
     pub(super) fn process_load_queue(&mut self, _player_pos: Vec3, planet: &PlanetData) {
@@ -291,6 +295,10 @@ impl<'a> Renderer<'a> {
             self.animator.start_spawn(AnyKey::Voxel(key));
         }
         self.frame_metrics.gpu_upload_ms += upload_started.elapsed().as_secs_f32() * 1000.0;
+        self.frame_metrics.gpu_upload_bytes = self
+            .frame_metrics
+            .gpu_upload_bytes
+            .saturating_add(mesh_byte_size(&mesh) as u64);
     }
 
     pub fn log_memory(&self, planet: &PlanetData) {

@@ -1,4 +1,4 @@
-use vv_diagnostics::FrameStats;
+use vv_diagnostics::{FrameStats, FrameStatsSnapshot};
 
 #[derive(Default)]
 pub(super) struct MeshTiming {
@@ -34,10 +34,13 @@ pub(super) struct FrameMetrics {
     pub(super) update_view_ms: f32,
     pub(super) lod_selection_ms: f32,
     pub(super) gpu_upload_ms: f32,
+    pub(super) gpu_upload_bytes: u64,
     pub(super) terrain_draw_ms: f32,
     pub(super) render_ms: f32,
     pub(super) draw_calls: usize,
     pub(super) shadow_draw_calls: usize,
+    pub(super) visible_chunks: usize,
+    pub(super) visible_lods: usize,
     pub(super) frame_stats: FrameStats,
 }
 
@@ -50,10 +53,13 @@ impl FrameMetrics {
             update_view_ms: 0.0,
             lod_selection_ms: 0.0,
             gpu_upload_ms: 0.0,
+            gpu_upload_bytes: 0,
             terrain_draw_ms: 0.0,
             render_ms: 0.0,
             draw_calls: 0,
             shadow_draw_calls: 0,
+            visible_chunks: 0,
+            visible_lods: 0,
             frame_stats: FrameStats::new(),
         }
     }
@@ -65,6 +71,7 @@ impl FrameMetrics {
         self.update_view_ms = 0.0;
         self.lod_selection_ms = 0.0;
         self.gpu_upload_ms = 0.0;
+        self.gpu_upload_bytes = 0;
     }
 
     pub(super) fn record_voxel_mesh_time(&mut self, elapsed_ms: f32) {
@@ -75,5 +82,11 @@ impl FrameMetrics {
     pub(super) fn record_lod_mesh_time(&mut self, elapsed_ms: f32) {
         self.all_mesh.record(elapsed_ms);
         self.lod_mesh.record(elapsed_ms);
+    }
+
+    pub(super) fn frame_snapshot(&self) -> FrameStatsSnapshot {
+        let mut snapshot = FrameStatsSnapshot::from(&self.frame_stats);
+        snapshot.render_ms = self.render_ms;
+        snapshot
     }
 }

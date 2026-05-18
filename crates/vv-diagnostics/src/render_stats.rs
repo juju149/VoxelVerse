@@ -26,6 +26,7 @@ pub struct RenderStats {
     pub mesh_jobs_in_flight: usize,
     pub lod_jobs_in_flight: usize,
     pub uploads_this_frame: usize,
+    pub gpu_upload_bytes: u64,
 
     // --- timing (milliseconds) ---
     pub update_view_ms: f32,

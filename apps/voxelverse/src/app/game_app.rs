@@ -1,5 +1,6 @@
 use crate::app::content_bootstrap::load_core_content;
 use crate::app::cursor::{grab_cursor, sync_cursor_mode};
+use crate::app::diagnostics_export::create_diagnostics;
 use crate::app::event_router::{route_device_event, route_window_event};
 use crate::app::frame_driver::tick_game_frame;
 use crate::app::golden_scene::{golden_scene_enabled, GoldenScene};
@@ -8,6 +9,7 @@ use crate::app::runtime_state::GameRuntime;
 use std::sync::Arc;
 use std::time::Instant;
 use vv_audio::AudioEngine;
+use vv_diagnostics::{Diagnostics, DiagnosticsFileSink};
 use vv_gameplay::{Console, Player};
 use vv_render::{Renderer, StreamingView};
 use vv_world::{PlanetData, PlanetDataSources, VoxModelRegistry};
@@ -19,6 +21,8 @@ pub(super) struct GameApp<'a> {
     pub(super) renderer: Renderer<'a>,
     pub(super) audio: AudioEngine,
     pub(super) runtime: GameRuntime,
+    pub(super) diagnostics: Diagnostics,
+    pub(super) diagnostics_sink: Option<DiagnosticsFileSink>,
     pub(super) input_accum: InputAccumulator,
     cursor_grabbed: bool,
     last_time: Instant,
@@ -107,10 +111,14 @@ impl<'a> GameApp<'a> {
         });
         renderer.log_engine_snapshot("startup", &planet);
 
+        let (diagnostics, diagnostics_sink) = create_diagnostics();
+
         Self {
             renderer,
             audio,
             runtime: GameRuntime::new(player, planet, loot, tags, recipes, create_console()),
+            diagnostics,
+            diagnostics_sink,
             input_accum: InputAccumulator::new(),
             cursor_grabbed: false,
             last_time: Instant::now(),

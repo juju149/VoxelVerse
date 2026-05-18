@@ -5,7 +5,7 @@ use crate::{
 use std::sync::Arc;
 use vv_pack_compiler::{BlockRegistry, CompiledPlanet, ItemRegistry, ProceduralRegistry};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
-use vv_worldgen::ProceduralPlanetTerrain;
+use vv_worldgen::{ProceduralPlanetTerrain, WorldgenStatsSnapshot};
 
 /// Cached runtime block ID for the planet core (deep underground).
 /// Surface/subsurface blocks come from the biome registry.
@@ -152,6 +152,10 @@ impl PlanetData {
         } else {
             self.terrain.voxel_at(coord, self.profile)
         }
+    }
+
+    pub fn worldgen_stats_snapshot(&self) -> WorldgenStatsSnapshot {
+        self.terrain.stats().snapshot()
     }
 
     pub(crate) fn dirty_chunks_for_coord(

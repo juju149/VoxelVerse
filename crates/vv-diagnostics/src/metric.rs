@@ -12,6 +12,16 @@ pub enum DiagnosticsProfile {
 }
 
 impl DiagnosticsProfile {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "off" | "0" | "false" | "none" => Some(Self::Off),
+            "normal" | "1" | "true" => Some(Self::Normal),
+            "high" => Some(Self::High),
+            "verbose" | "all" => Some(Self::Verbose),
+            _ => None,
+        }
+    }
+
     pub fn captures_scopes(self) -> bool {
         matches!(self, Self::High | Self::Verbose)
     }

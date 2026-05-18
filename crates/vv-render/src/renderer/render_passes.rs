@@ -535,6 +535,8 @@ impl<'a> Renderer<'a> {
 
         self.frame_metrics.draw_calls = main_draw_calls;
         self.frame_metrics.shadow_draw_calls = shadow_draw_calls;
+        self.frame_metrics.visible_chunks = rendered_chunks;
+        self.frame_metrics.visible_lods = rendered_lods;
 
         self.frame_metrics.frame_stats.tick();
 

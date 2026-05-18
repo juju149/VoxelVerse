@@ -1,6 +1,6 @@
 use super::Renderer;
 use crate::atmosphere::{AtmosphereConfig, PlanetAtmospherePreset};
-use vv_diagnostics::RenderStats;
+use vv_diagnostics::{FrameStatsSnapshot, RenderStats};
 
 impl<'a> Renderer<'a> {
     pub fn toggle_engine_debug_page(&mut self) {
@@ -40,6 +40,17 @@ impl<'a> Renderer<'a> {
         );
     }
 
+    pub fn diagnostics_frame_stats(&self) -> FrameStatsSnapshot {
+        self.frame_metrics.frame_snapshot()
+    }
+
+    pub fn diagnostics_render_stats(&self) -> RenderStats {
+        self.render_stats(
+            self.frame_metrics.visible_chunks,
+            self.frame_metrics.visible_lods,
+        )
+    }
+
     pub(super) fn render_stats(&self, visible_chunks: usize, visible_lods: usize) -> RenderStats {
         let mut gpu_vertices = 0;
         let mut gpu_indices = 0;
@@ -68,6 +79,7 @@ impl<'a> Renderer<'a> {
             lod_jobs_in_flight: self.pending_lods.len(),
             uploads_this_frame: self.scheduler_stats.uploaded_voxel
                 + self.scheduler_stats.uploaded_lod,
+            gpu_upload_bytes: metrics.gpu_upload_bytes,
             update_view_ms: metrics.update_view_ms,
             lod_selection_ms: metrics.lod_selection_ms,
             meshing_avg_ms: metrics.all_mesh.average_ms(),

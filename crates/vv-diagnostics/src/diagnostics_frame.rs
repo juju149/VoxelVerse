@@ -170,12 +170,18 @@ impl DiagnosticsFrame {
         self
     }
 
+    pub fn with_frame_snapshot(mut self, frame: FrameStatsSnapshot) -> Self {
+        self.frame = frame;
+        self
+    }
+
     pub fn with_render(mut self, render: RenderStats) -> Self {
         self.workload.pending_jobs =
             (render.mesh_jobs_in_flight + render.lod_jobs_in_flight).min(u32::MAX as usize) as u32;
         self.workload.pending_chunks = render.pending_chunks.min(u32::MAX as usize) as u32;
         self.workload.pending_lods = render.pending_lods.min(u32::MAX as usize) as u32;
         self.workload.uploaded_meshes = render.uploads_this_frame.min(u32::MAX as usize) as u32;
+        self.workload.upload_bytes = render.gpu_upload_bytes;
         self.workload.draw_calls =
             (render.draw_calls + render.shadow_draw_calls).min(u32::MAX as usize) as u32;
         self.workload.gpu_memory_bytes = render.estimated_gpu_bytes() as u64;

@@ -3,6 +3,7 @@ pub(crate) mod content_bootstrap;
 mod cursor;
 mod debug_input;
 mod dev_state;
+mod diagnostics_export;
 mod event_router;
 mod feedback_router;
 mod frame_commands;

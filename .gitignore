@@ -1,6 +1,7 @@
 /target
 /node_modules
 /dist
+/logs
 /apps/voxelverse-studio/node_modules
 /apps/voxelverse-studio/dist
 /apps/voxelverse-studio/*.log

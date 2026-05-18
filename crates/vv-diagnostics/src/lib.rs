@@ -13,6 +13,7 @@ mod system;
 pub use diagnostics_frame::{DiagnosticsFrame, FrameStatsSnapshot};
 pub use export::{
     append_spike_report, export_latest_frame, export_rolling_summary, export_timeline,
+    DiagnosticsFileSink,
 };
 pub use frame_stats::FrameStats;
 pub use metric::{

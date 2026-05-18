@@ -28,6 +28,28 @@ impl Default for DiagnosticsConfig {
     }
 }
 
+impl DiagnosticsConfig {
+    pub fn from_env() -> Self {
+        let mut config = Self::default();
+        if let Ok(value) = std::env::var("VV_DIAGNOSTICS") {
+            if let Some(profile) = DiagnosticsProfile::parse(&value) {
+                config.profile = profile;
+            }
+        } else if let Ok(value) = std::env::var("VV_DIAGNOSTICS_PROFILE") {
+            if let Some(profile) = DiagnosticsProfile::parse(&value) {
+                config.profile = profile;
+            }
+        } else {
+            config.profile = DiagnosticsProfile::Off;
+        }
+
+        if let Ok(dir) = std::env::var("VV_DIAGNOSTICS_DIR") {
+            config.export_dir = PathBuf::from(dir);
+        }
+        config
+    }
+}
+
 pub struct Diagnostics {
     state: Mutex<DiagnosticsState>,
 }
