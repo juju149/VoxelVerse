@@ -4,8 +4,14 @@
 //! decides which registries to populate based on what sections are present.
 //!
 //! Block-state property declarations live here too — they belong to a block
-//! and have no other home. When `object.rs` grows past ~800 lines we'll split
-//! it into `object/{block,item,recipe,station,entity}.rs`.
+//! and have no other home.
+//!
+//! All cross-object references parsed by this schema are fully-qualified
+//! identifiers in the V1 form `namespace:category/path`, and tags use
+//! `#namespace:tag/domain/name`. Short names such as `"stone"` or
+//! `"pickaxe"`, and the legacy `#station.<name>` shorthand, are rejected by
+//! the pack compiler and pack doctor — never by this schema, which only
+//! checks structural shape.
 
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
@@ -20,7 +26,8 @@ pub struct RawObjectDef {
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
-    /// Short tag names carried by this object (e.g. `["terrain", "soil"]`).
+    /// Fully-qualified tags carried by this object, e.g.
+    /// `["#core:tag/block/natural", "#core:tag/material/stone"]`.
     #[serde(default)]
     pub tags: Vec<String>,
 
@@ -359,6 +366,8 @@ pub enum RawObjectToolKind {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RawObjectDropEntry {
+    /// Fully-qualified object ref of the dropped item
+    /// (e.g. `"core:object/resources/stone"`).
     pub item: String,
     #[serde(default = "default_count_one")]
     pub count: RawObjectCount,
@@ -465,8 +474,10 @@ pub enum RawObjectEffectKind {
 pub struct RawObjectStationSection {
     #[serde(rename = "type")]
     pub station_type: RawObjectStationType,
-    /// Tags that recipes can target via `#station.<name>`. At least one entry
-    /// expected if the station hosts any recipe.
+    /// Fully-qualified station tags this station provides, e.g.
+    /// `["#core:tag/station/construction"]`. Recipes target these tags via
+    /// their own `station` field. At least one entry is expected when the
+    /// station hosts any recipe; the compiler/doctor enforce that.
     #[serde(default)]
     pub station_tags: Vec<String>,
     /// Number of processing / storage slots in the UI.
@@ -574,13 +585,16 @@ pub struct RawObjectLootSection {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RawObjectRecipeSection {
-    /// Station tag required (e.g. `"#station.construction"`).
-    /// `None` = available in the personal 2×2 grid.
+    /// Fully-qualified station tag required, e.g.
+    /// `"#core:tag/station/construction"`. `None` = available in the personal
+    /// 2×2 grid.
     #[serde(default)]
     pub station: Option<String>,
     /// Ingredients and how they're laid out.
     pub kind: RawObjectRecipeKind,
-    /// Output of this recipe. Short item name resolved by the compiler.
+    /// Output of this recipe. Must match the enclosing object via its
+    /// fully-qualified object ref (e.g. `"core:object/tools/stone_pickaxe"`);
+    /// the pack compiler rejects any mismatch.
     pub output: RawObjectRecipeOutput,
     /// Optional grouping tag for the recipe book UI.
     #[serde(default)]
@@ -601,13 +615,17 @@ pub enum RawObjectRecipeKind {
 pub struct RawShapedRecipe {
     /// Grid pattern rows, e.g. `["SSS", " F ", " F "]`.
     pub pattern: Vec<String>,
-    /// Symbol → item-name mapping.
+    /// Symbol → fully-qualified ingredient ref. Values may be an object ref
+    /// (`"core:object/resources/stone"`) or a tag ref
+    /// (`"#core:tag/material/stone"`); the compiler resolves both.
     pub legend: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RawShapelessRecipe {
+    /// Fully-qualified ingredient refs — object refs or tag refs, as for
+    /// `RawShapedRecipe::legend`.
     pub ingredients: Vec<String>,
 }
 
@@ -626,6 +644,8 @@ fn default_processing_time() -> f32 {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RawObjectRecipeOutput {
+    /// Fully-qualified object ref of the produced item. Must match the
+    /// enclosing object; the pack compiler rejects any mismatch.
     pub item: String,
     #[serde(default = "default_one_u32")]
     pub count: u32,
