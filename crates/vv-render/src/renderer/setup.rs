@@ -499,6 +499,7 @@ impl<'a> Renderer<'a> {
             pending_lods: HashSet::new(),
             scheduler: MeshScheduler::new(perf.render_budget.mesh_scheduler),
             scheduler_stats: SchedulerStats::default(),
+            last_rebuild_view_dir: glam::Vec3::ZERO,
             frame_metrics: FrameMetrics::new(),
             hotbar_cache_signature: None,
             block_damage_cache_signature: None,

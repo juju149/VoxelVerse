@@ -7,7 +7,9 @@
 
 use std::path::{Path, PathBuf};
 
-use vv_content_schema::{RawObjectDef, RawPackManifest, RawVoxelModelManifest};
+use vv_content_schema::{
+    RawObjectDef, RawPackManifest, RawVoxelAssetRegistry, RawVoxelModelManifest,
+};
 
 use crate::parse::{pack_relative, parse_string, parse_value, read_typed, ParseError};
 
@@ -17,6 +19,7 @@ pub struct PackScan {
     pub namespace: String,
 
     pub objects: Vec<ParsedObject>,
+    pub voxel_assets: Option<ParsedVoxelAssetRegistry>,
     pub voxel_models: Vec<ParsedVoxelModel>,
     pub world_files: Vec<ParsedWorldFile>,
     pub render: RenderScan,
@@ -33,6 +36,11 @@ pub struct ParsedObject {
     pub id: String,
     pub rel_path: String,
     pub def: RawObjectDef,
+}
+
+pub struct ParsedVoxelAssetRegistry {
+    pub rel_path: String,
+    pub def: RawVoxelAssetRegistry,
 }
 
 pub struct ParsedVoxelModel {
@@ -101,6 +109,7 @@ impl PackScan {
         collect_files(&pack_root, "ron", &mut all_ron, SOURCE_SKIP);
 
         let objects = load_objects(&pack_root, &mut errors);
+        let voxel_assets = load_voxel_asset_registry(&pack_root, &manifest, &mut errors);
         let voxel_models = load_voxel_models(&pack_root, &mut errors);
         let world_files = load_world(&pack_root, &mut errors);
         let render = load_render(&pack_root, &namespace, &mut errors);
@@ -131,6 +140,7 @@ impl PackScan {
             manifest,
             namespace,
             objects,
+            voxel_assets,
             voxel_models,
             world_files,
             render,
@@ -203,6 +213,34 @@ fn load_objects(pack_root: &Path, errors: &mut Vec<ParseError>) -> Vec<ParsedObj
         }
     }
     out
+}
+
+fn load_voxel_asset_registry(
+    pack_root: &Path,
+    manifest: &Option<RawPackManifest>,
+    errors: &mut Vec<ParseError>,
+) -> Option<ParsedVoxelAssetRegistry> {
+    let generated_root = manifest
+        .as_ref()
+        .map(|m| m.content_roots.generated.as_str())
+        .unwrap_or("generated");
+    let path = pack_root
+        .join(generated_root)
+        .join("registries")
+        .join("voxel_assets.ron");
+    if !path.exists() {
+        return None;
+    }
+    match read_typed::<RawVoxelAssetRegistry>(pack_root, &path) {
+        Ok(def) => Some(ParsedVoxelAssetRegistry {
+            rel_path: pack_relative(pack_root, &path),
+            def,
+        }),
+        Err(e) => {
+            errors.push(e);
+            None
+        }
+    }
 }
 
 fn load_voxel_models(pack_root: &Path, errors: &mut Vec<ParseError>) -> Vec<ParsedVoxelModel> {

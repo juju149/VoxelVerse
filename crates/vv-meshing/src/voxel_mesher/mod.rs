@@ -53,8 +53,11 @@ impl MeshGen {
         let u_end = (u_start + CHUNK_SIZE).min(resolution);
         let v_end = (v_start + CHUNK_SIZE).min(resolution);
 
-        let accessor =
-            VoxelAccessor::new(&input.voxels, &input.material_table, &input.border_samples);
+        let accessor = VoxelAccessor::new(
+            &input.voxels,
+            input.material_table.as_ref(),
+            &input.border_samples,
+        );
 
         let mut candidate_buf = build_candidates(
             &accessor,

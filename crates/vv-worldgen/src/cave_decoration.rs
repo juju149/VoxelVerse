@@ -55,7 +55,12 @@ const SCAN_STRIDE: u32 = 2;
 pub(crate) fn cave_props_for_chunk(
     terrain: &ProceduralPlanetTerrain,
     key: SurfaceChunkKey,
+    remaining_budget: usize,
 ) -> Vec<PropStamp> {
+    if remaining_budget == 0 {
+        return Vec::new();
+    }
+
     let planet = terrain.planet();
 
     // Partition registered scatters into floor and ceiling buckets.
@@ -82,7 +87,7 @@ pub(crate) fn cave_props_for_chunk(
     let v1 = (v0 + CHUNK_SIZE).min(terrain.voxel_res());
 
     let voxel_scale = terrain.voxel_scale();
-    let budget = planet.streaming.feature_budget_per_chunk as usize;
+    let budget = remaining_budget;
     let profile = terrain.profile();
 
     let mut props: Vec<PropStamp> = Vec::new();

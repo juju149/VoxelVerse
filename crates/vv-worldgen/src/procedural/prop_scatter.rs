@@ -96,9 +96,11 @@ impl ProceduralPlanetTerrain {
             );
         }
 
-        // Append cave floor / ceiling props (subsurface column scanning).
-        let mut cave = crate::cave_decoration::cave_props_for_chunk(self, key);
-        props.append(&mut cave);
+        if budget == 0 || props.len() < budget {
+            let remaining = budget.saturating_sub(props.len());
+            let mut cave = crate::cave_decoration::cave_props_for_chunk(self, key, remaining);
+            props.append(&mut cave);
+        }
 
         props
     }

@@ -1,19 +1,17 @@
-//! Streaming pre-warm: blocks gameplay startup until every mesh job that
-//! the current view requires has been built and uploaded.
+//! Streaming pre-warm: gives the spawn view a bounded terrain seed before
+//! gameplay starts.
 //!
-//! Without this, the first second of play time runs the camera over a
-//! quadtree whose LOD tiles are still on rayon worker threads — the planet
-//! pops into existence in chunks.  Draining the queue up-front means the
-//! player never sees a void.
+//! The streamer continues progressively during gameplay.  Startup only waits
+//! long enough for initial coverage, which prevents the first frame from
+//! absorbing the full quadtree and mesh queue cost.
 
 use super::Renderer;
 use crate::world_streaming::StreamingView;
 use std::time::{Duration, Instant};
 use vv_world::PlanetData;
 
-/// Hard cap on the pre-warm phase.  If meshing somehow stalls the loading
-/// screen always finishes within this budget so the player isn't stuck.
-const MAX_DURATION: Duration = Duration::from_secs(30);
+const MAX_DURATION: Duration = Duration::from_millis(1_500);
+const MIN_COVERAGE_DURATION: Duration = Duration::from_millis(250);
 
 impl<'a> Renderer<'a> {
     /// Total mesh jobs still in flight for the current streaming view.
@@ -21,8 +19,9 @@ impl<'a> Renderer<'a> {
         self.pending_chunks.len() + self.pending_lods.len()
     }
 
-    /// Block on the streaming pipeline until every required mesh has been
-    /// built and uploaded, refreshing the loading screen between ticks.
+    /// Run the streaming pipeline briefly, refreshing the loading screen
+    /// between ticks.  This method intentionally returns before every required
+    /// tile is ready; per-frame scheduler budgets handle the rest.
     ///
     /// The progress callback runs `render_loading` itself; we pass `&mut
     /// self` through so the closure can drive the GPU without fighting the
@@ -38,7 +37,12 @@ impl<'a> Renderer<'a> {
         let start = Instant::now();
         loop {
             let remaining = self.streaming_pending();
-            if remaining == 0 || start.elapsed() > MAX_DURATION {
+            let elapsed = start.elapsed();
+            let has_coverage = self.has_active_scene_chunks();
+            if remaining == 0
+                || elapsed > MAX_DURATION
+                || (has_coverage && elapsed >= MIN_COVERAGE_DURATION)
+            {
                 break;
             }
             let progress = 1.0 - (remaining as f32 / initial as f32);

@@ -16,6 +16,7 @@ pub struct PackIndex<'a> {
     pub tags_declared: BTreeSet<String>,
     pub stations_declared: BTreeSet<String>,
     pub voxel_model_set: BTreeSet<String>,
+    pub voxel_asset_set: BTreeSet<String>,
     pub texture_set: BTreeSet<String>,
     pub voxel_set: BTreeSet<String>,
 }
@@ -64,6 +65,13 @@ impl<'a> PackIndex<'a> {
             voxel_model_set.insert(format!("{}:{}", scan.namespace, model.id));
         }
 
+        let mut voxel_asset_set = BTreeSet::new();
+        if let Some(registry) = &scan.voxel_assets {
+            for asset in &registry.def.assets {
+                voxel_asset_set.insert(asset.id.0.clone());
+            }
+        }
+
         let mut texture_set = BTreeSet::new();
         for tex in &scan.texture_files {
             texture_set.insert(tex.rel_path.clone());
@@ -80,6 +88,7 @@ impl<'a> PackIndex<'a> {
             tags_declared,
             stations_declared,
             voxel_model_set,
+            voxel_asset_set,
             texture_set,
             voxel_set,
         }
@@ -153,6 +162,17 @@ impl<'a> PackIndex<'a> {
 
     pub fn voxel_model_exists(&self, key: &str) -> bool {
         self.voxel_model_set.contains(key)
+    }
+
+    pub fn voxel_asset_registered(&self, key: &str) -> bool {
+        if self.voxel_asset_set.contains(key) {
+            return true;
+        }
+        if key.contains(':') {
+            return false;
+        }
+        self.voxel_asset_set
+            .contains(&format!("{}:{key}", self.scan.namespace))
     }
 }
 

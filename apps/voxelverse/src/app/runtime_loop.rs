@@ -1,7 +1,7 @@
 use crate::app::game_app::GameApp;
 use vv_diagnostics::SystemDiagnostics;
 use winit::event::Event;
-use winit::event_loop::EventLoop;
+use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Fullscreen, Window, WindowBuilder};
 
 pub fn run() {
@@ -13,6 +13,9 @@ pub fn run() {
 
     event_loop
         .run(move |event, target| match event {
+            Event::NewEvents(_) => {
+                target.set_control_flow(ControlFlow::Poll);
+            }
             Event::DeviceEvent { event, .. } => {
                 app.handle_device_event(event);
             }

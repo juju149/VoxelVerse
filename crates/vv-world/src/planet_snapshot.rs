@@ -11,6 +11,7 @@
 
 use crate::{BrokenPropLayer, PlanetData, TerrainVisualPalette, VoxModelRegistry, VoxelRuntime};
 use std::sync::Arc;
+use vv_meshing::MeshMaterialTable;
 use vv_pack_compiler::BlockRegistry;
 use vv_voxel::{PlanetProfile, SurfaceChunkKey, VoxelCoord, VoxelId};
 use vv_worldgen::{bake_for_chunk, ChunkFeatureMap, ProceduralPlanetTerrain};
@@ -21,6 +22,7 @@ pub struct PlanetSnapshot {
     pub broken_props: Arc<BrokenPropLayer>,
     pub content: Arc<BlockRegistry>,
     pub terrain_visuals: Arc<TerrainVisualPalette>,
+    pub material_table: Arc<MeshMaterialTable>,
     pub prop_models: Arc<VoxModelRegistry>,
     pub terrain: ProceduralPlanetTerrain,
     pub profile: PlanetProfile,
@@ -74,6 +76,7 @@ impl PlanetData {
             broken_props: Arc::clone(&self.broken_props),
             content: Arc::clone(&self.content),
             terrain_visuals: Arc::clone(&self.terrain_visuals),
+            material_table: Arc::clone(&self.material_table),
             prop_models: Arc::clone(&self.prop_models),
             terrain: self.terrain.clone(),
             profile: self.profile,

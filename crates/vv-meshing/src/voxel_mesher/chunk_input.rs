@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use vv_voxel::{PlanetProfile, SurfaceChunkKey, VoxelId};
 
 use super::material_packing::MeshMaterialTable;
@@ -125,6 +126,6 @@ pub struct ChunkMeshInput {
     pub key: SurfaceChunkKey,
     pub voxels: ChunkVoxelView,
     pub border_samples: ChunkBorderSamples,
-    pub material_table: MeshMaterialTable,
+    pub material_table: Arc<MeshMaterialTable>,
     pub prop_instances: Vec<PropMeshInstance>,
 }

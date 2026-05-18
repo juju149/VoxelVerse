@@ -81,7 +81,7 @@ mod tests {
             content.procedural_planet_index,
         );
         assert_eq!(runtime.profile().seed, scene.seed);
-        assert_eq!(runtime.profile().resolution, 1024);
+        assert_eq!(runtime.profile().resolution, 512);
         assert!(runtime.spawn_position().is_finite());
 
         let mut runtime = runtime;

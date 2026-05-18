@@ -4,7 +4,7 @@
 //! it (shadow map size, scheduler budgets, PCF kernel, LOD aggressiveness).
 //!
 //! The user can force a tier with the `VV_PERF=low|medium|high|ultra` env
-//! variable; otherwise we fall back to [`PerfTier::detect`].
+//! variable; otherwise auto-detection caps at [`PerfTier::High`].
 
 use crate::quality::{PcfQuality, QualitySettings, RenderQualityProfile};
 use crate::world_streaming::{LodSplitCurve, WorldStreamingConfig};
@@ -30,7 +30,7 @@ impl PerfTier {
         }
     }
 
-    /// Heuristic: rank the host as Low/Medium/High/Ultra from CPU cores, RAM
+    /// Heuristic: rank the host as Low/Medium/High from CPU cores, RAM
     /// and the wgpu adapter's device type.  Errs on the conservative side —
     /// integrated GPUs never go above Medium even with lots of RAM, since the
     /// shadow pass and triplanar grain are fill-rate bound.
@@ -42,27 +42,7 @@ impl PerfTier {
         let ram_gb = sys.total_memory() as f32 / (1024.0 * 1024.0 * 1024.0);
         let cores = sys.cpus().len() as u32;
 
-        let is_discrete = matches!(adapter_info.device_type, wgpu::DeviceType::DiscreteGpu);
-        let is_integrated = matches!(adapter_info.device_type, wgpu::DeviceType::IntegratedGpu);
-        let is_software = matches!(
-            adapter_info.device_type,
-            wgpu::DeviceType::Cpu | wgpu::DeviceType::Other
-        );
-
-        if is_software {
-            return PerfTier::Low;
-        }
-
-        if is_discrete && ram_gb >= 24.0 && cores >= 12 {
-            return PerfTier::Ultra;
-        }
-        if is_discrete && ram_gb >= 16.0 && cores >= 8 {
-            return PerfTier::High;
-        }
-        if is_discrete || (is_integrated && ram_gb >= 16.0 && cores >= 8) {
-            return PerfTier::Medium;
-        }
-        PerfTier::Low
+        Self::detect_from_parts(adapter_info.device_type, ram_gb, cores)
     }
 
     /// Resolve a tier honouring the `VV_PERF` env override.
@@ -78,6 +58,23 @@ impl PerfTier {
             );
         }
         Self::detect(adapter_info)
+    }
+
+    fn detect_from_parts(device_type: wgpu::DeviceType, ram_gb: f32, cores: u32) -> Self {
+        let is_discrete = matches!(device_type, wgpu::DeviceType::DiscreteGpu);
+        let is_integrated = matches!(device_type, wgpu::DeviceType::IntegratedGpu);
+        let is_software = matches!(device_type, wgpu::DeviceType::Cpu | wgpu::DeviceType::Other);
+
+        if is_software {
+            return PerfTier::Low;
+        }
+        if is_discrete && ram_gb >= 16.0 && cores >= 8 {
+            return PerfTier::High;
+        }
+        if is_discrete || (is_integrated && ram_gb >= 16.0 && cores >= 8) {
+            return PerfTier::Medium;
+        }
+        PerfTier::Low
     }
 }
 
@@ -124,7 +121,7 @@ impl PerfProfile {
                     lod_hysteresis: 0.18,
                     lod_transition_time: 1.0,
                     max_visible_voxel_chunks: 144,
-                    max_visible_lod_tiles: 1024,
+                    max_visible_lod_tiles: 512,
                 },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Potato,
@@ -170,7 +167,7 @@ impl PerfProfile {
                     lod_hysteresis: 0.16,
                     lod_transition_time: 1.15,
                     max_visible_voxel_chunks: 256,
-                    max_visible_lod_tiles: 2048,
+                    max_visible_lod_tiles: 1024,
                 },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Balanced,
@@ -193,7 +190,7 @@ impl PerfProfile {
             },
             PerfTier::High => Self {
                 tier,
-                shadow_map_size: 4096,
+                shadow_map_size: 2048,
                 world_streaming: WorldStreamingConfig {
                     lod_near_radius: 112.0,
                     lod_split_curve: LodSplitCurve {
@@ -203,34 +200,39 @@ impl PerfProfile {
                         voxel_factor: 18.0,
                     },
                     lod_hysteresis: 0.15,
-                    lod_transition_time: 1.25,
-                    max_visible_voxel_chunks: 384,
-                    max_visible_lod_tiles: 3072,
+                    lod_transition_time: 1.2,
+                    max_visible_voxel_chunks: 320,
+                    max_visible_lod_tiles: 1280,
                 },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::High,
-                    triplanar_grain: false,
+                    triplanar_grain: true,
                     pcf: PcfQuality::Medium,
                     color_only_mode: false,
                     volumetric_fog: true,
-                    volumetric_clouds: true,
+                    volumetric_clouds: false,
                     soft_aa: true,
                     highlight_lift: true,
-                    cloud_steps: 10,
+                    cloud_steps: 8,
                 },
                 render_budget: RenderBudgetConfig {
                     mesh_scheduler: SchedulerBudget {
                         upload_voxel: 10,
-                        dispatch_voxel: 10,
-                        max_pending_voxel: 64,
-                        upload_lod: 14,
-                        dispatch_lod: 16,
-                        max_pending_lod: 40,
-                        upload_bytes_per_frame: 20 * 1024 * 1024,
-                        upload_time_budget_ms: 6.0,
+                        dispatch_voxel: 8,
+                        max_pending_voxel: 48,
+                        upload_lod: 10,
+                        dispatch_lod: 10,
+                        max_pending_lod: 28,
+                        upload_bytes_per_frame: 14 * 1024 * 1024,
+                        upload_time_budget_ms: 5.0,
                     },
                 },
-                meshing: VoxelMeshingConfig::default(),
+                meshing: VoxelMeshingConfig {
+                    prop_lod_chunk_radius: 5,
+                    cliff_fill_depth: 20,
+                    max_prop_faces_per_stamp: 256,
+                    max_prop_quads_per_chunk: 2048,
+                },
             },
             PerfTier::Ultra => Self {
                 tier,
@@ -245,8 +247,8 @@ impl PerfProfile {
                     },
                     lod_hysteresis: 0.14,
                     lod_transition_time: 1.35,
-                    max_visible_voxel_chunks: 512,
-                    max_visible_lod_tiles: 4096,
+                    max_visible_voxel_chunks: 384,
+                    max_visible_lod_tiles: 2048,
                 },
                 quality: QualitySettings {
                     profile: RenderQualityProfile::Ultra,
@@ -262,12 +264,12 @@ impl PerfProfile {
                 render_budget: RenderBudgetConfig {
                     mesh_scheduler: SchedulerBudget {
                         upload_voxel: 14,
-                        dispatch_voxel: 12,
-                        max_pending_voxel: 96,
-                        upload_lod: 18,
-                        dispatch_lod: 22,
-                        max_pending_lod: 56,
-                        upload_bytes_per_frame: 28 * 1024 * 1024,
+                        dispatch_voxel: 10,
+                        max_pending_voxel: 48,
+                        upload_lod: 12,
+                        dispatch_lod: 12,
+                        max_pending_lod: 32,
+                        upload_bytes_per_frame: 20 * 1024 * 1024,
                         upload_time_budget_ms: 7.0,
                     },
                 },
@@ -308,6 +310,59 @@ impl PerfProfile {
             self.meshing.prop_lod_chunk_radius,
             self.meshing.cliff_fill_depth,
             self.meshing.max_prop_quads_per_chunk,
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{PerfProfile, PerfTier};
+
+    #[test]
+    fn auto_detect_never_selects_ultra() {
+        let tier = PerfTier::detect_from_parts(wgpu::DeviceType::DiscreteGpu, 64.0, 24);
+        assert_eq!(tier, PerfTier::High);
+    }
+
+    #[test]
+    fn ultra_remains_explicit_override_tier() {
+        assert_eq!("ultra".parse::<PerfTier>(), Ok(PerfTier::Ultra));
+    }
+
+    #[test]
+    fn high_and_ultra_pending_budgets_match_diagnostics_limits() {
+        for tier in [PerfTier::High, PerfTier::Ultra] {
+            let budget = PerfProfile::for_tier(tier).render_budget.mesh_scheduler;
+            assert!(budget.max_pending_voxel <= 48);
+            assert!(budget.max_pending_lod <= 32);
+        }
+    }
+
+    #[test]
+    fn high_profile_keeps_volumetric_clouds_out_of_default_play() {
+        let profile = PerfProfile::for_tier(PerfTier::High);
+        // Volumetric clouds are reserved for Ultra — High enables cloud shading
+        // steps but not full volumetric simulation.
+        assert!(!profile.quality.volumetric_clouds);
+        // High is strictly better than Medium across every dimension.
+        let medium = PerfProfile::for_tier(PerfTier::Medium);
+        assert!(
+            profile.world_streaming.max_visible_voxel_chunks
+                > medium.world_streaming.max_visible_voxel_chunks
+        );
+        assert!(
+            profile.world_streaming.max_visible_lod_tiles
+                > medium.world_streaming.max_visible_lod_tiles
+        );
+        assert!(
+            profile.render_budget.mesh_scheduler.max_pending_voxel
+                >= medium.render_budget.mesh_scheduler.max_pending_voxel
+        );
+        // High stays below Ultra.
+        let ultra = PerfProfile::for_tier(PerfTier::Ultra);
+        assert!(
+            profile.world_streaming.max_visible_voxel_chunks
+                < ultra.world_streaming.max_visible_voxel_chunks
         );
     }
 }

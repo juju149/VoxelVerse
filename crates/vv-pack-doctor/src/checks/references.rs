@@ -324,6 +324,23 @@ fn check_world_file(file: &ParsedWorldFile, index: &PackIndex<'_>, report: &mut 
                     .with_suggestion(format!("create {}", candidate)),
                 );
             }
+            if !index.voxel_asset_registered(stripped) {
+                report.error(
+                    Diagnostic::new(
+                        "references",
+                        format!(
+                            "voxel model '{}' is not registered in generated voxel assets",
+                            s
+                        ),
+                    )
+                    .with_path(file.rel_path.clone())
+                    .with_id(file.id.clone())
+                    .with_field(path.join("."))
+                    .with_suggestion(
+                        "add the model to generated/registries/voxel_assets.ron".to_string(),
+                    ),
+                );
+            }
             return;
         }
 

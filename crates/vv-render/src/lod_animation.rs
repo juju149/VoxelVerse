@@ -3,6 +3,11 @@ use std::collections::HashMap;
 use std::time::Instant;
 use vv_voxel::{LodKey, SurfaceChunkKey};
 
+/// Hard cap on how many retired meshes may linger in the fade-out queue.
+/// Each dying entry holds live GPU buffers; without a ceiling the set grows
+/// without bound during fast orbital flight where many tiles retire every frame.
+const MAX_DYING_CHUNKS: usize = 48;
+
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 pub enum AnyKey {
     Voxel(SurfaceChunkKey),
@@ -51,6 +56,24 @@ impl LodAnimator {
     }
 
     pub fn retire(&mut self, key: AnyKey, mesh: ChunkMesh) {
+        // When at capacity, evict the dying chunk that is already closest to
+        // fully transparent.  It is nearly invisible and holds the least visual
+        // value while still occupying GPU buffers.
+        if self.dying_chunks.len() >= MAX_DYING_CHUNKS {
+            let now = Instant::now();
+            let to_drop = self
+                .dying_chunks
+                .iter()
+                .max_by(|a, b| {
+                    let ta = (now - a.1.start_time).as_secs_f32() / a.1.duration.max(0.001);
+                    let tb = (now - b.1.start_time).as_secs_f32() / b.1.duration.max(0.001);
+                    ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .map(|(k, _)| *k);
+            if let Some(k) = to_drop {
+                self.dying_chunks.remove(&k);
+            }
+        }
         self.dying_chunks.insert(
             key,
             FadeState {

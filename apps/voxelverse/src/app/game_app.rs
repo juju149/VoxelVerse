@@ -17,6 +17,8 @@ use winit::event::{DeviceEvent, WindowEvent};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::{Window, WindowId};
 
+const MAX_GAMEPLAY_DT_SECONDS: f32 = 1.0 / 20.0;
+
 pub(super) struct GameApp<'a> {
     pub(super) renderer: Renderer<'a>,
     pub(super) audio: AudioEngine,
@@ -143,7 +145,7 @@ impl<'a> GameApp<'a> {
 
     pub(super) fn tick(&mut self) {
         let now = Instant::now();
-        let dt = (now - self.last_time).as_secs_f32();
+        let dt = stable_gameplay_dt((now - self.last_time).as_secs_f32());
         self.last_time = now;
 
         sync_cursor_mode(
@@ -156,9 +158,29 @@ impl<'a> GameApp<'a> {
     }
 }
 
+fn stable_gameplay_dt(raw_dt: f32) -> f32 {
+    if raw_dt.is_finite() {
+        raw_dt.clamp(0.0, MAX_GAMEPLAY_DT_SECONDS)
+    } else {
+        0.0
+    }
+}
+
 fn create_console() -> Console {
     let mut console = Console::new();
     console.log("Welcome to voxelverse.", [0.0, 1.0, 0.0]);
     console.log("Press ` to open console.", [1.0, 1.0, 1.0]);
     console
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{stable_gameplay_dt, MAX_GAMEPLAY_DT_SECONDS};
+
+    #[test]
+    fn gameplay_dt_is_bounded_after_frame_stalls() {
+        assert_eq!(stable_gameplay_dt(1.5), MAX_GAMEPLAY_DT_SECONDS);
+        assert_eq!(stable_gameplay_dt(f32::INFINITY), 0.0);
+        assert_eq!(stable_gameplay_dt(-0.25), 0.0);
+    }
 }

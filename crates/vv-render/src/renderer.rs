@@ -9,6 +9,7 @@ use crate::quality::QualitySettings;
 use crate::types::ChunkMesh;
 use crate::world_streaming::{StreamingView, WorldStreamingConfig};
 use bytemuck::{Pod, Zeroable};
+use glam::Vec3;
 use glyphon::{FontSystem, SwashCache, TextAtlas, TextRenderer as GlyphRenderer};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{Receiver, Sender};
@@ -162,6 +163,10 @@ pub struct Renderer<'a> {
 
     scheduler: MeshScheduler,
     scheduler_stats: SchedulerStats,
+    /// Normalised view direction at the time of the last load-queue rebuild.
+    /// Used to detect significant turns so the queue re-sorts without waiting
+    /// for the player to cross a chunk boundary.
+    last_rebuild_view_dir: Vec3,
     frame_metrics: FrameMetrics,
     engine_debug_page: bool,
 

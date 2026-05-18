@@ -31,7 +31,6 @@ impl PlanetSnapshot {
         key: SurfaceChunkKey,
         config: VoxelMeshingConfig,
     ) -> ChunkMeshInput {
-        let material_table = build_material_table(&self.content);
         let mut voxels = ChunkVoxelView::new(key.face, self.resolution);
         let border = build_border_samples(self, key);
 
@@ -102,7 +101,7 @@ impl PlanetSnapshot {
             key,
             voxels,
             border_samples: border,
-            material_table,
+            material_table: Arc::clone(&self.material_table),
             prop_instances,
         }
     }
@@ -177,7 +176,7 @@ impl PlanetSnapshot {
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn build_material_table(content: &vv_pack_compiler::BlockRegistry) -> MeshMaterialTable {
+pub(crate) fn build_material_table(content: &vv_pack_compiler::BlockRegistry) -> MeshMaterialTable {
     let count = content.block_count();
     let mut entries = Vec::with_capacity(count);
     for raw in 0..count {
@@ -326,6 +325,9 @@ fn build_prop_instances(
     key: SurfaceChunkKey,
     config: VoxelMeshingConfig,
 ) -> Vec<PropMeshInstance> {
+    if snapshot.prop_models.models.is_empty() {
+        return Vec::new();
+    }
     if !vv_meshing::MeshGen::should_bake_props_for_chunk(key, snapshot.player_surface_key, config) {
         return Vec::new();
     }

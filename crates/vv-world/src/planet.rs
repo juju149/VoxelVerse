@@ -3,6 +3,7 @@ use crate::{
     VoxelRuntime, WorldTime,
 };
 use std::sync::Arc;
+use vv_meshing::MeshMaterialTable;
 use vv_pack_compiler::{BlockRegistry, CompiledPlanet, ItemRegistry, ProceduralRegistry};
 use vv_voxel::{SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 use vv_worldgen::{ProceduralPlanetTerrain, WorldgenStatsSnapshot};
@@ -50,6 +51,7 @@ pub struct PlanetData {
     pub(crate) content: Arc<BlockRegistry>,
     pub(crate) items: Arc<ItemRegistry>,
     pub(crate) terrain_visuals: Arc<TerrainVisualPalette>,
+    pub(crate) material_table: Arc<MeshMaterialTable>,
     pub(crate) procedural: Arc<ProceduralRegistry>,
     pub(crate) procedural_planet_index: usize,
     pub(crate) profile: PlanetProfile,
@@ -116,6 +118,7 @@ impl PlanetData {
         println!("Terrain generation complete.");
 
         let block_ids = PlanetBlockIds::from_registry(&registry);
+        let material_table = Arc::new(crate::mesh_input_builder::build_material_table(&registry));
 
         Self {
             voxels: Arc::new(VoxelRuntime::new()),
@@ -123,6 +126,7 @@ impl PlanetData {
             content: registry,
             items,
             terrain_visuals,
+            material_table,
             procedural,
             procedural_planet_index,
             profile,

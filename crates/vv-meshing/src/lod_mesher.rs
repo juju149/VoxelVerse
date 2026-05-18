@@ -14,7 +14,9 @@ use vv_math::CoordSystem;
 use vv_voxel::CHUNK_SIZE;
 
 const LOD_GRID_RES: u32 = CHUNK_SIZE;
-const LOD_WALL_SHADE_SCALE: f32 = 0.995;
+/// Fraction of the top-face brightness applied to cliff walls.
+/// A value well below 1.0 gives terrain clear silhouette depth at LOD ranges.
+const LOD_WALL_SHADE_SCALE: f32 = 0.65;
 
 impl MeshGen {
     pub fn generate_lod_mesh(input: &LodMeshInput) -> CpuMesh {
@@ -139,7 +141,6 @@ fn push_quad(
         });
     }
     inds.extend_from_slice(&[base, base + 1, base + 2, base + 2, base + 3, base]);
-    inds.extend_from_slice(&[base, base + 2, base + 1, base + 3, base + 2, base]);
 }
 
 fn scale_color(color: [f32; 3], scale: f32) -> [f32; 3] {
@@ -156,7 +157,7 @@ mod tests {
     use glam::Vec3;
 
     #[test]
-    fn lod_quads_are_emitted_with_both_windings() {
+    fn lod_quads_emit_one_front_facing_winding() {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
         push_quad(
@@ -172,6 +173,6 @@ mod tests {
             [1., 1., 1.],
         );
         assert_eq!(verts.len(), 4);
-        assert_eq!(inds, [0, 1, 2, 2, 3, 0, 0, 2, 1, 3, 2, 0]);
+        assert_eq!(inds, [0, 1, 2, 2, 3, 0]);
     }
 }

@@ -27,6 +27,15 @@ impl<'a> Renderer<'a> {
             u_idx: id.u / CHUNK_SIZE,
             v_idx: id.v / CHUNK_SIZE,
         });
+
+        // Detect a significant camera rotation (> ~25 degrees) since the last
+        // rebuild.  This is the threshold that makes the load queue re-sort
+        // when the player turns to look at a new area, ensuring newly visible
+        // chunks gain priority without waiting for a chunk-boundary crossing.
+        const VIEW_REBUILD_COS: f32 = 0.906; // cos(25°)
+        let cur_view_dir = view.view_dir.normalize_or_zero();
+        let view_dir_changed = self.last_rebuild_view_dir.dot(cur_view_dir) < VIEW_REBUILD_COS;
+
         let should_rebuild_required =
             self.player_chunk_pos != player_surface_key || self.required_voxels.is_empty();
         self.player_chunk_pos = player_surface_key;
@@ -37,6 +46,16 @@ impl<'a> Renderer<'a> {
             self.rebuild_required_sets(view, planet, player_id, res);
             self.frame_metrics.lod_selection_ms =
                 selection_started.elapsed().as_secs_f32() * 1000.0;
+
+            // Prune in-flight jobs that are no longer required.  The rayon
+            // tasks continue to completion but their results will be discarded.
+            // Freeing the pending slots immediately lets the scheduler dispatch
+            // jobs for the chunks that are NOW needed — without this, fast
+            // movement saturates the worker pool with irrelevant work and
+            // freshly-required chunks wait behind a queue of stale jobs.
+            self.pending_chunks
+                .retain(|k| self.required_voxels.contains(k));
+            self.pending_lods.retain(|k| self.required_lods.contains(k));
         }
 
         self.receive_lod_meshes();
@@ -46,6 +65,14 @@ impl<'a> Renderer<'a> {
             self.evict_stale_lods();
             self.evict_stale_voxels();
             self.rebuild_load_queue(view, planet);
+            self.last_rebuild_view_dir = cur_view_dir;
+        } else if view_dir_changed {
+            // The player turned significantly but did not cross a chunk
+            // boundary.  Skip the expensive quadtree walk — required sets are
+            // still valid — but re-sort the load queue so chunks now facing
+            // the camera jump to the front.
+            self.rebuild_load_queue(view, planet);
+            self.last_rebuild_view_dir = cur_view_dir;
         }
 
         self.process_load_queue(view.player_pos, planet);

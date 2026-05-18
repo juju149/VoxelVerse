@@ -40,6 +40,7 @@ pub enum LoadContentError {
     ProceduralLoad(String),
     ProceduralCompilation(Vec<String>),
     TextureLoad(Vec<String>),
+    MissingVoxelAssets(Vec<String>),
     NoPlanet,
 }
 
@@ -55,6 +56,12 @@ impl fmt::Display for LoadContentError {
                 write!(f, "Procedural compilation failed:\n{}", errs.join("\n"))
             }
             Self::TextureLoad(errs) => write!(f, "Texture load failed:\n{}", errs.join("\n")),
+            Self::MissingVoxelAssets(keys) => write!(
+                f,
+                "Voxel model registry is missing {} referenced model(s):\n{}",
+                keys.len(),
+                keys.join("\n")
+            ),
             Self::NoPlanet => write!(f, "Procedural pack defines no planet"),
         }
     }
@@ -111,7 +118,16 @@ pub fn load_core_content() -> Result<LoadedCoreContent, LoadContentError> {
         .voxel_assets
         .iter()
         .flat_map(|reg| reg.assets.iter())
-        .map(|def| (def.id.0.clone(), def.path.clone()))
+        .map(|def| {
+            (
+                def.id
+                    .0
+                    .strip_prefix("core:")
+                    .unwrap_or(&def.id.0)
+                    .to_string(),
+                def.path.clone(),
+            )
+        })
         .collect();
 
     // Collect only the model keys actually referenced by scatter variant defs.
@@ -121,6 +137,15 @@ pub fn load_core_content() -> Result<LoadedCoreContent, LoadContentError> {
         .flat_map(|scatter| scatter.variants.iter())
         .map(|v| v.model_key.clone())
         .collect();
+    let mut missing_vox_keys: Vec<String> = needed_vox_keys
+        .iter()
+        .filter(|key| !vox_asset_paths.contains_key(*key))
+        .cloned()
+        .collect();
+    missing_vox_keys.sort();
+    if !missing_vox_keys.is_empty() {
+        return Err(LoadContentError::MissingVoxelAssets(missing_vox_keys));
+    }
 
     println!(
         "Loaded {} blocks, {} items, {} loot tables, {} tags, {} recipes, \
