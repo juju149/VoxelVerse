@@ -1,8 +1,8 @@
+use crate::cpu_mesh::CpuVertex;
 use crate::voxel_mesher::face_culling::{Coord, VoxelAccessor};
 use crate::voxel_mesher::face_emitter::{grid_from_profile, QuadFace};
 use crate::voxel_mesher::material_packing::{pack_material_edges, FaceEdgeMask};
 use crate::voxel_mesher::MeshGen;
-use crate::cpu_mesh::CpuVertex;
 use std::collections::{HashMap, HashSet};
 use vv_math::CoordSystem;
 use vv_voxel::{PlanetProfile, VoxelId};
@@ -11,7 +11,12 @@ pub(crate) struct GreedyMesher;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum FaceDir {
-    Top, Bottom, Front, Back, Left, Right,
+    Top,
+    Bottom,
+    Front,
+    Back,
+    Left,
+    Right,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -72,15 +77,19 @@ fn collect_faces(
     planes: &mut HashMap<PlaneKey, Vec<FaceCell>>,
 ) {
     let check = |dl: i32, du: i32, dv: i32| -> bool {
-        accessor.check_solid(coord.layer as i32 + dl, coord.u as i32 + du, coord.v as i32 + dv)
+        accessor.check_solid(
+            coord.layer as i32 + dl,
+            coord.u as i32 + du,
+            coord.v as i32 + dv,
+        )
     };
 
-    push_face(accessor, coord, FaceDir::Top,    !check(1, 0, 0),  planes);
+    push_face(accessor, coord, FaceDir::Top, !check(1, 0, 0), planes);
     push_face(accessor, coord, FaceDir::Bottom, !check(-1, 0, 0), planes);
-    push_face(accessor, coord, FaceDir::Front,  !check(0, 0, -1), planes);
-    push_face(accessor, coord, FaceDir::Back,   !check(0, 0, 1),  planes);
-    push_face(accessor, coord, FaceDir::Left,   !check(0, -1, 0), planes);
-    push_face(accessor, coord, FaceDir::Right,  !check(0, 1, 0),  planes);
+    push_face(accessor, coord, FaceDir::Front, !check(0, 0, -1), planes);
+    push_face(accessor, coord, FaceDir::Back, !check(0, 0, 1), planes);
+    push_face(accessor, coord, FaceDir::Left, !check(0, -1, 0), planes);
+    push_face(accessor, coord, FaceDir::Right, !check(0, 1, 0), planes);
 }
 
 fn push_face(
@@ -97,7 +106,10 @@ fn push_face(
         return;
     };
     let merge = make_merge_key(accessor, coord, dir);
-    planes.entry(plane).or_default().push(FaceCell { a, b, coord, merge });
+    planes
+        .entry(plane)
+        .or_default()
+        .push(FaceCell { a, b, coord, merge });
 }
 
 fn emit_plane(
@@ -123,7 +135,18 @@ fn emit_plane(
                 visited.insert((cell.a + da, cell.b + db));
             }
         }
-        emit_quad(plane, QuadRun { cell: *cell, width, height }, profile, verts, inds, idx);
+        emit_quad(
+            plane,
+            QuadRun {
+                cell: *cell,
+                width,
+                height,
+            },
+            profile,
+            verts,
+            inds,
+            idx,
+        );
     }
 }
 
@@ -135,7 +158,9 @@ fn run_width(
     let mut width = 1;
     loop {
         let key = (origin.a + width, origin.b);
-        if visited.contains(&key) { break; }
+        if visited.contains(&key) {
+            break;
+        }
         if grid.get(&key).is_some_and(|c| c.merge == origin.merge) {
             width += 1;
         } else {
@@ -183,17 +208,19 @@ fn emit_quad(
     let f = plane.fixed;
 
     let pos = match plane.dir {
-        FaceDir::Top    => [p(a0, b0, f), p(a1, b0, f), p(a1, b1, f), p(a0, b1, f)],
+        FaceDir::Top => [p(a0, b0, f), p(a1, b0, f), p(a1, b1, f), p(a0, b1, f)],
         FaceDir::Bottom => [p(a0, b1, f), p(a1, b1, f), p(a1, b0, f), p(a0, b0, f)],
-        FaceDir::Front  => [p(a0, f, b0), p(a1, f, b0), p(a1, f, b1), p(a0, f, b1)],
-        FaceDir::Back   => [p(a1, f, b0), p(a0, f, b0), p(a0, f, b1), p(a1, f, b1)],
-        FaceDir::Left   => [p(f, a1, b0), p(f, a0, b0), p(f, a0, b1), p(f, a1, b1)],
-        FaceDir::Right  => [p(f, a0, b0), p(f, a1, b0), p(f, a1, b1), p(f, a0, b1)],
+        FaceDir::Front => [p(a0, f, b0), p(a1, f, b0), p(a1, f, b1), p(a0, f, b1)],
+        FaceDir::Back => [p(a1, f, b0), p(a0, f, b0), p(a0, f, b1), p(a1, f, b1)],
+        FaceDir::Left => [p(f, a1, b0), p(f, a0, b0), p(f, a0, b1), p(f, a1, b1)],
+        FaceDir::Right => [p(f, a0, b0), p(f, a1, b0), p(f, a1, b1), p(f, a0, b1)],
     };
 
     let color = decode_color(cell.merge.color);
     MeshGen::quad_tiled(
-        verts, inds, idx,
+        verts,
+        inds,
+        idx,
         QuadFace {
             pos,
             colors: [color; 4],
@@ -208,12 +235,12 @@ fn emit_quad(
 
 fn face_plane_coord(coord: Coord, dir: FaceDir) -> Option<(PlaneKey, u32, u32)> {
     let fixed = match dir {
-        FaceDir::Top    => coord.layer.checked_add(1)?,
+        FaceDir::Top => coord.layer.checked_add(1)?,
         FaceDir::Bottom => coord.layer,
-        FaceDir::Front  => coord.v,
-        FaceDir::Back   => coord.v.checked_add(1)?,
-        FaceDir::Left   => coord.u,
-        FaceDir::Right  => coord.u.checked_add(1)?,
+        FaceDir::Front => coord.v,
+        FaceDir::Back => coord.v.checked_add(1)?,
+        FaceDir::Left => coord.u,
+        FaceDir::Right => coord.u.checked_add(1)?,
     };
     let (a, b) = match dir {
         FaceDir::Top | FaceDir::Bottom => (coord.u, coord.v),
@@ -227,12 +254,12 @@ fn make_merge_key(accessor: &VoxelAccessor<'_>, coord: Coord, dir: FaceDir) -> M
     let voxel = accessor.voxel_id(coord.layer, coord.u, coord.v);
     let visual = accessor.materials.visual(voxel);
     let layer_idx = match dir {
-        FaceDir::Top    => visual.layers.top,
+        FaceDir::Top => visual.layers.top,
         FaceDir::Bottom => visual.layers.bottom,
-        FaceDir::Front  => visual.layers.front,
-        FaceDir::Back   => visual.layers.back,
-        FaceDir::Left   => visual.layers.left,
-        FaceDir::Right  => visual.layers.right,
+        FaceDir::Front => visual.layers.front,
+        FaceDir::Back => visual.layers.back,
+        FaceDir::Left => visual.layers.left,
+        FaceDir::Right => visual.layers.right,
     };
     let natural_h = accessor.surface_height(coord.u, coord.v);
     let light = if coord.layer >= natural_h {
@@ -256,9 +283,17 @@ fn make_merge_key(accessor: &VoxelAccessor<'_>, coord: Coord, dir: FaceDir) -> M
 }
 
 fn encode_color(c: [f32; 3]) -> [u8; 3] {
-    [(c[0] * 255.0) as u8, (c[1] * 255.0) as u8, (c[2] * 255.0) as u8]
+    [
+        (c[0] * 255.0) as u8,
+        (c[1] * 255.0) as u8,
+        (c[2] * 255.0) as u8,
+    ]
 }
 
 fn decode_color(c: [u8; 3]) -> [f32; 3] {
-    [c[0] as f32 / 255.0, c[1] as f32 / 255.0, c[2] as f32 / 255.0]
+    [
+        c[0] as f32 / 255.0,
+        c[1] as f32 / 255.0,
+        c[2] as f32 / 255.0,
+    ]
 }

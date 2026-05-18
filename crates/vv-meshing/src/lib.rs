@@ -14,8 +14,8 @@ pub use lod_input::{LodCellColors, LodMeshInput};
 pub use scheduler::{MeshScheduler, SchedulerBudget, SchedulerStats, UploadBudgetState};
 pub use voxel_mesher::chunk_input::{ChunkBorderSamples, ChunkMeshInput, ChunkVoxelView};
 pub use voxel_mesher::material_packing::{
-    FaceEdgeMask, MeshMaterialEntry, MeshMaterialTable, VoxelMeshClass, VoxelMeshKind,
-    VoxelVisual, VoxelVisualLayers, pack_material_edges,
+    pack_material_edges, FaceEdgeMask, MeshMaterialEntry, MeshMaterialTable, VoxelMeshClass,
+    VoxelMeshKind, VoxelVisual, VoxelVisualLayers,
 };
 pub use voxel_mesher::prop_integration::{
     BakedPropFace, PropMeshInstance, PropMeshModel, PropSurfaceOrientation,

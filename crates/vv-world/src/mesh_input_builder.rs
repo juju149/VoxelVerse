@@ -6,12 +6,12 @@
 
 use std::sync::Arc;
 
+use vv_math::SphericalGrid;
 use vv_meshing::{
     BakedPropFace, ChunkBorderSamples, ChunkMeshInput, ChunkVoxelView, LodCellColors, LodMeshInput,
     MeshMaterialEntry, MeshMaterialTable, PropMeshInstance, PropMeshModel, PropSurfaceOrientation,
-    VoxelMeshClass, VoxelMeshKind, VoxelVisual, VoxelVisualLayers, VoxelMeshingConfig,
+    VoxelMeshClass, VoxelMeshKind, VoxelMeshingConfig, VoxelVisual, VoxelVisualLayers,
 };
-use vv_math::SphericalGrid;
 use vv_pack_compiler::{CompiledMesh, CompiledMeshClass};
 use vv_voxel::{LodKey, SurfaceChunkKey, VoxelCoord, VoxelId, CHUNK_SIZE};
 
@@ -48,7 +48,12 @@ impl PlanetSnapshot {
                     continue;
                 }
                 // Surface block.
-                let surface_id = self.generated_voxel(VoxelCoord { face: key.face, layer: h, u, v });
+                let surface_id = self.generated_voxel(VoxelCoord {
+                    face: key.face,
+                    layer: h,
+                    u,
+                    v,
+                });
                 voxels.insert(h, u, v, surface_id);
 
                 // Cliff fill (layers below surface down to deepest neighbor).
@@ -56,7 +61,12 @@ impl PlanetSnapshot {
                 if min_h < h {
                     let bottom = min_h.max(h.saturating_sub(config.cliff_fill_depth));
                     for l in (bottom + 1)..h {
-                        let id = self.generated_voxel(VoxelCoord { face: key.face, layer: l, u, v });
+                        let id = self.generated_voxel(VoxelCoord {
+                            face: key.face,
+                            layer: l,
+                            u,
+                            v,
+                        });
                         voxels.insert(l, u, v, id);
                     }
                 }
@@ -254,17 +264,20 @@ fn build_border_samples(snapshot: &PlanetSnapshot, key: SurfaceChunkKey) -> Chun
     )
 }
 
-fn min_neighbor_height(
-    border: &ChunkBorderSamples,
-    u: u32,
-    v: u32,
-    resolution: u32,
-) -> u32 {
+fn min_neighbor_height(border: &ChunkBorderSamples, u: u32, v: u32, resolution: u32) -> u32 {
     let mut m = border.surface_height(u, v);
-    if u > 0 { m = m.min(border.surface_height(u - 1, v)); }
-    if u + 1 < resolution { m = m.min(border.surface_height(u + 1, v)); }
-    if v > 0 { m = m.min(border.surface_height(u, v - 1)); }
-    if v + 1 < resolution { m = m.min(border.surface_height(u, v + 1)); }
+    if u > 0 {
+        m = m.min(border.surface_height(u - 1, v));
+    }
+    if u + 1 < resolution {
+        m = m.min(border.surface_height(u + 1, v));
+    }
+    if v > 0 {
+        m = m.min(border.surface_height(u, v - 1));
+    }
+    if v + 1 < resolution {
+        m = m.min(border.surface_height(u, v + 1));
+    }
     m
 }
 
@@ -279,16 +292,33 @@ fn insert_neighbors(
     let res = snapshot.resolution;
     let mut try_insert = |l: u32, nu: u32, nv: u32| {
         if nu < res && nv < res {
-            let id = snapshot.get_voxel(VoxelCoord { face, layer: l, u: nu, v: nv });
+            let id = snapshot.get_voxel(VoxelCoord {
+                face,
+                layer: l,
+                u: nu,
+                v: nv,
+            });
             voxels.insert(l, nu, nv, id);
         }
     };
-    if layer + 1 < res { try_insert(layer + 1, u, v); }
-    if layer > 0 { try_insert(layer - 1, u, v); }
-    if u > 0 { try_insert(layer, u - 1, v); }
-    if u + 1 < res { try_insert(layer, u + 1, v); }
-    if v > 0 { try_insert(layer, u, v - 1); }
-    if v + 1 < res { try_insert(layer, u, v + 1); }
+    if layer + 1 < res {
+        try_insert(layer + 1, u, v);
+    }
+    if layer > 0 {
+        try_insert(layer - 1, u, v);
+    }
+    if u > 0 {
+        try_insert(layer, u - 1, v);
+    }
+    if u + 1 < res {
+        try_insert(layer, u + 1, v);
+    }
+    if v > 0 {
+        try_insert(layer, u, v - 1);
+    }
+    if v + 1 < res {
+        try_insert(layer, u, v + 1);
+    }
 }
 
 fn build_prop_instances(

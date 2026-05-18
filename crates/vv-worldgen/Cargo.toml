@@ -7,6 +7,7 @@ edition.workspace = true
 vv-voxel = { path = "../vv-voxel" }
 vv-math = { path = "../vv-math" }
 vv-pack-compiler = { path = "../vv-pack-compiler" }
+vv-diagnostics = { path = "../vv-diagnostics" }
 
 glam.workspace = true
 rayon.workspace = true

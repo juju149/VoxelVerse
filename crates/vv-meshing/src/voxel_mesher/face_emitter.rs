@@ -2,9 +2,9 @@ use glam::Vec3;
 use vv_math::{CoordSystem, SphericalGrid};
 use vv_voxel::PlanetProfile;
 
+use super::material_packing::{pack_material_edges, FaceEdgeMask};
 use crate::ambient_occlusion;
 use crate::cpu_mesh::CpuVertex;
-use super::material_packing::{FaceEdgeMask, pack_material_edges};
 
 pub(crate) fn grid_from_profile(p: PlanetProfile) -> SphericalGrid {
     SphericalGrid::new(p.resolution, p.inner_radius, p.layer_height)
@@ -98,11 +98,11 @@ pub(crate) fn emit_cube_voxel(
         accessor.check_hides(voxel_id, layer as i32 + dl, u as i32 + du, v as i32 + dv)
     };
 
-    let has_top   = check(1, 0, 0);
-    let has_btm   = check(-1, 0, 0);
+    let has_top = check(1, 0, 0);
+    let has_btm = check(-1, 0, 0);
     let has_right = check(0, 1, 0);
-    let has_left  = check(0, -1, 0);
-    let has_back  = check(0, 0, 1);
+    let has_left = check(0, -1, 0);
+    let has_back = check(0, 0, 1);
     let has_front = check(0, 0, -1);
 
     if has_top && has_btm && has_left && has_right && has_front && has_back {
@@ -112,11 +112,7 @@ pub(crate) fn emit_cube_voxel(
     // Skylight
     let natural_h = accessor.surface_height(u, v);
     let at_or_above_surface = layer >= natural_h;
-    let light_val = super::lighting::skylight(
-        |i| check(i, 0, 0),
-        at_or_above_surface,
-        8,
-    );
+    let light_val = super::lighting::skylight(|i| check(i, 0, 0), at_or_above_surface, 8);
 
     let mesh_class = materials.mesh_class(voxel_id);
     let visual = materials.visual(voxel_id);
@@ -127,13 +123,7 @@ pub(crate) fn emit_cube_voxel(
 
     let grid = grid_from_profile(profile);
     let p = |u_off: u32, v_off: u32, l_off: u32| {
-        CoordSystem::get_vertex_pos(
-            planet_face,
-            u + u_off,
-            v + v_off,
-            layer + l_off,
-            grid,
-        )
+        CoordSystem::get_vertex_pos(planet_face, u + u_off, v + v_off, layer + l_off, grid)
     };
     let i_bl = p(0, 0, 0);
     let i_br = p(1, 0, 0);
@@ -180,7 +170,9 @@ pub(crate) fn emit_cube_voxel(
         let ao_tr = ambient_occlusion::calculate(n(1, 0), n(0, 1), n(1, 1));
         let ao_tl = ambient_occlusion::calculate(n(-1, 0), n(0, 1), n(-1, 1));
         FaceEmitter::quad(
-            verts, inds, idx,
+            verts,
+            inds,
+            idx,
             QuadFace {
                 pos: [o_bl, o_br, o_tr, o_tl],
                 colors: [
@@ -207,7 +199,9 @@ pub(crate) fn emit_cube_voxel(
         };
         let c = face_color(layer_idx, 0.4);
         FaceEmitter::quad(
-            verts, inds, idx,
+            verts,
+            inds,
+            idx,
             QuadFace {
                 pos: [i_tl, i_tr, i_br, i_bl],
                 colors: [c, c, c, c],
@@ -229,7 +223,9 @@ pub(crate) fn emit_cube_voxel(
         };
         let c = face_color(layer_idx, 0.8);
         FaceEmitter::quad(
-            verts, inds, idx,
+            verts,
+            inds,
+            idx,
             QuadFace {
                 pos: [i_bl, i_br, o_br, o_bl],
                 colors: [c, c, c, c],
@@ -251,7 +247,9 @@ pub(crate) fn emit_cube_voxel(
         };
         let c = face_color(layer_idx, 0.8);
         FaceEmitter::quad(
-            verts, inds, idx,
+            verts,
+            inds,
+            idx,
             QuadFace {
                 pos: [i_tr, i_tl, o_tl, o_tr],
                 colors: [c, c, c, c],
@@ -273,7 +271,9 @@ pub(crate) fn emit_cube_voxel(
         };
         let c = face_color(layer_idx, 0.8);
         FaceEmitter::quad(
-            verts, inds, idx,
+            verts,
+            inds,
+            idx,
             QuadFace {
                 pos: [i_tl, i_bl, o_bl, o_tl],
                 colors: [c, c, c, c],
@@ -295,7 +295,9 @@ pub(crate) fn emit_cube_voxel(
         };
         let c = face_color(layer_idx, 0.8);
         FaceEmitter::quad(
-            verts, inds, idx,
+            verts,
+            inds,
+            idx,
             QuadFace {
                 pos: [i_br, i_tr, o_tr, o_br],
                 colors: [c, c, c, c],

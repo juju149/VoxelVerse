@@ -10,8 +10,10 @@
 //! Fields are public and intentionally permissive: this is a transport-layer
 //! struct, not an invariant-bearing one.
 
+use serde::Serialize;
+
 /// Worldgen telemetry snapshot. Produced by `vv-worldgen::WorldgenStats`.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct WorldgenStatsSnapshot {
     pub cell_hits: u64,
     pub cell_misses: u64,
@@ -33,7 +35,7 @@ impl WorldgenStatsSnapshot {
 }
 
 /// Audio engine telemetry snapshot. Produced by `vv-audio::AudioDiagnostics`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct AudioStatsSnapshot {
     pub voices_started: u64,
     pub voices_throttled: u64,
@@ -47,7 +49,7 @@ pub struct AudioStatsSnapshot {
 /// Chunk streaming telemetry snapshot. Produced by the renderer's chunk
 /// pipeline (mesh jobs, GPU uploads). Populated incrementally; fields not
 /// yet wired stay at their `Default` value.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct StreamingStatsSnapshot {
     pub pending_mesh_jobs: u32,
     pub pending_lod_jobs: u32,
@@ -60,7 +62,7 @@ pub struct StreamingStatsSnapshot {
 /// Gameplay-side telemetry snapshot. Captures player-frame state the rest
 /// of the engine can't see (current biome, current chunk, etc.). Populated
 /// incrementally; empty fields stay at `Default`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct GameplayStatsSnapshot {
     pub player_pos: [f32; 3],
     pub player_chunk: [i32; 3],

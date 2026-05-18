@@ -271,7 +271,10 @@ mod tests {
 
     #[test]
     fn swing_and_hit_do_not_share_cooldown() {
-        let mut lim = SoundLimiter { tick: 3, ..Default::default() };
+        let mut lim = SoundLimiter {
+            tick: 3,
+            ..Default::default()
+        };
         assert!(lim.allow(SoundChannel::Swing, 2));
         // Tick = 4 — hit must not be throttled by the recent swing.
         lim.tick = 4;
@@ -280,7 +283,10 @@ mod tests {
 
     #[test]
     fn within_channel_cooldown_throttles() {
-        let mut lim = SoundLimiter { tick: 5, ..Default::default() };
+        let mut lim = SoundLimiter {
+            tick: 5,
+            ..Default::default()
+        };
         assert!(lim.allow(SoundChannel::Swing, 2));
         // Same channel, tick within cooldown → blocked.
         lim.tick = 6;

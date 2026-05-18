@@ -45,13 +45,7 @@ impl<'a> VoxelAccessor<'a> {
     }
 
     /// Whether the face between `current` and signed neighbor is hidden.
-    pub(crate) fn check_hides(
-        &self,
-        current: VoxelId,
-        n_layer: i32,
-        n_u: i32,
-        n_v: i32,
-    ) -> bool {
+    pub(crate) fn check_hides(&self, current: VoxelId, n_layer: i32, n_u: i32, n_v: i32) -> bool {
         match self.voxels.get_signed(n_layer, n_u, n_v) {
             None => true, // core = hides everything
             Some(other) => self.materials.hides_face_between(current, other),
@@ -91,10 +85,8 @@ impl CandidateBuffer {
 
     /// Sort, dedup, and return the finished list.
     pub(crate) fn finish(mut self) -> Vec<Coord> {
-        self.coords
-            .sort_by_key(|c| (c.face, c.layer, c.u, c.v));
-        self.coords
-            .dedup_by_key(|c| (c.face, c.layer, c.u, c.v));
+        self.coords.sort_by_key(|c| (c.face, c.layer, c.u, c.v));
+        self.coords.dedup_by_key(|c| (c.face, c.layer, c.u, c.v));
         self.coords
     }
 }
@@ -125,7 +117,12 @@ pub(crate) fn build_candidates(
                 continue;
             }
 
-            buf.push(Coord { face, layer: h, u, v });
+            buf.push(Coord {
+                face,
+                layer: h,
+                u,
+                v,
+            });
 
             // Cliff fill: expose blocks down to the lowest neighbor height.
             let mut min_h = h;
@@ -144,7 +141,12 @@ pub(crate) fn build_candidates(
             if min_h < h {
                 let bottom = min_h.max(h.saturating_sub(cliff_fill_depth));
                 for l in (bottom + 1)..h {
-                    buf.push(Coord { face, layer: l, u, v });
+                    buf.push(Coord {
+                        face,
+                        layer: l,
+                        u,
+                        v,
+                    });
                 }
             }
 
@@ -152,7 +154,12 @@ pub(crate) fn build_candidates(
             let sea = accessor.border.sea_level;
             let water = accessor.border.water_voxel;
             if water != VoxelId::AIR && h < sea {
-                buf.push(Coord { face, layer: sea, u, v });
+                buf.push(Coord {
+                    face,
+                    layer: sea,
+                    u,
+                    v,
+                });
             }
         }
     }
@@ -160,12 +167,7 @@ pub(crate) fn build_candidates(
     // Above-surface feature voxels: any non-AIR voxel stored in the view
     // that is above the surface (layer > surface_height).
     for (layer, u, v, _id) in accessor.voxels.iter_voxels() {
-        if u >= u_start
-            && u < u_end
-            && v >= v_start
-            && v < v_end
-            && layer > gh(u, v)
-        {
+        if u >= u_start && u < u_end && v >= v_start && v < v_end && layer > gh(u, v) {
             buf.push(Coord { face, layer, u, v });
         }
     }
@@ -186,10 +188,16 @@ pub(crate) fn add_modified_candidates(
     let c = Coord { face, layer, u, v };
     buf.push(c);
     if layer + 1 < resolution {
-        buf.push(Coord { layer: layer + 1, ..c });
+        buf.push(Coord {
+            layer: layer + 1,
+            ..c
+        });
     }
     if layer > 0 {
-        buf.push(Coord { layer: layer - 1, ..c });
+        buf.push(Coord {
+            layer: layer - 1,
+            ..c
+        });
     }
     if u > 0 {
         buf.push(Coord { u: u - 1, ..c });

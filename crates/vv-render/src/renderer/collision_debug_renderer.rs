@@ -34,15 +34,20 @@ fn build_collision_debug_mesh(player_pos: Vec3, planet: &PlanetData) -> CpuMesh 
                         u: u as u32,
                         v: v as u32,
                     };
-                    let block_pos = PlanetGeometry::get_block_center(
-                        id.face, id.u, id.v, id.layer, profile,
-                    );
+                    let block_pos =
+                        PlanetGeometry::get_block_center(id.face, id.u, id.v, id.layer, profile);
                     if !vv_physics::Physics::is_solid(block_pos, planet) {
                         continue;
                     }
 
                     let get_p = |uu, vv, ll| {
-                        PlanetGeometry::get_vertex_pos(id.face, id.u + uu, id.v + vv, id.layer + ll, profile)
+                        PlanetGeometry::get_vertex_pos(
+                            id.face,
+                            id.u + uu,
+                            id.v + vv,
+                            id.layer + ll,
+                            profile,
+                        )
                     };
                     let c000 = get_p(0, 0, 0);
                     let c100 = get_p(1, 0, 0);
@@ -62,14 +67,33 @@ fn build_collision_debug_mesh(player_pos: Vec3, planet: &PlanetData) -> CpuMesh 
                         tex_index: 0,
                     };
                     let corners = [
-                        v(c000), v(c100), v(c110), v(c010),
-                        v(c001), v(c101), v(c111), v(c011),
+                        v(c000),
+                        v(c100),
+                        v(c110),
+                        v(c010),
+                        v(c001),
+                        v(c101),
+                        v(c111),
+                        v(c011),
                     ];
                     for c in &corners {
                         verts.push(*c);
                     }
                     let base = idx;
-                    for (s, e) in [(0,1),(1,2),(2,3),(3,0),(4,5),(5,6),(6,7),(7,4),(0,4),(1,5),(2,6),(3,7)] {
+                    for (s, e) in [
+                        (0, 1),
+                        (1, 2),
+                        (2, 3),
+                        (3, 0),
+                        (4, 5),
+                        (5, 6),
+                        (6, 7),
+                        (7, 4),
+                        (0, 4),
+                        (1, 5),
+                        (2, 6),
+                        (3, 7),
+                    ] {
                         inds.push(base + s);
                         inds.push(base + e);
                     }

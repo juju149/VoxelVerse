@@ -1,9 +1,9 @@
 pub mod chunk_input;
-pub mod material_packing;
-pub mod prop_integration;
 pub(crate) mod face_culling;
 pub(crate) mod face_emitter;
 pub(crate) mod lighting;
+pub mod material_packing;
+pub mod prop_integration;
 
 use std::sync::OnceLock;
 
@@ -53,11 +53,8 @@ impl MeshGen {
         let u_end = (u_start + CHUNK_SIZE).min(resolution);
         let v_end = (v_start + CHUNK_SIZE).min(resolution);
 
-        let accessor = VoxelAccessor::new(
-            &input.voxels,
-            &input.material_table,
-            &input.border_samples,
-        );
+        let accessor =
+            VoxelAccessor::new(&input.voxels, &input.material_table, &input.border_samples);
 
         let mut candidate_buf = build_candidates(
             &accessor,
@@ -71,13 +68,20 @@ impl MeshGen {
         // Modified voxels inserted by the world layer are already in the view;
         // add their 6-connected neighbors as candidates so faces are correct.
         for (layer, u, v, _) in input.voxels.iter_voxels() {
-            if u < u_start.saturating_sub(1) || u > u_end
-                || v < v_start.saturating_sub(1) || v > v_end
+            if u < u_start.saturating_sub(1)
+                || u > u_end
+                || v < v_start.saturating_sub(1)
+                || v > v_end
             {
                 continue;
             }
             face_culling::add_modified_candidates(
-                key.face, layer, u, v, &mut candidate_buf, resolution,
+                key.face,
+                layer,
+                u,
+                v,
+                &mut candidate_buf,
+                resolution,
             );
         }
 
@@ -117,11 +121,7 @@ impl MeshGen {
             match kind {
                 VoxelMeshKind::Cube | VoxelMeshKind::CubeColumn => {
                     emit_cube_voxel(
-                        c.face, c.layer, c.u, c.v,
-                        profile,
-                        &accessor,
-                        &mut verts,
-                        &mut inds,
+                        c.face, c.layer, c.u, c.v, profile, &accessor, &mut verts, &mut inds,
                         &mut idx,
                     );
                 }
@@ -134,7 +134,11 @@ impl MeshGen {
         let mut mesh = CpuMesh::new(verts, inds);
 
         if !input.prop_instances.is_empty() {
-            let grid = SphericalGrid::new(profile.resolution, profile.inner_radius, profile.layer_height);
+            let grid = SphericalGrid::new(
+                profile.resolution,
+                profile.inner_radius,
+                profile.layer_height,
+            );
             bake_prop_instances(&input.prop_instances, grid, &mut mesh, config);
         }
 
@@ -173,9 +177,21 @@ mod tests {
     fn prop_lod_keeps_only_near_same_face_chunks() {
         let player = Some(chunk(2, 10, 10));
         let config = VoxelMeshingConfig::default();
-        assert!(MeshGen::should_bake_props_for_chunk(chunk(2, 15, 10), player, config));
-        assert!(!MeshGen::should_bake_props_for_chunk(chunk(2, 16, 10), player, config));
-        assert!(!MeshGen::should_bake_props_for_chunk(chunk(3, 10, 10), player, config));
+        assert!(MeshGen::should_bake_props_for_chunk(
+            chunk(2, 15, 10),
+            player,
+            config
+        ));
+        assert!(!MeshGen::should_bake_props_for_chunk(
+            chunk(2, 16, 10),
+            player,
+            config
+        ));
+        assert!(!MeshGen::should_bake_props_for_chunk(
+            chunk(3, 10, 10),
+            player,
+            config
+        ));
     }
 
     #[test]
@@ -194,7 +210,15 @@ mod tests {
             ..VoxelMeshingConfig::default()
         };
         let player = Some(chunk(1, 10, 10));
-        assert!(MeshGen::should_bake_props_for_chunk(chunk(1, 12, 10), player, config));
-        assert!(!MeshGen::should_bake_props_for_chunk(chunk(1, 13, 10), player, config));
+        assert!(MeshGen::should_bake_props_for_chunk(
+            chunk(1, 12, 10),
+            player,
+            config
+        ));
+        assert!(!MeshGen::should_bake_props_for_chunk(
+            chunk(1, 13, 10),
+            player,
+            config
+        ));
     }
 }

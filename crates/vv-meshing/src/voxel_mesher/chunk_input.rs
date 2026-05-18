@@ -43,16 +43,13 @@ impl ChunkVoxelView {
 
     /// Iterate all stored (non-AIR) voxels as `(layer, u, v, id)`.
     pub fn iter_voxels(&self) -> impl Iterator<Item = (u32, u32, u32, VoxelId)> + '_ {
-        self.voxels.iter().map(|(&(layer, u, v), &id)| (layer, u, v, id))
+        self.voxels
+            .iter()
+            .map(|(&(layer, u, v), &id)| (layer, u, v, id))
     }
 
     /// Signed-offset version used by face culling.
-    pub fn get_signed(
-        &self,
-        layer: i32,
-        u: i32,
-        v: i32,
-    ) -> Option<VoxelId> {
+    pub fn get_signed(&self, layer: i32, u: i32, v: i32) -> Option<VoxelId> {
         if layer < 0 {
             return None; // signals "core is solid"
         }

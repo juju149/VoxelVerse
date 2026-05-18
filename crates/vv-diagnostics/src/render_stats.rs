@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 /// Must match `std::mem::size_of::<rendering::types::Vertex>()`.
 /// A compile-time assertion in `rendering/types.rs` guarantees this stays in sync.
 const VERTEX_BYTES: usize = 48;
@@ -5,7 +7,7 @@ const INDEX_BYTES: usize = 4;
 
 /// Per-frame counters collected by the renderer and exposed to the diagnostics overlay.
 /// All fields represent the state at the end of the most recent frame.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Serialize)]
 pub struct RenderStats {
     // --- geometry counters ---
     pub visible_chunks: usize,

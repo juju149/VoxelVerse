@@ -11,7 +11,7 @@
 //! diagnostics overlay, not here.
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use vv_diagnostics::WorldgenStatsSnapshot;
+pub use vv_diagnostics::WorldgenStatsSnapshot;
 
 #[derive(Default, Debug)]
 pub struct WorldgenStats {

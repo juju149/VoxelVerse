@@ -9,7 +9,7 @@ use crate::texture_atlas::TextureAtlas;
 use crate::types::Vertex;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::channel;
-use vv_diagnostics::SystemDiagnostics;
+use vv_diagnostics::{GpuAdapterSnapshot, SystemDiagnostics};
 use vv_meshing::MeshGen;
 use vv_meshing::{MeshScheduler, SchedulerStats};
 use vv_pack_compiler::shader::PackShaderRoot;
@@ -38,7 +38,12 @@ impl<'a> Renderer<'a> {
 
         // log GPU info
         let adapter_info = adapter.get_info();
-        SystemDiagnostics::log_gpu(&adapter_info);
+        SystemDiagnostics::log_gpu(GpuAdapterSnapshot {
+            name: &adapter_info.name,
+            backend: &format!("{:?}", adapter_info.backend),
+            driver: &adapter_info.driver,
+            vendor: adapter_info.vendor,
+        });
 
         // Detect hardware tier and derive every render-side knob from it.
         // Honours the VV_PERF env override.

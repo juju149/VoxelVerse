@@ -61,15 +61,23 @@ pub struct CelestialRegistry {
 
 #[derive(Debug)]
 pub enum RegistryError {
-    UnknownParent { body: String, parent: String },
+    UnknownParent {
+        body: String,
+        parent: String,
+    },
     DuplicateShortId(String),
     /// A parent chain cycles back on itself (e.g. `earth.parent = moon`,
     /// `moon.parent = earth`). Caught here so `body_position` cannot recurse
     /// forever at runtime.
-    ParentCycle { chain: Vec<String> },
+    ParentCycle {
+        chain: Vec<String>,
+    },
     /// `CelestialBodyId` is a `u16`; packs with more bodies than that would
     /// truncate silently. Refuse them at load instead.
-    TooManyBodies { count: usize, max: usize },
+    TooManyBodies {
+        count: usize,
+        max: usize,
+    },
 }
 
 impl std::fmt::Display for RegistryError {
@@ -88,7 +96,10 @@ impl std::fmt::Display for RegistryError {
                 write!(f, "celestial parent cycle: {}", chain.join(" -> "))
             }
             RegistryError::TooManyBodies { count, max } => {
-                write!(f, "too many celestial bodies: {count} > {max} (CelestialBodyId is u16)")
+                write!(
+                    f,
+                    "too many celestial bodies: {count} > {max} (CelestialBodyId is u16)"
+                )
             }
         }
     }
@@ -198,7 +209,10 @@ impl CelestialRegistry {
 /// Walk the parent chain from `start` and return the cyclic loop if one
 /// exists. The returned vector starts and ends on the same id so the error
 /// message reads e.g. `earth -> moon -> earth`. Bounded by `bodies.len()`.
-fn detect_cycle_from(bodies: &[ResolvedBody], start: CelestialBodyId) -> Option<Vec<CelestialBodyId>> {
+fn detect_cycle_from(
+    bodies: &[ResolvedBody],
+    start: CelestialBodyId,
+) -> Option<Vec<CelestialBodyId>> {
     let mut chain: Vec<CelestialBodyId> = vec![start];
     let mut current = start;
     loop {

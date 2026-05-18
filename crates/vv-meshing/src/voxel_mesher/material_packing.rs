@@ -172,7 +172,13 @@ mod tests {
 
     #[test]
     fn edge_bits_land_in_high_word() {
-        let packed = pack_material_edges(0, FaceEdgeMask { min_u: true, ..Default::default() });
+        let packed = pack_material_edges(
+            0,
+            FaceEdgeMask {
+                min_u: true,
+                ..Default::default()
+            },
+        );
         assert_ne!(packed >> 16, 0);
         assert_eq!(packed & MATERIAL_INDEX_MASK, 0);
     }

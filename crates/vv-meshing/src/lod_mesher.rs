@@ -36,8 +36,11 @@ impl MeshGen {
             for ci in 0..n {
                 let cell_idx = (cj * n + ci) as usize;
                 let h = input.cell_heights[cell_idx];
-                let LodCellColors { top: top_color, wall: wall_color, .. } =
-                    input.cell_colors[cell_idx];
+                let LodCellColors {
+                    top: top_color,
+                    wall: wall_color,
+                    ..
+                } = input.cell_colors[cell_idx];
 
                 let u0 = (key.x + ci * step).min(grid_res);
                 let u1 = (key.x + (ci + 1) * step).min(grid_res);
@@ -52,12 +55,24 @@ impl MeshGen {
                 let cell_center = (p_bl + p_br + p_tr + p_tl) * 0.25;
                 let radial = cell_center.normalize_or_zero();
 
-                push_quad(&mut verts, &mut inds, [p_bl, p_br, p_tr, p_tl], radial.to_array(), top_color);
+                push_quad(
+                    &mut verts,
+                    &mut inds,
+                    [p_bl, p_br, p_tr, p_tl],
+                    radial.to_array(),
+                    top_color,
+                );
 
                 let wall_c = scale_color(wall_color, LOD_WALL_SHADE_SCALE);
 
                 let mut emit_wall = |bl: Vec3, br: Vec3, tr: Vec3, tl: Vec3| {
-                    push_quad(&mut verts, &mut inds, [bl, br, tr, tl], radial.to_array(), wall_c);
+                    push_quad(
+                        &mut verts,
+                        &mut inds,
+                        [bl, br, tr, tl],
+                        radial.to_array(),
+                        wall_c,
+                    );
                 };
 
                 // -U wall
@@ -145,9 +160,16 @@ mod tests {
         let mut verts = Vec::new();
         let mut inds = Vec::new();
         push_quad(
-            &mut verts, &mut inds,
-            [Vec3::new(0.,0.,0.), Vec3::new(1.,0.,0.), Vec3::new(1.,1.,0.), Vec3::new(0.,1.,0.)],
-            [0., 0., 1.], [1., 1., 1.],
+            &mut verts,
+            &mut inds,
+            [
+                Vec3::new(0., 0., 0.),
+                Vec3::new(1., 0., 0.),
+                Vec3::new(1., 1., 0.),
+                Vec3::new(0., 1., 0.),
+            ],
+            [0., 0., 1.],
+            [1., 1., 1.],
         );
         assert_eq!(verts.len(), 4);
         assert_eq!(inds, [0, 1, 2, 2, 3, 0, 0, 2, 1, 3, 2, 0]);

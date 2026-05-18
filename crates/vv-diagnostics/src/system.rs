@@ -2,6 +2,13 @@ use sysinfo::System;
 
 pub struct SystemDiagnostics;
 
+pub struct GpuAdapterSnapshot<'a> {
+    pub name: &'a str,
+    pub backend: &'a str,
+    pub driver: &'a str,
+    pub vendor: u32,
+}
+
 impl SystemDiagnostics {
     pub fn print_startup_info() {
         let mut sys = System::new_all();
@@ -42,12 +49,12 @@ impl SystemDiagnostics {
         println!("==========================================\n");
     }
 
-    pub fn log_gpu(info: &wgpu::AdapterInfo) {
+    pub fn log_gpu(info: GpuAdapterSnapshot<'_>) {
         println!("--- GPU INFO ---");
         println!("Name     : {}", info.name);
-        println!("Backend  : {:?}", info.backend);
+        println!("Backend  : {}", info.backend);
         println!("Driver   : {}", info.driver);
-        println!("Vendor   : {:?}", info.vendor);
+        println!("Vendor   : {}", info.vendor);
         println!("----------------\n");
     }
 }

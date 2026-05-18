@@ -156,7 +156,10 @@ fn parent_cycle_is_rejected() {
     let result = CelestialRegistry::from_raw(&[a, b]);
     match result {
         Err(vv_celestial::RegistryError::ParentCycle { chain }) => {
-            assert!(chain.len() >= 2, "cycle chain should name at least 2 bodies");
+            assert!(
+                chain.len() >= 2,
+                "cycle chain should name at least 2 bodies"
+            );
         }
         Err(other) => panic!("expected ParentCycle, got {other:?}"),
         Ok(_) => panic!("expected ParentCycle, got Ok"),
@@ -188,14 +191,12 @@ fn duplicate_short_id_is_rejected() {
 fn sun_direction_makes_one_complete_revolution_per_day() {
     let reg = earth_like_registry();
     let sim = CelestialSimState::new(&reg);
-    let day_length_s = reg.get(reg.id_of("terra").unwrap()).spin.period_s as f64;
+    let day_length_s = reg.get(reg.id_of("terra").unwrap()).spin.period_s;
 
     let s_noon = sim.snapshot(&reg, 0.0, 0.0).sun_dir_world;
 
     // Advance to phase 0.5 (midnight): sun should be roughly opposite.
-    let s_mid = sim
-        .snapshot(&reg, day_length_s * 0.5, 0.5)
-        .sun_dir_world;
+    let s_mid = sim.snapshot(&reg, day_length_s * 0.5, 0.5).sun_dir_world;
     let dot = s_noon.dot(s_mid);
     assert!(
         dot < -0.5,
